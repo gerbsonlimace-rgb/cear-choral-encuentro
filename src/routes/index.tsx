@@ -387,7 +387,7 @@ function RegistrationSection() {
     const parse = registrationSchema.safeParse(form);
     if (!parse.success) {
       const fieldErrors: Partial<Record<keyof RegistrationInput, string>> = {};
-      parse.error.issues.forEach((issue) => {
+      parse.error.issues.forEach((issue: z.ZodIssue) => {
         const field = issue.path[0] as keyof RegistrationInput;
         fieldErrors[field] = issue.message;
       });
@@ -397,7 +397,7 @@ function RegistrationSection() {
     }
 
     try {
-      await submit(form);
+      await submit({ data: form });
       setStatus("success");
       setForm({
         name: "",
