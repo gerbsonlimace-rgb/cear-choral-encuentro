@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { z } from "zod";
 
-import heroImage from "../assets/hero-sacred-music.jpg";
+import logoImage from "../assets/logo-musica-sacra.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import {
   submitRegistration,
   registrationSchema,
@@ -51,7 +50,8 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:description",
-        content: "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
+        content:
+          "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
       },
       { property: "og:url", content: "/" },
     ],
@@ -79,7 +79,6 @@ export const Route = createFileRoute("/")({
           },
           description:
             "Encontro de formação, celebração e música sacra no Estado do Ceará, com oficinas, missas, palestras e concertos.",
-          image: heroImage,
         }),
       },
     ],
@@ -103,16 +102,16 @@ function Index() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60">
       <div className="container-event flex h-16 items-center justify-between px-4 lg:px-0">
         <Link
           to="/"
-          className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-foreground"
+          className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground"
         >
-          <Music className="h-5 w-5 text-gold" />
+          <Music className="h-5 w-5 text-teal" />
           <span>II EMS-CE</span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-semibold md:flex">
           <a href="#sobre" className="text-muted-foreground transition-colors hover:text-foreground">
             Sobre
           </a>
@@ -123,7 +122,7 @@ function Header() {
             Inscrição
           </a>
         </nav>
-        <Button asChild size="sm" className="bg-gold text-gold-foreground hover:bg-gold/90">
+        <Button asChild size="sm" className="rounded-full bg-emerald px-5 font-semibold text-emerald-foreground hover:bg-emerald/90">
           <a href="#inscricao">Inscreva-se</a>
         </Button>
       </div>
@@ -133,56 +132,68 @@ function Header() {
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt="Coro e orquestra em igreja histórica iluminada por luz dourada"
-          width={1920}
-          height={912}
-          className="h-full w-full object-cover"
-          fetchPriority="high"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/60 to-navy/90" />
+    <section className="relative overflow-hidden bg-linear-to-br from-teal via-teal-600 to-emerald">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-amber blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-white blur-3xl" />
       </div>
       <div className="relative section-padding">
-        <div className="container-event flex flex-col items-center px-4 text-center lg:px-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-sm font-medium text-gold backdrop-blur-sm">
-            <Calendar className="h-4 w-4" />
-            <span>20 a 22 de novembro de 2025</span>
-          </div>
-          <h1 className="mt-6 max-w-4xl font-display text-4xl font-bold leading-[1.1] text-cream sm:text-5xl md:text-6xl lg:text-7xl">
-            II Encontro de Música Sacra do Estado do Ceará
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-cream/90 sm:text-xl">
-            Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-cream/80">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-gold" />
-              <span className="font-medium">Quixadá, CE</span>
+        <div className="container-event grid items-center gap-12 px-4 lg:grid-cols-2 lg:px-0">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
+              <Calendar className="h-4 w-4" />
+              20 a 22 de novembro de 2025
+            </span>
+            <h1 className="mt-6 max-w-2xl font-display text-4xl font-extrabold leading-[1.05] text-white sm:text-5xl md:text-6xl">
+              II Encontro de Música Sacra do Estado do Ceará
+            </h1>
+            <p className="mt-6 max-w-xl text-lg text-white/90 sm:text-xl">
+              Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-white/90 lg:justify-start">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-amber" />
+                <span className="font-semibold">Quixadá, CE</span>
+              </div>
+              <div className="hidden h-5 w-px bg-white/30 sm:block" />
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-amber" />
+                <span className="font-semibold">Músicos, regentes, cantores e fiéis</span>
+              </div>
             </div>
-            <div className="hidden h-5 w-px bg-cream/30 sm:block" />
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-gold" />
-              <span className="font-medium">Músicos, regentes, cantores e fiéis</span>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4 lg:justify-start">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-amber px-8 py-6 text-lg font-bold text-amber-foreground shadow-lg shadow-amber/25 hover:bg-amber/90"
+              >
+                <a href="#inscricao">
+                  Faça sua inscrição
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </a>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="rounded-full border-2 border-white bg-white px-8 py-6 text-lg font-bold text-teal hover:bg-white/90"
+              >
+                <a href="#programacao">Programação</a>
+              </Button>
             </div>
           </div>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Button asChild size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
-              <a href="#inscricao">
-                Fazer inscrição
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="border-cream/50 bg-transparent text-cream hover:bg-cream/10 hover:text-cream"
-            >
-              <a href="#programacao">Ver programação</a>
-            </Button>
+          <div className="flex items-center justify-center">
+            <div className="relative w-full max-w-md">
+              <div className="absolute inset-0 rounded-full bg-white/10 blur-2xl" />
+              <img
+                src={logoImage}
+                alt="Identidade visual do II Encontro de Música Sacra do Ceará"
+                width={512}
+                height={512}
+                className="relative w-full drop-shadow-2xl"
+                fetchPriority="high"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -194,78 +205,57 @@ function AboutSection() {
   return (
     <section id="sobre" className="section-padding bg-background">
       <div className="container-event px-4 lg:px-0">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div>
-            <span className="font-display text-sm font-semibold uppercase tracking-widest text-gold">
-              Sobre o encontro
-            </span>
-            <h2 className="mt-3 font-display text-3xl font-bold text-foreground sm:text-4xl">
-              Uma celebração da tradição musical sacra
-            </h2>
-            <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              O II Encontro de Música Sacra do Estado do Ceará reúne músicos, regentes, cantores,
-              liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
-              vivência da música sacra.
-            </p>
-            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              Em Quixadá, entre os dias 20 e 22 de novembro, a programação inclui oficinas, palestras,
-              ensaios, missas e um concerto sacro, promovendo a beleza litúrgica e o encontro
-              comunitário através da arte.
-            </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10">
-                  <BookOpen className="h-5 w-5 text-gold" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">Formação</h3>
-                  <p className="text-sm text-muted-foreground">Oficinas com músicos e liturgistas experientes.</p>
-                </div>
+        <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
+            Sobre o encontro
+          </span>
+          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+            Uma celebração da tradição musical sacra
+          </h2>
+          <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+            O II Encontro de Música Sacra do Estado do Ceará reúne músicos, regentes, cantores,
+            liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
+            vivência da música sacra.
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
+            <CardContent className="p-6">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/10">
+                <BookOpen className="h-7 w-7 text-teal" />
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10">
-                  <Church className="h-5 w-5 text-gold" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">Celebração</h3>
-                  <p className="text-sm text-muted-foreground">Missas e momentos de oração com música sacra.</p>
-                </div>
+              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Formação</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Oficinas com músicos e liturgistas experientes.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
+            <CardContent className="p-6">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald/10">
+                <Church className="h-7 w-7 text-emerald" />
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10">
-                  <Mic2 className="h-5 w-5 text-gold" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">Concerto</h3>
-                  <p className="text-sm text-muted-foreground">Apresentação especial do repertório sacro.</p>
-                </div>
+              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Celebração</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Missas e momentos de oração com música sacra.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
+            <CardContent className="p-6">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber/10">
+                <Mic2 className="h-7 w-7 text-amber" />
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10">
-                  <Users className="h-5 w-5 text-gold" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground">Comunidade</h3>
-                  <p className="text-sm text-muted-foreground">Espaço de encontro entre grupos de todo o Ceará.</p>
-                </div>
+              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Concerto</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Apresentação especial do repertório sacro.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
+            <CardContent className="p-6">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/10">
+                <Users className="h-7 w-7 text-teal" />
               </div>
-            </div>
-          </div>
-          <div className="relative">
-            <div className="aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-muted">
-              <img
-                src={heroImage}
-                alt="Detalhe do encontro de música sacra"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-            <div className="absolute -bottom-6 -left-6 max-w-xs rounded-xl border border-border bg-card p-5 shadow-lg">
-              <p className="font-display text-4xl font-bold text-gold">3</p>
-              <p className="font-display text-lg font-semibold text-card-foreground">dias de programação</p>
-              <p className="text-sm text-muted-foreground">Palestras, oficinas, missas e concerto.</p>
-            </div>
-          </div>
+              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Comunidade</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Espaço de encontro entre grupos de todo o Ceará.</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </section>
@@ -311,10 +301,10 @@ function ProgramSection() {
     <section id="programacao" className="section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="font-display text-sm font-semibold uppercase tracking-widest text-gold">
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald">
             Programação
           </span>
-          <h2 className="mt-3 font-display text-3xl font-bold text-foreground sm:text-4xl">
+          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
             Três dias de música, formação e fé
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -323,25 +313,25 @@ function ProgramSection() {
         </div>
         <div className="mt-12 grid gap-8 lg:grid-cols-3">
           {schedule.map((day, index) => (
-            <Card key={index} className="border-border bg-card">
+            <Card key={index} className="border-border bg-card overflow-hidden">
+              <div className="bg-gradient-to-r from-teal to-emerald p-4">
+                <p className="font-display text-sm font-bold uppercase tracking-widest text-white/80">
+                  {day.weekday}
+                </p>
+                <h3 className="mt-1 font-display text-xl font-bold text-white">
+                  {day.date}
+                </h3>
+              </div>
               <CardContent className="p-6">
-                <div className="mb-4 border-b border-border pb-4">
-                  <p className="font-display text-sm font-semibold uppercase tracking-widest text-gold">
-                    {day.weekday}
-                  </p>
-                  <h3 className="mt-1 font-display text-xl font-bold text-card-foreground">
-                    {day.date}
-                  </h3>
-                </div>
                 <div className="space-y-5">
                   {day.items.map((item, itemIndex) => (
                     <div key={itemIndex} className="flex gap-3">
                       <div className="flex shrink-0 flex-col items-center gap-1">
-                        <Clock className="h-4 w-4 text-gold" />
-                        <span className="text-xs font-semibold text-gold">{item.time}</span>
+                        <Clock className="h-4 w-4 text-teal" />
+                        <span className="text-xs font-bold text-teal">{item.time}</span>
                       </div>
                       <div>
-                        <h4 className="font-display font-semibold text-card-foreground">{item.title}</h4>
+                        <h4 className="font-display font-bold text-card-foreground">{item.title}</h4>
                         <p className="text-sm text-muted-foreground">{item.description}</p>
                       </div>
                     </div>
@@ -417,10 +407,10 @@ function RegistrationSection() {
     <section id="inscricao" className="section-padding bg-background">
       <div className="container-event px-4 lg:px-0">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="font-display text-sm font-semibold uppercase tracking-widest text-gold">
+          <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
             Inscrição
           </span>
-          <h2 className="mt-3 font-display text-3xl font-bold text-foreground sm:text-4xl">
+          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
             Garanta sua participação
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -428,13 +418,13 @@ function RegistrationSection() {
           </p>
         </div>
 
-        <div className="mt-12 mx-auto max-w-2xl">
-          <Card className="border-border bg-card shadow-lg">
+        <div className="mx-auto mt-12 max-w-2xl">
+          <Card className="border-border bg-card shadow-xl shadow-teal/5">
             <CardContent className="p-6 sm:p-8">
               {status === "success" ? (
                 <div className="flex flex-col items-center text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gold/10">
-                    <CheckCircle className="h-8 w-8 text-gold" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald/10">
+                    <CheckCircle className="h-8 w-8 text-emerald" />
                   </div>
                   <h3 className="mt-4 font-display text-2xl font-bold text-card-foreground">
                     Inscrição recebida!
@@ -444,7 +434,7 @@ function RegistrationSection() {
                   </p>
                   <Button
                     onClick={() => setStatus("idle")}
-                    className="mt-6 bg-gold text-gold-foreground hover:bg-gold/90"
+                    className="mt-6 rounded-full bg-teal font-semibold text-white hover:bg-teal/90"
                   >
                     Nova inscrição
                   </Button>
@@ -453,21 +443,20 @@ function RegistrationSection() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-card-foreground">
+                      <Label htmlFor="name" className="font-semibold">
                         Nome completo
                       </Label>
                       <Input
                         id="name"
                         value={form.name}
                         onChange={(e) => handleChange("name", e.target.value)}
-                        placeholder="Seu nome completo"
-                        className="bg-background"
-                        aria-invalid={!!errors.name}
+                        placeholder="Seu nome"
+                        className="rounded-xl border-border bg-background"
                       />
                       {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-card-foreground">
+                      <Label htmlFor="email" className="font-semibold">
                         E-mail
                       </Label>
                       <Input
@@ -476,8 +465,7 @@ function RegistrationSection() {
                         value={form.email}
                         onChange={(e) => handleChange("email", e.target.value)}
                         placeholder="seu@email.com"
-                        className="bg-background"
-                        aria-invalid={!!errors.email}
+                        className="rounded-xl border-border bg-background"
                       />
                       {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                     </div>
@@ -485,72 +473,71 @@ function RegistrationSection() {
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-card-foreground">
+                      <Label htmlFor="phone" className="font-semibold">
                         Telefone
                       </Label>
                       <Input
                         id="phone"
-                        type="tel"
                         value={form.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
-                        placeholder="(00) 00000-0000"
-                        className="bg-background"
-                        aria-invalid={!!errors.phone}
+                        placeholder="(88) 99999-9999"
+                        className="rounded-xl border-border bg-background"
                       />
                       {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="city" className="text-card-foreground">
+                      <Label htmlFor="city" className="font-semibold">
                         Cidade
                       </Label>
                       <Input
                         id="city"
                         value={form.city}
                         onChange={(e) => handleChange("city", e.target.value)}
-                        placeholder="Sua cidade"
-                        className="bg-background"
-                        aria-invalid={!!errors.city}
+                        placeholder="Quixadá"
+                        className="rounded-xl border-border bg-background"
                       />
                       {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="institution" className="text-card-foreground">
-                      Paróquia / Comunidade / Instituição
-                    </Label>
-                    <Input
-                      id="institution"
-                      value={form.institution}
-                      onChange={(e) => handleChange("institution", e.target.value)}
-                      placeholder="Opcional"
-                      className="bg-background"
-                    />
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="institution" className="font-semibold">
+                        Paróquia / Instituição
+                      </Label>
+                      <Input
+                        id="institution"
+                        value={form.institution}
+                        onChange={(e) => handleChange("institution", e.target.value)}
+                        placeholder="Onde você atua"
+                        className="rounded-xl border-border bg-background"
+                      />
+                      {errors.institution && <p className="text-sm text-destructive">{errors.institution}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role" className="font-semibold">
+                        Função
+                      </Label>
+                      <Select value={form.role} onValueChange={(value) => handleChange("role", value)}>
+                        <SelectTrigger id="role" className="rounded-xl border-border bg-background">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="participant">Participante</SelectItem>
+                          <SelectItem value="musician">Músico</SelectItem>
+                          <SelectItem value="singer">Cantor/Coralista</SelectItem>
+                          <SelectItem value="conductor">Regente</SelectItem>
+                          <SelectItem value="liturgist">Liturgista</SelectItem>
+                          <SelectItem value="priest">Padre/Clero</SelectItem>
+                          <SelectItem value="other">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="role" className="text-card-foreground">
-                      Você participará como
-                    </Label>
-                    <Select
-                      value={form.role}
-                      onValueChange={(value) => handleChange("role", value)}
-                    >
-                      <SelectTrigger id="role" className="bg-background" aria-invalid={!!errors.role}>
-                        <SelectValue placeholder="Selecione uma opção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="participant">Participante geral</SelectItem>
-                        <SelectItem value="musician">Músico / Instrumentista</SelectItem>
-                        <SelectItem value="choir_member">Cantor / Coralista</SelectItem>
-                        <SelectItem value="listener">Ouvinte</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="observations" className="text-card-foreground">
+                    <Label htmlFor="observations" className="font-semibold">
                       Observações
                     </Label>
                     <Textarea
@@ -558,14 +545,14 @@ function RegistrationSection() {
                       value={form.observations}
                       onChange={(e) => handleChange("observations", e.target.value)}
                       placeholder="Restrições alimentares, necessidades especiais ou outras informações"
-                      className="min-h-[100px] bg-background"
-                      aria-invalid={!!errors.observations}
+                      rows={4}
+                      className="rounded-xl border-border bg-background"
                     />
                     {errors.observations && <p className="text-sm text-destructive">{errors.observations}</p>}
                   </div>
 
                   {status === "error" && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+                    <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
                       {errorMessage}
                     </div>
                   )}
@@ -573,15 +560,10 @@ function RegistrationSection() {
                   <Button
                     type="submit"
                     disabled={status === "submitting"}
-                    className="w-full bg-gold text-gold-foreground hover:bg-gold/90"
-                    size="lg"
+                    className="w-full rounded-full bg-gradient-to-r from-teal to-emerald py-6 text-lg font-bold text-white hover:opacity-90 disabled:opacity-60"
                   >
-                    {status === "submitting" ? "Enviando..." : "Confirmar inscrição"}
+                    {status === "submitting" ? "Enviando..." : "Enviar inscrição"}
                   </Button>
-
-                  <p className="text-center text-xs text-muted-foreground">
-                    Ao se inscrever, você concorda em receber comunicações sobre o evento.
-                  </p>
                 </form>
               )}
             </CardContent>
@@ -594,55 +576,47 @@ function RegistrationSection() {
 
 function Footer() {
   return (
-    <footer className="border-t border-border bg-navy text-cream">
-      <div className="container-event section-padding px-4 lg:px-0">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+    <footer className="bg-foreground py-16 text-white">
+      <div className="container-event px-4 lg:px-0">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3">
           <div>
-            <div className="flex items-center gap-2 font-display text-lg font-semibold">
-              <Music className="h-5 w-5 text-gold" />
+            <div className="flex items-center gap-2 font-display text-lg font-bold">
+              <Music className="h-5 w-5 text-amber" />
               <span>II EMS-CE</span>
             </div>
-            <p className="mt-3 text-sm text-cream/80">
-              II Encontro de Música Sacra do Estado do Ceará. Celebrando a fé, a formação e a tradição
-              musical do nosso povo.
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
+              II Encontro de Música Sacra do Estado do Ceará. Celebrando a fé, a formação e a tradição musical do nosso povo.
             </p>
           </div>
           <div>
-            <h3 className="font-display font-semibold">Local e data</h3>
-            <ul className="mt-3 space-y-2 text-sm text-cream/80">
+            <h4 className="font-display font-bold">Local e data</h4>
+            <ul className="mt-4 space-y-3 text-sm text-white/70">
               <li className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-gold" />
+                <MapPin className="h-4 w-4 text-amber" />
                 Quixadá, Ceará
               </li>
               <li className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gold" />
+                <Calendar className="h-4 w-4 text-amber" />
                 20 a 22 de novembro de 2025
               </li>
             </ul>
           </div>
           <div>
-            <h3 className="font-display font-semibold">Links rápidos</h3>
-            <ul className="mt-3 space-y-2 text-sm text-cream/80">
+            <h4 className="font-display font-bold">Links rápidos</h4>
+            <ul className="mt-4 space-y-3 text-sm text-white/70">
               <li>
-                <a href="#sobre" className="hover:text-gold">
-                  Sobre
-                </a>
+                <a href="#sobre" className="transition-colors hover:text-white">Sobre</a>
               </li>
               <li>
-                <a href="#programacao" className="hover:text-gold">
-                  Programação
-                </a>
+                <a href="#programacao" className="transition-colors hover:text-white">Programação</a>
               </li>
               <li>
-                <a href="#inscricao" className="hover:text-gold">
-                  Inscrição
-                </a>
+                <a href="#inscricao" className="transition-colors hover:text-white">Inscrição</a>
               </li>
             </ul>
           </div>
         </div>
-        <Separator className="my-8 bg-cream/10" />
-        <div className="flex flex-col items-center justify-between gap-4 text-sm text-cream/60 sm:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/60 sm:flex-row">
           <p>© 2025 II Encontro de Música Sacra do Estado do Ceará.</p>
           <p>Quixadá, CE</p>
         </div>
