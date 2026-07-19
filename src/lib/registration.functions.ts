@@ -49,7 +49,7 @@ export const registrationSchema = z.object({
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 
 export const submitRegistration = createServerFn({ method: "POST" })
-  .inputValidator((data) => registrationSchema.parse(data))
+  .validator((data) => registrationSchema.parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
