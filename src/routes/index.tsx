@@ -54,7 +54,6 @@ export const Route = createFileRoute("/")({
         content: "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
       },
       { property: "og:url", content: "/" },
-      { property: "og:image", content: heroImage },
     ],
     links: [{ rel: "canonical", href: "/" }],
     scripts: [
