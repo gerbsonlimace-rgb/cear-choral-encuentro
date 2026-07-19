@@ -7,15 +7,15 @@
 /*
  * Design system — II Encontro de Música Sacra do Ceará.
  *
- * Paleta: Moderno e Jovem
- * - Teal (#0d9488) → energia, frescor, juventude
- * - Emerald (#10b981) → esperança, celebração viva
- * - Amber (#f59e0b) → luz, calor, alegria
- * - Cream (#f8fafc) → leveza, clareza
+ * Paleta inspirada na camiseta oficial
+ * - Azul royal/navy → presença, unidade e destaque visual
+ * - Dourado quente → luz, celebração e solenidade
+ * - Verde folha → paisagem e esperança
+ * - Terracota → monólitos e sertão cearense
  *
  * Tipografia:
- * - Títulos: Syne (geométrica, moderna, ousada)
- * - Corpo: Plus Jakarta Sans (legível, jovem, contemporânea)
+ * - Títulos: Alegreya (cerimonial, musical, com peso editorial)
+ * - Corpo: Manrope (limpa, confortável e contemporânea)
  */
 
 @theme inline {
@@ -27,8 +27,8 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Alegreya", Georgia, serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -74,48 +74,48 @@
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 0.75rem;
 
-  /* Moderno e Jovem — light mode */
-  --background: oklch(0.98 0.01 100);
-  --foreground: oklch(0.25 0.05 230);
+  /* Camiseta oficial — light mode */
+  --background: oklch(0.985 0.006 250);
+  --foreground: oklch(0.2 0.07 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.05 230);
+  --card-foreground: oklch(0.2 0.07 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.05 230);
-  --primary: oklch(0.55 0.14 170);
+  --popover-foreground: oklch(0.2 0.07 260);
+  --primary: oklch(0.39 0.17 260);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.94 0.02 170);
-  --secondary-foreground: oklch(0.35 0.08 170);
-  --muted: oklch(0.93 0.02 170);
-  --muted-foreground: oklch(0.55 0.05 230);
-  --accent: oklch(0.75 0.16 85);
-  --accent-foreground: oklch(0.25 0.05 230);
+  --secondary: oklch(0.93 0.035 255);
+  --secondary-foreground: oklch(0.28 0.13 260);
+  --muted: oklch(0.94 0.018 250);
+  --muted-foreground: oklch(0.42 0.055 260);
+  --accent: oklch(0.8 0.16 80);
+  --accent-foreground: oklch(0.2 0.07 260);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.88 0.02 170);
-  --input: oklch(0.88 0.02 170);
-  --ring: oklch(0.55 0.14 170);
-  --chart-1: oklch(0.55 0.14 170);
-  --chart-2: oklch(0.75 0.16 85);
-  --chart-3: oklch(0.65 0.12 230);
-  --chart-4: oklch(0.45 0.08 170);
-  --chart-5: oklch(0.85 0.1 85);
-  --sidebar: oklch(0.25 0.05 230);
-  --sidebar-foreground: oklch(0.98 0.01 100);
-  --sidebar-primary: oklch(0.55 0.14 170);
+  --border: oklch(0.88 0.025 255);
+  --input: oklch(0.88 0.025 255);
+  --ring: oklch(0.39 0.17 260);
+  --chart-1: oklch(0.39 0.17 260);
+  --chart-2: oklch(0.8 0.16 80);
+  --chart-3: oklch(0.43 0.15 145);
+  --chart-4: oklch(0.57 0.15 45);
+  --chart-5: oklch(0.55 0.19 255);
+  --sidebar: oklch(0.2 0.07 260);
+  --sidebar-foreground: oklch(0.985 0.006 250);
+  --sidebar-primary: oklch(0.39 0.17 260);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.35 0.08 170);
-  --sidebar-accent-foreground: oklch(0.98 0.01 100);
-  --sidebar-border: oklch(0.35 0.08 170);
-  --sidebar-ring: oklch(0.55 0.14 170);
+  --sidebar-accent: oklch(0.29 0.12 260);
+  --sidebar-accent-foreground: oklch(0.985 0.006 250);
+  --sidebar-border: oklch(0.29 0.12 260);
+  --sidebar-ring: oklch(0.8 0.16 80);
 
-  --teal: oklch(0.55 0.14 170);
+  --teal: oklch(0.39 0.17 260);
   --teal-foreground: oklch(1 0 0);
-  --emerald: oklch(0.65 0.18 160);
+  --emerald: oklch(0.43 0.15 145);
   --emerald-foreground: oklch(1 0 0);
-  --amber: oklch(0.75 0.16 85);
-  --amber-foreground: oklch(0.25 0.05 230);
+  --amber: oklch(0.8 0.16 80);
+  --amber-foreground: oklch(0.2 0.07 260);
 }
 
 .dark {
@@ -162,6 +162,7 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
+    line-height: 1.6;
   }
 
   h1,
@@ -172,7 +173,8 @@
   h6 {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
+    text-wrap: balance;
   }
 }
 
