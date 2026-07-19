@@ -10,7 +10,7 @@ export const registrationRoleSchema = z.enum([
 
 export type RegistrationRole = z.infer<typeof registrationRoleSchema>;
 
-const registrationSchema = z.object({
+export const registrationSchema = z.object({
   name: z
     .string({ required_error: "Nome é obrigatório" })
     .trim()
