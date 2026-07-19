@@ -180,7 +180,7 @@ function HeroSection() {
               asChild
               variant="outline"
               size="lg"
-              className="border-cream/30 text-cream hover:bg-cream/10 hover:text-cream"
+              className="border-cream/50 bg-transparent text-cream hover:bg-cream/10 hover:text-cream"
             >
               <a href="#programacao">Ver programação</a>
             </Button>
