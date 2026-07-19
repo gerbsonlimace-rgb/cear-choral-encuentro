@@ -135,19 +135,19 @@ function Index() {
 function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
-      <div className="container-event flex h-[4.5rem] items-center justify-between px-4 lg:px-0">
+      <div className="container-event flex h-16 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
         <Link
           to="/"
-          className="flex items-center gap-3 font-display text-lg font-bold text-foreground"
+          className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground sm:gap-3 sm:text-lg"
         >
           <img
             src={logoImage}
             alt="II Encontro de Musica Sacra do Estado do Ceara"
-            className="h-11 w-11 rounded-full object-cover ring-1 ring-amber/50"
+            className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-amber/50 sm:h-11 sm:w-11"
           />
-          <span>II EMS-CE</span>
+          <span className="truncate">II EMS-CE</span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-semibold md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-semibold lg:flex">
           <a href="#sobre" className="text-muted-foreground transition-colors hover:text-teal">
             Sobre
           </a>
@@ -170,11 +170,34 @@ function Header() {
         <Button
           asChild
           size="sm"
-          className="rounded-full bg-amber px-5 font-bold text-amber-foreground hover:bg-amber/90"
+          className="h-10 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:px-5"
         >
-          <a href="#inscricao">Inscreva-se</a>
+          <a href="#inscricao">Inscrever</a>
         </Button>
       </div>
+      <nav className="scrollbar-none flex gap-2 overflow-x-auto border-t border-teal/10 px-4 py-2 text-sm font-bold text-muted-foreground lg:hidden">
+        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+          Sobre
+        </a>
+        <a href="#quixada" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+          Quixadá
+        </a>
+        <a
+          href="#programacao"
+          className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10"
+        >
+          Programação
+        </a>
+        <a href="#camisa" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+          Camisa
+        </a>
+        <a
+          href="#inscricao"
+          className="shrink-0 rounded-full bg-amber px-4 py-2 text-amber-foreground active:bg-amber/80"
+        >
+          Inscrição
+        </a>
+      </nav>
     </header>
   );
 }
@@ -185,19 +208,19 @@ function HeroSection() {
       <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,18,61,0.98)_0%,rgba(0,81,186,0.94)_54%,rgba(4,19,73,0.98)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative section-padding">
-        <div className="container-event grid items-center gap-12 px-4 lg:grid-cols-2 lg:px-0">
+        <div className="container-event grid items-center gap-8 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-4 py-1.5 text-sm font-bold text-white backdrop-blur-sm">
+            <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-4 py-1.5 text-sm font-bold text-white backdrop-blur-sm">
               <Calendar className="h-4 w-4" />
               20 a 22 de novembro de 2025
             </span>
-            <h1 className="mt-6 max-w-2xl font-display text-4xl font-extrabold leading-[1.04] text-white sm:text-5xl md:text-6xl">
+            <h1 className="mt-5 max-w-2xl font-display text-[clamp(2.25rem,11vw,3.6rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
               II Encontro de Música Sacra do Estado do Ceará
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-white/90 sm:text-xl">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
               Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
             </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-white/90 lg:justify-start">
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 text-sm text-white/90 sm:flex-row sm:flex-wrap sm:text-base lg:justify-start">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-amber" />
                 <span className="font-semibold">Quixadá, CE</span>
@@ -208,13 +231,13 @@ function HeroSection() {
                 <span className="font-semibold">Músicos, regentes, cantores e fiéis</span>
               </div>
             </div>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4 lg:justify-start">
+            <div className="mt-8 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
               <Button
                 asChild
                 size="lg"
-                className="rounded-full bg-amber px-8 py-6 text-lg font-extrabold text-amber-foreground shadow-md shadow-black/15 hover:bg-amber/90"
+                className="w-full rounded-full bg-amber px-8 py-6 text-base font-extrabold text-amber-foreground shadow-md shadow-black/15 hover:bg-amber/90 sm:w-auto sm:text-lg"
               >
-                <a href="#inscricao">
+                <a href="#inscricao" className="justify-center">
                   Faça sua inscrição
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </a>
@@ -223,14 +246,16 @@ function HeroSection() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="rounded-full border-2 border-white/80 bg-white px-8 py-6 text-lg font-bold text-teal hover:bg-white/90"
+                className="w-full rounded-full border-2 border-white/80 bg-white px-8 py-6 text-base font-bold text-teal hover:bg-white/90 sm:w-auto sm:text-lg"
               >
-                <a href="#programacao">Programação</a>
+                <a href="#programacao" className="justify-center">
+                  Programação
+                </a>
               </Button>
             </div>
           </div>
           <div className="flex items-center justify-center">
-            <div className="relative w-full max-w-lg">
+            <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-lg">
               <img
                 src={logoImage}
                 alt="Identidade visual do II Encontro de Música Sacra do Ceará"
@@ -255,21 +280,21 @@ function AboutSection() {
           <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
             Sobre o encontro
           </span>
-          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+          <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
             Uma celebração da tradição musical sacra
           </h2>
-          <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+          <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             O II Encontro de Música Sacra do Estado do Ceará reúne músicos, regentes, cantores,
             liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
             vivência da música sacra.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-9 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-6">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-teal/10">
-                <BookOpen className="h-7 w-7 text-teal" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
+                <BookOpen className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Formação</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -278,9 +303,9 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-6">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald/10">
-                <Church className="h-7 w-7 text-emerald" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10 sm:h-14 sm:w-14">
+                <Church className="h-6 w-6 text-emerald sm:h-7 sm:w-7" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">
                 Celebração
@@ -291,9 +316,9 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-6">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-amber/10">
-                <Mic2 className="h-7 w-7 text-amber" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber/10 sm:h-14 sm:w-14">
+                <Mic2 className="h-6 w-6 text-amber sm:h-7 sm:w-7" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Concerto</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -302,9 +327,9 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-6">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-teal/10">
-                <Users className="h-7 w-7 text-teal" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
+                <Users className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">
                 Comunidade
@@ -397,16 +422,16 @@ function QuixadaSection() {
   return (
     <section id="quixada" className="section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
-        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+        <div className="grid gap-6 sm:gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
               Quixadá, Ceará
             </span>
-            <h2 className="mt-5 font-display text-3xl font-extrabold leading-tight text-foreground sm:text-4xl md:text-5xl">
+            <h2 className="mt-5 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-tight text-foreground md:text-5xl">
               Uma cidade histórica cercada por monólitos
             </h2>
           </div>
-          <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
+          <div className="space-y-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             <p>
               Fundada e emancipada em 27 de outubro de 1870, Quixadá chega aos 155 anos como uma das
               paisagens mais reconhecíveis do sertão cearense.
@@ -419,10 +444,10 @@ function QuixadaSection() {
           </div>
         </div>
 
-        <Carousel opts={{ align: "start", loop: true }} className="mx-auto mt-12 w-full">
+        <Carousel opts={{ align: "start", loop: true }} className="mx-auto mt-9 w-full sm:mt-12">
           <CarouselContent>
             {quixadaSpots.map((spot) => (
-              <CarouselItem key={spot.name} className="md:basis-1/2 lg:basis-1/3">
+              <CarouselItem key={spot.name} className="basis-[86%] sm:basis-[58%] lg:basis-1/3">
                 <article className="h-full overflow-hidden rounded-xl border border-border bg-card">
                   <img
                     src={spot.image}
@@ -445,8 +470,8 @@ function QuixadaSection() {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="-left-3 border-teal bg-background text-teal hover:bg-teal hover:text-white md:-left-5" />
-          <CarouselNext className="-right-3 border-teal bg-background text-teal hover:bg-teal hover:text-white md:-right-5" />
+          <CarouselPrevious className="-left-3 hidden border-teal bg-background text-teal hover:bg-teal hover:text-white sm:flex md:-left-5" />
+          <CarouselNext className="-right-3 hidden border-teal bg-background text-teal hover:bg-teal hover:text-white sm:flex md:-right-5" />
         </Carousel>
       </div>
     </section>
@@ -676,13 +701,13 @@ function RegistrationSection() {
           <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
             Inscrição
           </span>
-          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+          <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
             Garanta sua participação
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Preencha o formulário abaixo para se inscrever no II Encontro de Música Sacra do Ceará.
           </p>
-          <div className="mx-auto mt-6 inline-flex flex-wrap items-center justify-center gap-3 rounded-full border border-amber/40 bg-amber/10 px-5 py-3">
+          <div className="mx-auto mt-6 flex max-w-sm flex-col items-center justify-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-5 py-4 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-3">
             <span className="text-sm font-bold text-muted-foreground">Inscrição</span>
             <span className="font-display text-3xl font-extrabold leading-none text-foreground">
               {formatCurrency(REGISTRATION_PRICE)}
@@ -694,24 +719,24 @@ function RegistrationSection() {
           </div>
         </div>
 
-        <div className="mx-auto mt-12 grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="mx-auto mt-9 grid max-w-6xl gap-6 sm:mt-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-8">
           <article
             id="camisa"
-            className="overflow-hidden rounded-xl bg-foreground text-white shadow-md shadow-teal/15"
+            className="order-2 overflow-hidden rounded-xl bg-foreground text-white shadow-md shadow-teal/15 lg:order-1"
           >
             <img
               src={shirtImage}
               alt="Camisa oficial azul do II Encontro de Musica Sacra do Ceara"
               width={1536}
               height={1536}
-              className="aspect-square w-full object-cover"
+              className="aspect-[4/3] w-full object-cover sm:aspect-square"
               loading="lazy"
             />
-            <div className="p-6">
+            <div className="p-5 sm:p-6">
               <span className="inline-flex rounded-full bg-amber/15 px-3 py-1 text-sm font-bold text-amber">
                 Camisa oficial
               </span>
-              <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight">
+              <h3 className="mt-4 font-display text-2xl font-extrabold leading-tight sm:text-3xl">
                 Adquira junto com sua inscrição
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-white/72">
@@ -727,8 +752,8 @@ function RegistrationSection() {
             </div>
           </article>
 
-          <Card className="border-border bg-card shadow-sm shadow-teal/10">
-            <CardContent className="p-6 sm:p-8">
+          <Card className="order-1 border-border bg-card shadow-sm shadow-teal/10 lg:order-2">
+            <CardContent className="p-4 sm:p-8">
               {status === "payment" ? (
                 <div className="space-y-6">
                   <div className="text-center">
@@ -744,11 +769,11 @@ function RegistrationSection() {
                     </p>
                   </div>
 
-                  <div className="grid gap-5 md:grid-cols-[0.8fr_1.2fr]">
-                    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-teal/20 bg-teal/5 p-5 text-center">
-                      <img src={pixLogo} alt="Pix" className="h-12 w-auto" />
-                      <div className="mt-5 grid size-36 place-items-center rounded-lg border border-teal/20 bg-white p-4">
-                        <span className="font-display text-2xl font-extrabold text-teal">
+                  <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr] md:gap-5">
+                    <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-teal/20 bg-teal/5 p-4 text-center sm:min-h-56 sm:p-5">
+                      <img src={pixLogo} alt="Pix" className="h-10 w-auto sm:h-12" />
+                      <div className="mt-4 grid size-32 place-items-center rounded-lg border border-teal/20 bg-white p-3 sm:mt-5 sm:size-36 sm:p-4">
+                        <span className="font-display text-xl font-extrabold text-teal sm:text-2xl">
                           QR MOCK
                         </span>
                       </div>
@@ -757,9 +782,9 @@ function RegistrationSection() {
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-background p-5">
+                    <div className="rounded-xl border border-border bg-background p-4 sm:p-5">
                       <p className="text-sm font-bold text-muted-foreground">Total a pagar</p>
-                      <p className="mt-1 font-display text-4xl font-extrabold text-foreground">
+                      <p className="mt-1 font-display text-3xl font-extrabold text-foreground sm:text-4xl">
                         {formatCurrency(totalAmount)}
                       </p>
                       <div className="mt-5 space-y-3 text-sm">
@@ -792,7 +817,7 @@ function RegistrationSection() {
                         <Button
                           type="button"
                           onClick={copyMockPixCode}
-                          className="flex-1 rounded-full bg-teal font-bold text-white hover:bg-teal/90"
+                          className="min-h-12 flex-1 rounded-full bg-teal font-bold text-white hover:bg-teal/90"
                         >
                           {copiedPix ? "Codigo copiado" : "Copiar codigo Pix"}
                         </Button>
@@ -800,7 +825,7 @@ function RegistrationSection() {
                           type="button"
                           variant="outline"
                           onClick={resetRegistration}
-                          className="flex-1 rounded-full border-2 border-teal font-bold text-teal hover:bg-teal hover:text-white"
+                          className="min-h-12 flex-1 rounded-full border-2 border-teal font-bold text-teal hover:bg-teal hover:text-white"
                         >
                           Nova inscricao
                         </Button>
@@ -820,7 +845,7 @@ function RegistrationSection() {
                         value={form.name}
                         onChange={(e) => handleChange("name", e.target.value)}
                         placeholder="Seu nome"
-                        className="rounded-xl border-border bg-background"
+                        className="min-h-12 rounded-xl border-border bg-background text-base"
                       />
                       {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
@@ -834,7 +859,7 @@ function RegistrationSection() {
                         value={form.email}
                         onChange={(e) => handleChange("email", e.target.value)}
                         placeholder="seu@email.com"
-                        className="rounded-xl border-border bg-background"
+                        className="min-h-12 rounded-xl border-border bg-background text-base"
                       />
                       {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                     </div>
@@ -847,10 +872,11 @@ function RegistrationSection() {
                       </Label>
                       <Input
                         id="phone"
+                        type="tel"
                         value={form.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
                         placeholder="(88) 99999-9999"
-                        className="rounded-xl border-border bg-background"
+                        className="min-h-12 rounded-xl border-border bg-background text-base"
                       />
                       {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                     </div>
@@ -863,7 +889,7 @@ function RegistrationSection() {
                         value={form.city}
                         onChange={(e) => handleChange("city", e.target.value)}
                         placeholder="Quixadá"
-                        className="rounded-xl border-border bg-background"
+                        className="min-h-12 rounded-xl border-border bg-background text-base"
                       />
                       {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
                     </div>
@@ -879,7 +905,7 @@ function RegistrationSection() {
                         value={form.institution}
                         onChange={(e) => handleChange("institution", e.target.value)}
                         placeholder="Onde você atua"
-                        className="rounded-xl border-border bg-background"
+                        className="min-h-12 rounded-xl border-border bg-background text-base"
                       />
                       {errors.institution && (
                         <p className="text-sm text-destructive">{errors.institution}</p>
@@ -893,7 +919,10 @@ function RegistrationSection() {
                         value={form.role}
                         onValueChange={(value) => handleChange("role", value)}
                       >
-                        <SelectTrigger id="role" className="rounded-xl border-border bg-background">
+                        <SelectTrigger
+                          id="role"
+                          className="min-h-12 rounded-xl border-border bg-background text-base"
+                        >
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -910,7 +939,7 @@ function RegistrationSection() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-amber/35 bg-amber/10 p-4">
+                  <div className="rounded-xl border border-amber/35 bg-amber/10 p-4 sm:p-5">
                     <label className="flex cursor-pointer items-start gap-3">
                       <input
                         type="checkbox"
@@ -922,7 +951,7 @@ function RegistrationSection() {
                             shirtSize: event.target.checked ? prev.shirtSize : "",
                           }))
                         }
-                        className="mt-1 size-4 rounded border-border accent-teal"
+                        className="mt-1 size-5 shrink-0 rounded border-border accent-teal"
                       />
                       <span>
                         <span className="block font-bold text-foreground">
@@ -948,7 +977,7 @@ function RegistrationSection() {
                         >
                           <SelectTrigger
                             id="shirtSize"
-                            className="rounded-xl border-border bg-background"
+                            className="min-h-12 rounded-xl border-border bg-background text-base"
                           >
                             <SelectValue placeholder="Selecione o tamanho" />
                           </SelectTrigger>
@@ -967,7 +996,7 @@ function RegistrationSection() {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-teal/20 bg-teal/5 p-4">
+                  <div className="rounded-xl border border-teal/20 bg-teal/5 p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-4 text-sm">
                       <span className="text-muted-foreground">Inscricao</span>
                       <span className="font-bold text-foreground">
@@ -982,7 +1011,7 @@ function RegistrationSection() {
                         </span>
                       </div>
                     )}
-                    <div className="mt-4 flex items-end justify-between gap-4 border-t border-teal/15 pt-4">
+                    <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-teal/15 pt-4">
                       <span className="font-bold text-foreground">Total</span>
                       <span className="font-display text-3xl font-extrabold leading-none text-teal">
                         {formatCurrency(totalAmount)}
@@ -1000,7 +1029,7 @@ function RegistrationSection() {
                       onChange={(e) => handleChange("observations", e.target.value)}
                       placeholder="Informe restricoes, necessidades ou observacoes. O pagamento sera via Pix."
                       rows={4}
-                      className="rounded-xl border-border bg-background"
+                      className="min-h-28 rounded-xl border-border bg-background text-base"
                     />
                     {errors.observations && (
                       <p className="text-sm text-destructive">{errors.observations}</p>
@@ -1009,7 +1038,7 @@ function RegistrationSection() {
 
                   <Button
                     type="submit"
-                    className="w-full rounded-full bg-teal py-6 text-lg font-extrabold text-white hover:bg-teal/90"
+                    className="min-h-14 w-full rounded-full bg-teal py-6 text-base font-extrabold text-white hover:bg-teal/90 sm:text-lg"
                   >
                     Ir para pagamento Pix
                   </Button>
@@ -1027,30 +1056,30 @@ function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
-        <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+        <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
               Patrocinadores
             </span>
-            <h2 className="mt-4 font-display text-3xl font-extrabold leading-tight text-foreground sm:text-4xl">
+            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
               Quem ajuda esta musica chegar mais longe
             </h2>
-            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
               O encontro tambem e construido por parceiros que valorizam cultura, formacao e vida
               comunitaria em Quixada.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             {sponsors.map((sponsor) => (
               <article
                 key={sponsor.name}
-                className="flex min-h-32 items-center justify-center rounded-xl border border-border bg-card p-5"
+                className="flex min-h-24 items-center justify-center rounded-xl border border-border bg-card p-4 sm:min-h-32 sm:p-5"
               >
                 <img
                   src={sponsor.logo}
                   alt={sponsor.name}
-                  className="max-h-20 w-full object-contain"
+                  className="max-h-16 w-full object-contain sm:max-h-20"
                   loading="lazy"
                 />
               </article>
@@ -1064,9 +1093,9 @@ function SponsorsSection() {
 
 function Footer() {
   return (
-    <footer className="bg-foreground py-16 text-white">
+    <footer className="bg-foreground py-12 text-white sm:py-16">
       <div className="container-event px-4 lg:px-0">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
           <div>
             <div className="flex items-center gap-3 font-display text-lg font-bold">
               <img
@@ -1115,7 +1144,7 @@ function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/60 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 pb-[env(safe-area-inset-bottom)] text-center text-sm text-white/60 sm:mt-12 sm:flex-row sm:gap-4 sm:pt-8 sm:text-left">
           <p>© 2025 II Encontro de Música Sacra do Estado do Ceará.</p>
           <p>Quixadá, CE</p>
         </div>
