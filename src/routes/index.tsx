@@ -135,7 +135,7 @@ function Index() {
 function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
-      <div className="container-event flex h-16 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
+      <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
         <Link
           to="/"
           className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground sm:gap-3 sm:text-lg"
@@ -143,7 +143,7 @@ function Header() {
           <img
             src={logoImage}
             alt="II Encontro de Musica Sacra do Estado do Ceara"
-            className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-amber/50 sm:h-11 sm:w-11"
+            className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-amber/50 sm:h-11 sm:w-11"
           />
           <span className="truncate">II EMS-CE</span>
         </Link>
@@ -170,12 +170,12 @@ function Header() {
         <Button
           asChild
           size="sm"
-          className="h-10 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:px-5"
+          className="h-9 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-10 sm:px-5"
         >
           <a href="#inscricao">Inscrever</a>
         </Button>
       </div>
-      <nav className="scrollbar-none flex gap-2 overflow-x-auto border-t border-teal/10 px-4 py-2 text-sm font-bold text-muted-foreground lg:hidden">
+      <nav className="scrollbar-none hidden gap-2 overflow-x-auto border-t border-teal/10 px-4 py-2 text-sm font-bold text-muted-foreground sm:flex lg:hidden">
         <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
           Sobre
         </a>
@@ -208,19 +208,27 @@ function HeroSection() {
       <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,18,61,0.98)_0%,rgba(0,81,186,0.94)_54%,rgba(4,19,73,0.98)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative section-padding">
-        <div className="container-event grid items-center gap-8 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
+        <div className="container-event grid items-center gap-6 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-4 py-1.5 text-sm font-bold text-white backdrop-blur-sm">
+            <img
+              src={logoImage}
+              alt="Identidade visual do II Encontro de Música Sacra do Ceará"
+              width={180}
+              height={180}
+              className="mb-4 w-36 rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
+              fetchPriority="high"
+            />
+            <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
               <Calendar className="h-4 w-4" />
               20 a 22 de novembro de 2025
             </span>
-            <h1 className="mt-5 max-w-2xl font-display text-[clamp(2.25rem,11vw,3.6rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
+            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
               II Encontro de Música Sacra do Estado do Ceará
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
               Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
             </p>
-            <div className="mt-7 flex flex-col items-center justify-center gap-3 text-sm text-white/90 sm:flex-row sm:flex-wrap sm:text-base lg:justify-start">
+            <div className="mt-5 flex flex-col items-center justify-center gap-2 text-sm text-white/90 sm:mt-7 sm:flex-row sm:flex-wrap sm:gap-3 sm:text-base lg:justify-start">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-amber" />
                 <span className="font-semibold">Quixadá, CE</span>
@@ -231,11 +239,11 @@ function HeroSection() {
                 <span className="font-semibold">Músicos, regentes, cantores e fiéis</span>
               </div>
             </div>
-            <div className="mt-8 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
+            <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
               <Button
                 asChild
                 size="lg"
-                className="w-full rounded-full bg-amber px-8 py-6 text-base font-extrabold text-amber-foreground shadow-md shadow-black/15 hover:bg-amber/90 sm:w-auto sm:text-lg"
+                className="h-12 w-full rounded-full bg-amber px-8 text-base font-extrabold text-amber-foreground shadow-md shadow-black/15 hover:bg-amber/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
               >
                 <a href="#inscricao" className="justify-center">
                   Faça sua inscrição
@@ -246,7 +254,7 @@ function HeroSection() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full rounded-full border-2 border-white/80 bg-white px-8 py-6 text-base font-bold text-teal hover:bg-white/90 sm:w-auto sm:text-lg"
+                className="h-12 w-full rounded-full border-2 border-white/80 bg-white px-8 text-base font-bold text-teal hover:bg-white/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
               >
                 <a href="#programacao" className="justify-center">
                   Programação
@@ -254,7 +262,7 @@ function HeroSection() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center justify-center">
+          <div className="hidden items-center justify-center sm:flex">
             <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-lg">
               <img
                 src={logoImage}
@@ -579,36 +587,54 @@ function ProgramSection() {
             A programação está sujeita a ajustes. Confirme os horários no material de acolhida.
           </p>
         </div>
-        <div className="mt-12 grid gap-8 lg:grid-cols-3">
+        <Carousel opts={{ align: "start", loop: false }} className="mx-auto mt-8 w-full lg:hidden">
+          <CarouselContent>
+            {schedule.map((day, index) => (
+              <CarouselItem key={index} className="basis-[88%]">
+                <ProgramDayCard day={day} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+
+        <div className="mt-12 hidden gap-8 lg:grid lg:grid-cols-3">
           {schedule.map((day, index) => (
-            <Card key={index} className="border-border bg-card overflow-hidden">
-              <div className="bg-teal p-4">
-                <p className="font-body text-sm font-bold text-white/80">{day.weekday}</p>
-                <h3 className="mt-1 font-display text-xl font-bold text-white">{day.date}</h3>
-              </div>
-              <CardContent className="p-6">
-                <div className="space-y-5">
-                  {day.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="flex gap-3">
-                      <div className="flex shrink-0 flex-col items-center gap-1">
-                        <Clock className="h-4 w-4 text-teal" />
-                        <span className="text-xs font-bold text-teal">{item.time}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-display font-bold text-card-foreground">
-                          {item.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <ProgramDayCard key={index} day={day} />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
+  return (
+    <Card className="h-full overflow-hidden border-border bg-card">
+      <div className="bg-teal p-4">
+        <p className="font-body text-sm font-bold text-white/80">{day.weekday}</p>
+        <h3 className="mt-1 font-display text-xl font-bold text-white">{day.date}</h3>
+      </div>
+      <CardContent className="p-5 sm:p-6">
+        <div className="space-y-4 sm:space-y-5">
+          {day.items.map((item, itemIndex) => (
+            <div key={itemIndex} className="flex gap-3">
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <Clock className="h-4 w-4 text-teal" />
+                <span className="text-xs font-bold text-teal">{item.time}</span>
+              </div>
+              <div>
+                <h4 className="font-display font-bold leading-tight text-card-foreground">
+                  {item.title}
+                </h4>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
