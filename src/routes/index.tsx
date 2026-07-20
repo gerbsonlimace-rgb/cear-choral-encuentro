@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import shirtImage from "../assets/camisa-evento-musica-sacra.png";
 import claytonImage from "../assets/clayton-dias.jpg";
@@ -133,6 +133,17 @@ function Index() {
 }
 
 function Header() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const updateHeader = () => setIsScrolled(window.scrollY > 80);
+
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
       <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
@@ -143,9 +154,17 @@ function Header() {
           <img
             src={logoImage}
             alt="II Encontro de Musica Sacra do Estado do Ceara"
-            className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-amber/50 sm:h-11 sm:w-11"
+            className={`h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-amber/50 transition-all duration-300 sm:h-11 sm:w-11 sm:opacity-100 ${
+              isScrolled ? "scale-100 opacity-100" : "scale-75 opacity-0"
+            }`}
           />
-          <span className="truncate">II EMS-CE</span>
+          <span
+            className={`truncate transition-opacity duration-300 sm:opacity-100 ${
+              isScrolled ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            II EMS-CE
+          </span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold lg:flex">
           <a href="#sobre" className="text-muted-foreground transition-colors hover:text-teal">
@@ -213,9 +232,9 @@ function HeroSection() {
             <img
               src={logoImage}
               alt="Identidade visual do II Encontro de Música Sacra do Ceará"
-              width={180}
-              height={180}
-              className="mb-4 w-36 rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
+              width={240}
+              height={240}
+              className="mb-4 w-56 max-w-[72vw] rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
               fetchPriority="high"
             />
             <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
