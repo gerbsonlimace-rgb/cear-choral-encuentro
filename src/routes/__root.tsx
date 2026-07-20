@@ -12,6 +12,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
+const SITE_URL = "https://id-preview--c5bc2b03-69fb-44b4-9303-fe39b33c755f.lovable.app";
+const SOCIAL_IMAGE_URL = `${SITE_URL}/og-musica-sacra.jpg`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -94,8 +97,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Música Sacra do Estado do Ceará.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: SOCIAL_IMAGE_URL },
+      { property: "og:image:secure_url", content: SOCIAL_IMAGE_URL },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "Logo do II Encontro de Música Sacra do Estado do Ceará",
+      },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "II Encontro de Música Sacra do Ceará" },
+      {
+        name: "twitter:description",
+        content:
+          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Música Sacra do Estado do Ceará.",
+      },
+      { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
     links: [
       {

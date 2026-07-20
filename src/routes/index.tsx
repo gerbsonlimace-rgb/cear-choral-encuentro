@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import shirtImage from "../assets/camisa-evento-musica-sacra.png";
 import claytonImage from "../assets/clayton-dias.jpg";
 import logoImage from "../assets/logo-musica-sacra.png";
+import dioceseLogo from "../assets/apoio-diocese-quixada.png";
+import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
 import pixLogo from "../assets/logo-pix.svg";
 import ampliartLogo from "../assets/patrocinador-ampliart.png";
 import culturaLogo from "../assets/patrocinador-cultura-quixada.png";
@@ -55,6 +57,7 @@ type RegistrationInput = {
 
 const REGISTRATION_PRICE = 100;
 const SHIRT_PRICE = 39.9;
+const SITE_URL = "https://id-preview--c5bc2b03-69fb-44b4-9303-fe39b33c755f.lovable.app";
 const MOCK_PIX_CODE =
   "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
 
@@ -83,7 +86,7 @@ export const Route = createFileRoute("/")({
         content:
           "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
       },
-      { property: "og:url", content: "/" },
+      { property: "og:url", content: SITE_URL },
     ],
     links: [{ rel: "canonical", href: "/" }],
     scripts: [
@@ -443,6 +446,11 @@ const sponsors = [
   { name: "Nosso Atacarejo", logo: nossoLogo },
   { name: "Cultura Quixada", logo: culturaLogo },
   { name: "Ampliart", logo: ampliartLogo },
+];
+
+const institutionalPartners = [
+  { role: "Organização", name: "Coro Diocesano de Quixadá", logo: coroLogo },
+  { role: "Apoio institucional", name: "Diocese de Quixadá", logo: dioceseLogo },
 ];
 
 function QuixadaSection() {
@@ -1100,7 +1108,44 @@ function RegistrationSection() {
 function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
-      <div className="container-event px-4 lg:px-0">
+      <div className="container-event space-y-8 px-4 lg:px-0">
+        <div className="grid gap-6 rounded-xl bg-foreground p-5 text-white sm:p-7 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber/15 px-4 py-1.5 text-sm font-bold text-amber">
+              Apoio e organização
+            </span>
+            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight sm:text-4xl">
+              Instituições que conduzem o encontro
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-white/72 sm:text-lg">
+              A realização nasce do trabalho conjunto entre o Coro Diocesano de Quixadá e a Diocese
+              de Quixadá.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+            {institutionalPartners.map((partner) => (
+              <article
+                key={partner.name}
+                className="flex min-h-36 flex-col justify-between rounded-xl bg-white p-5 text-foreground"
+              >
+                <span className="text-sm font-bold text-teal">{partner.role}</span>
+                <div className="mt-4 flex min-h-24 items-center justify-center">
+                  <img
+                    src={partner.logo}
+                    alt={partner.name}
+                    className="max-h-24 w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+                <h3 className="mt-4 font-display text-xl font-extrabold leading-tight">
+                  {partner.name}
+                </h3>
+              </article>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
