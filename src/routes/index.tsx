@@ -57,8 +57,8 @@ type RegistrationInput = {
 
 const REGISTRATION_PRICE = 100;
 const SHIRT_PRICE = 39.9;
-const SITE_URL = "https://emsquixada.lovable.app";
-const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos.jpg?v=3`;
+const SITE_URL = "https://encontrocorosce.lovable.app";
+const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v4.jpg`;
 const MOCK_PIX_CODE =
   "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
 

@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-const SITE_URL = "https://emsquixada.lovable.app";
+const SITE_URL = "https://encontrocorosce.lovable.app";
 
 function NotFoundComponent() {
   return (
