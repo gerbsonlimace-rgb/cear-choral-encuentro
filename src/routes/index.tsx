@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import shirtImage from "../assets/camisa-evento-musica-sacra.png";
 import claytonImage from "../assets/clayton-dias.jpg";
-import logoImage from "../assets/logo-musica-sacra.png";
+import logoImage from "../assets/logo-coros-diocesanos.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
 import pixLogo from "../assets/logo-pix.svg";
@@ -72,20 +72,20 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "II Encontro de Música Sacra do Ceará — 20 a 22 de Novembro" },
+      { title: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro" },
       {
         name: "description",
         content:
-          "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Três dias de formação, celebração e música em Quixadá.",
       },
       {
         property: "og:title",
-        content: "II Encontro de Música Sacra do Ceará — 20 a 22 de Novembro",
+        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
       },
       {
         property: "og:description",
         content:
-          "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Três dias de formação, celebração e música em Quixadá.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: SOCIAL_IMAGE_URL },
@@ -95,14 +95,14 @@ export const Route = createFileRoute("/")({
       { property: "og:image:height", content: "630" },
       {
         property: "og:image:alt",
-        content: "Logo do II Encontro de Música Sacra do Estado do Ceará",
+        content: "Logo do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
       },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "II Encontro de Música Sacra do Ceará" },
+      { name: "twitter:title", content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB" },
       {
         name: "twitter:description",
         content:
-          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Música Sacra do Estado do Ceará.",
+          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.",
       },
       { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
@@ -113,7 +113,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Event",
-          name: "II Encontro de Música Sacra do Estado do Ceará",
+          name: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
           startDate: "2025-11-20",
           endDate: "2025-11-22",
           eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
@@ -184,7 +184,7 @@ function Header() {
               isScrolled ? "opacity-100" : "opacity-0"
             }`}
           >
-            II EMS-CE
+            II ECD-NE1
           </span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold lg:flex">
@@ -252,7 +252,7 @@ function HeroSection() {
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <img
               src={logoImage}
-              alt="Identidade visual do II Encontro de Música Sacra do Ceará"
+              alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
               className="mb-4 w-56 max-w-[72vw] rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
@@ -263,7 +263,7 @@ function HeroSection() {
               20 a 22 de novembro de 2025
             </span>
             <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
-              II Encontro de Música Sacra do Estado do Ceará
+              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
               Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
@@ -306,7 +306,7 @@ function HeroSection() {
             <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-lg">
               <img
                 src={logoImage}
-                alt="Identidade visual do II Encontro de Música Sacra do Ceará"
+                alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
                 width={512}
                 height={512}
                 className="relative w-full rounded-md drop-shadow-2xl ring-1 ring-white/20"
@@ -332,7 +332,7 @@ function AboutSection() {
             Uma celebração da tradição musical sacra
           </h2>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-            O II Encontro de Música Sacra do Estado do Ceará reúne músicos, regentes, cantores,
+            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes, cantores,
             liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
             vivência da música sacra.
           </p>
@@ -776,7 +776,7 @@ function RegistrationSection() {
             Garanta sua participação
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Preencha o formulário abaixo para se inscrever no II Encontro de Música Sacra do Ceará.
+            Preencha o formulário abaixo para se inscrever no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.
           </p>
           <div className="mx-auto mt-6 flex max-w-sm flex-col items-center justify-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-5 py-4 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-3">
             <span className="text-sm font-bold text-muted-foreground">Inscrição</span>
@@ -1211,10 +1211,10 @@ function Footer() {
                 alt="II Encontro de Musica Sacra do Estado do Ceara"
                 className="h-11 w-11 rounded-full object-cover ring-1 ring-amber/50"
               />
-              <span>II EMS-CE</span>
+              <span>II ECD-NE1</span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-              II Encontro de Música Sacra do Estado do Ceará. Celebrando a fé, a formação e a
+              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a formação e a
               tradição musical do nosso povo.
             </p>
           </div>
@@ -1253,7 +1253,7 @@ function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 pb-[env(safe-area-inset-bottom)] text-center text-sm text-white/60 sm:mt-12 sm:flex-row sm:gap-4 sm:pt-8 sm:text-left">
-          <p>© 2025 II Encontro de Música Sacra do Estado do Ceará.</p>
+          <p>© 2025 II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.</p>
           <p>Quixadá, CE</p>
         </div>
       </div>

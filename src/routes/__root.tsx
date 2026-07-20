@@ -79,21 +79,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "II Encontro de Música Sacra do Ceará" },
+      { title: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB" },
       {
         name: "description",
         content:
-          "II Encontro de Música Sacra do Estado do Ceará. De 20 a 22 de novembro, em Quixadá. Celebre a tradição, a formação e a fé pela música sacra.",
+          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. De 20 a 22 de novembro, em Quixadá. Celebre a tradição, a formação e a fé pela música sacra.",
       },
-      { name: "author", content: "II Encontro de Música Sacra do Ceará" },
+      { name: "author", content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB" },
       {
         property: "og:title",
-        content: "II Encontro de Música Sacra do Ceará",
+        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
       },
       {
         property: "og:description",
         content:
-          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Música Sacra do Estado do Ceará.",
+          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_URL },
