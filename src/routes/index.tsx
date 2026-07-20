@@ -57,7 +57,7 @@ type RegistrationInput = {
 
 const REGISTRATION_PRICE = 100;
 const SHIRT_PRICE = 39.9;
-const SITE_URL = "https://id-preview--c5bc2b03-69fb-44b4-9303-fe39b33c755f.lovable.app";
+const SITE_URL = "https://emsquixada.lovable.app";
 const MOCK_PIX_CODE =
   "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
 
