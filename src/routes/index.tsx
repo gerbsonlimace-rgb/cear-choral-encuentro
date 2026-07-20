@@ -57,7 +57,8 @@ type RegistrationInput = {
 
 const REGISTRATION_PRICE = 100;
 const SHIRT_PRICE = 39.9;
-const SITE_URL = "https://id-preview--c5bc2b03-69fb-44b4-9303-fe39b33c755f.lovable.app";
+const SITE_URL = "https://emsquixada.lovable.app";
+const SOCIAL_IMAGE_URL = `${SITE_URL}/og-musica-sacra.jpg`;
 const MOCK_PIX_CODE =
   "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
 
@@ -87,8 +88,25 @@ export const Route = createFileRoute("/")({
           "Inscreva-se no II Encontro de Música Sacra do Estado do Ceará. Três dias de formação, celebração e música em Quixadá.",
       },
       { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: SOCIAL_IMAGE_URL },
+      { property: "og:image:secure_url", content: SOCIAL_IMAGE_URL },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "Logo do II Encontro de Música Sacra do Estado do Ceará",
+      },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "II Encontro de Música Sacra do Ceará" },
+      {
+        name: "twitter:description",
+        content:
+          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Música Sacra do Estado do Ceará.",
+      },
+      { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: SITE_URL }],
     scripts: [
       {
         type: "application/ld+json",
