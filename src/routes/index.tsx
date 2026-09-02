@@ -797,10 +797,10 @@ function RegistrationSection() {
             className="order-2 overflow-hidden rounded-xl bg-foreground text-white shadow-md shadow-teal/15 lg:order-1"
           >
             <img
-              src={shirtImage}
-              alt="Camisa oficial azul do II Encontro de Musica Sacra do Ceara"
-              width={1536}
-              height={1536}
+              src={shirtAsset.url}
+              alt="Camisa polo oficial preta com gola dourada do II Encontro de Coros Diocesanos"
+              width={1120}
+              height={1394}
               className="aspect-[4/3] w-full object-cover sm:aspect-square"
               loading="lazy"
             />
