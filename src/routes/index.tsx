@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import shirtImage from "../assets/camisa-evento-musica-sacra.png";
+import shirtAsset from "../assets/camisa-polo-evento.png.asset.json";
 import claytonImage from "../assets/clayton-dias.jpg";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
@@ -256,7 +256,7 @@ function HeroSection() {
               alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
-              className="mb-4 w-56 max-w-[72vw] rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
+              className="mb-4 w-64 max-w-[80vw] drop-shadow-2xl sm:hidden"
               fetchPriority="high"
             />
             <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
@@ -310,7 +310,7 @@ function HeroSection() {
                 alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
                 width={512}
                 height={512}
-                className="relative w-full rounded-md drop-shadow-2xl ring-1 ring-white/20"
+                className="relative w-full drop-shadow-2xl"
                 fetchPriority="high"
               />
             </div>
@@ -797,10 +797,10 @@ function RegistrationSection() {
             className="order-2 overflow-hidden rounded-xl bg-foreground text-white shadow-md shadow-teal/15 lg:order-1"
           >
             <img
-              src={shirtImage}
-              alt="Camisa oficial azul do II Encontro de Musica Sacra do Ceara"
-              width={1536}
-              height={1536}
+              src={shirtAsset.url}
+              alt="Camisa polo oficial preta com gola dourada do II Encontro de Coros Diocesanos"
+              width={1120}
+              height={1394}
               className="aspect-[4/3] w-full object-cover sm:aspect-square"
               loading="lazy"
             />
@@ -812,7 +812,7 @@ function RegistrationSection() {
                 Adquira junto com sua inscrição
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-white/72">
-                Azul royal, arte oficial do encontro e detalhes em dourado. Escolha o tamanho no
+                Polo preta com gola dourada e a arte oficial do encontro bordada no peito. Escolha o tamanho no
                 formulario de inscricao.
               </p>
               <div className="mt-5 flex items-end gap-3">
