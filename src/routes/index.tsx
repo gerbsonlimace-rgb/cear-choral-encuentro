@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import shirtImage from "../assets/camisa-evento-musica-sacra.png";
+import shirtAsset from "../assets/camisa-polo-evento.png.asset.json";
 import claytonImage from "../assets/clayton-dias.jpg";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
@@ -256,7 +256,7 @@ function HeroSection() {
               alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
-              className="mb-4 w-56 max-w-[72vw] rounded-md drop-shadow-2xl ring-1 ring-white/20 sm:hidden"
+              className="mb-4 w-64 max-w-[80vw] drop-shadow-2xl sm:hidden"
               fetchPriority="high"
             />
             <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
@@ -310,7 +310,7 @@ function HeroSection() {
                 alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
                 width={512}
                 height={512}
-                className="relative w-full rounded-md drop-shadow-2xl ring-1 ring-white/20"
+                className="relative w-full drop-shadow-2xl"
                 fetchPriority="high"
               />
             </div>
