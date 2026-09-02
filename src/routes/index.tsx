@@ -812,7 +812,7 @@ function RegistrationSection() {
                 Adquira junto com sua inscrição
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-white/72">
-                Azul royal, arte oficial do encontro e detalhes em dourado. Escolha o tamanho no
+                Polo preta com gola dourada e a arte oficial do encontro bordada no peito. Escolha o tamanho no
                 formulario de inscricao.
               </p>
               <div className="mt-5 flex items-end gap-3">
