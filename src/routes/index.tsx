@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 
 import shirtImage from "../assets/camisa-evento-musica-sacra.png";
 import claytonImage from "../assets/clayton-dias.jpg";
-import logoImage from "../assets/logo-coros-diocesanos.png";
+import logoImage from "../assets/logo-coros-preto.png";
+import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
 import pixLogo from "../assets/logo-pix.svg";
@@ -58,7 +59,7 @@ type RegistrationInput = {
 const REGISTRATION_PRICE = 100;
 const SHIRT_PRICE = 39.9;
 const SITE_URL = "https://encontrocorosce.lovable.app";
-const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v6.jpg`;
+const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
 const MOCK_PIX_CODE =
   "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
 
@@ -173,9 +174,9 @@ function Header() {
           className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground sm:gap-3 sm:text-lg"
         >
           <img
-            src={logoImage}
-            alt="II Encontro de Musica Sacra do Estado do Ceara"
-            className={`h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-amber/50 transition-all duration-300 sm:h-11 sm:w-11 sm:opacity-100 ${
+            src={logoImageLight}
+            alt="II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+            className={`h-9 w-auto shrink-0 transition-all duration-300 sm:h-11 sm:opacity-100 ${
               isScrolled ? "scale-100 opacity-100" : "scale-75 opacity-0"
             }`}
           />
@@ -245,7 +246,7 @@ function Header() {
 function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-teal">
-      <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,18,61,0.98)_0%,rgba(0,81,186,0.94)_54%,rgba(4,19,73,0.98)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,5,5,0.99)_0%,rgba(28,22,4,0.97)_54%,rgba(5,5,5,0.99)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative section-padding">
         <div className="container-event grid items-center gap-6 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
