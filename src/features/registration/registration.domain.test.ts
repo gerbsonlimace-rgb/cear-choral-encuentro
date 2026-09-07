@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCheckoutItems,
   calculateOrderAmountCents,
+  paymentLookupSchema,
   registrationSchema,
 } from "./registration.domain";
 
@@ -42,5 +43,15 @@ describe("registration domain", () => {
       shirtSize: "",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid payment return identifier", () => {
+    expect(
+      paymentLookupSchema.safeParse({
+        orderNsu: "not-a-uuid",
+        transactionNsu: "transaction",
+        slug: "invoice",
+      }).success,
+    ).toBe(false);
   });
 });
