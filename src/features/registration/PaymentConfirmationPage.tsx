@@ -12,6 +12,12 @@ type PaymentConfirmationPageProps = {
   retryDelayMs?: number;
 };
 
+type ResolvedPaymentConfirmationPageProps = {
+  lookup: PaymentLookup | null;
+  verifyPayment: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
+  retryDelayMs: number;
+};
+
 type ConfirmationState =
   | { kind: "processing" }
   | { kind: "paid"; payment: Extract<PublicPaymentStatus, { status: "paid" }> }
@@ -28,6 +34,27 @@ export function PaymentConfirmationPage({
   verifyPayment = defaultVerifyPayment,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 }: PaymentConfirmationPageProps) {
+  const lookupKey = JSON.stringify(
+    lookup
+      ? [lookup.orderNsu, lookup.transactionNsu, lookup.slug, lookup.receiptUrl ?? null]
+      : [null],
+  );
+
+  return (
+    <PaymentConfirmationCycle
+      key={lookupKey}
+      lookup={lookup}
+      verifyPayment={verifyPayment}
+      retryDelayMs={retryDelayMs}
+    />
+  );
+}
+
+function PaymentConfirmationCycle({
+  lookup,
+  verifyPayment,
+  retryDelayMs,
+}: ResolvedPaymentConfirmationPageProps) {
   const [cycle, setCycle] = useState(0);
   const [state, setState] = useState<ConfirmationState>({ kind: "processing" });
   const orderNsu = lookup?.orderNsu;

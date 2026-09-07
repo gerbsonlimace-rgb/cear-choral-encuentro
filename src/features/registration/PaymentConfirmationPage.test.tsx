@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PaymentLookup } from "./registration.domain";
@@ -9,6 +10,13 @@ const lookup: PaymentLookup = {
   transactionNsu: "transaction-123",
   slug: "invoice-123",
   receiptUrl: "https://checkout.infinitepay.com.br/receipt-123",
+};
+
+const nextLookup: PaymentLookup = {
+  orderNsu: "22222222-2222-4222-8222-222222222222",
+  transactionNsu: "transaction-456",
+  slug: "invoice-456",
+  receiptUrl: "https://checkout.infinitepay.com.br/receipt-456",
 };
 
 describe("PaymentConfirmationPage", () => {
@@ -86,6 +94,42 @@ describe("PaymentConfirmationPage", () => {
     rerender(<PaymentConfirmationPage lookup={{ ...lookup }} verifyPayment={verifyPayment} />);
 
     await waitFor(() => expect(verifyPayment).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not commit a previous payment confirmation while switching to a new lookup", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      receiptUrl: "https://receipts.example/confirmed-a",
+    });
+    let committedContentForNextLookup = "";
+
+    function LookupSwitch() {
+      const [activeLookup, setActiveLookup] = useState(lookup);
+
+      useLayoutEffect(() => {
+        if (activeLookup.orderNsu === nextLookup.orderNsu) {
+          committedContentForNextLookup = document.body.textContent ?? "";
+        }
+      }, [activeLookup]);
+
+      return (
+        <>
+          <button onClick={() => setActiveLookup(nextLookup)}>Carregar outro pagamento</button>
+          <PaymentConfirmationPage lookup={activeLookup} verifyPayment={verifyPayment} />
+        </>
+      );
+    }
+
+    render(<LookupSwitch />);
+    await screen.findByText("Inscrição confirmada");
+
+    fireEvent.click(screen.getByRole("button", { name: "Carregar outro pagamento" }));
+
+    expect(committedContentForNextLookup).toContain("Confirmando pagamento…");
+    expect(committedContentForNextLookup).not.toContain("Inscrição confirmada");
+    expect(committedContentForNextLookup).not.toContain("Ver comprovante");
   });
 
   it("stops after three pending verifications until the visitor asks to check again", async () => {
