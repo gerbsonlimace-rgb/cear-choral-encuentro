@@ -74,16 +74,18 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null
-          city: string
+          birth_date: string
           checkout_url: string | null
+          city: string | null
           created_at: string
-          email: string
+          diocese: string
+          email: string | null
           id: string
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
           infinitepay_transaction_nsu: string | null
-          institution: string | null
           installments: number | null
+          institution: string | null
           name: string
           observations: string | null
           order_nsu: string | null
@@ -93,21 +95,23 @@ export type Database = {
           payment_status: string
           phone: string
           receipt_url: string | null
-          role: string
+          role: string | null
           shirt_size: string | null
         }
         Insert: {
           amount_cents?: number | null
-          city: string
+          birth_date: string
           checkout_url?: string | null
+          city?: string | null
           created_at?: string
-          email: string
+          diocese: string
+          email?: string | null
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
-          institution?: string | null
           installments?: number | null
+          institution?: string | null
           name: string
           observations?: string | null
           order_nsu?: string | null
@@ -117,21 +121,23 @@ export type Database = {
           payment_status?: string
           phone: string
           receipt_url?: string | null
-          role: string
+          role?: string | null
           shirt_size?: string | null
         }
         Update: {
           amount_cents?: number | null
-          city?: string
+          birth_date?: string
           checkout_url?: string | null
+          city?: string | null
           created_at?: string
-          email?: string
+          diocese?: string
+          email?: string | null
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
-          institution?: string | null
           installments?: number | null
+          institution?: string | null
           name?: string
           observations?: string | null
           order_nsu?: string | null
@@ -141,7 +147,7 @@ export type Database = {
           payment_status?: string
           phone?: string
           receipt_url?: string | null
-          role?: string
+          role?: string | null
           shirt_size?: string | null
         }
         Relationships: []
@@ -170,12 +176,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -199,11 +205,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -224,11 +230,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -249,11 +255,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -266,11 +272,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

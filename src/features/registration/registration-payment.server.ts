@@ -66,7 +66,7 @@ export function createRegistrationPaymentService(deps: {
       const checkout = await deps.infinitePay.createCheckout({
         orderNsu,
         items: buildCheckoutItems(input),
-        customer: { name: input.name, email: input.email, phoneNumber: input.phone },
+        customer: { name: input.name, phoneNumber: input.phone },
       });
       await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
 
@@ -171,12 +171,14 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
-        email: input.email,
         phone: input.phone,
-        city: input.city,
-        institution: input.institution || null,
-        role: input.role,
-        observations: input.observations || null,
+        birth_date: input.birthDate,
+        diocese: input.diocese,
+        email: null,
+        city: null,
+        institution: null,
+        role: null,
+        observations: null,
         include_shirt: input.includeShirt,
         shirt_size: input.includeShirt ? input.shirtSize : null,
         amount_cents: input.amountCents,

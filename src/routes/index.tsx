@@ -1,13 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import shirtAsset from "../assets/camisa-polo-evento.png.asset.json";
 import claytonImage from "../assets/clayton-dias.jpg";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
-import pixLogo from "../assets/logo-pix.svg";
 import ampliartLogo from "../assets/patrocinador-ampliart.png";
 import culturaLogo from "../assets/patrocinador-cultura-quixada.png";
 import nossoLogo from "../assets/patrocinador-nosso-atacarejo.png";
@@ -22,58 +20,19 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Calendar,
-  MapPin,
-  Clock,
-  Users,
-  BookOpen,
-  Mic2,
-  Church,
-  CheckCircle,
-  ArrowRight,
-} from "lucide-react";
-
-type RegistrationInput = {
-  name: string;
-  email: string;
-  phone: string;
-  city: string;
-  institution: string;
-  role: string;
-  includeShirt: boolean;
-  shirtSize: string;
-  observations: string;
-};
-
-const REGISTRATION_PRICE = 100;
-const SHIRT_PRICE = 39.9;
+import { RegistrationSection } from "@/features/registration/RegistrationSection";
+import { Calendar, MapPin, Clock, Users, BookOpen, Mic2, Church, ArrowRight } from "lucide-react";
 const SITE_URL = "https://encontrocorosce.lovable.app";
 const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
-const MOCK_PIX_CODE =
-  "00020126580014BR.GOV.BCB.PIX0136ii-ems-ce-pagamento-mockado5204000053039865406VALOR5802BR5925II EMS CE MOCK6008QUIXADA62070503***6304MOCK";
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
 
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro" },
+      {
+        title:
+          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+      },
       {
         name: "description",
         content:
@@ -81,7 +40,8 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+        content:
+          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
       },
       {
         property: "og:description",
@@ -99,7 +59,10 @@ export const Route = createFileRoute("/")({
         content: "Logo do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
       },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB" },
+      {
+        name: "twitter:title",
+        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
+      },
       {
         name: "twitter:description",
         content:
@@ -333,9 +296,9 @@ function AboutSection() {
             Uma celebração da tradição musical sacra
           </h2>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes, cantores,
-            liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
-            vivência da música sacra.
+            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes,
+            cantores, liturgistas e fiéis em um fim de semana dedicado à formação, ao
+            aperfeiçoamento e à vivência da música sacra.
           </p>
         </div>
 
@@ -684,446 +647,6 @@ function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
   );
 }
 
-function RegistrationSection() {
-  const [form, setForm] = useState<RegistrationInput>({
-    name: "",
-    email: "",
-    phone: "",
-    city: "",
-    institution: "",
-    role: "participant",
-    includeShirt: false,
-    shirtSize: "",
-    observations: "",
-  });
-  const [errors, setErrors] = useState<Partial<Record<keyof RegistrationInput, string>>>({});
-  const [status, setStatus] = useState<"idle" | "payment">("idle");
-  const [copiedPix, setCopiedPix] = useState(false);
-  const totalAmount = REGISTRATION_PRICE + (form.includeShirt ? SHIRT_PRICE : 0);
-
-  const handleChange = (field: keyof RegistrationInput, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const validateForm = () => {
-    const nextErrors: Partial<Record<keyof RegistrationInput, string>> = {};
-
-    if (!form.name.trim()) {
-      nextErrors.name = "Informe seu nome completo.";
-    }
-    if (!form.email.trim()) {
-      nextErrors.email = "Informe seu e-mail.";
-    }
-    if (!form.phone.trim()) {
-      nextErrors.phone = "Informe seu telefone.";
-    }
-    if (!form.city.trim()) {
-      nextErrors.city = "Informe sua cidade.";
-    }
-    if (form.includeShirt && !form.shirtSize) {
-      nextErrors.shirtSize = "Escolha o tamanho da camisa.";
-    }
-
-    return nextErrors;
-  };
-
-  const resetRegistration = () => {
-    setForm({
-      name: "",
-      email: "",
-      phone: "",
-      city: "",
-      institution: "",
-      role: "participant",
-      includeShirt: false,
-      shirtSize: "",
-      observations: "",
-    });
-    setErrors({});
-    setCopiedPix(false);
-    setStatus("idle");
-  };
-
-  const copyMockPixCode = async () => {
-    await navigator.clipboard?.writeText(MOCK_PIX_CODE);
-    setCopiedPix(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const nextErrors = validateForm();
-
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-
-    setErrors({});
-    setCopiedPix(false);
-    setStatus("payment");
-  };
-
-  return (
-    <section id="inscricao" className="section-padding bg-background">
-      <div className="container-event px-4 lg:px-0">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
-            Inscrição
-          </span>
-          <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
-            Garanta sua participação
-          </h2>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Preencha o formulário abaixo para se inscrever no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.
-          </p>
-          <div className="mx-auto mt-6 flex max-w-sm flex-col items-center justify-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-5 py-4 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-3">
-            <span className="text-sm font-bold text-muted-foreground">Inscrição</span>
-            <span className="font-display text-3xl font-extrabold leading-none text-foreground">
-              {formatCurrency(REGISTRATION_PRICE)}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-bold text-teal">
-              <img src={pixLogo} alt="" className="h-4 w-auto" aria-hidden="true" />
-              pagamento via Pix
-            </span>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-9 grid max-w-6xl gap-6 sm:mt-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-8">
-          <article
-            id="camisa"
-            className="order-2 overflow-hidden rounded-xl bg-foreground text-white shadow-md shadow-teal/15 lg:order-1"
-          >
-            <img
-              src={shirtAsset.url}
-              alt="Camisa polo oficial preta com gola dourada do II Encontro de Coros Diocesanos"
-              width={1120}
-              height={1394}
-              className="aspect-[4/3] w-full object-cover sm:aspect-square"
-              loading="lazy"
-            />
-            <div className="p-5 sm:p-6">
-              <span className="inline-flex rounded-full bg-amber/15 px-3 py-1 text-sm font-bold text-amber">
-                Camisa oficial
-              </span>
-              <h3 className="mt-4 font-display text-2xl font-extrabold leading-tight sm:text-3xl">
-                Adquira junto com sua inscrição
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-white/72">
-                Polo preta com gola dourada e a arte oficial do encontro bordada no peito. Escolha o tamanho no
-                formulario de inscricao.
-              </p>
-              <div className="mt-5 flex items-end gap-3">
-                <span className="text-sm font-bold text-white/60">Camisa</span>
-                <span className="font-display text-4xl font-extrabold leading-none text-amber">
-                  R$ 39,90
-                </span>
-              </div>
-            </div>
-          </article>
-
-          <Card className="order-1 border-border bg-card shadow-sm shadow-teal/10 lg:order-2">
-            <CardContent className="p-4 sm:p-8">
-              {status === "payment" ? (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald/10">
-                      <CheckCircle className="h-8 w-8 text-emerald" />
-                    </div>
-                    <h3 className="mt-4 font-display text-2xl font-bold text-card-foreground">
-                      Pagamento Pix seguro
-                    </h3>
-                    <p className="mt-2 text-muted-foreground">
-                      Esta pagina Pix e uma demonstracao mockada. Nenhum pagamento real sera gerado
-                      nesta versao estatica.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr] md:gap-5">
-                    <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-teal/20 bg-teal/5 p-4 text-center sm:min-h-56 sm:p-5">
-                      <img src={pixLogo} alt="Pix" className="h-10 w-auto sm:h-12" />
-                      <div className="mt-4 grid size-32 place-items-center rounded-lg border border-teal/20 bg-white p-3 sm:mt-5 sm:size-36 sm:p-4">
-                        <span className="font-display text-xl font-extrabold text-teal sm:text-2xl">
-                          QR MOCK
-                        </span>
-                      </div>
-                      <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                        QR Code ilustrativo
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-background p-4 sm:p-5">
-                      <p className="text-sm font-bold text-muted-foreground">Total a pagar</p>
-                      <p className="mt-1 font-display text-3xl font-extrabold text-foreground sm:text-4xl">
-                        {formatCurrency(totalAmount)}
-                      </p>
-                      <div className="mt-5 space-y-3 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Inscricao</span>
-                          <span className="font-bold text-foreground">
-                            {formatCurrency(REGISTRATION_PRICE)}
-                          </span>
-                        </div>
-                        {form.includeShirt && (
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">
-                              Camisa oficial {form.shirtSize && `(${form.shirtSize})`}
-                            </span>
-                            <span className="font-bold text-foreground">
-                              {formatCurrency(SHIRT_PRICE)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-5 rounded-lg bg-muted p-3">
-                        <p className="text-xs font-bold text-muted-foreground">
-                          Codigo Pix copia e cola
-                        </p>
-                        <p className="mt-2 break-all font-mono text-xs leading-relaxed text-foreground">
-                          {MOCK_PIX_CODE}
-                        </p>
-                      </div>
-                      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                        <Button
-                          type="button"
-                          onClick={copyMockPixCode}
-                          className="min-h-12 flex-1 rounded-full bg-teal font-bold text-white hover:bg-teal/90"
-                        >
-                          {copiedPix ? "Codigo copiado" : "Copiar codigo Pix"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={resetRegistration}
-                          className="min-h-12 flex-1 rounded-full border-2 border-teal font-bold text-teal hover:bg-teal hover:text-white"
-                        >
-                          Nova inscricao
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="font-semibold">
-                        Nome completo
-                      </Label>
-                      <Input
-                        id="name"
-                        value={form.name}
-                        onChange={(e) => handleChange("name", e.target.value)}
-                        placeholder="Seu nome"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      />
-                      {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="font-semibold">
-                        E-mail
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => handleChange("email", e.target.value)}
-                        placeholder="seu@email.com"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      />
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="font-semibold">
-                        Telefone
-                      </Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={form.phone}
-                        onChange={(e) => handleChange("phone", e.target.value)}
-                        placeholder="(88) 99999-9999"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      />
-                      {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city" className="font-semibold">
-                        Cidade
-                      </Label>
-                      <Input
-                        id="city"
-                        value={form.city}
-                        onChange={(e) => handleChange("city", e.target.value)}
-                        placeholder="Quixadá"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      />
-                      {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="institution" className="font-semibold">
-                        Paróquia / Instituição
-                      </Label>
-                      <Input
-                        id="institution"
-                        value={form.institution}
-                        onChange={(e) => handleChange("institution", e.target.value)}
-                        placeholder="Onde você atua"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      />
-                      {errors.institution && (
-                        <p className="text-sm text-destructive">{errors.institution}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role" className="font-semibold">
-                        Função
-                      </Label>
-                      <Select
-                        value={form.role}
-                        onValueChange={(value) => handleChange("role", value)}
-                      >
-                        <SelectTrigger
-                          id="role"
-                          className="min-h-12 rounded-xl border-border bg-background text-base"
-                        >
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="participant">Participante</SelectItem>
-                          <SelectItem value="musician">Músico</SelectItem>
-                          <SelectItem value="singer">Cantor/Coralista</SelectItem>
-                          <SelectItem value="conductor">Regente</SelectItem>
-                          <SelectItem value="liturgist">Liturgista</SelectItem>
-                          <SelectItem value="priest">Padre/Clero</SelectItem>
-                          <SelectItem value="other">Outro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-amber/35 bg-amber/10 p-4 sm:p-5">
-                    <label className="flex cursor-pointer items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={form.includeShirt}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            includeShirt: event.target.checked,
-                            shirtSize: event.target.checked ? prev.shirtSize : "",
-                          }))
-                        }
-                        className="mt-1 size-5 shrink-0 rounded border-border accent-teal"
-                      />
-                      <span>
-                        <span className="block font-bold text-foreground">
-                          Incluir camisa oficial
-                        </span>
-                        <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-                          Adicione a camisa do encontro por {formatCurrency(SHIRT_PRICE)}.
-                        </span>
-                      </span>
-                    </label>
-
-                    {form.includeShirt && (
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor="shirtSize" className="font-semibold">
-                          Tamanho da camisa
-                        </Label>
-                        <Select
-                          value={form.shirtSize}
-                          onValueChange={(value) => {
-                            setForm((prev) => ({ ...prev, shirtSize: value }));
-                            setErrors((prev) => ({ ...prev, shirtSize: undefined }));
-                          }}
-                        >
-                          <SelectTrigger
-                            id="shirtSize"
-                            className="min-h-12 rounded-xl border-border bg-background text-base"
-                          >
-                            <SelectValue placeholder="Selecione o tamanho" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="P">P</SelectItem>
-                            <SelectItem value="M">M</SelectItem>
-                            <SelectItem value="G">G</SelectItem>
-                            <SelectItem value="GG">GG</SelectItem>
-                            <SelectItem value="XG">XG</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {errors.shirtSize && (
-                          <p className="text-sm text-destructive">{errors.shirtSize}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-xl border border-teal/20 bg-teal/5 p-4 sm:p-5">
-                    <div className="flex items-center justify-between gap-4 text-sm">
-                      <span className="text-muted-foreground">Inscricao</span>
-                      <span className="font-bold text-foreground">
-                        {formatCurrency(REGISTRATION_PRICE)}
-                      </span>
-                    </div>
-                    {form.includeShirt && (
-                      <div className="mt-2 flex items-center justify-between gap-4 text-sm">
-                        <span className="text-muted-foreground">Camisa oficial</span>
-                        <span className="font-bold text-foreground">
-                          {formatCurrency(SHIRT_PRICE)}
-                        </span>
-                      </div>
-                    )}
-                    <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-teal/15 pt-4">
-                      <span className="font-bold text-foreground">Total</span>
-                      <span className="font-display text-3xl font-extrabold leading-none text-teal">
-                        {formatCurrency(totalAmount)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="observations" className="font-semibold">
-                      Observações
-                    </Label>
-                    <Textarea
-                      id="observations"
-                      value={form.observations}
-                      onChange={(e) => handleChange("observations", e.target.value)}
-                      placeholder="Informe restricoes, necessidades ou observacoes. O pagamento sera via Pix."
-                      rows={4}
-                      className="min-h-28 rounded-xl border-border bg-background text-base"
-                    />
-                    {errors.observations && (
-                      <p className="text-sm text-destructive">{errors.observations}</p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="min-h-14 w-full rounded-full bg-teal py-6 text-base font-extrabold text-white hover:bg-teal/90 sm:text-lg"
-                  >
-                    Ir para pagamento Pix
-                  </Button>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
@@ -1215,8 +738,8 @@ function Footer() {
               <span>II ECD-NE1</span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a formação e a
-              tradição musical do nosso povo.
+              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a
+              formação e a tradição musical do nosso povo.
             </p>
           </div>
           <div>

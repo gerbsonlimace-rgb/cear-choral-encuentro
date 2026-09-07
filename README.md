@@ -1,6 +1,6 @@
 # II Encontro de Coros Diocesados do Ceará
 
-Crie uma landing page para oevento "II Encontro de Mùsica Sacra do Estado do Ceará"  de 20 a 22 de Novembro.
+Crie uma landing page para oevento "II Encontro de Mùsica Sacra do Estado do Ceará" de 20 a 22 de Novembro.
 Deve ter inormalções sobre o evneto programação e inscrição online.
 
 This project was built with [Lovable](https://lovable.dev).
@@ -25,3 +25,14 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## InfinitePay checkout
+
+- InfiniteTag padrão: `antonio-gerbson`
+- Webhook: `https://encontrocorosce.lovable.app/api/infinitepay-webhook`
+- Retorno: `https://encontrocorosce.lovable.app/pagamento`
+- Variáveis opcionais de servidor: `INFINITEPAY_HANDLE` e `PUBLIC_SITE_URL`
+
+Antes da publicação, habilite Checkout Integrado na conta InfinitePay e configure o cartão para repassar as taxas ao participante. Pix permanece com taxa zero conforme as condições vigentes da InfinitePay.
+
+A migração Supabase deve ser aplicada antes do novo código servido. Não publique apenas uma dessas partes.

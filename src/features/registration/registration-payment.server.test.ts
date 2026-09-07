@@ -23,14 +23,11 @@ const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
-  email: "maria@example.com",
   phone: "85999999999",
-  city: "Quixadá",
-  institution: "Coro Paroquial",
-  role: "singer",
+  birthDate: "1990-05-20",
+  diocese: "Diocese de Quixadá",
   includeShirt: false,
   shirtSize: "",
-  observations: "",
 };
 
 const lookup: PaymentLookup = {
@@ -56,6 +53,18 @@ function pendingRecord(): RegistrationPaymentRecord {
 type DatabaseResult = {
   data: unknown;
   error: { message: string } | null;
+};
+
+type SupabaseQueryBuilder = {
+  insert: (values: unknown) => Promise<DatabaseResult>;
+  update: (values: unknown) => SupabaseQueryBuilder;
+  select: (columns: string) => SupabaseQueryBuilder;
+  eq: (column: string, value: unknown) => SupabaseQueryBuilder;
+  maybeSingle: () => Promise<DatabaseResult>;
+  then: (
+    onFulfilled: (value: DatabaseResult) => unknown,
+    onRejected?: (reason: unknown) => unknown,
+  ) => Promise<unknown>;
 };
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
@@ -88,7 +97,7 @@ function createSupabaseHarness(
   const executeResults = [...(options.executeResults ?? [])];
   const maybeSingleResults = [...(options.maybeSingleResults ?? [])];
 
-  const builder: any = {
+  const builder: SupabaseQueryBuilder = {
     insert: vi.fn(async (values: unknown) => {
       trace.push(["insert", values]);
       return insertResults.shift() ?? successfulDatabaseResult;
@@ -210,6 +219,11 @@ describe("registration payment service", () => {
       ...baseInput,
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
+    });
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
+      orderNsu: fixedOrderNsu,
+      items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
+      customer: { name: "Maria da Silva", phoneNumber: "85999999999" },
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
   });
@@ -352,7 +366,7 @@ describe("Supabase registration repository", () => {
     supabaseAdminMock.from.mockReset();
   });
 
-  it("inserts every registration field and clears an unselected shirt size", async () => {
+  it("inserts the simplified registration and clears historical fields", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
 
@@ -368,11 +382,13 @@ describe("Supabase registration repository", () => {
         "insert",
         {
           name: "Maria da Silva",
-          email: "maria@example.com",
           phone: "85999999999",
-          city: "Quixadá",
-          institution: "Coro Paroquial",
-          role: "singer",
+          birth_date: "1990-05-20",
+          diocese: "Diocese de Quixadá",
+          email: null,
+          city: null,
+          institution: null,
+          role: null,
           observations: null,
           include_shirt: false,
           shirt_size: null,

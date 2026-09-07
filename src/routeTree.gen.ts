@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 
@@ -19,9 +21,19 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PagamentoRoute = PagamentoRouteImport.update({
+  id: '/pagamento',
+  path: '/pagamento',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
+  id: '/api/infinitepay-webhook',
+  path: '/api/infinitepay-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -37,36 +49,63 @@ const AdminInscricoesRoute = AdminInscricoesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sitemap.xml' | '/admin/inscricoes' | '/admin/login'
+  fullPaths:
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sitemap.xml' | '/admin/inscricoes' | '/admin/login'
-  id: '__root__' | '/' | '/sitemap.xml' | '/admin/inscricoes' | '/admin/login'
+  to:
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PagamentoRoute: typeof PagamentoRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,11 +117,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pagamento': {
+      id: '/pagamento'
+      path: '/pagamento'
+      fullPath: '/pagamento'
+      preLoaderRoute: typeof PagamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/infinitepay-webhook': {
+      id: '/api/infinitepay-webhook'
+      path: '/api/infinitepay-webhook'
+      fullPath: '/api/infinitepay-webhook'
+      preLoaderRoute: typeof ApiInfinitepayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -104,9 +157,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PagamentoRoute: PagamentoRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

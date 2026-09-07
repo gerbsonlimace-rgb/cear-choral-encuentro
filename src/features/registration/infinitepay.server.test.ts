@@ -9,7 +9,11 @@ const config = {
 const checkoutInput = {
   orderNsu: "11111111-1111-4111-8111-111111111111",
   items: [{ quantity: 1 as const, price: 10000, description: "Inscrição — II Encontro de Coros" }],
-  customer: { name: "Maria", email: "maria@example.com", phoneNumber: "85999999999" },
+  customer: {
+    name: "Maria",
+    phoneNumber: "85999999999",
+    email: "legacy@example.com",
+  },
 };
 
 describe("InfinitePay client", () => {
@@ -28,11 +32,16 @@ describe("InfinitePay client", () => {
     const result = await client.createCheckout(checkoutInput);
 
     expect(result.url).toContain("checkout.infinitepay.com.br");
-    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
       handle: "antonio-gerbson",
+      items: checkoutInput.items,
       order_nsu: "11111111-1111-4111-8111-111111111111",
       redirect_url: "https://encontrocorosce.lovable.app/pagamento",
       webhook_url: "https://encontrocorosce.lovable.app/api/infinitepay-webhook",
+      customer: {
+        name: "Maria",
+        phone_number: "85999999999",
+      },
     });
   });
 
@@ -86,6 +95,53 @@ describe("InfinitePay client", () => {
       transaction_nsu: "transaction-1",
       slug: "invoice-1",
     });
+  });
+
+  it("rejects a paid response when the provider reports unsuccessful verification", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          paid: true,
+          amount: 10000,
+          paid_amount: 10000,
+          installments: 1,
+          capture_method: "pix",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      createInfinitePayClient(fetcher, config).checkPayment({
+        orderNsu: "11111111-1111-4111-8111-111111111111",
+        transactionNsu: "transaction-1",
+        slug: "invoice-1",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a paid response when the provider omits its verification result", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          paid: true,
+          amount: 10000,
+          paid_amount: 10000,
+          installments: 1,
+          capture_method: "pix",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      createInfinitePayClient(fetcher, config).checkPayment({
+        orderNsu: "11111111-1111-4111-8111-111111111111",
+        transactionNsu: "transaction-1",
+        slug: "invoice-1",
+      }),
+    ).rejects.toThrow();
   });
 
   it("uses the documented checkout_url alternate response field", async () => {
