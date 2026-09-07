@@ -101,9 +101,7 @@ const csvHeaders = [
 
 function escapeSpreadsheetCell(value: string): string {
   const neutralized = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
-  return /[;"\r\n]/.test(neutralized)
-    ? `"${neutralized.replaceAll('"', '""')}"`
-    : neutralized;
+  return /[;"\r\n]/.test(neutralized) ? `"${neutralized.replaceAll('"', '""')}"` : neutralized;
 }
 
 function displayText(value: string | null): string {

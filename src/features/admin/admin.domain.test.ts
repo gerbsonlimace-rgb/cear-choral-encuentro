@@ -219,7 +219,7 @@ describe("admin registration history and CSV", () => {
     ]);
     expect(csvRows[3]).toEqual([
       "07/09/2026",
-      "'=HYPERLINK(\"https://evil.example\")",
+      '\'=HYPERLINK("https://evil.example")',
       "carla@example.com",
       "85977776666",
       "Fortaleza; CE",

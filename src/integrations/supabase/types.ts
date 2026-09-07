@@ -16,61 +16,61 @@ export type Database = {
     Tables: {
       admin_users: {
         Row: {
-          granted_at: string
-          granted_by: string | null
-          id: string
-          revoked_at: string | null
-          revoked_by: string | null
-          user_id: string
-        }
+          granted_at: string;
+          granted_by: string | null;
+          id: string;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          user_id: string;
+        };
         Insert: {
-          granted_at?: string
-          granted_by?: string | null
-          id?: string
-          revoked_at?: string | null
-          revoked_by?: string | null
-          user_id: string
-        }
+          granted_at?: string;
+          granted_by?: string | null;
+          id?: string;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          user_id: string;
+        };
         Update: {
-          granted_at?: string
-          granted_by?: string | null
-          id?: string
-          revoked_at?: string | null
-          revoked_by?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
+          granted_at?: string;
+          granted_by?: string | null;
+          id?: string;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       admin_access_events: {
         Row: {
-          admin_user_id: string
-          created_at: string
-          event_type: string
-          id: string
-          payment_status_filter: string | null
-          result_count: number
-          search_used: boolean
-        }
+          admin_user_id: string;
+          created_at: string;
+          event_type: string;
+          id: string;
+          payment_status_filter: string | null;
+          result_count: number;
+          search_used: boolean;
+        };
         Insert: {
-          admin_user_id: string
-          created_at?: string
-          event_type: string
-          id?: string
-          payment_status_filter?: string | null
-          result_count: number
-          search_used: boolean
-        }
+          admin_user_id: string;
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          payment_status_filter?: string | null;
+          result_count: number;
+          search_used: boolean;
+        };
         Update: {
-          admin_user_id?: string
-          created_at?: string
-          event_type?: string
-          id?: string
-          payment_status_filter?: string | null
-          result_count?: number
-          search_used?: boolean
-        }
-        Relationships: []
-      }
+          admin_user_id?: string;
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          payment_status_filter?: string | null;
+          result_count?: number;
+          search_used?: boolean;
+        };
+        Relationships: [];
+      };
       registrations: {
         Row: {
           amount_cents: number | null
