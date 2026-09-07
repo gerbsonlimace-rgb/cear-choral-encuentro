@@ -32,7 +32,7 @@ alter table public.registrations
     )),
   add constraint registrations_shirt_selection_check
     check (
-      (include_shirt and shirt_size in ('P', 'M', 'G', 'GG', 'XG'))
+      (include_shirt and shirt_size is not null and shirt_size in ('P', 'M', 'G', 'GG', 'XG'))
       or (not include_shirt and shirt_size is null)
     ),
   add constraint registrations_amount_check
@@ -42,7 +42,12 @@ alter table public.registrations
   add constraint registrations_order_required_check
     check (
       (payment_status = 'legacy' and order_nsu is null and amount_cents is null)
-      or (payment_status in ('pending', 'paid') and order_nsu is not null and amount_cents > 0)
+      or (
+        payment_status in ('pending', 'paid')
+        and order_nsu is not null
+        and amount_cents is not null
+        and amount_cents > 0
+      )
     ),
   add constraint registrations_payment_method_check
     check (payment_method is null or payment_method in ('pix', 'credit_card')),
@@ -57,6 +62,7 @@ alter table public.registrations
         infinitepay_transaction_nsu is not null
         and payment_method is not null
         and installments is not null
+        and paid_amount_cents is not null
         and paid_amount_cents >= amount_cents
         and paid_at is not null
       )
