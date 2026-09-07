@@ -16,37 +16,82 @@ export type Database = {
     Tables: {
       registrations: {
         Row: {
-          city: string
+          amount_cents: number | null
+          birth_date: string
+          checkout_url: string | null
+          city: string | null
           created_at: string
-          email: string
+          diocese: string
+          email: string | null
           id: string
+          include_shirt: boolean
+          infinitepay_invoice_slug: string | null
+          infinitepay_transaction_nsu: string | null
+          installments: number | null
           institution: string | null
           name: string
           observations: string | null
+          order_nsu: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_status: string
           phone: string
-          role: string
+          receipt_url: string | null
+          role: string | null
+          shirt_size: string | null
         }
         Insert: {
-          city: string
+          amount_cents?: number | null
+          birth_date: string
+          checkout_url?: string | null
+          city?: string | null
           created_at?: string
-          email: string
+          diocese: string
+          email?: string | null
           id?: string
+          include_shirt?: boolean
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          installments?: number | null
           institution?: string | null
           name: string
           observations?: string | null
+          order_nsu?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
           phone: string
-          role: string
+          receipt_url?: string | null
+          role?: string | null
+          shirt_size?: string | null
         }
         Update: {
-          city?: string
+          amount_cents?: number | null
+          birth_date?: string
+          checkout_url?: string | null
+          city?: string | null
           created_at?: string
-          email?: string
+          diocese?: string
+          email?: string | null
           id?: string
+          include_shirt?: boolean
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          installments?: number | null
           institution?: string | null
           name?: string
           observations?: string | null
+          order_nsu?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
           phone?: string
-          role?: string
+          receipt_url?: string | null
+          role?: string | null
+          shirt_size?: string | null
         }
         Relationships: []
       }
