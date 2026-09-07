@@ -21,16 +21,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
-import {
-  Calendar,
-  MapPin,
-  Clock,
-  Users,
-  BookOpen,
-  Mic2,
-  Church,
-  ArrowRight,
-} from "lucide-react";
+import { Calendar, MapPin, Clock, Users, BookOpen, Mic2, Church, ArrowRight } from "lucide-react";
 const SITE_URL = "https://encontrocorosce.lovable.app";
 const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
 
@@ -38,7 +29,10 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro" },
+      {
+        title:
+          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+      },
       {
         name: "description",
         content:
@@ -46,7 +40,8 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+        content:
+          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
       },
       {
         property: "og:description",
@@ -64,7 +59,10 @@ export const Route = createFileRoute("/")({
         content: "Logo do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
       },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB" },
+      {
+        name: "twitter:title",
+        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
+      },
       {
         name: "twitter:description",
         content:
@@ -298,9 +296,9 @@ function AboutSection() {
             Uma celebração da tradição musical sacra
           </h2>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes, cantores,
-            liturgistas e fiéis em um fim de semana dedicado à formação, ao aperfeiçoamento e à
-            vivência da música sacra.
+            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes,
+            cantores, liturgistas e fiéis em um fim de semana dedicado à formação, ao
+            aperfeiçoamento e à vivência da música sacra.
           </p>
         </div>
 
@@ -740,8 +738,8 @@ function Footer() {
               <span>II ECD-NE1</span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a formação e a
-              tradição musical do nosso povo.
+              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a
+              formação e a tradição musical do nosso povo.
             </p>
           </div>
           <div>

@@ -58,6 +58,18 @@ type DatabaseResult = {
   error: { message: string } | null;
 };
 
+type SupabaseQueryBuilder = {
+  insert: (values: unknown) => Promise<DatabaseResult>;
+  update: (values: unknown) => SupabaseQueryBuilder;
+  select: (columns: string) => SupabaseQueryBuilder;
+  eq: (column: string, value: unknown) => SupabaseQueryBuilder;
+  maybeSingle: () => Promise<DatabaseResult>;
+  then: (
+    onFulfilled: (value: DatabaseResult) => unknown,
+    onRejected?: (reason: unknown) => unknown,
+  ) => Promise<unknown>;
+};
+
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url";
@@ -88,7 +100,7 @@ function createSupabaseHarness(
   const executeResults = [...(options.executeResults ?? [])];
   const maybeSingleResults = [...(options.maybeSingleResults ?? [])];
 
-  const builder: any = {
+  const builder: SupabaseQueryBuilder = {
     insert: vi.fn(async (values: unknown) => {
       trace.push(["insert", values]);
       return insertResults.shift() ?? successfulDatabaseResult;

@@ -26,8 +26,7 @@ type ConfirmationState =
 
 const MAX_VERIFICATION_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 2000;
-const defaultVerifyPayment = (lookup: PaymentLookup) =>
-  verifyRegistrationPayment({ data: lookup });
+const defaultVerifyPayment = (lookup: PaymentLookup) => verifyRegistrationPayment({ data: lookup });
 
 export function PaymentConfirmationPage({
   lookup,
@@ -177,7 +176,10 @@ function PaymentMessage({ children, title }: { children?: ReactNode; title: stri
 
 function RetryButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button className="mt-6 rounded-full bg-teal font-bold text-white hover:bg-teal/90" onClick={onClick}>
+    <Button
+      className="mt-6 rounded-full bg-teal font-bold text-white hover:bg-teal/90"
+      onClick={onClick}
+    >
       Verificar novamente
     </Button>
   );

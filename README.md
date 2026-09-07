@@ -1,6 +1,6 @@
 # II Encontro de Coros Diocesados do Ceará
 
-Crie uma landing page para oevento "II Encontro de Mùsica Sacra do Estado do Ceará"  de 20 a 22 de Novembro.
+Crie uma landing page para oevento "II Encontro de Mùsica Sacra do Estado do Ceará" de 20 a 22 de Novembro.
 Deve ter inormalções sobre o evneto programação e inscrição online.
 
 This project was built with [Lovable](https://lovable.dev).

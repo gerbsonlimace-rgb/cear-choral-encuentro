@@ -7,17 +7,15 @@ import {
 export const startRegistrationCheckout = createServerFn({ method: "POST" })
   .validator(registrationSchema)
   .handler(async ({ data }) => {
-    const { getRegistrationPaymentService } = await import(
-      "@/features/registration/registration-payment.server"
-    );
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
     return getRegistrationPaymentService().startCheckout(data);
   });
 
 export const verifyRegistrationPayment = createServerFn({ method: "POST" })
   .validator(paymentLookupSchema)
   .handler(async ({ data }) => {
-    const { getRegistrationPaymentService } = await import(
-      "@/features/registration/registration-payment.server"
-    );
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
     return getRegistrationPaymentService().reconcilePayment(data);
   });
