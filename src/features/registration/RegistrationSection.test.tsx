@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RegistrationSection } from "./RegistrationSection";
 
@@ -18,6 +18,8 @@ async function fillRequiredFields(
 }
 
 describe("RegistrationSection", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("shows only the simplified required participant fields and the optional shirt", () => {
     render(<RegistrationSection />);
 
@@ -32,6 +34,15 @@ describe("RegistrationSection", () => {
     expect(screen.queryByLabelText("Paróquia / Instituição")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Função")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Observações")).not.toBeInTheDocument();
+  });
+
+  it("limits birth dates to the current day in Fortaleza", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T01:30:00.000Z"));
+
+    render(<RegistrationSection />);
+
+    expect(screen.getByLabelText("Data de Nascimento")).toHaveAttribute("max", "2026-09-07");
   });
 
   it("disables the submit button while checkout is being prepared", async () => {

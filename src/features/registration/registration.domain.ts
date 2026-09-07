@@ -19,6 +19,23 @@ export const dioceseSchema = z.enum(DIOCESES);
 
 export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
 
+const fortalezaDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Fortaleza",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function getFortalezaCalendarDate(instant = new Date()) {
+  const parts = fortalezaDateFormatter.formatToParts(instant);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) throw new Error("Não foi possível determinar a data local.");
+  return `${year}-${month}-${day}`;
+}
+
 const birthDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de nascimento válida.")
@@ -33,7 +50,7 @@ const birthDateSchema = z
     );
   }, "Informe uma data de nascimento válida.")
   .refine(
-    (value) => value <= new Date().toISOString().slice(0, 10),
+    (value) => value <= getFortalezaCalendarDate(),
     "A data de nascimento não pode estar no futuro.",
   );
 

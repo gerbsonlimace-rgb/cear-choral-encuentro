@@ -17,6 +17,7 @@ import {
   DIOCESES,
   REGISTRATION_PRICE_CENTS,
   SHIRT_PRICE_CENTS,
+  getFortalezaCalendarDate,
   registrationSchema,
   shirtSizeSchema,
   type RegistrationInput,
@@ -196,7 +197,7 @@ export function RegistrationSection({
                       id="birthDate"
                       type="date"
                       required
-                      max={new Date().toISOString().slice(0, 10)}
+                      max={getFortalezaCalendarDate()}
                       value={form.birthDate}
                       onChange={(event) => handleChange("birthDate", event.target.value)}
                       className="min-h-12 rounded-xl border-border bg-background text-base"

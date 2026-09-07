@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DIOCESES,
   buildCheckoutItems,
@@ -18,6 +18,8 @@ const baseInput = {
 };
 
 describe("registration domain", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("charges only registration without a shirt", () => {
     expect(calculateOrderAmountCents(baseInput)).toBe(10000);
     expect(buildCheckoutItems(baseInput)).toEqual([
@@ -76,6 +78,18 @@ describe("registration domain", () => {
     );
     expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2999-01-01" }).success).toBe(
       false,
+    );
+  });
+
+  it("uses the Fortaleza calendar day after UTC midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T01:30:00.000Z"));
+
+    expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2026-09-08" }).success).toBe(
+      false,
+    );
+    expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2026-09-07" }).success).toBe(
+      true,
     );
   });
 

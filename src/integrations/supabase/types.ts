@@ -11,11 +11,11 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null;
-          birth_date: string | null;
+          birth_date: string;
           city: string | null;
           checkout_url: string | null;
           created_at: string;
-          diocese: string | null;
+          diocese: string;
           email: string | null;
           id: string;
           include_shirt: boolean;
@@ -37,11 +37,11 @@ export type Database = {
         };
         Insert: {
           amount_cents?: number | null;
-          birth_date?: string | null;
+          birth_date: string;
           city?: string | null;
           checkout_url?: string | null;
           created_at?: string;
-          diocese?: string | null;
+          diocese: string;
           email?: string | null;
           id?: string;
           include_shirt?: boolean;
@@ -63,11 +63,11 @@ export type Database = {
         };
         Update: {
           amount_cents?: number | null;
-          birth_date?: string | null;
+          birth_date?: string;
           city?: string | null;
           checkout_url?: string | null;
           created_at?: string;
-          diocese?: string | null;
+          diocese?: string;
           email?: string | null;
           id?: string;
           include_shirt?: boolean;
