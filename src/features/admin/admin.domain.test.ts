@@ -57,11 +57,62 @@ const paidRow: RegistrationDatabaseRow = {
   include_shirt: true,
   shirt_size: "M",
   amount_cents: 13990,
-  paid_amount_cents: 13990,
+  paid_amount_cents: 12990,
   payment_method: "credit_card",
   installments: 2,
-  paid_at: "2026-09-07T15:30:00.000Z",
+  paid_at: "2026-09-08T15:30:00.000Z",
+  checkout_url: "https://checkout.example/checkout-secret",
+  infinitepay_invoice_slug: "invoice-secret",
+  infinitepay_transaction_nsu: "transaction-secret",
+  observations: "observacao-secreta",
+  order_nsu: "order-secret",
+  receipt_url: "https://receipt.example/receipt-secret",
 };
+
+function parseCsv(content: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = content.startsWith("\uFEFF") ? 1 : 0; index < content.length; index += 1) {
+    const character = content[index];
+
+    if (quoted) {
+      if (character === '"' && content[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (character === '"') {
+        quoted = false;
+      } else {
+        cell += character;
+      }
+      continue;
+    }
+
+    if (character === '"') {
+      quoted = true;
+    } else if (character === ";") {
+      row.push(cell);
+      cell = "";
+    } else if (character === "\r" && content[index + 1] === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      index += 1;
+    } else {
+      cell += character;
+    }
+  }
+
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
 
 describe("admin registration filters", () => {
   // Detects a production mutation that stops trimming the query or applying safe pagination defaults.
@@ -74,10 +125,17 @@ describe("admin registration filters", () => {
     });
   });
 
-  // Detects a production mutation that accepts an unsupported status or a page larger than the server contract.
-  it("rejects unsupported status and oversized pages", () => {
+  // Detects a production mutation that accepts an unsupported payment status while all other fields are valid.
+  it("rejects an unsupported payment status", () => {
     expect(() =>
-      adminRegistrationQuerySchema.parse({ paymentStatus: "cancelled", pageSize: 101 }),
+      adminRegistrationQuerySchema.parse({ paymentStatus: "cancelled", pageSize: 25 }),
+    ).toThrow();
+  });
+
+  // Detects a production mutation that accepts a page larger than the server contract while the status is valid.
+  it("rejects an oversized page", () => {
+    expect(() =>
+      adminRegistrationQuerySchema.parse({ paymentStatus: "all", pageSize: 101 }),
     ).toThrow();
   });
 
@@ -120,13 +178,13 @@ describe("admin registration history and CSV", () => {
       paymentStatus: "paid",
       shirtLabel: "Tamanho M",
       amountCents: 13990,
-      paidAmountCents: 13990,
+      paidAmountCents: 12990,
       paymentMethod: "credit_card",
       installments: 2,
     });
   });
 
-  // Detects a production mutation that omits BOM or Brazilian formatting, corrupts delimiters, or leaves spreadsheet formulas executable.
+  // Detects a production mutation that changes CSV column order, moves values between fields, exposes sensitive registration fields, or weakens CSV escaping.
   it("builds a safe semicolon CSV with Brazilian presentation", () => {
     const file = buildRegistrationsCsv(
       [
@@ -140,22 +198,48 @@ describe("admin registration history and CSV", () => {
       ],
       new Date("2026-09-07T12:00:00.000Z"),
     );
+    const csvRows = parseCsv(file.content);
 
     expect(file.fileName).toBe("inscricoes-2026-09-07.csv");
-    expect(file.content.startsWith("\uFEFFData;Nome;E-mail;Telefone;")).toBe(true);
-    expect(file.content).toContain("'=HYPERLINK(\"\"https://evil.example\"\")");
-    expect(file.content).toContain("'  +5585999999999");
-    expect(file.content).toContain('"Fortaleza; CE"');
-    expect(file.content).toContain('"Coro ""Vozes""\nUnidas"');
-    expect(file.content).toContain("07/09/2026");
-    expect(file.content).toContain("R$\u00a0139,90");
-    expect(file.content).toContain("Pix");
-    expect(file.content).toContain("Cartão");
-    expect(file.content).toContain("2");
-    expect(file.content).toContain("Histórico");
-    expect(file.content).toContain("Pendente");
-    expect(file.content).toContain("Pago");
-    expect(file.content).toContain("Não informado");
+    expect(csvRows[0]).toEqual([
+      "Data",
+      "Nome",
+      "E-mail",
+      "Telefone",
+      "Cidade",
+      "Instituição",
+      "Função",
+      "Situação",
+      "Camisa",
+      "Valor esperado",
+      "Valor pago",
+      "Forma de pagamento",
+      "Parcelas",
+      "Pago em",
+    ]);
+    expect(csvRows[3]).toEqual([
+      "07/09/2026",
+      "'=HYPERLINK(\"https://evil.example\")",
+      "carla@example.com",
+      "85977776666",
+      "Fortaleza; CE",
+      'Coro "Vozes"\nUnidas',
+      "singer",
+      "Pago",
+      "Tamanho M",
+      "R$\u00a0139,90",
+      "R$\u00a0129,90",
+      "Cartão",
+      "2",
+      "08/09/2026",
+    ]);
+    expect(csvRows[4][3]).toBe("'  +5585999999999");
+    expect(file.content).not.toContain("checkout-secret");
+    expect(file.content).not.toContain("invoice-secret");
+    expect(file.content).not.toContain("transaction-secret");
+    expect(file.content).not.toContain("observacao-secreta");
+    expect(file.content).not.toContain("order-secret");
+    expect(file.content).not.toContain("receipt-secret");
     expect(file.content).toContain("\r\n");
   });
 });
