@@ -2,17 +2,19 @@ import { z } from "zod";
 import type { PaymentLookup } from "./registration.domain";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 
-const webhookSchema = z.object({
-  invoice_slug: z.string().trim().min(1).max(200),
-  amount: z.number().int().positive(),
-  paid_amount: z.number().int().positive(),
-  installments: z.number().int().positive(),
-  capture_method: z.enum(["pix", "credit_card"]),
-  transaction_nsu: z.string().trim().min(1).max(200),
-  order_nsu: z.string().uuid(),
-  receipt_url: z.string().url().optional(),
-  items: z.array(z.unknown()).optional(),
-});
+const webhookSchema = z
+  .object({
+    invoice_slug: z.string().trim().min(1).max(200),
+    amount: z.number().int().positive(),
+    paid_amount: z.number().int().positive(),
+    installments: z.number().int().positive(),
+    capture_method: z.enum(["pix", "credit_card"]),
+    transaction_nsu: z.string().trim().min(1).max(200),
+    order_nsu: z.string().uuid(),
+    receipt_url: z.string().url().optional(),
+    items: z.array(z.unknown()).optional(),
+  })
+  .strict();
 
 const failedResponse = () =>
   Response.json(

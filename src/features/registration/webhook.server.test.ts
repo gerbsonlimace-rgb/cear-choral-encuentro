@@ -47,6 +47,18 @@ describe("InfinitePay webhook", () => {
     await expect(response.json()).resolves.toEqual({ success: true, message: null });
   });
 
+  it("rejects an otherwise valid payload with an unexpected property", async () => {
+    const reconcile = vi.fn();
+
+    const response = await handleInfinitePayWebhook(
+      jsonRequest({ ...validBody, unexpected: "untrusted" }),
+      reconcile,
+    );
+
+    expect(response.status).toBe(400);
+    expect(reconcile).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when provider verification fails", async () => {
     const reconcile = vi.fn().mockRejectedValue(new Error("Valor do pagamento divergente"));
 
