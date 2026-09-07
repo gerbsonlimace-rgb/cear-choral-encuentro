@@ -53,11 +53,11 @@ export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegi
     id: row.id,
     createdAt: row.created_at,
     name: row.name,
-    email: row.email,
+    email: displayText(row.email),
     phone: row.phone,
-    city: row.city,
+    city: displayText(row.city),
     institution: row.institution,
-    role: row.role,
+    role: displayText(row.role),
     paymentStatus: status,
     shirtLabel:
       status === "legacy"

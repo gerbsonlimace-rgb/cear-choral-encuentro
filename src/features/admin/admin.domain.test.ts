@@ -11,6 +11,8 @@ const legacyRow: RegistrationDatabaseRow = {
   id: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",
   created_at: "2025-08-22T14:00:00.000Z",
   name: "Ana Histórica",
+  birth_date: "1990-01-01",
+  diocese: "Diocese de Sobral",
   email: "ana@example.com",
   phone: "85988887777",
   city: "Sobral",
@@ -170,6 +172,38 @@ describe("admin registration history and CSV", () => {
       amountCents: 10000,
       paymentMethod: "pix",
     });
+  });
+
+  // Detects a production mutation that crashes exports when the simplified form leaves removed fields empty.
+  it("exports removed optional fields as not informed", () => {
+    const file = buildRegistrationsCsv(
+      [
+        mapAdminRegistrationRow({
+          ...pendingRow,
+          email: null,
+          city: null,
+          role: null,
+        }),
+      ],
+      new Date("2026-09-07T12:00:00.000Z"),
+    );
+
+    expect(parseCsv(file.content)[1]).toEqual([
+      "06/09/2026",
+      "Bia Pendente",
+      "Não informado",
+      "85988887777",
+      "Não informado",
+      "Não informado",
+      "Não informado",
+      "Pendente",
+      "Sem camisa",
+      "R$\u00a0100,00",
+      "Não informado",
+      "Pix",
+      "Não informado",
+      "Não informado",
+    ]);
   });
 
   // Detects a production mutation that loses selected shirt, charged/paid amounts, or card installments.
