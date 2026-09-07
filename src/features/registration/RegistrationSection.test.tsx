@@ -12,6 +12,7 @@ async function fillRequiredFields(
   values: { name?: string } = {},
 ) {
   await user.type(screen.getByLabelText("Nome Completo"), values.name ?? "Maria da Silva");
+  await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de Nascimento"), "1990-05-20");
   await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
@@ -20,20 +21,23 @@ async function fillRequiredFields(
 describe("RegistrationSection", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("shows only the simplified required participant fields and the optional shirt", () => {
+  it("shows the checkout contact fields and the optional shirt", () => {
     render(<RegistrationSection />);
 
     expect(screen.getByLabelText("Nome Completo")).toBeRequired();
+    expect(screen.getByLabelText("E-mail")).toHaveAttribute("type", "email");
+    expect(screen.getByLabelText("E-mail")).toBeRequired();
     expect(screen.getByLabelText("WhatsApp")).toBeRequired();
     expect(screen.getByLabelText("Data de Nascimento")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Data de Nascimento")).toBeRequired();
     expect(screen.getByLabelText("Diocese")).toBeRequired();
     expect(screen.getByRole("checkbox", { name: /Incluir camisa oficial/ })).not.toBeRequired();
-    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Cidade")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Paróquia / Instituição")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Função")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Observações")).not.toBeInTheDocument();
+    expect(screen.getAllByText("R$ 1,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 0,10").length).toBeGreaterThan(0);
   });
 
   it("limits birth dates to the current day in Fortaleza", () => {
@@ -94,6 +98,11 @@ describe("RegistrationSection", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
 
+    await waitFor(() =>
+      expect(startCheckout).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "maria@example.com" }),
+      ),
+    );
     await waitFor(() => expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl));
   });
 });

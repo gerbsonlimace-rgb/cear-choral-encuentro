@@ -66,7 +66,7 @@ export function createRegistrationPaymentService(deps: {
       const checkout = await deps.infinitePay.createCheckout({
         orderNsu,
         items: buildCheckoutItems(input),
-        customer: { name: input.name, phoneNumber: input.phone },
+        customer: { name: input.name, email: input.email, phoneNumber: input.phone },
       });
       await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
 
@@ -174,7 +174,7 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         phone: input.phone,
         birth_date: input.birthDate,
         diocese: input.diocese,
-        email: null,
+        email: input.email,
         city: null,
         institution: null,
         role: null,

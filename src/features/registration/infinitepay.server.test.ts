@@ -40,6 +40,7 @@ describe("InfinitePay client", () => {
       webhook_url: "https://encontrocorosce.lovable.app/api/infinitepay-webhook",
       customer: {
         name: "Maria",
+        email: "legacy@example.com",
         phone_number: "85999999999",
       },
     });

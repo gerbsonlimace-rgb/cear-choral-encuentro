@@ -10,6 +10,7 @@ import {
 
 const baseInput = {
   name: "Maria da Silva",
+  email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
   diocese: "Diocese de Quixadá" as const,
@@ -21,18 +22,18 @@ describe("registration domain", () => {
   afterEach(() => vi.useRealTimers());
 
   it("charges only registration without a shirt", () => {
-    expect(calculateOrderAmountCents(baseInput)).toBe(10000);
+    expect(calculateOrderAmountCents(baseInput)).toBe(100);
     expect(buildCheckoutItems(baseInput)).toEqual([
-      { quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" },
+      { quantity: 1, price: 100, description: "Inscrição — II Encontro de Coros" },
     ]);
   });
 
   it("adds the selected shirt", () => {
     const input = { ...baseInput, includeShirt: true, shirtSize: "M" as const };
-    expect(calculateOrderAmountCents(input)).toBe(13990);
+    expect(calculateOrderAmountCents(input)).toBe(110);
     expect(buildCheckoutItems(input)[1]).toEqual({
       quantity: 1,
-      price: 3990,
+      price: 10,
       description: "Camisa oficial — tamanho M",
     });
   });
@@ -93,10 +94,12 @@ describe("registration domain", () => {
     );
   });
 
-  it("rejects removed public registration fields", () => {
-    expect(registrationSchema.safeParse({ ...baseInput, email: "maria@example.com" }).success).toBe(
+  it("requires a valid email for checkout prefill", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, email: "" }).success).toBe(false);
+    expect(registrationSchema.safeParse({ ...baseInput, email: "email-invalido" }).success).toBe(
       false,
     );
+    expect(registrationSchema.safeParse(baseInput).success).toBe(true);
   });
 
   it("rejects an invalid payment return identifier", () => {

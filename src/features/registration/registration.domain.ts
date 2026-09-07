@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-export const REGISTRATION_PRICE_CENTS = 10000;
-export const SHIRT_PRICE_CENTS = 3990;
+export const REGISTRATION_PRICE_CENTS = 100;
+export const SHIRT_PRICE_CENTS = 10;
 
 export const DIOCESES = [
   "Arquidiocese de Fortaleza",
@@ -57,6 +57,7 @@ const birthDateSchema = z
 export const registrationSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
+    email: z.string().trim().email("Informe um e-mail válido.").max(254),
     phone: z.string().trim().min(8).max(30),
     birthDate: birthDateSchema,
     diocese: dioceseSchema,

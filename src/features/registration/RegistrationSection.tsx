@@ -41,6 +41,7 @@ const formatCurrency = (valueInCents: number) =>
 
 const initialForm: RegistrationForm = {
   name: "",
+  email: "",
   phone: "",
   birthDate: "",
   diocese: "",
@@ -172,6 +173,25 @@ export function RegistrationSection({
                     {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="email" className="font-semibold">
+                      E-mail
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={form.email}
+                      onChange={(event) => handleChange("email", event.target.value)}
+                      placeholder="seunome@email.com"
+                      className="min-h-12 rounded-xl border-border bg-background text-base"
+                    />
+                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
                     <Label htmlFor="phone" className="font-semibold">
                       WhatsApp
                     </Label>
@@ -179,6 +199,7 @@ export function RegistrationSection({
                       id="phone"
                       type="tel"
                       required
+                      autoComplete="tel"
                       value={form.phone}
                       onChange={(event) => handleChange("phone", event.target.value)}
                       placeholder="(88) 99999-9999"
@@ -186,9 +207,6 @@ export function RegistrationSection({
                     />
                     {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                   </div>
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="birthDate" className="font-semibold">
                       Data de Nascimento
@@ -206,26 +224,27 @@ export function RegistrationSection({
                       <p className="text-sm text-destructive">{errors.birthDate}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="diocese" className="font-semibold">
-                      Diocese
-                    </Label>
-                    <select
-                      id="diocese"
-                      required
-                      value={form.diocese}
-                      onChange={(event) => handleChange("diocese", event.target.value)}
-                      className="min-h-12 w-full rounded-xl border border-border bg-background px-3 text-base"
-                    >
-                      <option value="">Selecione a diocese</option>
-                      {DIOCESES.map((diocese) => (
-                        <option key={diocese} value={diocese}>
-                          {diocese}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.diocese && <p className="text-sm text-destructive">{errors.diocese}</p>}
-                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="diocese" className="font-semibold">
+                    Diocese
+                  </Label>
+                  <select
+                    id="diocese"
+                    required
+                    value={form.diocese}
+                    onChange={(event) => handleChange("diocese", event.target.value)}
+                    className="min-h-12 w-full rounded-xl border border-border bg-background px-3 text-base"
+                  >
+                    <option value="">Selecione a diocese</option>
+                    {DIOCESES.map((diocese) => (
+                      <option key={diocese} value={diocese}>
+                        {diocese}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.diocese && <p className="text-sm text-destructive">{errors.diocese}</p>}
                 </div>
 
                 <div className="rounded-xl border border-amber/35 bg-amber/10 p-4 sm:p-5">

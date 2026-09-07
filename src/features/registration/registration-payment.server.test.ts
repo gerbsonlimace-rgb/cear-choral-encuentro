@@ -23,6 +23,7 @@ const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
+  email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
   diocese: "Diocese de Quixadá",
@@ -218,12 +219,16 @@ describe("registration payment service", () => {
     expect(fixture.repository.createPending).toHaveBeenCalledWith({
       ...baseInput,
       orderNsu: fixedOrderNsu,
-      amountCents: 10000,
+      amountCents: 100,
     });
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
       orderNsu: fixedOrderNsu,
-      items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
-      customer: { name: "Maria da Silva", phoneNumber: "85999999999" },
+      items: [{ quantity: 1, price: 100, description: "Inscrição — II Encontro de Coros" }],
+      customer: {
+        name: "Maria da Silva",
+        email: "maria@example.com",
+        phoneNumber: "85999999999",
+      },
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
   });
@@ -366,14 +371,14 @@ describe("Supabase registration repository", () => {
     supabaseAdminMock.from.mockReset();
   });
 
-  it("inserts the simplified registration and clears historical fields", async () => {
+  it("inserts the checkout contact data and clears unused historical fields", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
 
     await repository.createPending({
       ...baseInput,
       orderNsu: fixedOrderNsu,
-      amountCents: 10000,
+      amountCents: 100,
     });
 
     expect(database.trace).toEqual([
@@ -385,14 +390,14 @@ describe("Supabase registration repository", () => {
           phone: "85999999999",
           birth_date: "1990-05-20",
           diocese: "Diocese de Quixadá",
-          email: null,
+          email: "maria@example.com",
           city: null,
           institution: null,
           role: null,
           observations: null,
           include_shirt: false,
           shirt_size: null,
-          amount_cents: 10000,
+          amount_cents: 100,
           payment_status: "pending",
           order_nsu: fixedOrderNsu,
         },
