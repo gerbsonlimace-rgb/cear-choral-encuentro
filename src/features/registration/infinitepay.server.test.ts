@@ -88,6 +88,53 @@ describe("InfinitePay client", () => {
     });
   });
 
+  it("rejects a paid response when the provider reports unsuccessful verification", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          paid: true,
+          amount: 10000,
+          paid_amount: 10000,
+          installments: 1,
+          capture_method: "pix",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      createInfinitePayClient(fetcher, config).checkPayment({
+        orderNsu: "11111111-1111-4111-8111-111111111111",
+        transactionNsu: "transaction-1",
+        slug: "invoice-1",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a paid response when the provider omits its verification result", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          paid: true,
+          amount: 10000,
+          paid_amount: 10000,
+          installments: 1,
+          capture_method: "pix",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      createInfinitePayClient(fetcher, config).checkPayment({
+        orderNsu: "11111111-1111-4111-8111-111111111111",
+        transactionNsu: "transaction-1",
+        slug: "invoice-1",
+      }),
+    ).rejects.toThrow();
+  });
+
   it("uses the documented checkout_url alternate response field", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

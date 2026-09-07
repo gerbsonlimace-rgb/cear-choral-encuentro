@@ -48,12 +48,18 @@ export async function handleInfinitePayWebhook(
       receiptUrl: parsed.data.receipt_url,
     });
     if (result.status !== "paid") {
-      console.error("[InfinitePay webhook] reconciliation pending");
+      console.error("[InfinitePay webhook] reconciliation failed", {
+        orderNsu: parsed.data.order_nsu,
+        reason: "pending",
+      });
       return failedResponse();
     }
     return Response.json({ success: true, message: null }, { status: 200 });
   } catch {
-    console.error("[InfinitePay webhook] reconciliation failed");
+    console.error("[InfinitePay webhook] reconciliation failed", {
+      orderNsu: parsed.data.order_nsu,
+      reason: "reconciliation_error",
+    });
     return failedResponse();
   }
 }

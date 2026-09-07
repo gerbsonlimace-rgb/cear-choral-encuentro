@@ -115,7 +115,9 @@ function PaymentConfirmationCycle({
     const method =
       state.payment.paymentMethod === "pix"
         ? "Pix"
-        : `Cartão em ${state.payment.installments} parcelas`;
+        : `Cartão em ${state.payment.installments} ${
+            state.payment.installments === 1 ? "parcela" : "parcelas"
+          }`;
 
     return (
       <PaymentMessage title="Inscrição confirmada">
@@ -139,6 +141,7 @@ function PaymentConfirmationCycle({
   if (state.kind === "pending") {
     return (
       <PaymentMessage title="Pagamento ainda não confirmado">
+        <DuplicatePaymentWarning />
         <RetryButton onClick={() => setCycle((current) => current + 1)} />
       </PaymentMessage>
     );
@@ -147,6 +150,7 @@ function PaymentConfirmationCycle({
   if (state.kind === "error") {
     return (
       <PaymentMessage title="Não foi possível verificar agora">
+        <DuplicatePaymentWarning />
         <RetryButton onClick={() => setCycle((current) => current + 1)} />
       </PaymentMessage>
     );
@@ -172,6 +176,10 @@ function PaymentMessage({ children, title }: { children?: ReactNode; title: stri
       </Card>
     </main>
   );
+}
+
+function DuplicatePaymentWarning() {
+  return <p className="mt-3 text-muted-foreground">Não faça outro pagamento.</p>;
 }
 
 function RetryButton({ onClick }: { onClick: () => void }) {

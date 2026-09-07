@@ -14,6 +14,7 @@ const checkoutResponseSchema = z
 const paymentCheckResponseSchema = z.discriminatedUnion("paid", [
   z.object({ paid: z.literal(false) }),
   z.object({
+    success: z.literal(true),
     paid: z.literal(true),
     amount: z.number().int().nonnegative(),
     paid_amount: z.number().int().nonnegative(),

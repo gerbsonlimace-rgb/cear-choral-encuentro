@@ -45,6 +45,16 @@ describe("registration domain", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects an unrecognized shirt size", () => {
+    const result = registrationSchema.safeParse({
+      ...baseInput,
+      includeShirt: true,
+      shirtSize: "XXL",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("rejects an invalid payment return identifier", () => {
     expect(
       paymentLookupSchema.safeParse({

@@ -18,6 +18,7 @@ import {
   REGISTRATION_PRICE_CENTS,
   SHIRT_PRICE_CENTS,
   registrationSchema,
+  shirtSizeSchema,
   type RegistrationInput,
 } from "./registration.domain";
 import { startRegistrationCheckout } from "@/lib/registration.functions";
@@ -289,7 +290,10 @@ export function RegistrationSection({
                       <Select
                         value={form.shirtSize}
                         onValueChange={(value) => {
-                          setForm((previous) => ({ ...previous, shirtSize: value }));
+                          const parsedSize = shirtSizeSchema.safeParse(value);
+                          if (!parsedSize.success) return;
+
+                          setForm((previous) => ({ ...previous, shirtSize: parsedSize.data }));
                           setErrors((previous) => ({ ...previous, shirtSize: undefined }));
                         }}
                       >

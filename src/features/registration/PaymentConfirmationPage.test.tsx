@@ -20,6 +20,13 @@ const nextLookup: PaymentLookup = {
 };
 
 describe("PaymentConfirmationPage", () => {
+  it("explains when the payment lookup is missing and offers a way home", () => {
+    render(<PaymentConfirmationPage lookup={null} verifyPayment={vi.fn()} />);
+
+    expect(screen.getByText("Não foi possível identificar este pagamento.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Voltar ao início" })).toHaveAttribute("href", "/");
+  });
+
   it("shows a confirmed Pix payment without personal data", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
@@ -59,6 +66,35 @@ describe("PaymentConfirmationPage", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("uses singular wording for a one-installment card payment", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "credit_card" as const,
+      installments: 1,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Cartão em 1 parcela")).toBeVisible();
+  });
+
+  it("links only the receipt returned by server verification", async () => {
+    const receiptUrl = "https://receipts.infinitepay.io/receipt/confirmed";
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      receiptUrl,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByRole("link", { name: "Ver comprovante" })).toHaveAttribute(
+      "href",
+      receiptUrl,
+    );
   });
 
   it("does not expose or link an untrusted receipt URL", async () => {
@@ -157,6 +193,7 @@ describe("PaymentConfirmationPage", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(screen.getByText("Pagamento ainda não confirmado")).toBeVisible();
+      expect(screen.getByText("Não faça outro pagamento.")).toBeVisible();
       expect(verifyPayment).toHaveBeenCalledTimes(3);
 
       fireEvent.click(screen.getByRole("button", { name: "Verificar novamente" }));
@@ -164,6 +201,46 @@ describe("PaymentConfirmationPage", () => {
 
       expect(screen.getByText("Inscrição confirmada")).toBeVisible();
       expect(verifyPayment).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("recovers manually after a temporary verification error", async () => {
+    const verifyPayment = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary provider error"))
+      .mockResolvedValueOnce({
+        status: "paid" as const,
+        paymentMethod: "pix" as const,
+        installments: 1,
+      });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Não foi possível verificar agora")).toBeVisible();
+    expect(screen.getByText("Não faça outro pagamento.")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Verificar novamente" }));
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(verifyPayment).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels a scheduled pending retry after unmount", async () => {
+    vi.useFakeTimers();
+    const verifyPayment = vi.fn().mockResolvedValue({ status: "pending" as const });
+
+    try {
+      const { unmount } = render(
+        <PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} retryDelayMs={10} />,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(verifyPayment).toHaveBeenCalledTimes(1);
+
+      unmount();
+      await vi.advanceTimersByTimeAsync(20);
+
+      expect(verifyPayment).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
