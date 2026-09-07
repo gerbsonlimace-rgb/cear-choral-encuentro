@@ -16,37 +16,76 @@ export type Database = {
     Tables: {
       registrations: {
         Row: {
+          amount_cents: number | null
           city: string
+          checkout_url: string | null
           created_at: string
           email: string
           id: string
+          include_shirt: boolean
+          infinitepay_invoice_slug: string | null
+          infinitepay_transaction_nsu: string | null
           institution: string | null
+          installments: number | null
           name: string
           observations: string | null
+          order_nsu: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_status: string
           phone: string
+          receipt_url: string | null
           role: string
+          shirt_size: string | null
         }
         Insert: {
+          amount_cents?: number | null
           city: string
+          checkout_url?: string | null
           created_at?: string
           email: string
           id?: string
+          include_shirt?: boolean
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
           institution?: string | null
+          installments?: number | null
           name: string
           observations?: string | null
+          order_nsu?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
           phone: string
+          receipt_url?: string | null
           role: string
+          shirt_size?: string | null
         }
         Update: {
+          amount_cents?: number | null
           city?: string
+          checkout_url?: string | null
           created_at?: string
           email?: string
           id?: string
+          include_shirt?: boolean
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
           institution?: string | null
+          installments?: number | null
           name?: string
           observations?: string | null
+          order_nsu?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
           phone?: string
+          receipt_url?: string | null
           role?: string
+          shirt_size?: string | null
         }
         Relationships: []
       }
