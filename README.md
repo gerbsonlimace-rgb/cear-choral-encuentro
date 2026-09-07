@@ -25,3 +25,14 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## InfinitePay checkout
+
+- InfiniteTag padrão: `antonio-gerbson`
+- Webhook: `https://encontrocorosce.lovable.app/api/infinitepay-webhook`
+- Retorno: `https://encontrocorosce.lovable.app/pagamento`
+- Variáveis opcionais de servidor: `INFINITEPAY_HANDLE` e `PUBLIC_SITE_URL`
+
+Antes da publicação, habilite Checkout Integrado na conta InfinitePay e configure o cartão para repassar as taxas ao participante. Pix permanece com taxa zero conforme as condições vigentes da InfinitePay.
+
+A migração Supabase deve ser aplicada antes do novo código servido. Não publique apenas uma dessas partes.
