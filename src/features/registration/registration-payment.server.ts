@@ -155,7 +155,7 @@ function mapPaymentRow(row: {
   };
 }
 
-function createSupabaseRegistrationRepository(): RegistrationRepository {
+export function createSupabaseRegistrationRepository(): RegistrationRepository {
   const findPayment = async (orderNsu: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")

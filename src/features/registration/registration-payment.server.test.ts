@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InfinitePayClient } from "./infinitepay.server";
 import type { PaymentLookup, RegistrationInput } from "./registration.domain";
+
+const { supabaseAdminMock } = vi.hoisted(() => ({
+  supabaseAdminMock: { from: vi.fn() },
+}));
+
+vi.mock("@/integrations/supabase/client.server", () => ({
+  supabaseAdmin: supabaseAdminMock,
+}));
+
 import {
   createRegistrationPaymentService,
+  createSupabaseRegistrationRepository,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
@@ -41,6 +51,82 @@ function pendingRecord(): RegistrationPaymentRecord {
     installments: null,
     receiptUrl: null,
   };
+}
+
+type DatabaseResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
+const paymentColumns =
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url";
+
+function paymentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "registration-1",
+    order_nsu: fixedOrderNsu,
+    amount_cents: 10000,
+    payment_status: "pending",
+    infinitepay_transaction_nsu: null,
+    payment_method: null,
+    installments: null,
+    receipt_url: null,
+    ...overrides,
+  };
+}
+
+function createSupabaseHarness(
+  options: {
+    insertResults?: DatabaseResult[];
+    executeResults?: DatabaseResult[];
+    maybeSingleResults?: DatabaseResult[];
+  } = {},
+) {
+  const trace: unknown[][] = [];
+  const insertResults = [...(options.insertResults ?? [])];
+  const executeResults = [...(options.executeResults ?? [])];
+  const maybeSingleResults = [...(options.maybeSingleResults ?? [])];
+
+  const builder: any = {
+    insert: vi.fn(async (values: unknown) => {
+      trace.push(["insert", values]);
+      return insertResults.shift() ?? successfulDatabaseResult;
+    }),
+    update: vi.fn((values: unknown) => {
+      trace.push(["update", values]);
+      return builder;
+    }),
+    select: vi.fn((columns: string) => {
+      trace.push(["select", columns]);
+      return builder;
+    }),
+    eq: vi.fn((column: string, value: unknown) => {
+      trace.push(["eq", column, value]);
+      return builder;
+    }),
+    maybeSingle: vi.fn(async () => {
+      trace.push(["maybeSingle"]);
+      return maybeSingleResults.shift() ?? successfulDatabaseResult;
+    }),
+    then: (
+      onFulfilled: (value: DatabaseResult) => unknown,
+      onRejected?: (reason: unknown) => unknown,
+    ) => {
+      trace.push(["execute"]);
+      return Promise.resolve(executeResults.shift() ?? successfulDatabaseResult).then(
+        onFulfilled,
+        onRejected,
+      );
+    },
+  };
+
+  supabaseAdminMock.from.mockImplementation((table: string) => {
+    trace.push(["from", table]);
+    return builder;
+  });
+
+  return { trace };
 }
 
 function createFixture() {
@@ -112,6 +198,7 @@ describe("registration payment service", () => {
   let fixture: ReturnType<typeof createFixture>;
 
   beforeEach(() => {
+    supabaseAdminMock.from.mockReset();
     fixture = createFixture();
   });
 
@@ -257,5 +344,250 @@ describe("registration payment service", () => {
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
     });
+  });
+});
+
+describe("Supabase registration repository", () => {
+  beforeEach(() => {
+    supabaseAdminMock.from.mockReset();
+  });
+
+  it("inserts every registration field and clears an unselected shirt size", async () => {
+    const database = createSupabaseHarness();
+    const repository = createSupabaseRegistrationRepository();
+
+    await repository.createPending({
+      ...baseInput,
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+    });
+
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      [
+        "insert",
+        {
+          name: "Maria da Silva",
+          email: "maria@example.com",
+          phone: "85999999999",
+          city: "Quixadá",
+          institution: "Coro Paroquial",
+          role: "singer",
+          observations: null,
+          include_shirt: false,
+          shirt_size: null,
+          amount_cents: 10000,
+          payment_status: "pending",
+          order_nsu: fixedOrderNsu,
+        },
+      ],
+    ]);
+  });
+
+  it("surfaces a pending-registration insert failure", async () => {
+    createSupabaseHarness({
+      insertResults: [{ data: null, error: { message: "insert failed" } }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.createPending({ ...baseInput, orderNsu: fixedOrderNsu, amountCents: 10000 }),
+    ).rejects.toThrow("Não foi possível salvar a inscrição");
+  });
+
+  it("looks up and maps only payment columns", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: paymentRow({
+            payment_status: "paid",
+            infinitepay_transaction_nsu: "transaction-1",
+            payment_method: "pix",
+            installments: 1,
+            receipt_url: "https://receipts.infinitepay.io/receipt/abc",
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findPayment(fixedOrderNsu)).resolves.toEqual({
+      id: "registration-1",
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "paid",
+      transactionNsu: "transaction-1",
+      paymentMethod: "pix",
+      installments: 1,
+      receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+    });
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["select", paymentColumns],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["maybeSingle"],
+    ]);
+  });
+
+  it("surfaces a payment lookup failure", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [{ data: null, error: { message: "lookup failed" } }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findPayment(fixedOrderNsu)).rejects.toThrow(
+      "Não foi possível consultar a inscrição",
+    );
+  });
+
+  it("saves the checkout URL only while the order is pending", async () => {
+    const database = createSupabaseHarness();
+    const repository = createSupabaseRegistrationRepository();
+
+    await repository.saveCheckoutUrl(fixedOrderNsu, checkoutUrl);
+
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["update", { checkout_url: checkoutUrl }],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["eq", "payment_status", "pending"],
+      ["execute"],
+    ]);
+  });
+
+  it("surfaces a checkout URL update failure", async () => {
+    createSupabaseHarness({
+      executeResults: [{ data: null, error: { message: "update failed" } }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.saveCheckoutUrl(fixedOrderNsu, checkoutUrl)).rejects.toThrow(
+      "Não foi possível salvar o checkout",
+    );
+  });
+
+  it("accepts a conditional-update race won by the same transaction", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [
+        { data: null, error: null },
+        {
+          data: paymentRow({
+            payment_status: "paid",
+            infinitepay_transaction_nsu: "transaction-1",
+            payment_method: "credit_card",
+            installments: 2,
+            receipt_url: "https://receipts.infinitepay.com.br/receipt/abc",
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markPaid(fixedOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "credit_card",
+        installments: 2,
+        paidAmountCents: 10420,
+        receiptUrl: "https://receipts.infinitepay.com.br/receipt/abc",
+        paidAt: fixedPaidAt,
+      }),
+    ).resolves.toMatchObject({ paymentStatus: "paid", transactionNsu: "transaction-1" });
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      [
+        "update",
+        {
+          payment_status: "paid",
+          infinitepay_invoice_slug: "invoice-1",
+          infinitepay_transaction_nsu: "transaction-1",
+          payment_method: "credit_card",
+          installments: 2,
+          paid_amount_cents: 10420,
+          receipt_url: "https://receipts.infinitepay.com.br/receipt/abc",
+          paid_at: fixedPaidAt,
+        },
+      ],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["eq", "payment_status", "pending"],
+      ["select", paymentColumns],
+      ["maybeSingle"],
+      ["from", "registrations"],
+      ["select", paymentColumns],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["maybeSingle"],
+    ]);
+  });
+
+  it("rejects a conditional-update race won by a different transaction", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        { data: null, error: null },
+        {
+          data: paymentRow({
+            payment_status: "paid",
+            infinitepay_transaction_nsu: "transaction-other",
+            payment_method: "pix",
+            installments: 1,
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markPaid(fixedOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        paidAt: fixedPaidAt,
+      }),
+    ).rejects.toThrow("Transação divergente ou pedido indisponível");
+  });
+
+  it("does not reload after a conditional paid-update database error", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [{ data: null, error: { message: "update failed" } }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markPaid(fixedOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        paidAt: fixedPaidAt,
+      }),
+    ).rejects.toThrow("Não foi possível confirmar a inscrição");
+    expect(database.trace.filter(([operation]) => operation === "from")).toHaveLength(1);
+  });
+
+  it("surfaces a database error while reloading a lost update", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        { data: null, error: null },
+        { data: null, error: { message: "reload failed" } },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markPaid(fixedOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        paidAt: fixedPaidAt,
+      }),
+    ).rejects.toThrow("Não foi possível consultar a inscrição");
   });
 });
