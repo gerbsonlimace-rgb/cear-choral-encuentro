@@ -11,10 +11,12 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null;
-          city: string;
+          birth_date: string | null;
+          city: string | null;
           checkout_url: string | null;
           created_at: string;
-          email: string;
+          diocese: string | null;
+          email: string | null;
           id: string;
           include_shirt: boolean;
           infinitepay_invoice_slug: string | null;
@@ -30,15 +32,17 @@ export type Database = {
           payment_status: string;
           phone: string;
           receipt_url: string | null;
-          role: string;
+          role: string | null;
           shirt_size: string | null;
         };
         Insert: {
           amount_cents?: number | null;
-          city: string;
+          birth_date?: string | null;
+          city?: string | null;
           checkout_url?: string | null;
           created_at?: string;
-          email: string;
+          diocese?: string | null;
+          email?: string | null;
           id?: string;
           include_shirt?: boolean;
           infinitepay_invoice_slug?: string | null;
@@ -54,15 +58,17 @@ export type Database = {
           payment_status?: string;
           phone: string;
           receipt_url?: string | null;
-          role: string;
+          role?: string | null;
           shirt_size?: string | null;
         };
         Update: {
           amount_cents?: number | null;
-          city?: string;
+          birth_date?: string | null;
+          city?: string | null;
           checkout_url?: string | null;
           created_at?: string;
-          email?: string;
+          diocese?: string | null;
+          email?: string | null;
           id?: string;
           include_shirt?: boolean;
           infinitepay_invoice_slug?: string | null;
@@ -78,7 +84,7 @@ export type Database = {
           payment_status?: string;
           phone?: string;
           receipt_url?: string | null;
-          role?: string;
+          role?: string | null;
           shirt_size?: string | null;
         };
         Relationships: [];

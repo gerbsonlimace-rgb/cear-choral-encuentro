@@ -38,7 +38,7 @@ export type InfinitePayClient = {
   createCheckout(input: {
     orderNsu: string;
     items: CheckoutItem[];
-    customer: { name: string; email: string; phoneNumber: string };
+    customer: { name: string; phoneNumber: string };
   }): Promise<{ url: string }>;
   checkPayment(input: PaymentLookup): Promise<CheckedPayment>;
 };
@@ -116,7 +116,6 @@ export function createInfinitePayClient(
           webhook_url: withSitePath(config.siteUrl, "/api/infinitepay-webhook"),
           customer: {
             name: input.customer.name,
-            email: input.customer.email,
             phone_number: input.customer.phoneNumber,
           },
         }),

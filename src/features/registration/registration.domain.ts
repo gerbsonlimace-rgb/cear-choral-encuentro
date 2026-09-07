@@ -3,30 +3,50 @@ import { z } from "zod";
 export const REGISTRATION_PRICE_CENTS = 10000;
 export const SHIRT_PRICE_CENTS = 3990;
 
-export const registrationRoleSchema = z.enum([
-  "participant",
-  "musician",
-  "singer",
-  "conductor",
-  "liturgist",
-  "priest",
-  "other",
-]);
+export const DIOCESES = [
+  "Arquidiocese de Fortaleza",
+  "Diocese do Crato",
+  "Diocese de Crateús",
+  "Diocese de Iguatu",
+  "Diocese de Itapipoca",
+  "Diocese de Limoeiro do Norte",
+  "Diocese de Quixadá",
+  "Diocese de Sobral",
+  "Diocese de Tianguá",
+] as const;
+
+export const dioceseSchema = z.enum(DIOCESES);
 
 export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
+
+const birthDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de nascimento válida.")
+  .refine((value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
+  }, "Informe uma data de nascimento válida.")
+  .refine(
+    (value) => value <= new Date().toISOString().slice(0, 10),
+    "A data de nascimento não pode estar no futuro.",
+  );
 
 export const registrationSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
-    email: z.string().trim().email().max(255),
     phone: z.string().trim().min(8).max(30),
-    city: z.string().trim().min(2).max(100),
-    institution: z.string().trim().max(200).optional().or(z.literal("")),
-    role: registrationRoleSchema,
+    birthDate: birthDateSchema,
+    diocese: dioceseSchema,
     includeShirt: z.boolean(),
     shirtSize: shirtSizeSchema.or(z.literal("")),
-    observations: z.string().trim().max(1000).optional().or(z.literal("")),
   })
+  .strict()
   .superRefine((value, context) => {
     if (value.includeShirt && !value.shirtSize) {
       context.addIssue({

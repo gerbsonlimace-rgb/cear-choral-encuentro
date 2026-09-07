@@ -11,13 +11,29 @@ async function fillRequiredFields(
   user: ReturnType<typeof userEvent.setup>,
   values: { name?: string } = {},
 ) {
-  await user.type(screen.getByLabelText("Nome completo"), values.name ?? "Maria da Silva");
-  await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
-  await user.type(screen.getByLabelText("Telefone"), "85999999999");
-  await user.type(screen.getByLabelText("Cidade"), "Quixadá");
+  await user.type(screen.getByLabelText("Nome Completo"), values.name ?? "Maria da Silva");
+  await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
+  await user.type(screen.getByLabelText("Data de Nascimento"), "1990-05-20");
+  await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
 }
 
 describe("RegistrationSection", () => {
+  it("shows only the simplified required participant fields and the optional shirt", () => {
+    render(<RegistrationSection />);
+
+    expect(screen.getByLabelText("Nome Completo")).toBeRequired();
+    expect(screen.getByLabelText("WhatsApp")).toBeRequired();
+    expect(screen.getByLabelText("Data de Nascimento")).toHaveAttribute("type", "date");
+    expect(screen.getByLabelText("Data de Nascimento")).toBeRequired();
+    expect(screen.getByLabelText("Diocese")).toBeRequired();
+    expect(screen.getByRole("checkbox", { name: /Incluir camisa oficial/ })).not.toBeRequired();
+    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Cidade")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Paróquia / Instituição")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Função")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Observações")).not.toBeInTheDocument();
+  });
+
   it("disables the submit button while checkout is being prepared", async () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockReturnValue(new Promise(() => undefined));
@@ -49,7 +65,7 @@ describe("RegistrationSection", () => {
       "Não foi possível preparar o pagamento. Tente novamente.",
     );
     expect(error).toHaveAttribute("aria-live", "polite");
-    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("Nome Completo")).toHaveValue("Maria da Silva");
     expect(navigateToCheckout).not.toHaveBeenCalled();
   });
 

@@ -23,14 +23,11 @@ const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
-  email: "maria@example.com",
   phone: "85999999999",
-  city: "Quixadá",
-  institution: "Coro Paroquial",
-  role: "singer",
+  birthDate: "1990-05-20",
+  diocese: "Diocese de Quixadá",
   includeShirt: false,
   shirtSize: "",
-  observations: "",
 };
 
 const lookup: PaymentLookup = {
@@ -223,6 +220,11 @@ describe("registration payment service", () => {
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
     });
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
+      orderNsu: fixedOrderNsu,
+      items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
+      customer: { name: "Maria da Silva", phoneNumber: "85999999999" },
+    });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
   });
 
@@ -364,7 +366,7 @@ describe("Supabase registration repository", () => {
     supabaseAdminMock.from.mockReset();
   });
 
-  it("inserts every registration field and clears an unselected shirt size", async () => {
+  it("inserts the simplified registration and clears historical fields", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
 
@@ -380,11 +382,13 @@ describe("Supabase registration repository", () => {
         "insert",
         {
           name: "Maria da Silva",
-          email: "maria@example.com",
           phone: "85999999999",
-          city: "Quixadá",
-          institution: "Coro Paroquial",
-          role: "singer",
+          birth_date: "1990-05-20",
+          diocese: "Diocese de Quixadá",
+          email: null,
+          city: null,
+          institution: null,
+          role: null,
           observations: null,
           include_shirt: false,
           shirt_size: null,

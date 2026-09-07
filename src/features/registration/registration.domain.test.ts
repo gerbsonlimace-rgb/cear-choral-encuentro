@@ -1,21 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  DIOCESES,
   buildCheckoutItems,
   calculateOrderAmountCents,
+  dioceseSchema,
   paymentLookupSchema,
   registrationSchema,
 } from "./registration.domain";
 
 const baseInput = {
   name: "Maria da Silva",
-  email: "maria@example.com",
   phone: "85999999999",
-  city: "Quixadá",
-  institution: "Coro Paroquial",
-  role: "singer" as const,
+  birthDate: "1990-05-20",
+  diocese: "Diocese de Quixadá" as const,
   includeShirt: false,
   shirtSize: "" as const,
-  observations: "",
 };
 
 describe("registration domain", () => {
@@ -53,6 +52,37 @@ describe("registration domain", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts exactly the nine approved dioceses", () => {
+    expect(DIOCESES).toEqual([
+      "Arquidiocese de Fortaleza",
+      "Diocese do Crato",
+      "Diocese de Crateús",
+      "Diocese de Iguatu",
+      "Diocese de Itapipoca",
+      "Diocese de Limoeiro do Norte",
+      "Diocese de Quixadá",
+      "Diocese de Sobral",
+      "Diocese de Tianguá",
+    ]);
+    expect(DIOCESES.every((diocese) => dioceseSchema.safeParse(diocese).success)).toBe(true);
+    expect(dioceseSchema.safeParse("Diocese de Fortaleza").success).toBe(false);
+  });
+
+  it("rejects impossible and future birth dates", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2026-02-30" }).success).toBe(
+      false,
+    );
+    expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2999-01-01" }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects removed public registration fields", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, email: "maria@example.com" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects an invalid payment return identifier", () => {

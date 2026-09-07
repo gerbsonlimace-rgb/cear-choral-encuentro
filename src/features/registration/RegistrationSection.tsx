@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
+  DIOCESES,
   REGISTRATION_PRICE_CENTS,
   SHIRT_PRICE_CENTS,
   registrationSchema,
@@ -28,35 +28,36 @@ type RegistrationSectionProps = {
   navigateToCheckout?: (url: string) => void;
 };
 
+type RegistrationForm = Omit<RegistrationInput, "diocese"> & {
+  diocese: RegistrationInput["diocese"] | "";
+};
+
 const formatCurrency = (valueInCents: number) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(valueInCents / 100);
 
-const initialForm: RegistrationInput = {
+const initialForm: RegistrationForm = {
   name: "",
-  email: "",
   phone: "",
-  city: "",
-  institution: "",
-  role: "participant",
+  birthDate: "",
+  diocese: "",
   includeShirt: false,
   shirtSize: "",
-  observations: "",
 };
 
 export function RegistrationSection({
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
 }: RegistrationSectionProps) {
-  const [form, setForm] = useState<RegistrationInput>(initialForm);
-  const [errors, setErrors] = useState<Partial<Record<keyof RegistrationInput, string>>>({});
+  const [form, setForm] = useState<RegistrationForm>(initialForm);
+  const [errors, setErrors] = useState<Partial<Record<keyof RegistrationForm, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const totalAmount = REGISTRATION_PRICE_CENTS + (form.includeShirt ? SHIRT_PRICE_CENTS : 0);
 
-  const handleChange = (field: keyof RegistrationInput, value: string) => {
+  const handleChange = (field: keyof RegistrationForm, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) {
       setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -69,9 +70,9 @@ export function RegistrationSection({
 
     const parsedForm = registrationSchema.safeParse(form);
     if (!parsedForm.success) {
-      const nextErrors: Partial<Record<keyof RegistrationInput, string>> = {};
+      const nextErrors: Partial<Record<keyof RegistrationForm, string>> = {};
       for (const issue of parsedForm.error.issues) {
-        const field = issue.path[0] as keyof RegistrationInput | undefined;
+        const field = issue.path[0] as keyof RegistrationForm | undefined;
         if (field && !nextErrors[field]) nextErrors[field] = issue.message;
       }
       setErrors(nextErrors);
@@ -157,10 +158,11 @@ export function RegistrationSection({
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name" className="font-semibold">
-                      Nome completo
+                      Nome Completo
                     </Label>
                     <Input
                       id="name"
+                      required
                       value={form.name}
                       onChange={(event) => handleChange("name", event.target.value)}
                       placeholder="Seu nome"
@@ -169,29 +171,13 @@ export function RegistrationSection({
                     {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="font-semibold">
-                      E-mail
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={form.email}
-                      onChange={(event) => handleChange("email", event.target.value)}
-                      placeholder="seu@email.com"
-                      className="min-h-12 rounded-xl border-border bg-background text-base"
-                    />
-                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                  </div>
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="space-y-2">
                     <Label htmlFor="phone" className="font-semibold">
-                      Telefone
+                      WhatsApp
                     </Label>
                     <Input
                       id="phone"
                       type="tel"
+                      required
                       value={form.phone}
                       onChange={(event) => handleChange("phone", event.target.value)}
                       placeholder="(88) 99999-9999"
@@ -199,62 +185,45 @@ export function RegistrationSection({
                     />
                     {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city" className="font-semibold">
-                      Cidade
-                    </Label>
-                    <Input
-                      id="city"
-                      value={form.city}
-                      onChange={(event) => handleChange("city", event.target.value)}
-                      placeholder="Quixadá"
-                      className="min-h-12 rounded-xl border-border bg-background text-base"
-                    />
-                    {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
-                  </div>
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="institution" className="font-semibold">
-                      Paróquia / Instituição
+                    <Label htmlFor="birthDate" className="font-semibold">
+                      Data de Nascimento
                     </Label>
                     <Input
-                      id="institution"
-                      value={form.institution}
-                      onChange={(event) => handleChange("institution", event.target.value)}
-                      placeholder="Onde você atua"
+                      id="birthDate"
+                      type="date"
+                      required
+                      max={new Date().toISOString().slice(0, 10)}
+                      value={form.birthDate}
+                      onChange={(event) => handleChange("birthDate", event.target.value)}
                       className="min-h-12 rounded-xl border-border bg-background text-base"
                     />
-                    {errors.institution && (
-                      <p className="text-sm text-destructive">{errors.institution}</p>
+                    {errors.birthDate && (
+                      <p className="text-sm text-destructive">{errors.birthDate}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="role" className="font-semibold">
-                      Função
+                    <Label htmlFor="diocese" className="font-semibold">
+                      Diocese
                     </Label>
-                    <Select
-                      value={form.role}
-                      onValueChange={(value) => handleChange("role", value)}
+                    <select
+                      id="diocese"
+                      required
+                      value={form.diocese}
+                      onChange={(event) => handleChange("diocese", event.target.value)}
+                      className="min-h-12 w-full rounded-xl border border-border bg-background px-3 text-base"
                     >
-                      <SelectTrigger
-                        id="role"
-                        className="min-h-12 rounded-xl border-border bg-background text-base"
-                      >
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="participant">Participante</SelectItem>
-                        <SelectItem value="musician">Músico</SelectItem>
-                        <SelectItem value="singer">Cantor/Coralista</SelectItem>
-                        <SelectItem value="conductor">Regente</SelectItem>
-                        <SelectItem value="liturgist">Liturgista</SelectItem>
-                        <SelectItem value="priest">Padre/Clero</SelectItem>
-                        <SelectItem value="other">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
+                      <option value="">Selecione a diocese</option>
+                      {DIOCESES.map((diocese) => (
+                        <option key={diocese} value={diocese}>
+                          {diocese}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.diocese && <p className="text-sm text-destructive">{errors.diocese}</p>}
                   </div>
                 </div>
 
@@ -339,23 +308,6 @@ export function RegistrationSection({
                       {formatCurrency(totalAmount)}
                     </span>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="observations" className="font-semibold">
-                    Observações
-                  </Label>
-                  <Textarea
-                    id="observations"
-                    value={form.observations}
-                    onChange={(event) => handleChange("observations", event.target.value)}
-                    placeholder="Informe restricoes, necessidades ou observacoes. O pagamento pode ser via Pix ou cartão."
-                    rows={4}
-                    className="min-h-28 rounded-xl border-border bg-background text-base"
-                  />
-                  {errors.observations && (
-                    <p className="text-sm text-destructive">{errors.observations}</p>
-                  )}
                 </div>
 
                 {checkoutError && (
