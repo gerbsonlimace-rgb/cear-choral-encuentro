@@ -23,6 +23,7 @@ import {
 import {
   exportAdminRegistrations,
   getAdminAccess,
+  getAdminRegistrationSummary,
   listAdminRegistrations,
   type AdminAccessState,
 } from "@/lib/admin.functions";
@@ -33,6 +34,7 @@ import type {
   AdminRegistrationPage,
   AdminRegistrationQuery,
   AdminRegistrationRow,
+  AdminRegistrationSummary,
 } from "./admin.domain";
 
 type Props = {
@@ -40,6 +42,7 @@ type Props = {
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
   loadRegistrations?: (input: { data: AdminRegistrationQuery }) => Promise<AdminRegistrationPage>;
+  loadSummary?: () => Promise<AdminRegistrationSummary>;
   exportRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminExportFile>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
@@ -189,11 +192,69 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
   );
 }
 
+function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
+  const metrics = [
+    { label: "Total", value: summary.total, emphasis: true },
+    { label: "Pagas", value: summary.paid },
+    { label: "Pendentes", value: summary.pending },
+    { label: "Históricas", value: summary.legacy },
+  ];
+
+  return (
+    <section
+      aria-label="Visão geral das inscrições"
+      className="overflow-hidden rounded-xl border bg-card"
+    >
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-foreground">Visão geral</h2>
+          <p className="text-xs text-muted-foreground">Todos os registros</p>
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+          {metrics.map((metric) => (
+            <div key={metric.label}>
+              <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
+              <dd
+                className={`mt-1 text-2xl font-semibold tabular-nums ${
+                  metric.emphasis ? "text-primary" : "text-foreground"
+                }`}
+              >
+                {metric.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="border-t bg-muted/30 p-4 sm:p-5">
+        <h3 className="text-sm font-semibold text-foreground">Inscritos por diocese</h3>
+        {summary.byDiocese.length ? (
+          <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+            {summary.byDiocese.map((item) => (
+              <li
+                key={item.diocese}
+                className="flex min-w-0 items-center justify-between gap-3 border-b border-border/70 py-2.5"
+              >
+                <span className="min-w-0 text-sm text-foreground">{item.diocese}</span>
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                  {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">Nenhuma diocese com inscrições.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function AdminRegistrationsPage({
   onSignedOut,
   onMissingSession,
   checkAdmin = getAdminAccess,
   loadRegistrations = listAdminRegistrations,
+  loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
@@ -202,14 +263,18 @@ export function AdminRegistrationsPage({
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
   >("checking");
   const [result, setResult] = useState<AdminRegistrationPage | null>(null);
+  const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const [searchDraft, setSearchDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState("");
+  const [summaryError, setSummaryError] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const [exporting, setExporting] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [summaryRetry, setSummaryRetry] = useState(0);
   const actionBusy = useRef(false);
   const revision = useRef(0);
   const invalidateAccess = useCallback(() => {
@@ -220,6 +285,7 @@ export function AdminRegistrationsPage({
     const current = ++revision.current;
     setGate("checking");
     setResult(null);
+    setSummary(null);
     try {
       const access = await checkAdmin();
       if (current === revision.current) setGate(access.status);
@@ -276,6 +342,26 @@ export function AdminRegistrationsPage({
     };
   }, [gate, query, retry, loadRegistrations, getSession, onMissingSession]);
 
+  useEffect(() => {
+    if (gate !== "authorized") return;
+    let active = true;
+    setSummaryLoading(true);
+    setSummaryError("");
+    void loadSummary()
+      .then((next) => {
+        if (active) setSummary(next);
+      })
+      .catch(() => {
+        if (active) setSummaryError("Não foi possível carregar os totais. Tente novamente.");
+      })
+      .finally(() => {
+        if (active) setSummaryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [gate, summaryRetry, loadSummary]);
+
   function search(event: FormEvent) {
     event.preventDefault();
     if (loading || actionBusy.current) return;
@@ -322,6 +408,7 @@ export function AdminRegistrationsPage({
     revision.current++;
     setGate("leaving");
     setResult(null);
+    setSummary(null);
     setSearchDraft("");
     setQuery(initialQuery);
     setActionError("");
@@ -417,6 +504,26 @@ export function AdminRegistrationsPage({
         )}
         {gate === "authorized" && (
           <>
+            {summaryLoading ? (
+              <Skeleton className="h-56 w-full" />
+            ) : summaryError ? (
+              <Card>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+                  <p role="alert" className="text-sm">
+                    {summaryError}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSummaryRetry((value) => value + 1)}
+                  >
+                    Tentar novamente
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              summary && <RegistrationSummary summary={summary} />
+            )}
             <form
               onSubmit={search}
               className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"

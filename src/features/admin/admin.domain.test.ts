@@ -5,6 +5,7 @@ import {
   adminRegistrationQuerySchema,
   buildRegistrationsCsv,
   mapAdminRegistrationRow,
+  summarizeAdminRegistrations,
 } from "./admin.domain";
 
 const legacyRow: RegistrationDatabaseRow = {
@@ -275,5 +276,31 @@ describe("admin registration history and CSV", () => {
     expect(file.content).not.toContain("order-secret");
     expect(file.content).not.toContain("receipt-secret");
     expect(file.content).toContain("\r\n");
+  });
+});
+
+describe("admin registration summary", () => {
+  // Detects a production mutation that counts only one status or loses the diocese distribution.
+  it("summarizes every payment status and orders dioceses by registration count", () => {
+    const rows = [
+      mapAdminRegistrationRow({ ...paidRow, diocese: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...pendingRow, diocese: "Diocese de Quixadá" }),
+      mapAdminRegistrationRow({ ...legacyRow, diocese: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...pendingRow, id: "pending-2", diocese: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...paidRow, id: "paid-2", diocese: "Diocese do Crato" }),
+      mapAdminRegistrationRow({ ...legacyRow, id: "legacy-2", diocese: "Diocese do Crato" }),
+    ];
+
+    expect(summarizeAdminRegistrations(rows)).toEqual({
+      total: 6,
+      paid: 2,
+      pending: 2,
+      legacy: 2,
+      byDiocese: [
+        { diocese: "Diocese de Sobral", total: 3 },
+        { diocese: "Diocese do Crato", total: 2 },
+        { diocese: "Diocese de Quixadá", total: 1 },
+      ],
+    });
   });
 });

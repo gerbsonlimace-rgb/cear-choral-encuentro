@@ -1,11 +1,12 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { AdminRegistrationRow } from "./admin.domain";
+import type { AdminRegistrationRow, AdminRegistrationSummary } from "./admin.domain";
 import { AdminRegistrationsPage } from "./AdminRegistrationsPage";
 
 vi.mock("@/lib/admin.functions", () => ({
   getAdminAccess: vi.fn(),
+  getAdminRegistrationSummary: vi.fn(),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
 }));
@@ -23,6 +24,7 @@ const legacy: AdminRegistrationRow = {
   id: "legacy",
   createdAt: "2026-09-01T12:00:00Z",
   name: "Ana Histórica",
+  diocese: "Diocese de Quixadá",
   email: "ana@example.com",
   phone: "85999990000",
   city: "Quixadá",
@@ -57,6 +59,17 @@ const paid: AdminRegistrationRow = {
   paidAt: "2026-09-02T12:00:00Z",
 };
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
+const summary: AdminRegistrationSummary = {
+  total: 14,
+  paid: 8,
+  pending: 4,
+  legacy: 2,
+  byDiocese: [
+    { diocese: "Diocese de Quixadá", total: 7 },
+    { diocese: "Diocese de Sobral", total: 4 },
+    { diocese: "Arquidiocese de Fortaleza", total: 3 },
+  ],
+};
 
 function setup(overrides = {}) {
   const props = {
@@ -64,6 +77,7 @@ function setup(overrides = {}) {
       .fn()
       .mockResolvedValue({ status: "authorized", userId: "admin", email: "admin@example.com" }),
     loadRegistrations: vi.fn().mockResolvedValue(page),
+    loadSummary: vi.fn().mockResolvedValue(summary),
     exportRegistrations: vi
       .fn()
       .mockResolvedValue({ fileName: "inscricoes-2026-09-07.csv", content: "\uFEFFNome\r\nAna" }),
@@ -80,6 +94,30 @@ function setup(overrides = {}) {
 }
 
 describe("AdminRegistrationsPage read-only views", () => {
+  it("shows complete totals and the registration count for each diocese above the filters", async () => {
+    const { loadSummary, user } = setup();
+
+    const overview = await screen.findByRole("region", { name: "Visão geral das inscrições" });
+    expect(within(overview).getByText("14")).toBeInTheDocument();
+    expect(within(overview).getByText("8")).toBeInTheDocument();
+    expect(within(overview).getByText("4")).toBeInTheDocument();
+    expect(within(overview).getByText("2")).toBeInTheDocument();
+    expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
+    expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
+    expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
+    expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
+    expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();
+    expect(within(overview).getByText("3 inscritos")).toBeInTheDocument();
+    expect(overview.compareDocumentPosition(screen.getByLabelText("Pesquisar inscrições"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+
+    await user.type(screen.getByLabelText("Pesquisar inscrições"), "Clara");
+    await user.click(screen.getByRole("button", { name: "Pesquisar" }));
+    await screen.findByRole("table");
+    expect(loadSummary).toHaveBeenCalledOnce();
+  });
+
   it("renders equivalent desktop and mobile records with honest historical payment data", async () => {
     setup();
     expect(await screen.findByText("3 inscrições encontradas")).toBeInTheDocument();

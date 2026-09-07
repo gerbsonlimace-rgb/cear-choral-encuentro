@@ -17,11 +17,12 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,email,phone,city,institution,role,include_shirt,shirt_size,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at";
+  "id,created_at,name,diocese,email,phone,city,institution,role,include_shirt,shirt_size,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
   name: "Maria",
+  diocese: "Diocese de Quixadá",
   email: "maria@example.com",
   phone: "85999999999",
   city: "Fortaleza",
@@ -189,6 +190,51 @@ describe("registration export", () => {
     expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
   });
 });
+
+describe("registration summary", () => {
+  // Detects a production mutation that applies the table's active filters to the top-level totals.
+  it("summarizes the complete unfiltered registration collection", async () => {
+    const repository = {
+      async list() {
+        throw new Error("Unexpected paginated list");
+      },
+      async listAll(query: { search: string; paymentStatus: string }) {
+        if (query.search || query.paymentStatus !== "all") {
+          throw new Error("Summary received table filters");
+        }
+        return [
+          {
+            ...selectedRow,
+            createdAt: selectedRow.created_at,
+            email: selectedRow.email,
+            city: selectedRow.city,
+            paymentStatus: "paid" as const,
+            shirtLabel: "Sem camisa",
+            amountCents: selectedRow.amount_cents,
+            paidAmountCents: selectedRow.paid_amount_cents,
+            paymentMethod: "pix" as const,
+            installments: selectedRow.installments,
+            paidAt: selectedRow.paid_at,
+            diocese: "Diocese de Quixadá",
+          },
+        ];
+      },
+      async recordExport() {
+        throw new Error("Unexpected export audit");
+      },
+    };
+
+    await expect(
+      createAdminRegistrationService(repository, () => new Date()).summary(),
+    ).resolves.toMatchObject({
+      total: 1,
+      paid: 1,
+      pending: 0,
+      legacy: 0,
+      byDiocese: [{ diocese: "Diocese de Quixadá", total: 1 }],
+    });
+  });
+});
 const failure: DatabaseResult = {
   data: null,
   error: {
@@ -258,6 +304,7 @@ describe("registration repository list", () => {
           id: "registration-1",
           createdAt: "2026-09-07T12:00:00Z",
           name: "Maria",
+          diocese: "Diocese de Quixadá",
           email: "maria@example.com",
           phone: "85999999999",
           city: "Fortaleza",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAdminFunctionHandlers,
+  getAdminRegistrationSummary,
   listAdminRegistrations,
   toAdminAccessState,
   type AdminRegistrationServicePort,
@@ -52,6 +53,9 @@ describe("admin registration handlers", () => {
       async export() {
         throw new Error("Unexpected export");
       },
+      async summary() {
+        throw new Error("Unexpected summary");
+      },
     };
 
     await expect(
@@ -74,6 +78,9 @@ describe("admin registration handlers", () => {
       async export() {
         throw new Error("Unexpected export");
       },
+      async summary() {
+        throw new Error("Unexpected summary");
+      },
     };
 
     await expect(
@@ -95,6 +102,9 @@ describe("admin registration handlers", () => {
           content: `${query.search}|${adminUserId}`,
         };
       },
+      async summary() {
+        throw new Error("Unexpected summary");
+      },
     };
 
     await expect(
@@ -115,11 +125,38 @@ describe("admin registration handlers", () => {
         serviceReached = true;
         return { fileName: "unexpected.csv", content: "unexpected" };
       },
+      async summary() {
+        throw new Error("Unexpected summary");
+      },
     };
 
     await expect(
       createAdminFunctionHandlers(service).export({ paymentStatus: "cancelled" }, "admin-user-1"),
     ).rejects.toMatchObject({ name: "ZodError" });
     expect(serviceReached).toBe(false);
+  });
+
+  it("uses an authorized server function to return the complete summary", async () => {
+    const expected = {
+      total: 7,
+      paid: 3,
+      pending: 2,
+      legacy: 2,
+      byDiocese: [{ diocese: "Diocese de Quixadá", total: 7 }],
+    };
+    const service: AdminRegistrationServicePort = {
+      async list() {
+        throw new Error("Unexpected list");
+      },
+      async export() {
+        throw new Error("Unexpected export");
+      },
+      async summary() {
+        return expected;
+      },
+    };
+
+    await expect(createAdminFunctionHandlers(service).summary()).resolves.toEqual(expected);
+    expect(getAdminRegistrationSummary.method).toBe("GET");
   });
 });

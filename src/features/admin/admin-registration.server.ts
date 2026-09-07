@@ -2,11 +2,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   buildRegistrationsCsv,
   mapAdminRegistrationRow,
+  summarizeAdminRegistrations,
   type AdminExportFile,
   type AdminRegistrationExportQuery,
   type AdminRegistrationPage,
   type AdminRegistrationQuery,
   type AdminRegistrationRow,
+  type AdminRegistrationSummary,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
 
@@ -14,6 +16,7 @@ export const adminRegistrationColumns = [
   "id",
   "created_at",
   "name",
+  "diocese",
   "email",
   "phone",
   "city",
@@ -106,6 +109,10 @@ export function createAdminRegistrationService(
 ) {
   return {
     list: (query: AdminRegistrationQuery) => repository.list(query),
+    async summary(): Promise<AdminRegistrationSummary> {
+      const rows = await repository.listAll({ search: "", paymentStatus: "all" });
+      return summarizeAdminRegistrations(rows);
+    },
     async export(
       query: AdminRegistrationExportQuery,
       adminUserId: string,
