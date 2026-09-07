@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAdminFunctionHandlers,
+  listAdminRegistrations,
   toAdminAccessState,
   type AdminRegistrationServicePort,
 } from "./admin.functions";
@@ -34,6 +35,10 @@ describe("admin access state", () => {
 });
 
 describe("admin registration handlers", () => {
+  it("uses POST transport so personal search filters are not encoded in the request URL", () => {
+    expect(listAdminRegistrations.method).toBe("POST");
+  });
+
   it("normalizes a list query and applies its pagination defaults before consulting the service", async () => {
     const service: AdminRegistrationServicePort = {
       async list(query) {

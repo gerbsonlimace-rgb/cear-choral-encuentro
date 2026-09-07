@@ -59,7 +59,7 @@ export const getAdminAccess = createServerFn({ method: "GET" })
     });
   });
 
-export const listAdminRegistrations = createServerFn({ method: "GET" })
+export const listAdminRegistrations = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(adminRegistrationQuerySchema)
   .handler(async ({ data }) => {
