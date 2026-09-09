@@ -230,7 +230,8 @@ function HeroSection() {
               II Encontro de Coros Diocesanos e Litúrgicos do Regional NE 1 - CNBB
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
-              Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
+              “Cantai para o Senhor um canto novo,
+              com arte sustentai a louvação!” Sl 32 (33), 3
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-2 text-sm text-white/90 sm:mt-7 sm:flex-row sm:flex-wrap sm:gap-3 sm:text-base lg:justify-start">
               <div className="flex items-center gap-2">
@@ -240,7 +241,7 @@ function HeroSection() {
               <div className="hidden h-5 w-px bg-white/30 sm:block" />
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-amber" />
-                <span className="font-semibold">Músicos, regentes, cantores e fiéis</span>
+                <span className="font-semibold">Coralistas, Músicos, Regentes e fiéis</span>
               </div>
             </div>
             <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
