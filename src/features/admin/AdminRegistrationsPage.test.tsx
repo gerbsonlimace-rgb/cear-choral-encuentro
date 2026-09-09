@@ -118,6 +118,15 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).toHaveBeenCalledOnce();
   });
 
+  it("links to choir and event-value administration", async () => {
+    setup();
+
+    expect(await screen.findByRole("link", { name: "Coros e valores" })).toHaveAttribute(
+      "href",
+      "/admin/coros",
+    );
+  });
+
   it("renders equivalent desktop and mobile records with honest historical payment data", async () => {
     setup();
     expect(await screen.findByText("3 inscrições encontradas")).toBeInTheDocument();

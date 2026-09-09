@@ -36,6 +36,7 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
+import { AdminNavigation } from "./AdminNavigation";
 
 type Props = {
   onSignedOut: () => void;
@@ -469,6 +470,7 @@ export function AdminRegistrationsPage({
             </div>
           )}
         </header>
+        {gate === "authorized" && <AdminNavigation current="registrations" />}
         <div aria-live="polite" aria-atomic="true" className="text-sm text-muted-foreground">
           <p>{statusText}</p>
           {announcement && <p>{announcement}</p>}
