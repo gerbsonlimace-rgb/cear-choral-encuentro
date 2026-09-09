@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Criar no módulo administrativo um cadastro de coros/dioceses que alimente a lista do formulário público. O valor normal e o valor promocional serão configurações globais do evento. Cada coro terá um indicador que determina automaticamente qual desses valores será aplicado.
+Criar no módulo administrativo um cadastro de coros/dioceses que alimente a lista do formulário público. O valor normal, o valor promocional e o valor da camisa serão configurações globais do evento. Cada coro terá um indicador que determina automaticamente qual valor de inscrição será aplicado.
 
 Para este produto, diocese e coro representam a mesma classificação. O participante apenas escolhe seu coro/diocese; ele não escolhe nem pode alterar manualmente o tipo de preço.
 
@@ -14,12 +14,14 @@ Esta entrega inclui:
 
 - configuração administrativa do valor normal global;
 - configuração administrativa do valor promocional global;
+- configuração administrativa do valor global da camisa;
 - CRUD administrativo de coros/dioceses;
 - indicador de promoção em cada coro;
 - ativação e inativação sem exclusão física;
 - lista pública composta apenas por coros ativos cujo preço aplicável esteja configurado;
 - aplicação automática do valor normal ou promocional ao selecionar o coro;
 - aviso sobre o subsídio por venda de rifas quando a promoção for aplicada;
+- opção de incluir camisa e escolher tamanho quando seu valor estiver configurado;
 - cálculo do pagamento a partir da configuração vigente;
 - fotografia do coro, dos preços e do tipo aplicado em cada inscrição;
 - apresentação da distribuição administrativa como inscrições por coro;
@@ -49,10 +51,11 @@ Uma nova tabela privada `public.event_registration_settings` manterá uma única
 - `id boolean`, chave fixa que garante uma única linha;
 - `standard_price_cents integer`, valor normal opcional e positivo quando preenchido;
 - `promotional_price_cents integer`, valor promocional opcional e positivo quando preenchido;
+- `shirt_price_cents integer`, valor opcional e positivo da camisa;
 - `created_at timestamptz`;
 - `updated_at timestamptz`.
 
-A migração criará apenas a linha estrutural, com os dois valores nulos. Os valores serão armazenados em centavos para evitar arredondamento monetário.
+A migração criará apenas a linha estrutural, com os três valores nulos. Os valores serão armazenados em centavos para evitar arredondamento monetário.
 
 Quando os dois valores estiverem preenchidos, o promocional deverá ser menor que o normal. A interface permitirá limpar um valor para retornar ao estado **Não configurado**.
 
@@ -80,7 +83,8 @@ A tabela `public.registrations` também receberá:
 - `choir_id uuid`, referência a `public.choirs(id)` com exclusão restrita;
 - `pricing_type text`, restrito a `standard` ou `promotional` quando preenchido;
 - `standard_price_cents integer`, fotografia do valor normal vigente;
-- `registration_price_cents integer`, fotografia do preço-base efetivamente aplicado.
+- `registration_price_cents integer`, fotografia do preço-base efetivamente aplicado;
+- `shirt_price_cents integer`, fotografia do preço da camisa, nula quando não incluída ou quando o registro é histórico sem valor comprovado.
 
 Esses campos poderão permanecer nulos apenas nos registros históricos que já existiam antes da nova regra. Nenhum preço histórico será inferido a partir do valor total ou do valor pago.
 
@@ -92,6 +96,7 @@ Ao criar uma nova inscrição, o servidor gravará:
 - o tipo de preço determinado pelo indicador do coro;
 - o valor normal vigente;
 - o preço-base normal ou promocional efetivamente aplicado;
+- o valor vigente da camisa quando ela for incluída;
 - o total em `amount_cents`, formado pelo preço-base e pelos demais itens do pedido.
 
 Assim, renomear ou inativar um coro e alterar qualquer valor global não reescreverá inscrições anteriores. Como nenhum coro será criado pela migração, inscrições antigas manterão o texto histórico e começarão sem associação automática a um novo coro.
@@ -110,7 +115,7 @@ A regra terá uma única fonte de verdade no servidor:
 
 O navegador nunca decidirá o preço. Ele receberá uma cotação para exibição, mas o servidor repetirá a resolução antes de criar o pagamento.
 
-Para detectar uma configuração alterada enquanto o formulário está aberto, o envio incluirá a cotação exibida como dado não confiável. O servidor comparará tipo e valor exibidos com sua resolução atual. Se houver divergência, recusará o início do checkout e solicitará nova confirmação da seleção.
+Para detectar uma configuração alterada enquanto o formulário está aberto, o envio incluirá a cotação exibida como dado não confiável. O servidor comparará tipo, valor de inscrição e valor da camisa exibidos com sua resolução atual. Se houver divergência, recusará o início do checkout e solicitará nova confirmação da seleção.
 
 ## Segurança e autorização
 
@@ -124,7 +129,8 @@ A lista pública será exposta por uma função de servidor separada. Ela retorn
 - nome;
 - tipo de preço resolvido;
 - valor normal;
-- valor aplicado.
+- valor aplicado;
+- valor da camisa, ou nulo quando ela estiver indisponível.
 
 Essa função filtrará coros inativos e coros cujo preço aplicável não possa ser resolvido. Um coro normal exige o valor normal; um coro promocional exige tanto o valor normal quanto o promocional, pois os dois aparecem no aviso. Datas administrativas e configurações incompletas não serão expostas.
 
@@ -136,6 +142,7 @@ No topo haverá o cartão **Valores do evento**, com:
 
 - campo **Valor normal**;
 - campo **Valor promocional**;
+- campo **Valor da camisa**;
 - estado **Não configurado** para campos vazios;
 - ação explícita para salvar;
 - mensagens imediatas de carregamento, sucesso e falha.
@@ -174,21 +181,23 @@ Antes da seleção, não haverá preço fixo atribuído ao pedido. Ao selecionar
 - o participante não verá controles para trocar o tipo de preço;
 - o total será recalculado com a camisa, quando escolhida.
 
+A opção **Incluir camisa oficial** e a escolha de tamanho serão exibidas somente quando o valor da camisa estiver configurado. A promoção será aplicada apenas ao preço-base da inscrição; a camisa manterá o mesmo valor para todos os coros.
+
 Quando o preço promocional for aplicado, a página destacará um aviso com valores dinâmicos baseado neste texto:
 
 > Valor promocional para este coro: R$ 100,00. O valor normal do evento é R$ 300,00. A diferença será subsidiada pela venda de rifas, e o coralista deverá participar dessa ação.
 
 Os valores do exemplo serão substituídos pelos valores globais vigentes. O aviso é informativo e não exige uma caixa adicional de aceite.
 
-Se a configuração mudar ou o coro for inativado enquanto o formulário estiver aberto, o servidor recusará a cotação desatualizada. A interface preservará os demais campos, recarregará as opções e pedirá que o participante confirme novamente o coro.
+Se qualquer preço mudar ou o coro for inativado enquanto o formulário estiver aberto, o servidor recusará a cotação desatualizada. A interface preservará os demais campos, recarregará as opções e pedirá que o participante confirme novamente o coro. Se a camisa ficar indisponível, ela será removida do pedido e o participante verá a alteração antes de tentar novamente.
 
 Se nenhum coro estiver disponível, o formulário informará que as inscrições ainda não estão disponíveis e não permitirá iniciar o pagamento.
 
 ## Checkout e histórico
 
-O item principal enviado à InfinitePay usará exclusivamente o preço resolvido no servidor. A camisa continuará sendo somada separadamente conforme a regra existente.
+O item principal enviado à InfinitePay usará exclusivamente o preço resolvido no servidor. A camisa será somada separadamente pelo valor global vigente e somente quando tiver sido escolhida com tamanho válido.
 
-O valor conferido durante a confirmação do pagamento continuará sendo o `amount_cents` gravado na inscrição. `standard_price_cents`, `registration_price_cents` e `pricing_type` permitirão comprovar posteriormente o benefício aplicado e o valor restante subsidiado. Nenhuma confirmação consultará os preços atuais.
+O valor conferido durante a confirmação do pagamento continuará sendo o `amount_cents` gravado na inscrição. `standard_price_cents`, `registration_price_cents`, `shirt_price_cents` e `pricing_type` permitirão comprovar posteriormente o benefício e os itens aplicados. Nenhuma confirmação consultará os preços atuais.
 
 Inscrições antigas continuarão visíveis no painel. A coluna e o resumo usarão o rótulo **Coro**; quando o registro antigo tiver apenas o texto histórico, esse texto será exibido normalmente.
 
@@ -234,6 +243,8 @@ A implementação seguirá TDD e cobrirá:
 - apresentação dinâmica do aviso de rifas;
 - ausência de escolha manual do tipo de preço;
 - atualização visual do total ao selecionar o coro ou a camisa;
+- ocultação da camisa enquanto seu valor não estiver configurado;
+- uso e persistência do valor global da camisa;
 - preservação dos campos após uma cotação desatualizada;
 - cálculo do checkout com o preço resolvido no servidor;
 - rejeição de preço, tipo ou coro manipulados no navegador;

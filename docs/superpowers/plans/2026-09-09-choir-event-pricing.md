@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an authenticated choir CRUD and global standard/promotional event pricing that automatically quotes and snapshots the correct registration price.
+**Goal:** Add an authenticated choir CRUD and global standard, promotional, and shirt pricing that automatically quotes and snapshots the correct registration total.
 
-**Architecture:** A private singleton settings table stores the two global prices, while a private choir table stores availability and promotional eligibility. Server functions expose a minimal resolved public list and separately authorize all administrative reads and mutations; checkout re-resolves the selected choir and compares the displayed quote before persisting immutable pricing snapshots.
+**Architecture:** A private singleton settings table stores the three global prices, while a private choir table stores availability and promotional eligibility. Server functions expose a minimal resolved public configuration and separately authorize all administrative reads and mutations; checkout re-resolves the selected choir and shirt price and compares the displayed quote before persisting immutable pricing snapshots.
 
 **Tech Stack:** React 19, TanStack Start/Router, TypeScript, Zod, Supabase/Postgres with RLS, Vitest, Testing Library, Tailwind/shadcn UI.
 
@@ -18,6 +18,7 @@
 - Existing registrations and their payment history must remain intact and must not receive invented pricing data.
 - All administrative operations call `requireAdmin`; `anon` and `authenticated` receive no direct table grants.
 - Prices are positive integer cents, and a configured promotional price is lower than the configured standard price.
+- The optional shirt control is public only while a global shirt price is configured; promotion never discounts the shirt.
 - Remote SQL, Git push, and Lovable publication are outside this implementation.
 - Use `npx supabase` with explicit `--local`/`--linked` targeting; never run a remote mutation in this plan.
 
@@ -31,21 +32,21 @@
 
 **Interfaces:**
 - Produces: `pricingSettingsSchema`, `choirMutationSchema`, `choirIdSchema`, `displayedQuoteSchema`.
-- Produces: `PricingSettings`, `AdminChoir`, `PublicChoirOption`, `DisplayedQuote`, `ResolvedChoirPrice`.
+- Produces: `PricingSettings`, `AdminChoir`, `PublicChoirOption`, `PublicRegistrationConfiguration`, `DisplayedQuote`, `ResolvedChoirPrice`.
 - Produces: `parseCurrencyToCents(value: string): number | null`, `formatCentsForInput(value: number | null): string`, and `resolveChoirPrice(choir, settings): ResolvedChoirPrice | null`.
 
 - [ ] **Step 1: Write failing domain tests**
 
-Cover exact BRL parsing (`"300,00" -> 30000`, blank -> `null`), rejection of zero/negative/more than two decimals, promotional price lower than standard when both exist, trimmed unique-ready names, and resolution rules:
+Cover exact BRL parsing (`"300,00" -> 30000`, blank -> `null`), rejection of zero/negative/more than two decimals, promotional price lower than standard when both exist, optional shirt pricing, trimmed unique-ready names, and resolution rules:
 
 ```ts
-expect(resolveChoirPrice(promotionalChoir, { standardPriceCents: 30000, promotionalPriceCents: 10000 })).toEqual({
+expect(resolveChoirPrice(promotionalChoir, { standardPriceCents: 30000, promotionalPriceCents: 10000, shirtPriceCents: 5000 })).toEqual({
   pricingType: "promotional",
   standardPriceCents: 30000,
   registrationPriceCents: 10000,
 });
-expect(resolveChoirPrice(promotionalChoir, { standardPriceCents: 30000, promotionalPriceCents: null })).toBeNull();
-expect(resolveChoirPrice(standardChoir, { standardPriceCents: 30000, promotionalPriceCents: null })?.registrationPriceCents).toBe(30000);
+expect(resolveChoirPrice(promotionalChoir, { standardPriceCents: 30000, promotionalPriceCents: null, shirtPriceCents: null })).toBeNull();
+expect(resolveChoirPrice(standardChoir, { standardPriceCents: 30000, promotionalPriceCents: null, shirtPriceCents: null })?.registrationPriceCents).toBe(30000);
 ```
 
 - [ ] **Step 2: Run the test and verify RED**
@@ -56,7 +57,7 @@ Expected: FAIL because the domain module does not exist.
 
 - [ ] **Step 3: Implement the minimal domain**
 
-Use strict Zod objects. Keep database cents as integers and form currency as strings. `PublicChoirOption` must contain only `id`, `name`, `pricingType`, `standardPriceCents`, and `registrationPriceCents`.
+Use strict Zod objects. Keep database cents as integers and form currency as strings. `PublicChoirOption` contains only resolved choir pricing, while `PublicRegistrationConfiguration` contains `choirs` and nullable `shirtPriceCents`.
 
 - [ ] **Step 4: Run the focused test and verify GREEN**
 
@@ -78,7 +79,7 @@ git commit -m "feat: add choir pricing domain"
 
 **Interfaces:**
 - Produces: private tables `public.event_registration_settings` and `public.choirs`.
-- Produces: registration columns `choir_id`, `choir_name`, `pricing_type`, `standard_price_cents`, and `registration_price_cents`.
+- Produces: registration columns `choir_id`, `choir_name`, `pricing_type`, `standard_price_cents`, `registration_price_cents`, and `shirt_price_cents`.
 - Preserves: existing registration rows with renamed `diocese` text and nullable new snapshots.
 
 - [ ] **Step 1: Write the failing migration contract test**
@@ -94,7 +95,7 @@ expect(sql).toContain("rename column diocese to choir_name");
 expect(sql).not.toMatch(/insert\s+into\s+public\.choirs/i);
 ```
 
-Also assert the singleton-row check, case-insensitive unique index, positive-price checks, promotion-below-standard check, `ON DELETE RESTRICT`, and all-or-none snapshot consistency for new registrations.
+Also assert the singleton-row check, case-insensitive unique index, positive-price checks including the shirt, promotion-below-standard check, `ON DELETE RESTRICT`, and coherent snapshots for new registrations.
 
 - [ ] **Step 2: Run the migration test and verify RED**
 
@@ -141,13 +142,13 @@ git commit -m "feat: add choir pricing schema"
 
 **Interfaces:**
 - Produces: `ChoirPricingRepository` with `getSettings`, `saveSettings`, `listAdminChoirs`, `createChoir`, `updateChoir`, and `setChoirActive`.
-- Produces: `ChoirPricingService` with `listPublicOptions` and the administrative methods.
-- Produces public server function `listPublicChoirOptions` without auth middleware.
+- Produces: `ChoirPricingService` with `getPublicConfiguration`, `resolveActiveChoir`, and the administrative methods.
+- Produces public server function `getPublicRegistrationConfiguration` without auth middleware.
 - Produces protected functions `getAdminChoirPricing`, `saveAdminPricingSettings`, `createAdminChoir`, `updateAdminChoir`, and `setAdminChoirActive`, each using `requireAdmin`.
 
 - [ ] **Step 1: Write failing repository/service tests**
 
-Test that public options omit inactive and unresolved rows and contain only the public fields. Test safe error mapping, lowercased-name duplicate conflicts, price-setting validation, and persistence mappings.
+Test that public configuration omits inactive and unresolved rows, includes nullable shirt price, and contains only public fields. Test safe error mapping, lowercased-name duplicate conflicts, three-price setting validation, and persistence mappings.
 
 - [ ] **Step 2: Verify repository/service tests fail**
 
@@ -200,7 +201,7 @@ git commit -m "feat: add protected choir pricing services"
 
 - [ ] **Step 1: Write failing UI tests**
 
-Assert that an authorized page renders both currency inputs, `Não configurado`, an empty choir state, and create/edit/inactivate/reactivate flows. Verify a promotional choir without configured promotional pricing shows the warning that it remains hidden publicly. Verify save errors keep entered values.
+Assert that an authorized page renders all three currency inputs, `Não configurado`, an empty choir state, and create/edit/inactivate/reactivate flows. Verify a promotional choir without configured promotional pricing shows the warning that it remains hidden publicly. Verify save errors keep entered values.
 
 - [ ] **Step 2: Run UI tests and verify RED**
 
@@ -242,14 +243,14 @@ git commit -m "feat: add choir pricing administration"
 - Modify: `src/lib/admin.functions.test.ts`
 
 **Interfaces:**
-- Consumes `PublicChoirOption`, `DisplayedQuote`, and server-side pricing service from Tasks 1 and 3.
+- Consumes `PublicRegistrationConfiguration`, `DisplayedQuote`, and server-side pricing service from Tasks 1 and 3.
 - Changes `RegistrationInput` from fixed `diocese` to `choirId` plus displayed quote fields used only for stale-quote comparison.
 - Changes checkout builders to accept a trusted `ResolvedChoirPrice`.
-- Persists `choir_id`, `choir_name`, `pricing_type`, `standard_price_cents`, `registration_price_cents`, and the trusted total.
+- Persists `choir_id`, `choir_name`, `pricing_type`, `standard_price_cents`, `registration_price_cents`, `shirt_price_cents`, and the trusted total.
 
 - [ ] **Step 1: Write failing registration-domain tests**
 
-Remove assertions for the fixed diocese enum. Assert UUID choir validation, checkout items built from a trusted 30000/10000 quote, shirt addition, and no client-controlled pricing path.
+Remove assertions for the fixed diocese enum. Assert UUID choir validation, checkout items built from a trusted 30000/10000 quote, shirt addition from a trusted configured value, hidden shirt when unconfigured, and no client-controlled pricing path.
 
 - [ ] **Step 2: Run the registration-domain test and verify RED**
 
@@ -267,7 +268,7 @@ Run the command from Step 2.
 
 - [ ] **Step 5: Write failing payment-service tests**
 
-Assert that `startCheckout` resolves the choir on the server, rejects inactive/unpriced/stale quotes before `createPending`, automatically applies promotion, and persists all snapshots. Assert `amount_cents` equals trusted registration price plus shirt.
+Assert that `startCheckout` resolves the choir and shirt price on the server, rejects inactive/unpriced/stale quotes before `createPending`, automatically applies promotion, and persists all snapshots. Assert `amount_cents` equals trusted registration price plus the trusted shirt price.
 
 - [ ] **Step 6: Run the payment-service test and verify RED**
 
@@ -283,7 +284,7 @@ Run: `npm run test:run -- src/features/registration/registration-payment.server.
 
 - [ ] **Step 9: Write failing public-form tests**
 
-Assert loading/retry/empty states, the label **Coro/Diocese**, automatic standard price, automatic promotional price, no price-choice control, dynamic raffle notice, total with shirt, and form preservation after stale quote.
+Assert loading/retry/empty states, the label **Coro/Diocese**, automatic standard price, automatic promotional price, no price-choice control, dynamic raffle notice, hidden shirt while unconfigured, total with configured shirt, and form preservation after stale quote.
 
 - [ ] **Step 10: Run the public-form test and verify RED**
 
@@ -316,7 +317,7 @@ git commit -m "feat: apply automatic choir pricing to checkout"
 
 **Interfaces:**
 - Renames administrative `diocese` presentation to `choirName` and `byDiocese` summary to `byChoir`.
-- Exposes nullable `pricingType`, `standardPriceCents`, and `registrationPriceCents` without fabricating data for historical rows.
+- Exposes nullable `pricingType`, `standardPriceCents`, `registrationPriceCents`, and `shirtPriceCents` without fabricating data for historical rows.
 - Keeps payment totals/statuses and CSV escaping rules unchanged.
 
 - [ ] **Step 1: Write failing history and summary tests**
