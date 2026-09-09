@@ -35,6 +35,15 @@ export const choirMutationSchema = z
 
 export const choirIdSchema = z.string().uuid();
 
+export const choirUpdateSchema = choirMutationSchema.extend({ id: choirIdSchema });
+
+export const choirActiveSchema = z
+  .object({
+    id: choirIdSchema,
+    isActive: z.boolean(),
+  })
+  .strict();
+
 export const displayedQuoteSchema = z
   .object({
     pricingType: pricingTypeSchema,
