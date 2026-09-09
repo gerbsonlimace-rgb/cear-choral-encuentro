@@ -16,6 +16,7 @@ tmp/
 .tanstack/**
 .nitro
 *.local
+.worktrees/
 
 # Wrangler / Cloudflare
 .wrangler/
