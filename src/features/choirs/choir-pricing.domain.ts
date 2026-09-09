@@ -8,6 +8,7 @@ export const pricingSettingsSchema = z
   .object({
     standardPriceCents: optionalPositiveCentsSchema,
     promotionalPriceCents: optionalPositiveCentsSchema,
+    shirtPriceCents: optionalPositiveCentsSchema,
   })
   .strict()
   .superRefine((settings, context) => {
@@ -59,6 +60,11 @@ export type PublicChoirOption = {
   pricingType: DisplayedQuote["pricingType"];
   standardPriceCents: number;
   registrationPriceCents: number;
+};
+
+export type PublicRegistrationConfiguration = {
+  choirs: PublicChoirOption[];
+  shirtPriceCents: number | null;
 };
 
 export function parseCurrencyToCents(value: string): number | null {

@@ -71,14 +71,69 @@ export type Database = {
         }
         Relationships: []
       }
+      choirs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          uses_promotional_price: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          uses_promotional_price?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          uses_promotional_price?: boolean
+        }
+        Relationships: []
+      }
+      event_registration_settings: {
+        Row: {
+          created_at: string
+          id: boolean
+          promotional_price_cents: number | null
+          shirt_price_cents: number | null
+          standard_price_cents: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          promotional_price_cents?: number | null
+          shirt_price_cents?: number | null
+          standard_price_cents?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          promotional_price_cents?: number | null
+          shirt_price_cents?: number | null
+          standard_price_cents?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registrations: {
         Row: {
           amount_cents: number | null
           birth_date: string
           checkout_url: string | null
+          choir_id: string | null
+          choir_name: string
           city: string | null
           created_at: string
-          diocese: string
           email: string | null
           id: string
           include_shirt: boolean
@@ -94,17 +149,22 @@ export type Database = {
           payment_method: string | null
           payment_status: string
           phone: string
+          pricing_type: string | null
+          registration_price_cents: number | null
           receipt_url: string | null
           role: string | null
           shirt_size: string | null
+          shirt_price_cents: number | null
+          standard_price_cents: number | null
         }
         Insert: {
           amount_cents?: number | null
           birth_date: string
           checkout_url?: string | null
+          choir_id?: string | null
+          choir_name: string
           city?: string | null
           created_at?: string
-          diocese: string
           email?: string | null
           id?: string
           include_shirt?: boolean
@@ -120,17 +180,22 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           phone: string
+          pricing_type?: string | null
+          registration_price_cents?: number | null
           receipt_url?: string | null
           role?: string | null
           shirt_size?: string | null
+          shirt_price_cents?: number | null
+          standard_price_cents?: number | null
         }
         Update: {
           amount_cents?: number | null
           birth_date?: string
           checkout_url?: string | null
+          choir_id?: string | null
+          choir_name?: string
           city?: string | null
           created_at?: string
-          diocese?: string
           email?: string | null
           id?: string
           include_shirt?: boolean
@@ -146,11 +211,23 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           phone?: string
+          pricing_type?: string | null
+          registration_price_cents?: number | null
           receipt_url?: string | null
           role?: string | null
           shirt_size?: string | null
+          shirt_price_cents?: number | null
+          standard_price_cents?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "registrations_choir_id_fkey"
+            columns: ["choir_id"]
+            isOneToOne: false
+            referencedRelation: "choirs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

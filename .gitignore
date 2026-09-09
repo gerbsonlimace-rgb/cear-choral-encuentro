@@ -17,6 +17,7 @@ tmp/
 .nitro
 *.local
 .worktrees/
+supabase/.temp/
 
 # Wrangler / Cloudflare
 .wrangler/
