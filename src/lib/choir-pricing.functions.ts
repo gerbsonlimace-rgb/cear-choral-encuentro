@@ -48,9 +48,7 @@ export function createChoirPricingFunctionHandlers(service: ChoirPricingServiceP
 }
 
 async function loadHandlers() {
-  const { getChoirPricingService } = await import(
-    "@/features/choirs/choir-pricing.server"
-  );
+  const { getChoirPricingService } = await import("@/features/choirs/choir-pricing.server");
   return createChoirPricingFunctionHandlers(getChoirPricingService());
 }
 

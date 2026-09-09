@@ -111,7 +111,11 @@ export function AdminChoirsPage({
 }: AdminChoirsPageProps) {
   const [gate, setGate] = useState<Gate>("checking");
   const [data, setData] = useState<AdminChoirPricing | null>(null);
-  const [settings, setSettings] = useState<SettingsDraft>({ standard: "", promotional: "", shirt: "" });
+  const [settings, setSettings] = useState<SettingsDraft>({
+    standard: "",
+    promotional: "",
+    shirt: "",
+  });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -176,9 +180,11 @@ export function AdminChoirsPage({
       setSettings(settingsDraft(saved));
       setMessage("Valores do evento salvos.");
     } catch (caught) {
-      setError(caught instanceof Error && caught.message.includes("promocional")
-        ? caught.message
-        : "Não foi possível salvar os valores do evento.");
+      setError(
+        caught instanceof Error && caught.message.includes("promocional")
+          ? caught.message
+          : "Não foi possível salvar os valores do evento.",
+      );
     } finally {
       setSaving(false);
     }
@@ -266,14 +272,26 @@ export function AdminChoirsPage({
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Encontro de Coros · Administração</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              Encontro de Coros · Administração
+            </p>
             <h1 className="mt-2 font-display text-2xl">Coros e valores</h1>
           </div>
-          {gate === "authorized" && <Button size="sm" variant="outline" onClick={logout}>Sair</Button>}
+          {gate === "authorized" && (
+            <Button size="sm" variant="outline" onClick={logout}>
+              Sair
+            </Button>
+          )}
         </header>
         {gate === "authorized" && <AdminNavigation current="choirs" />}
-        <div aria-live="polite" className="text-sm text-muted-foreground">{message}</div>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <div aria-live="polite" className="text-sm text-muted-foreground">
+          {message}
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         {gate === "checking" && <Skeleton className="h-40 w-full" />}
         {gate === "forbidden" && <p role="alert">Acesso não autorizado.</p>}
         {gate === "error" && <p role="alert">Não foi possível verificar seu acesso.</p>}
@@ -284,15 +302,19 @@ export function AdminChoirsPage({
               <CardContent className="p-5 sm:p-6">
                 <div className="mb-5">
                   <h2 className="font-display text-xl">Valores do evento</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Deixe vazio para manter uma opção indisponível ao público.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Deixe vazio para manter uma opção indisponível ao público.
+                  </p>
                 </div>
                 <form onSubmit={submitSettings} className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-3">
-                    {([
-                      ["standard", "Valor normal"],
-                      ["promotional", "Valor promocional"],
-                      ["shirt", "Valor da camisa"],
-                    ] as const).map(([field, label]) => (
+                    {(
+                      [
+                        ["standard", "Valor normal"],
+                        ["promotional", "Valor promocional"],
+                        ["shirt", "Valor da camisa"],
+                      ] as const
+                    ).map(([field, label]) => (
                       <div className="space-y-2" key={field}>
                         <Label htmlFor={`price-${field}`}>{label}</Label>
                         <Input
@@ -300,13 +322,20 @@ export function AdminChoirsPage({
                           inputMode="decimal"
                           placeholder="Não configurado"
                           value={settings[field]}
-                          onChange={(event) => setSettings((previous) => ({ ...previous, [field]: event.target.value }))}
+                          onChange={(event) =>
+                            setSettings((previous) => ({
+                              ...previous,
+                              [field]: event.target.value,
+                            }))
+                          }
                           disabled={saving}
                         />
                       </div>
                     ))}
                   </div>
-                  <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar valores"}</Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Salvando…" : "Salvar valores"}
+                  </Button>
                 </form>
               </CardContent>
             </Card>
@@ -315,12 +344,18 @@ export function AdminChoirsPage({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl">Coros/Dioceses</h2>
-                  <p className="text-sm text-muted-foreground">A promoção é aplicada automaticamente no formulário público.</p>
+                  <p className="text-sm text-muted-foreground">
+                    A promoção é aplicada automaticamente no formulário público.
+                  </p>
                 </div>
                 <Button onClick={openCreate}>Cadastrar coro</Button>
               </div>
               {data.choirs.length === 0 ? (
-                <Card><CardContent className="p-6 text-center text-sm">Nenhum coro cadastrado.</CardContent></Card>
+                <Card>
+                  <CardContent className="p-6 text-center text-sm">
+                    Nenhum coro cadastrado.
+                  </CardContent>
+                </Card>
               ) : (
                 <div className="grid gap-3">
                   {data.choirs.map((choir) => (
@@ -329,13 +364,21 @@ export function AdminChoirsPage({
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold">{choir.name}</h3>
-                            <Badge variant={choir.isActive ? "default" : "secondary"}>{choir.isActive ? "Ativo" : "Inativo"}</Badge>
-                            {choir.usesPromotionalPrice && <Badge variant="outline">Promocional</Badge>}
+                            <Badge variant={choir.isActive ? "default" : "secondary"}>
+                              {choir.isActive ? "Ativo" : "Inativo"}
+                            </Badge>
+                            {choir.usesPromotionalPrice && (
+                              <Badge variant="outline">Promocional</Badge>
+                            )}
                           </div>
-                          <p className="mt-2 text-sm text-muted-foreground">{choirAvailability(choir, data.settings)}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {choirAvailability(choir, data.settings)}
+                          </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>Editar</Button>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
+                            Editar
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -362,7 +405,9 @@ export function AdminChoirsPage({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Editar coro" : "Cadastrar coro"}</DialogTitle>
-            <DialogDescription>Defina o nome e se a promoção global deve ser aplicada automaticamente.</DialogDescription>
+            <DialogDescription>
+              Defina o nome e se a promoção global deve ser aplicada automaticamente.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={submitChoir} className="space-y-5">
             <div className="space-y-2">
@@ -372,7 +417,9 @@ export function AdminChoirsPage({
                 required
                 maxLength={120}
                 value={choirDraft.name}
-                onChange={(event) => setChoirDraft((previous) => ({ ...previous, name: event.target.value }))}
+                onChange={(event) =>
+                  setChoirDraft((previous) => ({ ...previous, name: event.target.value }))
+                }
               />
             </div>
             <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
@@ -382,12 +429,21 @@ export function AdminChoirsPage({
                 type="checkbox"
                 className="size-5 accent-primary"
                 checked={choirDraft.usesPromotionalPrice}
-                onChange={(event) => setChoirDraft((previous) => ({ ...previous, usesPromotionalPrice: event.target.checked }))}
+                onChange={(event) =>
+                  setChoirDraft((previous) => ({
+                    ...previous,
+                    usesPromotionalPrice: event.target.checked,
+                  }))
+                }
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar coro"}</Button>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Salvando…" : "Salvar coro"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -402,7 +458,8 @@ export function AdminChoirsPage({
           <AlertDialogHeader>
             <AlertDialogTitle>Inativar este coro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Ele deixará de aparecer no formulário público, mas as inscrições anteriores serão preservadas.
+              Ele deixará de aparecer no formulário público, mas as inscrições anteriores serão
+              preservadas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

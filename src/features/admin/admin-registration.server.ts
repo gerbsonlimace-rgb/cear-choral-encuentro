@@ -16,7 +16,7 @@ export const adminRegistrationColumns = [
   "id",
   "created_at",
   "name",
-  "diocese",
+  "choir_name",
   "email",
   "phone",
   "city",
@@ -24,6 +24,10 @@ export const adminRegistrationColumns = [
   "role",
   "include_shirt",
   "shirt_size",
+  "pricing_type",
+  "standard_price_cents",
+  "registration_price_cents",
+  "shirt_price_cents",
   "amount_cents",
   "paid_amount_cents",
   "payment_status",
@@ -36,7 +40,7 @@ function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
   const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
   const quoted = `"${pattern.replace(/[\\"]/g, "\\$&")}"`;
-  return ["name", "email", "phone", "city", "institution"]
+  return ["name", "choir_name", "email", "phone", "city", "institution"]
     .map((column) => `${column}.ilike.${quoted}`)
     .join(",");
 }

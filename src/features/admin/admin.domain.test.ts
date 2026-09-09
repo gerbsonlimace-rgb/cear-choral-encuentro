@@ -13,7 +13,8 @@ const legacyRow: RegistrationDatabaseRow = {
   created_at: "2025-08-22T14:00:00.000Z",
   name: "Ana Histórica",
   birth_date: "1990-01-01",
-  diocese: "Diocese de Sobral",
+  choir_id: null,
+  choir_name: "Diocese de Sobral",
   email: "ana@example.com",
   phone: "85988887777",
   city: "Sobral",
@@ -21,6 +22,10 @@ const legacyRow: RegistrationDatabaseRow = {
   role: "singer",
   include_shirt: false,
   shirt_size: null,
+  pricing_type: null,
+  standard_price_cents: null,
+  registration_price_cents: null,
+  shirt_price_cents: null,
   amount_cents: null,
   paid_amount_cents: null,
   payment_status: "legacy",
@@ -45,6 +50,10 @@ const pendingRow: RegistrationDatabaseRow = {
   shirt_size: null,
   amount_cents: 10000,
   payment_method: "pix",
+  choir_id: "11111111-1111-4111-8111-111111111111",
+  pricing_type: "promotional",
+  standard_price_cents: 30000,
+  registration_price_cents: 10000,
 };
 
 const paidRow: RegistrationDatabaseRow = {
@@ -64,6 +73,10 @@ const paidRow: RegistrationDatabaseRow = {
   payment_method: "credit_card",
   installments: 2,
   paid_at: "2026-09-08T15:30:00.000Z",
+  pricing_type: "promotional",
+  standard_price_cents: 30000,
+  registration_price_cents: 10000,
+  shirt_price_cents: 3990,
   checkout_url: "https://checkout.example/checkout-secret",
   infinitepay_invoice_slug: "invoice-secret",
   infinitepay_transaction_nsu: "transaction-secret",
@@ -192,6 +205,7 @@ describe("admin registration history and CSV", () => {
     expect(parseCsv(file.content)[1]).toEqual([
       "06/09/2026",
       "Bia Pendente",
+      "Diocese de Sobral",
       "Não informado",
       "85988887777",
       "Não informado",
@@ -199,6 +213,10 @@ describe("admin registration history and CSV", () => {
       "Não informado",
       "Pendente",
       "Sem camisa",
+      "Promocional",
+      "R$\u00a0300,00",
+      "R$\u00a0100,00",
+      "Não informado",
       "R$\u00a0100,00",
       "Não informado",
       "Pix",
@@ -212,6 +230,10 @@ describe("admin registration history and CSV", () => {
     expect(mapAdminRegistrationRow(paidRow)).toMatchObject({
       paymentStatus: "paid",
       shirtLabel: "Tamanho M",
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      shirtPriceCents: 3990,
       amountCents: 13990,
       paidAmountCents: 12990,
       paymentMethod: "credit_card",
@@ -239,6 +261,7 @@ describe("admin registration history and CSV", () => {
     expect(csvRows[0]).toEqual([
       "Data",
       "Nome",
+      "Coro/Diocese",
       "E-mail",
       "Telefone",
       "Cidade",
@@ -246,6 +269,10 @@ describe("admin registration history and CSV", () => {
       "Função",
       "Situação",
       "Camisa",
+      "Tipo do valor",
+      "Valor normal",
+      "Valor da inscrição",
+      "Valor da camisa",
       "Valor esperado",
       "Valor pago",
       "Forma de pagamento",
@@ -255,6 +282,7 @@ describe("admin registration history and CSV", () => {
     expect(csvRows[3]).toEqual([
       "07/09/2026",
       '\'=HYPERLINK("https://evil.example")',
+      "Diocese de Sobral",
       "carla@example.com",
       "85977776666",
       "Fortaleza; CE",
@@ -262,13 +290,17 @@ describe("admin registration history and CSV", () => {
       "singer",
       "Pago",
       "Tamanho M",
+      "Promocional",
+      "R$\u00a0300,00",
+      "R$\u00a0100,00",
+      "R$\u00a039,90",
       "R$\u00a0139,90",
       "R$\u00a0129,90",
       "Cartão",
       "2",
       "08/09/2026",
     ]);
-    expect(csvRows[4][3]).toBe("'  +5585999999999");
+    expect(csvRows[4][4]).toBe("'  +5585999999999");
     expect(file.content).not.toContain("checkout-secret");
     expect(file.content).not.toContain("invoice-secret");
     expect(file.content).not.toContain("transaction-secret");
@@ -281,14 +313,14 @@ describe("admin registration history and CSV", () => {
 
 describe("admin registration summary", () => {
   // Detects a production mutation that counts only one status or loses the diocese distribution.
-  it("summarizes every payment status and orders dioceses by registration count", () => {
+  it("summarizes every payment status and orders choirs by registration count", () => {
     const rows = [
-      mapAdminRegistrationRow({ ...paidRow, diocese: "Diocese de Sobral" }),
-      mapAdminRegistrationRow({ ...pendingRow, diocese: "Diocese de Quixadá" }),
-      mapAdminRegistrationRow({ ...legacyRow, diocese: "Diocese de Sobral" }),
-      mapAdminRegistrationRow({ ...pendingRow, id: "pending-2", diocese: "Diocese de Sobral" }),
-      mapAdminRegistrationRow({ ...paidRow, id: "paid-2", diocese: "Diocese do Crato" }),
-      mapAdminRegistrationRow({ ...legacyRow, id: "legacy-2", diocese: "Diocese do Crato" }),
+      mapAdminRegistrationRow({ ...paidRow, choir_name: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...pendingRow, choir_name: "Diocese de Quixadá" }),
+      mapAdminRegistrationRow({ ...legacyRow, choir_name: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...pendingRow, id: "pending-2", choir_name: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({ ...paidRow, id: "paid-2", choir_name: "Diocese do Crato" }),
+      mapAdminRegistrationRow({ ...legacyRow, id: "legacy-2", choir_name: "Diocese do Crato" }),
     ];
 
     expect(summarizeAdminRegistrations(rows)).toEqual({
@@ -296,10 +328,10 @@ describe("admin registration summary", () => {
       paid: 2,
       pending: 2,
       legacy: 2,
-      byDiocese: [
-        { diocese: "Diocese de Sobral", total: 3 },
-        { diocese: "Diocese do Crato", total: 2 },
-        { diocese: "Diocese de Quixadá", total: 1 },
+      byChoir: [
+        { choirName: "Diocese de Sobral", total: 3 },
+        { choirName: "Diocese do Crato", total: 2 },
+        { choirName: "Diocese de Quixadá", total: 1 },
       ],
     });
   });

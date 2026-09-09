@@ -20,13 +20,33 @@ import {
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
+const choirId = "22222222-2222-4222-8222-222222222222";
+
+const trustedSelection = {
+  choir: {
+    id: choirId,
+    name: "Coro Diocesano de Quixadá",
+    usesPromotionalPrice: true,
+    isActive: true,
+    createdAt: "2026-09-09T10:00:00.000Z",
+    updatedAt: "2026-09-09T10:00:00.000Z",
+  },
+  quote: {
+    pricingType: "promotional" as const,
+    standardPriceCents: 30000,
+    registrationPriceCents: 10000,
+  },
+  shirtPriceCents: 5000,
+};
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
-  diocese: "Diocese de Quixadá",
+  choirId,
+  displayedQuote: trustedSelection.quote,
+  displayedShirtPriceCents: 5000,
   includeShirt: false,
   shirtSize: "",
 };
@@ -191,6 +211,7 @@ function createFixture() {
     infinitePay,
     randomUUID: () => fixedOrderNsu,
     now: () => fixedPaidAt,
+    resolveChoirSelection: vi.fn(async () => trustedSelection),
   });
 
   return {
@@ -219,11 +240,16 @@ describe("registration payment service", () => {
     expect(fixture.repository.createPending).toHaveBeenCalledWith({
       ...baseInput,
       orderNsu: fixedOrderNsu,
-      amountCents: 100,
+      amountCents: 10000,
+      choirName: "Coro Diocesano de Quixadá",
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      shirtPriceCents: null,
     });
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
       orderNsu: fixedOrderNsu,
-      items: [{ quantity: 1, price: 100, description: "Inscrição — II Encontro de Coros" }],
+      items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
       customer: {
         name: "Maria da Silva",
         email: "maria@example.com",
@@ -244,6 +270,18 @@ describe("registration payment service", () => {
       paymentStatus: "pending",
     });
     expect(fixture.repository.saveCheckoutUrl).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale displayed price before saving or opening checkout", async () => {
+    await expect(
+      fixture.service.startCheckout({
+        ...baseInput,
+        displayedQuote: { ...baseInput.displayedQuote, registrationPriceCents: 9000 },
+      }),
+    ).rejects.toThrow("configuração de preços mudou");
+
+    expect(fixture.repository.createPending).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
   it("rejects an original amount different from the local order", async () => {
@@ -378,7 +416,12 @@ describe("Supabase registration repository", () => {
     await repository.createPending({
       ...baseInput,
       orderNsu: fixedOrderNsu,
-      amountCents: 100,
+      amountCents: 10000,
+      choirName: "Coro Diocesano de Quixadá",
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      shirtPriceCents: null,
     });
 
     expect(database.trace).toEqual([
@@ -389,7 +432,8 @@ describe("Supabase registration repository", () => {
           name: "Maria da Silva",
           phone: "85999999999",
           birth_date: "1990-05-20",
-          diocese: "Diocese de Quixadá",
+          choir_id: choirId,
+          choir_name: "Coro Diocesano de Quixadá",
           email: "maria@example.com",
           city: null,
           institution: null,
@@ -397,7 +441,11 @@ describe("Supabase registration repository", () => {
           observations: null,
           include_shirt: false,
           shirt_size: null,
-          amount_cents: 100,
+          pricing_type: "promotional",
+          standard_price_cents: 30000,
+          registration_price_cents: 10000,
+          shirt_price_cents: null,
+          amount_cents: 10000,
           payment_status: "pending",
           order_nsu: fixedOrderNsu,
         },
@@ -412,7 +460,16 @@ describe("Supabase registration repository", () => {
     const repository = createSupabaseRegistrationRepository();
 
     await expect(
-      repository.createPending({ ...baseInput, orderNsu: fixedOrderNsu, amountCents: 10000 }),
+      repository.createPending({
+        ...baseInput,
+        orderNsu: fixedOrderNsu,
+        amountCents: 10000,
+        choirName: "Coro Diocesano de Quixadá",
+        pricingType: "promotional",
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+        shirtPriceCents: null,
+      }),
     ).rejects.toThrow("Não foi possível salvar a inscrição");
   });
 

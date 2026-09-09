@@ -9,7 +9,10 @@ export function AdminNavigation({ current }: AdminNavigationProps) {
     }`;
 
   return (
-    <nav aria-label="Navegação administrativa" className="flex flex-wrap gap-1 rounded-xl border bg-card p-1">
+    <nav
+      aria-label="Navegação administrativa"
+      className="flex flex-wrap gap-1 rounded-xl border bg-card p-1"
+    >
       <a href="/admin/inscricoes" className={linkClass(current === "registrations")}>
         Inscrições
       </a>

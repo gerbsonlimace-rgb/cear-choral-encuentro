@@ -1,19 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  DIOCESES,
   buildCheckoutItems,
   calculateOrderAmountCents,
-  dioceseSchema,
   paymentLookupSchema,
   registrationSchema,
 } from "./registration.domain";
+
+const standardQuote = {
+  pricingType: "standard" as const,
+  standardPriceCents: 30000,
+  registrationPriceCents: 30000,
+};
 
 const baseInput = {
   name: "Maria da Silva",
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
-  diocese: "Diocese de Quixadá" as const,
+  choirId: "11111111-1111-4111-8111-111111111111",
+  displayedQuote: standardQuote,
+  displayedShirtPriceCents: 5000,
   includeShirt: false,
   shirtSize: "" as const,
 };
@@ -21,56 +27,53 @@ const baseInput = {
 describe("registration domain", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("charges only registration without a shirt", () => {
-    expect(calculateOrderAmountCents(baseInput)).toBe(100);
-    expect(buildCheckoutItems(baseInput)).toEqual([
-      { quantity: 1, price: 100, description: "Inscrição — II Encontro de Coros" },
+  it("builds checkout with the trusted registration price", () => {
+    expect(calculateOrderAmountCents(baseInput, standardQuote, 5000)).toBe(30000);
+    expect(buildCheckoutItems(baseInput, standardQuote, 5000)).toEqual([
+      { quantity: 1, price: 30000, description: "Inscrição — II Encontro de Coros" },
     ]);
   });
 
-  it("adds the selected shirt", () => {
+  it("adds the trusted shirt price", () => {
     const input = { ...baseInput, includeShirt: true, shirtSize: "M" as const };
-    expect(calculateOrderAmountCents(input)).toBe(110);
-    expect(buildCheckoutItems(input)[1]).toEqual({
+    expect(calculateOrderAmountCents(input, standardQuote, 5000)).toBe(35000);
+    expect(buildCheckoutItems(input, standardQuote, 5000)[1]).toEqual({
       quantity: 1,
-      price: 10,
+      price: 5000,
       description: "Camisa oficial — tamanho M",
     });
   });
 
-  it("rejects a registration with a shirt but no size", () => {
+  it("rejects a shirt when its displayed price is unavailable", () => {
     const result = registrationSchema.safeParse({
       ...baseInput,
       includeShirt: true,
-      shirtSize: "",
+      shirtSize: "M",
+      displayedShirtPriceCents: null,
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects a registration with a shirt but no size", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, includeShirt: true }).success).toBe(false);
   });
 
   it("rejects an unrecognized shirt size", () => {
-    const result = registrationSchema.safeParse({
-      ...baseInput,
-      includeShirt: true,
-      shirtSize: "XXL",
-    });
-
-    expect(result.success).toBe(false);
+    expect(
+      registrationSchema.safeParse({ ...baseInput, includeShirt: true, shirtSize: "XXL" }).success,
+    ).toBe(false);
   });
 
-  it("accepts exactly the nine approved dioceses", () => {
-    expect(DIOCESES).toEqual([
-      "Arquidiocese de Fortaleza",
-      "Diocese do Crato",
-      "Diocese de Crateús",
-      "Diocese de Iguatu",
-      "Diocese de Itapipoca",
-      "Diocese de Limoeiro do Norte",
-      "Diocese de Quixadá",
-      "Diocese de Sobral",
-      "Diocese de Tianguá",
-    ]);
-    expect(DIOCESES.every((diocese) => dioceseSchema.safeParse(diocese).success)).toBe(true);
-    expect(dioceseSchema.safeParse("Diocese de Fortaleza").success).toBe(false);
+  it("requires a valid choir id and a coherent displayed quote", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, choirId: "not-an-id" }).success).toBe(
+      false,
+    );
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        displayedQuote: { ...standardQuote, registrationPriceCents: 10000 },
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects impossible and future birth dates", () => {
@@ -85,7 +88,6 @@ describe("registration domain", () => {
   it("uses the Fortaleza calendar day after UTC midnight", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-08T01:30:00.000Z"));
-
     expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2026-09-08" }).success).toBe(
       false,
     );

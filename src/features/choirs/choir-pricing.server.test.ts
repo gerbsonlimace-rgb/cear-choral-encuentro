@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AdminChoir, ChoirMutation, PricingSettings } from "./choir-pricing.domain";
-import {
-  createChoirPricingService,
-  type ChoirPricingRepository,
-} from "./choir-pricing.server";
+import { createChoirPricingService, type ChoirPricingRepository } from "./choir-pricing.server";
 
 const settings: PricingSettings = {
   standardPriceCents: 30000,
@@ -33,8 +30,8 @@ function repository(overrides: Partial<ChoirPricingRepository> = {}): ChoirPrici
     getSettings: vi.fn(async () => settings),
     saveSettings: vi.fn(async (input) => input),
     listChoirs: vi.fn(async () => [normalChoir, promotionalChoir]),
-    findChoir: vi.fn(async (id) =>
-      [normalChoir, promotionalChoir].find((choir) => choir.id === id) ?? null,
+    findChoir: vi.fn(
+      async (id) => [normalChoir, promotionalChoir].find((choir) => choir.id === id) ?? null,
     ),
     createChoir: vi.fn(async (input: ChoirMutation) => ({
       ...normalChoir,
@@ -49,8 +46,14 @@ function repository(overrides: Partial<ChoirPricingRepository> = {}): ChoirPrici
 
 describe("choir pricing service", () => {
   it("returns only active and resolvable public choirs with the configured shirt price", async () => {
-    const unavailable = { ...normalChoir, id: "44444444-4444-4444-8444-444444444444", isActive: false };
-    const service = createChoirPricingService(repository({ listChoirs: vi.fn(async () => [normalChoir, unavailable, promotionalChoir]) }));
+    const unavailable = {
+      ...normalChoir,
+      id: "44444444-4444-4444-8444-444444444444",
+      isActive: false,
+    };
+    const service = createChoirPricingService(
+      repository({ listChoirs: vi.fn(async () => [normalChoir, unavailable, promotionalChoir]) }),
+    );
 
     await expect(service.getPublicConfiguration()).resolves.toEqual({
       shirtPriceCents: 5000,

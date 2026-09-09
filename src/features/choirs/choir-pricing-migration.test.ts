@@ -17,9 +17,13 @@ describe("choir event pricing migration", () => {
 
     expect(migration).toContain("create table public.event_registration_settings");
     expect(migration).toContain("create table public.choirs");
-    expect(migration).toContain("alter table public.event_registration_settings enable row level security");
+    expect(migration).toContain(
+      "alter table public.event_registration_settings enable row level security",
+    );
     expect(migration).toContain("alter table public.choirs enable row level security");
-    expect(migration).toContain("revoke all on public.event_registration_settings from anon, authenticated");
+    expect(migration).toContain(
+      "revoke all on public.event_registration_settings from anon, authenticated",
+    );
     expect(migration).toContain("revoke all on public.choirs from anon, authenticated");
     expect(migration).not.toMatch(/insert into public\.choirs/);
   });

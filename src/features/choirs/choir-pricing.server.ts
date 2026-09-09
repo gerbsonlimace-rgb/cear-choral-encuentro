@@ -89,10 +89,8 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
   };
 }
 
-const settingsColumns =
-  "standard_price_cents,promotional_price_cents,shirt_price_cents" as const;
-const choirColumns =
-  "id,name,uses_promotional_price,is_active,created_at,updated_at" as const;
+const settingsColumns = "standard_price_cents,promotional_price_cents,shirt_price_cents" as const;
+const choirColumns = "id,name,uses_promotional_price,is_active,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
@@ -136,7 +134,8 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
       .select(settingsColumns)
       .eq("id", true)
       .single();
-    if (error || !data) throwRepositoryError(error, "Não foi possível consultar os valores do evento.");
+    if (error || !data)
+      throwRepositoryError(error, "Não foi possível consultar os valores do evento.");
     return mapSettings(data);
   };
 
@@ -163,7 +162,8 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
         .eq("id", true)
         .select(settingsColumns)
         .single();
-      if (error || !data) throwRepositoryError(error, "Não foi possível salvar os valores do evento.");
+      if (error || !data)
+        throwRepositoryError(error, "Não foi possível salvar os valores do evento.");
       return mapSettings(data);
     },
 
