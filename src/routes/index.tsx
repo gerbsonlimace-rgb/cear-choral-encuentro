@@ -241,7 +241,7 @@ function HeroSection() {
               <div className="hidden h-5 w-px bg-white/30 sm:block" />
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-amber" />
-                <span className="font-semibold">Coralistas, Músicos, Regentes e fiéis</span>
+                 <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
               </div>
             </div>
             <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
@@ -365,7 +365,7 @@ function AboutSection() {
           />
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
-              Participação especial
+               Palestrante Principal
             </span>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
               Clayton Dias aprofunda o eixo formativo do encontro
