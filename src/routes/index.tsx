@@ -227,7 +227,7 @@ function HeroSection() {
               20 a 22 de novembro de 2025
             </span>
             <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
-              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB
+              II Encontro de Coros Diocesanos e Litúrgicos do Regional NE 1 - CNBB
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
               Três dias de formação, celebração e espiritualidade pela música sacra em Quixadá.
