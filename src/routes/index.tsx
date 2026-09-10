@@ -225,21 +225,21 @@ function Header() {
 
 function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden bg-[#090b08]">
+    <section className="relative isolate overflow-hidden bg-[#141a17]">
       <div
         data-hero-photo-position="upper-right"
-        className="absolute inset-0"
+        className="absolute inset-0 lg:hidden"
       >
         <img
           src={heroBackgroundImage}
           alt="Participantes do Encontro de Coros reunidos diante da igreja"
           width={2304}
           height={1024}
-          className="h-full w-full object-cover object-[72%_top] lg:object-contain lg:object-top"
+          className="h-full w-full object-cover object-[72%_top]"
           fetchPriority="high"
         />
       </div>
-      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(3,5,3,0.65)_0%,rgba(3,5,3,0.75)_48%,rgba(3,5,3,0.88)_100%)] lg:bg-none" />
+      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(10,14,12,0.55)_0%,rgba(10,14,12,0.65)_48%,rgba(10,14,12,0.8)_100%)] lg:hidden" />
       <div className="absolute inset-x-0 bottom-0 z-[3] h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative z-10 section-padding">
         <div className="container-event grid items-stretch gap-6 px-4 sm:gap-10 lg:min-h-[46rem] lg:grid-cols-2 lg:gap-12 lg:px-0">
@@ -249,15 +249,15 @@ function HeroSection() {
               alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
-              className="mb-4 w-64 max-w-[80vw] drop-shadow-2xl sm:hidden"
+              className="mb-5 w-80 max-w-[90vw] drop-shadow-2xl sm:hidden"
               fetchPriority="high"
             />
             <div
               aria-label="Informações principais do evento"
               className="grid w-full max-w-2xl gap-3 sm:grid-cols-2"
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/50 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/40 bg-black/30 px-4 py-3 text-left shadow-lg shadow-black/15 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/10 sm:h-11 sm:w-11">
                   <Calendar aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
                 </span>
                 <span>
@@ -269,8 +269,8 @@ function HeroSection() {
                   </span>
                 </span>
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/50 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/40 bg-black/30 px-4 py-3 text-left shadow-lg shadow-black/15 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/10 sm:h-11 sm:w-11">
                   <MapPin aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
                 </span>
                 <span>
@@ -283,7 +283,7 @@ function HeroSection() {
                 </span>
               </div>
             </div>
-            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.55)] sm:mt-6 md:text-6xl">
+            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.35)] sm:mt-6 md:text-6xl">
               II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB
             </h1>
             <blockquote className="relative mt-5 w-fit max-w-full border-x border-amber/45 px-4 py-3 text-center sm:mt-6 sm:px-8 sm:py-4 lg:text-left">
@@ -297,7 +297,7 @@ function HeroSection() {
                 <span className="block whitespace-nowrap">Cantai para o Senhor um canto novo,</span>
                 <span className="block whitespace-nowrap">com arte sustentai a louvação!</span>
               </p>
-              <cite className="mt-4 inline-flex rounded-full border border-amber/50 bg-amber px-3.5 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground shadow-md shadow-black/20 sm:text-sm">
+              <cite className="mt-4 inline-flex rounded-full border border-amber/50 bg-amber px-3.5 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground shadow-md shadow-black/10 sm:text-sm">
                 Sl 32 (33), 3
               </cite>
               <span
@@ -317,7 +317,7 @@ function HeroSection() {
               <Button
                 asChild
                 size="lg"
-                className="h-12 w-full rounded-full bg-amber px-8 text-base font-extrabold text-amber-foreground shadow-md shadow-black/15 hover:bg-amber/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
+                className="h-12 w-full rounded-full bg-amber px-8 text-base font-extrabold text-amber-foreground shadow-md shadow-black/10 hover:bg-amber/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
               >
                 <a href="#inscricao" className="justify-center">
                   Faça sua inscrição
@@ -338,9 +338,17 @@ function HeroSection() {
           </div>
           <div
             data-hero-logo-position="lower-right"
-            className="hidden items-end justify-center self-stretch pb-8 sm:flex lg:justify-end lg:pb-12"
+            className="hidden flex-col items-center justify-center gap-8 self-stretch sm:flex lg:items-end lg:justify-center"
           >
-            <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-[25rem]">
+            <img
+              src={heroBackgroundImage}
+              alt="Participantes do Encontro de Coros reunidos diante da igreja"
+              width={2304}
+              height={1024}
+              className="w-full max-w-xl rounded-2xl object-cover shadow-2xl shadow-black/20"
+              fetchPriority="high"
+            />
+            <div className="relative w-full max-w-[20rem] sm:max-w-md lg:max-w-[28rem]">
               <img
                 src={logoImage}
                 alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
