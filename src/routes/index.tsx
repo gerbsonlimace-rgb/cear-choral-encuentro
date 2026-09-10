@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
+import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
+import heroChurchImage from "../assets/hero-church-empty.jpg";
+import heroChoirImage from "../assets/hero-encontro-coros.jpg";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
@@ -19,9 +22,24 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
-import { Calendar, MapPin, Clock, Users, BookOpen, Mic2, Church, ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  BookOpen,
+  Calendar,
+  Church,
+  MapPin,
+  MapPinned,
+  Mic2,
+  Music2,
+  Presentation,
+  Users,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
 const SITE_URL = "https://encontrocorosce.lovable.app";
 const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
 
@@ -31,22 +49,22 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+          "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro de 2026",
       },
       {
         name: "description",
         content:
-          "Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Três dias de formação, celebração e música em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       {
         property: "og:title",
         content:
-          "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro",
+          "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB — 20 a 22 de Novembro de 2026",
       },
       {
         property: "og:description",
         content:
-          "Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Três dias de formação, celebração e música em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: SOCIAL_IMAGE_URL },
@@ -56,17 +74,18 @@ export const Route = createFileRoute("/")({
       { property: "og:image:height", content: "630" },
       {
         property: "og:image:alt",
-        content: "Logo do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
+        content:
+          "Logo do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
       },
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
-        content: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
+        content: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
       },
       {
         name: "twitter:description",
         content:
-          "De 20 a 22 de novembro, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.",
+          "De 20 a 22 de novembro de 2026, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.",
       },
       { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
@@ -77,9 +96,9 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Event",
-          name: "II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB",
-          startDate: "2025-11-20",
-          endDate: "2025-11-22",
+          name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
+          startDate: "2026-11-20",
+          endDate: "2026-11-22",
           eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
           eventStatus: "https://schema.org/EventScheduled",
           location: {
@@ -138,7 +157,7 @@ function Header() {
         >
           <img
             src={logoImageLight}
-            alt="II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+            alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
             className={`h-9 w-auto shrink-0 transition-all duration-300 sm:h-11 sm:opacity-100 ${
               isScrolled ? "scale-100 opacity-100" : "scale-75 opacity-0"
             }`}
@@ -208,40 +227,110 @@ function Header() {
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-teal">
-      <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,5,5,0.99)_0%,rgba(28,22,4,0.97)_54%,rgba(5,5,5,0.99)_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
-      <div className="relative section-padding">
-        <div className="container-event grid items-center gap-6 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
-          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+    <section className="relative isolate overflow-hidden bg-[#090b08]">
+      <img
+        src={heroChurchImage}
+        alt=""
+        aria-hidden="true"
+        width={1536}
+        height={1024}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+        fetchPriority="high"
+      />
+      <img
+        src={heroChoirImage}
+        alt=""
+        aria-hidden="true"
+        width={1536}
+        height={1024}
+        className="absolute inset-0 h-full w-full object-cover object-[center_65%] lg:hidden"
+        fetchPriority="high"
+      />
+      <div
+        data-hero-photo-position="upper-right"
+        className="absolute right-[-2%] top-[8%] z-[1] hidden w-[64%] overflow-hidden opacity-95 lg:block [mask-image:linear-gradient(to_right,transparent_0%,black_17%,black_100%)]"
+      >
+        <img
+          src={heroChoirFocusImage}
+          alt="Participantes do Encontro de Coros reunidos diante da igreja"
+          width={1536}
+          height={574}
+          className="h-auto w-full"
+          fetchPriority="high"
+        />
+      </div>
+      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(3,5,3,0.84)_0%,rgba(3,5,3,0.72)_48%,rgba(3,5,3,0.88)_100%)] lg:bg-[linear-gradient(90deg,rgba(3,5,3,0.96)_0%,rgba(3,5,3,0.91)_38%,rgba(3,5,3,0.69)_64%,rgba(3,5,3,0.48)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 z-[3] h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
+      <div className="relative z-10 section-padding">
+        <div className="container-event grid items-stretch gap-6 px-4 sm:gap-10 lg:min-h-[46rem] lg:grid-cols-2 lg:gap-12 lg:px-0">
+          <div className="flex flex-col items-center justify-center text-center lg:items-start lg:text-left">
             <img
               src={logoImage}
-              alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+              alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
               className="mb-4 w-64 max-w-[80vw] drop-shadow-2xl sm:hidden"
               fetchPriority="high"
             />
-            <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
-              <Calendar className="h-4 w-4" />
-              20 a 22 de novembro de 2025
-            </span>
-            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
-              II Encontro de Coros Diocesanos e Litúrgicos do Regional NE 1 - CNBB
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
-              “Cantai para o Senhor um canto novo,
-              com arte sustentai a louvação!” Sl 32 (33), 3
-            </p>
-            <div className="mt-5 flex flex-col items-center justify-center gap-2 text-sm text-white/90 sm:mt-7 sm:flex-row sm:flex-wrap sm:gap-3 sm:text-base lg:justify-start">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-amber" />
-                <span className="font-semibold">Quixadá, CE</span>
+            <div
+              aria-label="Informações principais do evento"
+              className="grid w-full max-w-2xl gap-3 sm:grid-cols-2"
+            >
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/50 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+                  <Calendar aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </span>
+                <span>
+                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                    Data
+                  </span>
+                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                    20 a 22 de novembro de 2026
+                  </span>
+                </span>
               </div>
-              <div className="hidden h-5 w-px bg-white/30 sm:block" />
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/50 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+                  <MapPin aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </span>
+                <span>
+                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                    Cidade
+                  </span>
+                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                    Quixadá, CE
+                  </span>
+                </span>
+              </div>
+            </div>
+            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.55)] sm:mt-6 md:text-6xl">
+              II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB
+            </h1>
+            <blockquote className="relative mt-5 w-fit max-w-full border-x border-amber/45 px-4 py-3 text-center sm:mt-6 sm:px-8 sm:py-4 lg:text-left">
+              <span
+                aria-hidden="true"
+                className="absolute -left-1 -top-4 font-display text-6xl leading-none text-amber/70 sm:-left-2 sm:text-7xl"
+              >
+                “
+              </span>
+              <p className="font-display text-[clamp(0.85rem,2vw,1.125rem)] font-bold italic leading-snug tracking-normal text-white">
+                <span className="block whitespace-nowrap">Cantai para o Senhor um canto novo,</span>
+                <span className="block whitespace-nowrap">com arte sustentai a louvação!</span>
+              </p>
+              <cite className="mt-4 inline-flex rounded-full border border-amber/50 bg-amber px-3.5 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground shadow-md shadow-black/20 sm:text-sm">
+                Sl 32 (33), 3
+              </cite>
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -bottom-8 font-display text-6xl leading-none text-amber/35 sm:-right-2 sm:text-7xl"
+              >
+                ”
+              </span>
+            </blockquote>
+            <div className="mt-5 flex items-center justify-center text-sm text-white/90 sm:mt-7 sm:text-base lg:justify-start">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-amber" />
-                 <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
+                <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
               </div>
             </div>
             <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
@@ -267,11 +356,14 @@ function HeroSection() {
               </Button>
             </div>
           </div>
-          <div className="hidden items-center justify-center sm:flex">
-            <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-lg">
+          <div
+            data-hero-logo-position="lower-right"
+            className="hidden items-end justify-center self-stretch pb-8 sm:flex lg:justify-end lg:pb-12"
+          >
+            <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-[25rem]">
               <img
                 src={logoImage}
-                alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+                alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
                 width={512}
                 height={512}
                 className="relative w-full drop-shadow-2xl"
@@ -296,11 +388,22 @@ function AboutSection() {
           <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
             Uma celebração da tradição musical sacra
           </h2>
-          <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-            O II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB reúne músicos, regentes,
-            cantores, liturgistas e fiéis em um fim de semana dedicado à formação, ao
-            aperfeiçoamento e à vivência da música sacra.
-          </p>
+          <div className="mt-5 space-y-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+            <p>
+              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu para fortalecer a
+              música litúrgica e promover a comunhão entre os coros diocesanos. A iniciativa partiu
+              de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da
+              Comissão Episcopal para a Liturgia do Regional Nordeste 1, e foi idealizada e
+              organizada pelo Pe. Michael Johnny da Silva Souza.
+            </p>
+            <p>
+              Realizada pela primeira vez em 2025, em Viçosa do Ceará, a iniciativa reuniu regentes,
+              coralistas e instrumentistas em uma experiência de formação, partilha e fraternidade.
+              Em 2026, essa caminhada continua em Quixadá com o II Encontro, fortalecendo a
+              integração entre as dioceses e valorizando a música como parte essencial da liturgia e
+              instrumento de evangelização.
+            </p>
+          </div>
         </div>
 
         <div className="mt-9 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">
@@ -365,7 +468,7 @@ function AboutSection() {
           />
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
-               Palestrante Principal
+              Palestrante Principal
             </span>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
               Clayton Dias aprofunda o eixo formativo do encontro
@@ -404,6 +507,13 @@ const quixadaSpots = [
     image:
       "https://commons.wikimedia.org/wiki/Special:FilePath/A%C3%A7ude%20Cedro%20-%20Pedra%20da%20Galinha%20Choca.jpg",
     credit: "Foto: Wikimedia Commons",
+  },
+  {
+    name: "Catedral Jesus, Maria e José",
+    description:
+      "Igreja-mãe da Diocese de Quixadá, a catedral acolhe celebrações e encontros que marcam a vida religiosa da cidade.",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Catedral%20Quixad%C3%A1.jpg",
+    credit: "Foto: GLandovsky / Wikimedia Commons",
   },
   {
     name: "Santuário Rainha do Sertão",
@@ -496,109 +606,236 @@ function QuixadaSection() {
   );
 }
 
-const schedule = [
+type ScheduleCategory = "welcome" | "celebration" | "meal" | "conference" | "music" | "visit";
+
+type ScheduleDay = {
+  date: string;
+  weekday: string;
+  items: Array<{
+    time?: string;
+    title: string;
+    category: ScheduleCategory;
+  }>;
+};
+
+const scheduleCategoryPresentation: Record<
+  ScheduleCategory,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  welcome: {
+    label: "Acolhimento",
+    icon: BadgeCheck,
+    className: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+  },
+  celebration: {
+    label: "Celebração",
+    icon: Church,
+    className: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+  },
+  meal: {
+    label: "Refeição",
+    icon: Utensils,
+    className: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300",
+  },
+  conference: {
+    label: "Conferência",
+    icon: Presentation,
+    className: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+  },
+  music: {
+    label: "Música",
+    icon: Music2,
+    className: "bg-emerald/10 text-emerald",
+  },
+  visit: {
+    label: "Visita",
+    icon: MapPinned,
+    className: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+  },
+};
+
+const schedule: ScheduleDay[] = [
   {
     date: "20 de novembro",
-    weekday: "Quinta-feira",
+    weekday: "Sexta-feira",
     items: [
       {
-        time: "14h",
-        title: "Credenciamento e acolhida",
-        description: "Entrega de materiais e ambientação.",
+        time: "16h–18h",
+        title: "Credenciamento",
+        category: "welcome",
       },
       {
-        time: "15h",
-        title: "Oficina de Canto Litúrgico",
-        description: "Técnicas vocais e repertório para a celebração.",
+        time: "18h",
+        title: "Vésperas",
+        category: "celebration",
       },
       {
-        time: "17h",
-        title: "Palestra de abertura",
-        description: "A música sacra na Igreja do Nordeste.",
+        time: "18h30",
+        title: "Jantar",
+        category: "meal",
       },
       {
-        time: "19h",
-        title: "Missa de Abertura",
-        description: "Celebração com participação dos corais.",
+        time: "19h30",
+        title: "Abertura oficial",
+        category: "welcome",
+      },
+      {
+        time: "20h–21h",
+        title: "1ª Conferência",
+        category: "conference",
+      },
+      {
+        title: "Completas",
+        category: "celebration",
       },
     ],
   },
   {
     date: "21 de novembro",
-    weekday: "Sexta-feira",
+    weekday: "Sábado",
     items: [
       {
-        time: "08h30",
-        title: "Saudação e oração da manhã",
-        description: "Momento de espiritualidade e unidade.",
+        time: "07h",
+        title: "Santa Missa",
+        category: "celebration",
+      },
+      {
+        time: "08h",
+        title: "Café da manhã",
+        category: "meal",
       },
       {
         time: "09h",
-        title: "Oficina de Regência Coral",
-        description: "Gestos, respiração e condução do grupo.",
+        title: "2ª Conferência",
+        category: "conference",
+      },
+      {
+        time: "10h",
+        title: "Coffee break",
+        category: "meal",
+      },
+      {
+        time: "10h30",
+        title: "3ª Conferência",
+        category: "conference",
+      },
+      {
+        time: "11h30",
+        title: "Ensaio 1",
+        category: "music",
+      },
+      {
+        time: "12h30",
+        title: "Almoço",
+        category: "meal",
       },
       {
         time: "14h",
-        title: "Palestra: Liturgia e Música",
-        description: "Os documentos da Igreja sobre a música sacra.",
+        title: "4ª Conferência",
+        category: "conference",
+      },
+      {
+        time: "15h",
+        title: "Ensaio 2",
+        category: "music",
       },
       {
         time: "16h",
-        title: "Ensaio geral do repertório",
-        description: "Preparação para o concerto de encerramento.",
+        title: "Coffee break",
+        category: "meal",
+      },
+      {
+        title: "Visita ao Santuário",
+        category: "visit",
       },
       {
         time: "20h",
-        title: "Concerto Sacro",
-        description: "Apresentação dos corais e instrumentistas.",
+        title: "Concerto na Catedral",
+        category: "music",
+      },
+      {
+        title: "Jantar",
+        category: "meal",
       },
     ],
   },
   {
     date: "22 de novembro",
-    weekday: "Sábado",
+    weekday: "Domingo",
     items: [
       {
-        time: "08h30",
-        title: "Formação para instrumentistas",
-        description: "Acompanhamento litúrgico e dinâmica de grupo.",
+        time: "07h30",
+        title: "Laudes",
+        category: "celebration",
       },
       {
-        time: "10h30",
-        title: "Roda de conversa",
-        description: "Desafios e perspectivas da música sacra no Ceará.",
+        time: "08h",
+        title: "Café da manhã",
+        category: "meal",
       },
       {
-        time: "14h",
-        title: "Ensaio técnico final",
-        description: "Últimos ajustes para a celebração.",
+        time: "09h",
+        title: "Ensaio 3",
+        category: "music",
       },
       {
-        time: "17h",
-        title: "Missa de Encerramento",
-        description: "Celebração solene de encerramento do encontro.",
+        time: "10h",
+        title: "Missa Solene na Catedral",
+        category: "celebration",
+      },
+      {
+        time: "12h",
+        title: "Almoço e despedida",
+        category: "meal",
       },
     ],
   },
 ];
 
 function ProgramSection() {
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [carouselHeight, setCarouselHeight] = useState<number>();
+
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    const updateCarouselHeight = () => {
+      const selectedSlide = carouselApi.slideNodes()[carouselApi.selectedScrollSnap()];
+      setCarouselHeight(selectedSlide?.offsetHeight);
+    };
+
+    updateCarouselHeight();
+    carouselApi.on("select", updateCarouselHeight);
+    carouselApi.on("reInit", updateCarouselHeight);
+
+    return () => {
+      carouselApi.off("select", updateCarouselHeight);
+      carouselApi.off("reInit", updateCarouselHeight);
+    };
+  }, [carouselApi]);
+
   return (
-    <section id="programacao" className="section-padding bg-muted/50">
+    <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16">
       <div className="container-event px-4 lg:px-0">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald">
-            Programação
+            <Calendar aria-hidden="true" className="h-4 w-4" />
+            20–22 NOV 2026
           </span>
-          <h2 className="mt-4 font-display text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
-            Três dias de música, formação e fé
+          <h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            Programação
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            A programação está sujeita a ajustes. Confirme os horários no material de acolhida.
+          <p className="mt-2 text-base text-muted-foreground sm:text-lg">
+            Confira as atividades do encontro de 20 a 22 de novembro de 2026.
           </p>
         </div>
-        <Carousel opts={{ align: "start", loop: false }} className="mx-auto mt-8 w-full lg:hidden">
-          <CarouselContent>
+        <Carousel
+          opts={{ align: "start", loop: false }}
+          setApi={setCarouselApi}
+          style={{ height: carouselHeight }}
+          className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"
+        >
+          <CarouselContent className="items-start">
             {schedule.map((day, index) => (
               <CarouselItem key={index} className="basis-[88%]">
                 <ProgramDayCard day={day} />
@@ -607,7 +844,7 @@ function ProgramSection() {
           </CarouselContent>
         </Carousel>
 
-        <div className="mt-12 hidden gap-8 lg:grid lg:grid-cols-3">
+        <div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">
           {schedule.map((day, index) => (
             <ProgramDayCard key={index} day={day} />
           ))}
@@ -619,29 +856,40 @@ function ProgramSection() {
 
 function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
   return (
-    <Card className="h-full overflow-hidden border-border bg-card">
-      <div className="bg-teal p-4">
-        <p className="font-body text-sm font-bold text-white/80">{day.weekday}</p>
-        <h3 className="mt-1 font-display text-xl font-bold text-white">{day.date}</h3>
+    <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
+      <div className="bg-teal px-5 py-3.5">
+        <p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p>
+        <h3 className="mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">
+          {day.date}
+        </h3>
       </div>
-      <CardContent className="p-5 sm:p-6">
-        <div className="space-y-4 sm:space-y-5">
-          {day.items.map((item, itemIndex) => (
-            <div key={itemIndex} className="flex gap-3">
-              <div className="flex shrink-0 flex-col items-center gap-1">
-                <Clock className="h-4 w-4 text-teal" />
-                <span className="text-xs font-bold text-teal">{item.time}</span>
-              </div>
-              <div>
-                <h4 className="font-display font-bold leading-tight text-card-foreground">
+      <CardContent className="p-4 sm:p-5">
+        <div className="divide-y divide-border/70">
+          {day.items.map((item, itemIndex) => {
+            const category = scheduleCategoryPresentation[item.category];
+            const ActivityIcon = category.icon;
+
+            return (
+              <div
+                key={itemIndex}
+                className="grid grid-cols-[4.5rem_1.75rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
+              >
+                <span className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">
+                  {item.time ?? "Na sequência"}
+                </span>
+                <span
+                  role="img"
+                  aria-label={category.label}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${category.className}`}
+                >
+                  <ActivityIcon aria-hidden="true" className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+                <h4 className="min-w-0 font-body text-sm font-semibold leading-snug text-card-foreground sm:text-[0.95rem]">
                   {item.title}
                 </h4>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  {item.description}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -739,8 +987,8 @@ function Footer() {
               <span>II ECD-NE1</span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-              II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB. Celebrando a fé, a
-              formação e a tradição musical do nosso povo.
+              II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB. Celebrando
+              a fé, a formação e a tradição musical do nosso povo.
             </p>
           </div>
           <div>
@@ -752,7 +1000,7 @@ function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-amber" />
-                20 a 22 de novembro de 2025
+                20 a 22 de novembro de 2026
               </li>
             </ul>
           </div>
@@ -778,7 +1026,7 @@ function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 pb-[env(safe-area-inset-bottom)] text-center text-sm text-white/60 sm:mt-12 sm:flex-row sm:gap-4 sm:pt-8 sm:text-left">
-          <p>© 2025 II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB.</p>
+          <p>© 2026 II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.</p>
           <p>Quixadá, CE</p>
         </div>
       </div>

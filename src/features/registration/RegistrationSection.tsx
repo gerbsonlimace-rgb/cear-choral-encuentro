@@ -179,8 +179,8 @@ export function RegistrationSection({
             Garanta sua participação
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Preencha o formulário abaixo para se inscrever no II Encontro de Coros Diocesanos do
-            Regional Nordeste 1 - CNBB.
+            Preencha o formulário abaixo para se inscrever no II Encontro de Coros Diocesanos e
+            Litúrgicos do Regional Nordeste 1 - CNBB.
           </p>
           <div className="mx-auto mt-6 flex max-w-sm flex-col items-center justify-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-5 py-4 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-3">
             <span className="text-sm font-bold text-muted-foreground">Inscrição</span>
@@ -216,7 +216,7 @@ export function RegistrationSection({
             >
               <img
                 src={shirtAsset.url}
-                alt="Camisa polo oficial preta com gola dourada do II Encontro de Coros Diocesanos"
+                alt="Camisa polo oficial preta com gola dourada do II Encontro de Coros Diocesanos e Litúrgicos"
                 width={1120}
                 height={1394}
                 className="aspect-[4/3] w-full object-cover sm:aspect-square"
