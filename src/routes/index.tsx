@@ -2,9 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
-import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
-import heroChurchImage from "../assets/hero-church-empty.jpg";
-import heroChoirImage from "../assets/hero-encontro-coros.jpg";
+import heroBackgroundImage from "../assets/hero-encontro-background.png";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
@@ -228,38 +226,20 @@ function Header() {
 function HeroSection() {
   return (
     <section className="relative isolate overflow-hidden bg-[#090b08]">
-      <img
-        src={heroChurchImage}
-        alt=""
-        aria-hidden="true"
-        width={1536}
-        height={1024}
-        className="absolute inset-0 h-full w-full object-cover object-center"
-        fetchPriority="high"
-      />
-      <img
-        src={heroChoirImage}
-        alt=""
-        aria-hidden="true"
-        width={1536}
-        height={1024}
-        className="absolute inset-0 h-full w-full object-cover object-[center_65%] lg:hidden"
-        fetchPriority="high"
-      />
       <div
         data-hero-photo-position="upper-right"
-        className="absolute right-[-2%] top-[8%] z-[1] hidden w-[64%] overflow-hidden opacity-95 lg:block [mask-image:linear-gradient(to_right,transparent_0%,black_17%,black_100%)]"
+        className="absolute inset-0"
       >
         <img
-          src={heroChoirFocusImage}
+          src={heroBackgroundImage}
           alt="Participantes do Encontro de Coros reunidos diante da igreja"
-          width={1536}
-          height={574}
-          className="h-auto w-full"
+          width={2304}
+          height={1024}
+          className="h-full w-full object-cover object-[72%_top] lg:object-contain lg:object-top"
           fetchPriority="high"
         />
       </div>
-      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(3,5,3,0.84)_0%,rgba(3,5,3,0.72)_48%,rgba(3,5,3,0.88)_100%)] lg:bg-[linear-gradient(90deg,rgba(3,5,3,0.96)_0%,rgba(3,5,3,0.91)_38%,rgba(3,5,3,0.69)_64%,rgba(3,5,3,0.48)_100%)]" />
+      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(3,5,3,0.65)_0%,rgba(3,5,3,0.75)_48%,rgba(3,5,3,0.88)_100%)] lg:bg-none" />
       <div className="absolute inset-x-0 bottom-0 z-[3] h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative z-10 section-padding">
         <div className="container-event grid items-stretch gap-6 px-4 sm:gap-10 lg:min-h-[46rem] lg:grid-cols-2 lg:gap-12 lg:px-0">
