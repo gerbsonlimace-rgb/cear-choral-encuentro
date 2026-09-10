@@ -454,6 +454,13 @@ const quixadaSpots = [
     credit: "Foto: Wikimedia Commons",
   },
   {
+    name: "Catedral Jesus, Maria e José",
+    description:
+      "Igreja-mãe da Diocese de Quixadá, a catedral acolhe celebrações e encontros que marcam a vida religiosa da cidade.",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Catedral%20Quixad%C3%A1.jpg",
+    credit: "Foto: GLandovsky / Wikimedia Commons",
+  },
+  {
     name: "Santuário Rainha do Sertão",
     description:
       "No alto da serra, o santuário oferece uma vista ampla da cidade, dos monólitos e do sertão ao redor.",
