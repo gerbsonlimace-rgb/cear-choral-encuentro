@@ -53,7 +53,34 @@ alter table public.registrations
   drop constraint if exists registrations_diocese_check;
 
 alter table public.registrations
-  rename column diocese to choir_name;
+  add column choir_name text;
+
+update public.registrations
+set choir_name = diocese
+where choir_name is null;
+
+create or replace function public.sync_registration_choir_names()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.choir_name is null then
+    new.choir_name := new.diocese;
+  elsif new.diocese is null then
+    new.diocese := new.choir_name;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger sync_registration_choir_names_before_write
+before insert or update of diocese, choir_name on public.registrations
+for each row execute function public.sync_registration_choir_names();
+
+alter table public.registrations
+  alter column choir_name set not null,
+  add constraint registrations_choir_names_match_check check (diocese = choir_name);
 
 alter table public.registrations
   add column choir_id uuid references public.choirs(id) on delete restrict,

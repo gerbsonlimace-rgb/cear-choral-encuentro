@@ -105,16 +105,41 @@ describe("RegistrationSection", () => {
   it("keeps the entered form when checkout creation fails", async () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockRejectedValue(new Error("A configuração de preços mudou."));
+    const reloadConfiguration = vi
+      .fn()
+      .mockResolvedValueOnce(configuration)
+      .mockResolvedValueOnce({ ...configuration, shirtPriceCents: null });
     render(
-      <RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} />,
+      <RegistrationSection loadConfiguration={reloadConfiguration} startCheckout={startCheckout} />,
     );
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
     await fillRequiredFields(user);
-
     await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
 
     expect(await screen.findByText(/configuração de preços mudou/i)).toBeInTheDocument();
+    await waitFor(() => expect(reloadConfiguration).toHaveBeenCalledTimes(2));
     expect(screen.getByLabelText("Nome Completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("Coro/Diocese")).toHaveValue("");
+    expect(
+      screen.queryByRole("checkbox", { name: /Incluir camisa oficial/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a retry when the initial configuration request fails", async () => {
+    const user = userEvent.setup();
+    const retryConfiguration = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("unavailable"))
+      .mockResolvedValueOnce(configuration);
+    render(<RegistrationSection loadConfiguration={retryConfiguration} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar");
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(
+      await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" }),
+    ).toBeInTheDocument();
+    expect(retryConfiguration).toHaveBeenCalledTimes(2);
   });
 
   it("submits the displayed automatic quote and redirects", async () => {

@@ -44,9 +44,11 @@ describe("choir event pricing migration", () => {
   it("renames the historical text and preserves existing registrations", () => {
     const migration = readMigration();
 
-    expect(migration).toContain("rename column diocese to choir_name");
+    expect(migration).toContain("add column choir_name text");
+    expect(migration).toContain("set choir_name = diocese");
+    expect(migration).toContain("sync_registration_choir_names_before_write");
+    expect(migration).not.toContain("rename column diocese to choir_name");
     expect(migration).toContain("references public.choirs(id) on delete restrict");
     expect(migration).not.toMatch(/delete from public\.registrations/);
-    expect(migration).not.toMatch(/update public\.registrations/);
   });
 });

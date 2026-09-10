@@ -77,8 +77,7 @@ export function createRegistrationPaymentService(deps: {
         input.displayedQuote.pricingType !== selection.quote.pricingType ||
         input.displayedQuote.standardPriceCents !== selection.quote.standardPriceCents ||
         input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents;
-      const shirtChanged =
-        input.includeShirt && input.displayedShirtPriceCents !== selection.shirtPriceCents;
+      const shirtChanged = input.displayedShirtPriceCents !== selection.shirtPriceCents;
       if (quoteChanged || shirtChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
@@ -212,6 +211,7 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         birth_date: input.birthDate,
         choir_id: input.choirId,
         choir_name: input.choirName,
+        diocese: input.choirName,
         email: input.email,
         city: null,
         institution: null,

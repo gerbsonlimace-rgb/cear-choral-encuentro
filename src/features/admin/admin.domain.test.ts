@@ -15,6 +15,7 @@ const legacyRow: RegistrationDatabaseRow = {
   birth_date: "1990-01-01",
   choir_id: null,
   choir_name: "Diocese de Sobral",
+  diocese: "Diocese de Sobral",
   email: "ana@example.com",
   phone: "85988887777",
   city: "Sobral",

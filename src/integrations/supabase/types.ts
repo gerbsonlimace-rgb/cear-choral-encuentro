@@ -134,6 +134,7 @@ export type Database = {
           choir_name: string
           city: string | null
           created_at: string
+          diocese: string
           email: string | null
           id: string
           include_shirt: boolean
@@ -165,6 +166,7 @@ export type Database = {
           choir_name: string
           city?: string | null
           created_at?: string
+          diocese: string
           email?: string | null
           id?: string
           include_shirt?: boolean
@@ -196,6 +198,7 @@ export type Database = {
           choir_name?: string
           city?: string | null
           created_at?: string
+          diocese?: string
           email?: string | null
           id?: string
           include_shirt?: boolean

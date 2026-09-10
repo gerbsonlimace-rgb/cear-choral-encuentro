@@ -157,4 +157,33 @@ describe("AdminChoirsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível salvar o coro.");
     expect(screen.getByLabelText("Nome do coro")).toHaveValue("Coro Litúrgico");
   });
+
+  it("shows the safe duplicate-name message", async () => {
+    const { user } = setup({
+      createChoir: vi.fn(async () => {
+        throw new Error("Já existe um coro com esse nome.");
+      }),
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Cadastrar coro" }));
+    await user.type(screen.getByLabelText("Nome do coro"), "Coro Litúrgico");
+    await user.click(screen.getByRole("button", { name: "Salvar coro" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Já existe um coro com esse nome.");
+  });
+
+  it("retries the initial administrative load", async () => {
+    const user = userEvent.setup();
+    const loadData = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("unavailable"))
+      .mockResolvedValueOnce(emptyData);
+    setup({ loadData });
+
+    await screen.findByText("Não foi possível carregar os coros e valores.");
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await screen.findByText("Nenhum coro cadastrado.")).toBeInTheDocument();
+    expect(loadData).toHaveBeenCalledTimes(2);
+  });
 });

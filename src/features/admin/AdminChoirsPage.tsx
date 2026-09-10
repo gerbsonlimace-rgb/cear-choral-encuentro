@@ -228,8 +228,12 @@ export function AdminChoirsPage({
       });
       setDialogOpen(false);
       setMessage(editing ? "Coro atualizado." : "Coro cadastrado.");
-    } catch {
-      setError("Não foi possível salvar o coro.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error && caught.message === "Já existe um coro com esse nome."
+          ? caught.message
+          : "Não foi possível salvar o coro.",
+      );
     } finally {
       setSaving(false);
     }
@@ -291,6 +295,11 @@ export function AdminChoirsPage({
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
+        )}
+        {gate === "authorized" && !loading && !data && error && (
+          <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
+            Tentar novamente
+          </Button>
         )}
         {gate === "checking" && <Skeleton className="h-40 w-full" />}
         {gate === "forbidden" && <p role="alert">Acesso não autorizado.</p>}

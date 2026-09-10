@@ -284,6 +284,14 @@ describe("registration payment service", () => {
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
+  it("rejects a stale displayed shirt price even when the shirt was not selected", async () => {
+    await expect(
+      fixture.service.startCheckout({ ...baseInput, displayedShirtPriceCents: 4000 }),
+    ).rejects.toThrow("configuração de preços mudou");
+
+    expect(fixture.repository.createPending).not.toHaveBeenCalled();
+  });
+
   it("rejects an original amount different from the local order", async () => {
     fixture.setRecord(pendingRecord());
     vi.mocked(fixture.infinitePay.checkPayment).mockResolvedValueOnce({
@@ -434,6 +442,7 @@ describe("Supabase registration repository", () => {
           birth_date: "1990-05-20",
           choir_id: choirId,
           choir_name: "Coro Diocesano de Quixadá",
+          diocese: "Coro Diocesano de Quixadá",
           email: "maria@example.com",
           city: null,
           institution: null,

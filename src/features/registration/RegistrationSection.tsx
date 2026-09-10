@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import shirtAsset from "@/assets/camisa-polo-evento.png.asset.json";
 import pixLogo from "@/assets/logo-pix.svg";
@@ -60,21 +60,45 @@ export function RegistrationSection({
   const [errors, setErrors] = useState<Partial<Record<keyof RegistrationForm, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
+  const mounted = useRef(false);
+
+  const refreshConfiguration = useCallback(
+    async (clearSelection = false) => {
+      setConfigurationError("");
+      setIsLoadingConfiguration(true);
+      if (clearSelection) setConfiguration(null);
+      try {
+        const next = await loadConfiguration();
+        if (!mounted.current) return;
+        setConfiguration(next);
+        setForm((previous) => ({
+          ...previous,
+          choirId:
+            !clearSelection && next.choirs.some((choir) => choir.id === previous.choirId)
+              ? previous.choirId
+              : "",
+          includeShirt: next.shirtPriceCents === null ? false : previous.includeShirt,
+          shirtSize: next.shirtPriceCents === null ? "" : previous.shirtSize,
+        }));
+      } catch {
+        if (mounted.current) {
+          setConfigurationError("Não foi possível carregar os coros e valores da inscrição.");
+        }
+      } finally {
+        if (mounted.current) setIsLoadingConfiguration(false);
+      }
+    },
+    [loadConfiguration],
+  );
 
   useEffect(() => {
-    let active = true;
-    void loadConfiguration()
-      .then((next) => {
-        if (active) setConfiguration(next);
-      })
-      .catch(() => {
-        if (active)
-          setConfigurationError("Não foi possível carregar os coros e valores da inscrição.");
-      });
+    mounted.current = true;
+    void refreshConfiguration();
     return () => {
-      active = false;
+      mounted.current = false;
     };
-  }, [loadConfiguration]);
+  }, [refreshConfiguration]);
 
   const selectedChoir = useMemo(
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,
@@ -129,11 +153,16 @@ export function RegistrationSection({
       navigateToCheckout(checkoutUrl);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
+      const normalizedMessage = message.toLocaleLowerCase("pt-BR");
+      const shouldRefresh =
+        normalizedMessage.includes("configuração de preços mudou") ||
+        normalizedMessage.includes("coro selecionado não está disponível");
       setCheckoutError(
-        message.toLocaleLowerCase("pt-BR").includes("configuração de preços mudou")
+        shouldRefresh
           ? "A configuração de preços mudou. Confira o valor e tente novamente."
           : "Não foi possível preparar o pagamento. Tente novamente.",
       );
+      if (shouldRefresh) await refreshConfiguration(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -168,9 +197,14 @@ export function RegistrationSection({
         </div>
 
         {configurationError && (
-          <p role="alert" className="mx-auto mt-8 max-w-3xl text-center text-destructive">
-            {configurationError}
-          </p>
+          <div className="mx-auto mt-8 flex max-w-3xl flex-col items-center gap-3 text-center">
+            <p role="alert" className="text-destructive">
+              {configurationError}
+            </p>
+            <Button type="button" variant="outline" onClick={() => void refreshConfiguration()}>
+              Tentar novamente
+            </Button>
+          </div>
         )}
         <div
           className={`mx-auto mt-9 grid max-w-6xl gap-6 sm:mt-12 ${shirtPriceCents === null ? "max-w-3xl" : "lg:grid-cols-[0.85fr_1.15fr] lg:gap-8"}`}
@@ -293,7 +327,7 @@ export function RegistrationSection({
                     className="min-h-12 w-full rounded-xl border border-border bg-background px-3 text-base"
                   >
                     <option value="">
-                      {configuration ? "Selecione o coro/diocese" : "Carregando coros…"}
+                      {isLoadingConfiguration ? "Carregando coros…" : "Selecione o coro/diocese"}
                     </option>
                     {configuration?.choirs.map((choir) => (
                       <option key={choir.id} value={choir.id}>
