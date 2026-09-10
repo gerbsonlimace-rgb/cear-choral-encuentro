@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
+import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
 import heroBackgroundImage from "../assets/hero-encontro-background.png";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
@@ -223,144 +224,247 @@ function Header() {
   );
 }
 
+type HeroPrototype = "fundo" | "total" | "colunas";
+
+function useHeroPrototype(): HeroPrototype {
+  const [prototype, setPrototype] = useState<HeroPrototype>("fundo");
+
+  useEffect(() => {
+    const requestedPrototype = new URLSearchParams(window.location.search).get("hero");
+    setPrototype(
+      requestedPrototype === "total" || requestedPrototype === "colunas"
+        ? requestedPrototype
+        : "fundo",
+    );
+  }, []);
+
+  return prototype;
+}
+
 function HeroSection() {
+  const prototype = useHeroPrototype();
+  const hasBackgroundPhoto = prototype === "fundo";
+  const hasCenteredLayout = prototype === "total";
+  const hasTwoColumnLayout = prototype === "colunas";
+  const heroActions = (
+    <div
+      data-hero-actions
+      className={`mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${
+        hasCenteredLayout
+          ? "sm:justify-center"
+          : hasTwoColumnLayout
+            ? "order-3 w-full sm:justify-center lg:order-none lg:mt-8"
+            : ""
+      }`}
+    >
+      <Button
+        asChild
+        size="lg"
+        className="h-12 rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:px-8"
+      >
+        <a href="#inscricao" className="justify-center">
+          Faça sua inscrição
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </a>
+      </Button>
+      <Button
+        asChild
+        variant="outline"
+        size="lg"
+        className="h-12 rounded-full border-2 border-white bg-white px-7 text-base font-bold text-teal hover:bg-white/90 sm:h-14 sm:px-8"
+      >
+        <a href="#programacao" className="justify-center">
+          Programação
+        </a>
+      </Button>
+    </div>
+  );
+
   return (
-    <section className="relative isolate overflow-hidden bg-[#141a17]">
+    <section
+      data-hero-prototype={prototype}
+      data-hero-layout={hasTwoColumnLayout ? "two-columns" : undefined}
+      className="relative isolate overflow-hidden bg-[#070a08] text-white"
+    >
       <div
-        data-hero-photo-position="upper-right"
-        className="absolute inset-0 lg:hidden"
+        data-hero-photo-position={hasBackgroundPhoto ? "background" : "full-background"}
+        className="absolute inset-0"
       >
         <img
-          src={heroBackgroundImage}
+          src={hasBackgroundPhoto ? heroBackgroundImage : heroChoirFocusImage}
           alt="Participantes do Encontro de Coros reunidos diante da igreja"
           width={2304}
-          height={1024}
-          className="h-full w-full object-cover object-[72%_top]"
+          height={hasBackgroundPhoto ? 1024 : 864}
+          className={
+            hasBackgroundPhoto
+              ? "h-full w-full object-cover object-[66%_top] sm:object-[70%_top] lg:object-[68%_center]"
+              : "h-full w-full object-cover object-center"
+          }
           fetchPriority="high"
         />
       </div>
-      <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(10,14,12,0.55)_0%,rgba(10,14,12,0.65)_48%,rgba(10,14,12,0.8)_100%)] lg:hidden" />
-      <div className="absolute inset-x-0 bottom-0 z-[3] h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
-      <div className="relative z-10 section-padding">
-        <div className="container-event grid items-stretch gap-6 px-4 sm:gap-10 lg:min-h-[46rem] lg:grid-cols-2 lg:gap-12 lg:px-0">
-          <div className="flex flex-col items-center justify-center text-center lg:items-start lg:text-left">
-            <img
-              src={logoImage}
-              alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-              width={240}
-              height={240}
-              className="mb-5 w-80 max-w-[90vw] drop-shadow-2xl sm:hidden"
-              fetchPriority="high"
-            />
+
+      {hasBackgroundPhoto ? (
+        <>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,5,0.3)_0%,rgba(4,7,5,0.62)_52%,rgba(4,7,5,0.94)_100%)] lg:bg-[linear-gradient(90deg,rgba(4,7,5,0.98)_0%,rgba(4,7,5,0.94)_32%,rgba(4,7,5,0.65)_55%,rgba(4,7,5,0.18)_78%,rgba(4,7,5,0.08)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,5,0.08)_46%,rgba(4,7,5,0.92)_100%)]" />
+        </>
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
+        </>
+      )}
+
+      <div
+        data-hero-frame
+        className={`relative z-10 mx-auto grid w-full max-w-[90rem] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16 ${
+          hasBackgroundPhoto
+            ? "min-h-[calc(100svh-3.5rem)] items-center lg:min-h-[46rem] lg:grid-cols-[minmax(0,44rem)_1fr]"
+            : hasTwoColumnLayout
+              ? "min-h-[calc(100svh-3.5rem)] gap-7 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10"
+              : "min-h-[calc(100svh-3.5rem)] content-center gap-5 lg:min-h-[48rem] lg:gap-6"
+        }`}
+      >
+        <div
+          data-hero-copy
+          className={`flex min-w-0 flex-col ${
+            hasBackgroundPhoto
+              ? "max-w-[44rem] justify-center"
+              : hasTwoColumnLayout
+                ? "order-2 justify-center lg:order-1 lg:max-w-[48rem] lg:items-start lg:text-left"
+                : "order-2 mx-auto w-full max-w-[62rem] items-center text-center"
+          }`}
+        >
+          <div>
             <div
               aria-label="Informações principais do evento"
-              className="grid w-full max-w-2xl gap-3 sm:grid-cols-2"
+              className={`grid border-y border-white/20 sm:grid-cols-2 ${
+                hasCenteredLayout ? "mx-auto w-full max-w-[46rem]" : ""
+              }`}
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-amber/40 bg-black/30 px-4 py-3 text-left shadow-lg shadow-black/15 backdrop-blur-sm sm:px-5 sm:py-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/10 sm:h-11 sm:w-11">
-                  <Calendar aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+              <div className="flex items-center gap-3 py-3 pr-4 sm:py-4 sm:pr-6">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground">
+                  <Calendar aria-hidden="true" className="h-5 w-5" />
                 </span>
                 <span>
-                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                  <span className="block text-[0.6875rem] font-extrabold uppercase tracking-[0.18em] text-amber">
                     Data
                   </span>
-                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                  <span className="mt-0.5 block text-sm font-extrabold leading-tight text-white sm:text-base">
                     20 a 22 de novembro de 2026
                   </span>
                 </span>
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-amber/40 bg-black/30 px-4 py-3 text-left shadow-lg shadow-black/15 backdrop-blur-sm sm:px-5 sm:py-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/10 sm:h-11 sm:w-11">
-                  <MapPin aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+              <div className="flex items-center gap-3 border-t border-white/20 py-3 sm:border-l sm:border-t-0 sm:py-4 sm:pl-6">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground">
+                  <MapPin aria-hidden="true" className="h-5 w-5" />
                 </span>
                 <span>
-                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                  <span className="block text-[0.6875rem] font-extrabold uppercase tracking-[0.18em] text-amber">
                     Cidade
                   </span>
-                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                  <span className="mt-0.5 block text-sm font-extrabold leading-tight text-white sm:text-base">
                     Quixadá, CE
                   </span>
                 </span>
               </div>
             </div>
-            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.35)] sm:mt-6 md:text-6xl">
+
+            <h1
+              className={`mt-7 font-display font-extrabold leading-[1.04] tracking-[-0.025em] text-white sm:mt-8 ${
+                hasBackgroundPhoto
+                  ? "max-w-[20ch] text-[clamp(2.2rem,6vw,3.5rem)] lg:text-[clamp(3.1rem,3.6vw,4rem)]"
+                  : hasTwoColumnLayout
+                    ? "max-w-[17ch] text-[clamp(2.15rem,7.8vw,3.5rem)] lg:text-[clamp(2.9rem,3.35vw,4rem)]"
+                    : "mx-auto max-w-[22ch] text-[clamp(2.15rem,7.8vw,3.5rem)] lg:text-[clamp(3rem,3.65vw,4.4rem)]"
+              }`}
+            >
               II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB
             </h1>
-            <blockquote className="relative mt-5 w-fit max-w-full border-x border-amber/45 px-4 py-3 text-center sm:mt-6 sm:px-8 sm:py-4 lg:text-left">
-              <span
-                aria-hidden="true"
-                className="absolute -left-1 -top-4 font-display text-6xl leading-none text-amber/70 sm:-left-2 sm:text-7xl"
-              >
-                “
-              </span>
-              <p className="font-display text-[clamp(0.85rem,2vw,1.125rem)] font-bold italic leading-snug tracking-normal text-white">
-                <span className="block whitespace-nowrap">Cantai para o Senhor um canto novo,</span>
-                <span className="block whitespace-nowrap">com arte sustentai a louvação!</span>
-              </p>
-              <cite className="mt-4 inline-flex rounded-full border border-amber/50 bg-amber px-3.5 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground shadow-md shadow-black/10 sm:text-sm">
-                Sl 32 (33), 3
-              </cite>
-              <span
-                aria-hidden="true"
-                className="absolute -right-1 -bottom-8 font-display text-6xl leading-none text-amber/35 sm:-right-2 sm:text-7xl"
-              >
-                ”
-              </span>
-            </blockquote>
-            <div className="mt-5 flex items-center justify-center text-sm text-white/90 sm:mt-7 sm:text-base lg:justify-start">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-amber" />
-                <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
-              </div>
-            </div>
-            <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
-              <Button
-                asChild
-                size="lg"
-                className="h-12 w-full rounded-full bg-amber px-8 text-base font-extrabold text-amber-foreground shadow-md shadow-black/10 hover:bg-amber/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
-              >
-                <a href="#inscricao" className="justify-center">
-                  Faça sua inscrição
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </a>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 w-full rounded-full border-2 border-white/80 bg-white px-8 text-base font-bold text-teal hover:bg-white/90 sm:h-auto sm:w-auto sm:py-6 sm:text-lg"
-              >
-                <a href="#programacao" className="justify-center">
-                  Programação
-                </a>
-              </Button>
-            </div>
           </div>
-          <div
-            data-hero-logo-position="lower-right"
-            className="hidden flex-col items-center justify-center gap-8 self-stretch sm:flex lg:items-end lg:justify-center"
+
+          <blockquote
+            className={`relative mt-7 w-fit max-w-[40rem] border-t border-amber/55 pt-5 sm:mt-8 sm:pt-6 ${
+              hasCenteredLayout ? "mx-auto" : ""
+            }`}
           >
-            <img
-              src={heroBackgroundImage}
-              alt="Participantes do Encontro de Coros reunidos diante da igreja"
-              width={2304}
-              height={1024}
-              className="w-full max-w-xl rounded-2xl object-cover shadow-2xl shadow-black/20"
-              fetchPriority="high"
-            />
-            <div className="relative w-full max-w-[20rem] sm:max-w-md lg:max-w-[28rem]">
-              <img
-                src={logoImage}
-                alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-                width={512}
-                height={512}
-                className="relative w-full drop-shadow-2xl"
-                fetchPriority="high"
-              />
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 left-0 bg-[#070a08] pr-3 font-display text-4xl leading-none text-amber"
+            >
+              “
+            </span>
+            <p className="max-w-[35rem] font-display text-base font-bold italic leading-relaxed text-white sm:text-lg">
+              <span className="block">Cantai para o Senhor um canto novo,</span>
+              <span className="block">com arte sustentai a louvação!</span>
+            </p>
+            <cite className="mt-3 inline-flex rounded-full bg-amber px-3 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground sm:text-sm">
+              Sl 32 (33), 3
+            </cite>
+            <span
+              aria-hidden="true"
+              className="ml-3 font-display text-3xl leading-none text-amber/65"
+            >
+              ”
+            </span>
+          </blockquote>
+
+          <div className={`mt-7 sm:mt-8 ${hasCenteredLayout ? "text-center" : ""}`}>
+            <div
+              className={`flex items-center gap-2 text-sm font-semibold text-white/90 sm:text-base ${
+                hasCenteredLayout ? "justify-center" : ""
+              }`}
+            >
+              <Users aria-hidden="true" className="h-5 w-5 shrink-0 text-amber" />
+              <span>Coralistas, Instrumentistas e Regentes</span>
             </div>
+            {!hasTwoColumnLayout && heroActions}
           </div>
         </div>
+
+        <div
+          data-hero-visuals
+          className={`min-w-0 ${
+            hasBackgroundPhoto
+              ? "order-first mb-7 flex items-center justify-center lg:absolute lg:bottom-12 lg:right-12 lg:mb-0 lg:w-[min(33vw,31rem)]"
+              : hasTwoColumnLayout
+                ? "contents lg:order-2 lg:flex lg:min-h-full lg:flex-col lg:items-center lg:justify-center lg:pl-10"
+                : "order-1 flex items-center justify-center"
+          }`}
+        >
+          <div
+            data-hero-logo-position={
+              hasBackgroundPhoto
+                ? "over-background"
+                : hasTwoColumnLayout
+                  ? "column-right"
+                  : "centered-overlay"
+            }
+            className={`flex min-h-0 items-center justify-center ${
+              hasTwoColumnLayout ? "order-1 lg:order-none" : ""
+            }`}
+          >
+            <img
+              src={logoImage}
+              alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
+              width={605}
+              height={342}
+              className={`h-auto w-full object-contain ${
+                hasBackgroundPhoto
+                  ? "max-w-[18rem] drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[21rem] lg:max-w-[24rem]"
+                  : hasTwoColumnLayout
+                    ? "max-w-[18rem] drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[22rem] lg:max-w-[31rem]"
+                    : "max-w-[12rem] drop-shadow-[0_6px_12px_rgba(0,0,0,0.45)] sm:max-w-[14rem] lg:max-w-[16rem]"
+              }`}
+              fetchPriority="high"
+            />
+          </div>
+          {hasTwoColumnLayout && heroActions}
+        </div>
       </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
     </section>
   );
 }
