@@ -23,7 +23,7 @@ export type AdminRegistrationRow = {
   id: string;
   createdAt: string;
   name: string;
-  diocese: string;
+  choirName: string;
   email: string;
   phone: string;
   city: string;
@@ -36,6 +36,10 @@ export type AdminRegistrationRow = {
   paymentMethod: "pix" | "credit_card" | null;
   installments: number | null;
   paidAt: string | null;
+  pricingType: "standard" | "promotional" | null;
+  standardPriceCents: number | null;
+  registrationPriceCents: number | null;
+  shirtPriceCents: number | null;
 };
 
 export type AdminRegistrationPage = {
@@ -50,7 +54,7 @@ export type AdminRegistrationSummary = {
   paid: number;
   pending: number;
   legacy: number;
-  byDiocese: Array<{ diocese: string; total: number }>;
+  byChoir: Array<{ choirName: string; total: number }>;
 };
 
 export type AdminExportFile = { fileName: string; content: string };
@@ -62,7 +66,7 @@ export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegi
     id: row.id,
     createdAt: row.created_at,
     name: row.name,
-    diocese: row.diocese,
+    choirName: row.choir_name,
     email: displayText(row.email),
     phone: row.phone,
     city: displayText(row.city),
@@ -80,29 +84,35 @@ export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegi
     paymentMethod: row.payment_method as AdminRegistrationRow["paymentMethod"],
     installments: row.installments,
     paidAt: row.paid_at,
+    pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
+    standardPriceCents: row.standard_price_cents,
+    registrationPriceCents: row.registration_price_cents,
+    shirtPriceCents: row.shirt_price_cents,
   };
 }
 
 export function summarizeAdminRegistrations(
-  rows: Array<Pick<AdminRegistrationRow, "diocese" | "paymentStatus">>,
+  rows: Array<Pick<AdminRegistrationRow, "choirName" | "paymentStatus">>,
 ): AdminRegistrationSummary {
   const summary: AdminRegistrationSummary = {
     total: rows.length,
     paid: 0,
     pending: 0,
     legacy: 0,
-    byDiocese: [],
+    byChoir: [],
   };
-  const dioceses = new Map<string, number>();
+  const choirs = new Map<string, number>();
 
   for (const row of rows) {
     summary[row.paymentStatus] += 1;
-    dioceses.set(row.diocese, (dioceses.get(row.diocese) ?? 0) + 1);
+    choirs.set(row.choirName, (choirs.get(row.choirName) ?? 0) + 1);
   }
 
-  summary.byDiocese = [...dioceses.entries()]
-    .map(([diocese, total]) => ({ diocese, total }))
-    .sort((left, right) => right.total - left.total || left.diocese.localeCompare(right.diocese));
+  summary.byChoir = [...choirs.entries()]
+    .map(([choirName, total]) => ({ choirName, total }))
+    .sort(
+      (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),
+    );
 
   return summary;
 }
@@ -119,6 +129,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 const csvHeaders = [
   "Data",
   "Nome",
+  "Coro/Diocese",
   "E-mail",
   "Telefone",
   "Cidade",
@@ -126,6 +137,10 @@ const csvHeaders = [
   "Função",
   "Situação",
   "Camisa",
+  "Tipo do valor",
+  "Valor normal",
+  "Valor da inscrição",
+  "Valor da camisa",
   "Valor esperado",
   "Valor pago",
   "Forma de pagamento",
@@ -160,6 +175,12 @@ function displayPaymentMethod(value: AdminRegistrationRow["paymentMethod"]): str
   return "Não informado";
 }
 
+function displayPricingType(value: AdminRegistrationRow["pricingType"]): string {
+  if (value === "standard") return "Normal";
+  if (value === "promotional") return "Promocional";
+  return "Não informado";
+}
+
 function dateStamp(date: Date): string {
   const values = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Fortaleza",
@@ -182,6 +203,7 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
     ...rows.map((row) => [
       displayDate(row.createdAt),
       row.name,
+      row.choirName,
       row.email,
       row.phone,
       row.city,
@@ -189,6 +211,10 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
       row.role,
       displayStatus(row.paymentStatus),
       row.shirtLabel,
+      displayPricingType(row.pricingType),
+      displayAmount(row.standardPriceCents),
+      displayAmount(row.registrationPriceCents),
+      displayAmount(row.shirtPriceCents),
       displayAmount(row.amountCents),
       displayAmount(row.paidAmountCents),
       displayPaymentMethod(row.paymentMethod),

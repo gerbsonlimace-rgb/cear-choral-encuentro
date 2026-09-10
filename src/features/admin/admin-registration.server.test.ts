@@ -17,12 +17,12 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,diocese,email,phone,city,institution,role,include_shirt,shirt_size,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at";
+  "id,created_at,name,choir_name,email,phone,city,institution,role,include_shirt,shirt_size,pricing_type,standard_price_cents,registration_price_cents,shirt_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
   name: "Maria",
-  diocese: "Diocese de Quixadá",
+  choir_name: "Diocese de Quixadá",
   email: "maria@example.com",
   phone: "85999999999",
   city: "Fortaleza",
@@ -30,6 +30,10 @@ const selectedRow = {
   role: "Corista",
   include_shirt: false,
   shirt_size: null,
+  pricing_type: "standard",
+  standard_price_cents: 3000,
+  registration_price_cents: 3000,
+  shirt_price_cents: null,
   amount_cents: 3000,
   paid_amount_cents: 3000,
   payment_status: "paid",
@@ -114,10 +118,10 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome;E-mail;Telefone;Cidade;Instituição;Função;Situação;Camisa;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Camisa;Tipo do valor;Valor normal;Valor da inscrição;Valor da camisa;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
     expect(lines[1]).toBe(
-      "07/09/2026;Maria 0;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Sem camisa;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Sem camisa;Normal;R$ 30,00;R$ 30,00;Não informado;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");
@@ -215,7 +219,11 @@ describe("registration summary", () => {
             paymentMethod: "pix" as const,
             installments: selectedRow.installments,
             paidAt: selectedRow.paid_at,
-            diocese: "Diocese de Quixadá",
+            choirName: "Diocese de Quixadá",
+            pricingType: "standard" as const,
+            standardPriceCents: 3000,
+            registrationPriceCents: 3000,
+            shirtPriceCents: null,
           },
         ];
       },
@@ -231,7 +239,7 @@ describe("registration summary", () => {
       paid: 1,
       pending: 0,
       legacy: 0,
-      byDiocese: [{ diocese: "Diocese de Quixadá", total: 1 }],
+      byChoir: [{ choirName: "Diocese de Quixadá", total: 1 }],
     });
   });
 });
@@ -291,7 +299,7 @@ describe("registration repository list", () => {
       ["eq", "payment_status", "paid"],
       [
         "or",
-        'name.ilike."%Maria%",email.ilike."%Maria%",phone.ilike."%Maria%",city.ilike."%Maria%",institution.ilike."%Maria%"',
+        'name.ilike."%Maria%",choir_name.ilike."%Maria%",email.ilike."%Maria%",phone.ilike."%Maria%",city.ilike."%Maria%",institution.ilike."%Maria%"',
       ],
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
@@ -304,7 +312,7 @@ describe("registration repository list", () => {
           id: "registration-1",
           createdAt: "2026-09-07T12:00:00Z",
           name: "Maria",
-          diocese: "Diocese de Quixadá",
+          choirName: "Diocese de Quixadá",
           email: "maria@example.com",
           phone: "85999999999",
           city: "Fortaleza",
@@ -317,6 +325,10 @@ describe("registration repository list", () => {
           paymentMethod: "pix",
           installments: 1,
           paidAt: "2026-09-07T13:00:00Z",
+          pricingType: "standard",
+          standardPriceCents: 3000,
+          registrationPriceCents: 3000,
+          shirtPriceCents: null,
         },
       ],
       total: 51,
@@ -335,7 +347,7 @@ describe("registration repository list", () => {
     });
     expect(trace.find(([method]) => method === "or")).toEqual([
       "or",
-      String.raw`name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",email.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",phone.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",city.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",institution.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%"`,
+      String.raw`name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",choir_name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",email.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",phone.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",city.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",institution.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%"`,
     ]);
     expect(trace.some(([method]) => method === "eq")).toBe(false);
   });

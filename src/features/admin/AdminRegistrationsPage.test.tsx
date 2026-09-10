@@ -24,7 +24,7 @@ const legacy: AdminRegistrationRow = {
   id: "legacy",
   createdAt: "2026-09-01T12:00:00Z",
   name: "Ana Histórica",
-  diocese: "Diocese de Quixadá",
+  choirName: "Diocese de Quixadá",
   email: "ana@example.com",
   phone: "85999990000",
   city: "Quixadá",
@@ -37,6 +37,10 @@ const legacy: AdminRegistrationRow = {
   paymentMethod: null,
   installments: null,
   paidAt: null,
+  pricingType: null,
+  standardPriceCents: null,
+  registrationPriceCents: null,
+  shirtPriceCents: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -64,10 +68,10 @@ const summary: AdminRegistrationSummary = {
   paid: 8,
   pending: 4,
   legacy: 2,
-  byDiocese: [
-    { diocese: "Diocese de Quixadá", total: 7 },
-    { diocese: "Diocese de Sobral", total: 4 },
-    { diocese: "Arquidiocese de Fortaleza", total: 3 },
+  byChoir: [
+    { choirName: "Diocese de Quixadá", total: 7 },
+    { choirName: "Diocese de Sobral", total: 4 },
+    { choirName: "Arquidiocese de Fortaleza", total: 3 },
   ],
 };
 
@@ -116,6 +120,15 @@ describe("AdminRegistrationsPage read-only views", () => {
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
     await screen.findByRole("table");
     expect(loadSummary).toHaveBeenCalledOnce();
+  });
+
+  it("links to choir and event-value administration", async () => {
+    setup();
+
+    expect(await screen.findByRole("link", { name: "Coros e valores" })).toHaveAttribute(
+      "href",
+      "/admin/coros",
+    );
   });
 
   it("renders equivalent desktop and mobile records with honest historical payment data", async () => {

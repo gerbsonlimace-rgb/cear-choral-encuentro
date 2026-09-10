@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  getChoirPricingService,
+  type ResolvedChoirSelection,
+} from "@/features/choirs/choir-pricing.server";
+import {
   createInfinitePayClient,
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
@@ -33,7 +37,15 @@ export type PublicPaymentStatus =
 
 export type RegistrationRepository = {
   createPending(
-    input: RegistrationInput & { orderNsu: string; amountCents: number },
+    input: RegistrationInput & {
+      orderNsu: string;
+      amountCents: number;
+      choirName: string;
+      pricingType: "standard" | "promotional";
+      standardPriceCents: number;
+      registrationPriceCents: number;
+      shirtPriceCents: number | null;
+    },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
@@ -56,16 +68,40 @@ export function createRegistrationPaymentService(deps: {
   infinitePay: InfinitePayClient;
   randomUUID: () => string;
   now: () => string;
+  resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
 }) {
   return {
     startCheckout: async (input: RegistrationInput) => {
-      const orderNsu = deps.randomUUID();
-      const amountCents = calculateOrderAmountCents(input);
+      const selection = await deps.resolveChoirSelection(input.choirId);
+      const quoteChanged =
+        input.displayedQuote.pricingType !== selection.quote.pricingType ||
+        input.displayedQuote.standardPriceCents !== selection.quote.standardPriceCents ||
+        input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents;
+      const shirtChanged = input.displayedShirtPriceCents !== selection.shirtPriceCents;
+      if (quoteChanged || shirtChanged) {
+        throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
+      }
 
-      await deps.repository.createPending({ ...input, orderNsu, amountCents });
+      const orderNsu = deps.randomUUID();
+      const amountCents = calculateOrderAmountCents(
+        input,
+        selection.quote,
+        selection.shirtPriceCents,
+      );
+
+      await deps.repository.createPending({
+        ...input,
+        orderNsu,
+        amountCents,
+        choirName: selection.choir.name,
+        pricingType: selection.quote.pricingType,
+        standardPriceCents: selection.quote.standardPriceCents,
+        registrationPriceCents: selection.quote.registrationPriceCents,
+        shirtPriceCents: input.includeShirt ? selection.shirtPriceCents : null,
+      });
       const checkout = await deps.infinitePay.createCheckout({
         orderNsu,
-        items: buildCheckoutItems(input),
+        items: buildCheckoutItems(input, selection.quote, selection.shirtPriceCents),
         customer: { name: input.name, email: input.email, phoneNumber: input.phone },
       });
       await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
@@ -173,7 +209,9 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         name: input.name,
         phone: input.phone,
         birth_date: input.birthDate,
-        diocese: input.diocese,
+        choir_id: input.choirId,
+        choir_name: input.choirName,
+        diocese: input.choirName,
         email: input.email,
         city: null,
         institution: null,
@@ -181,6 +219,10 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         observations: null,
         include_shirt: input.includeShirt,
         shirt_size: input.includeShirt ? input.shirtSize : null,
+        pricing_type: input.pricingType,
+        standard_price_cents: input.standardPriceCents,
+        registration_price_cents: input.registrationPriceCents,
+        shirt_price_cents: input.shirtPriceCents,
         amount_cents: input.amountCents,
         payment_status: "pending",
         order_nsu: input.orderNsu,
@@ -246,6 +288,7 @@ export function getRegistrationPaymentService() {
       }),
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
+      resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
     });
   }
 

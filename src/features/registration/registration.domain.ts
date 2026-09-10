@@ -1,21 +1,5 @@
 import { z } from "zod";
-
-export const REGISTRATION_PRICE_CENTS = 100;
-export const SHIRT_PRICE_CENTS = 10;
-
-export const DIOCESES = [
-  "Arquidiocese de Fortaleza",
-  "Diocese do Crato",
-  "Diocese de Crateús",
-  "Diocese de Iguatu",
-  "Diocese de Itapipoca",
-  "Diocese de Limoeiro do Norte",
-  "Diocese de Quixadá",
-  "Diocese de Sobral",
-  "Diocese de Tianguá",
-] as const;
-
-export const dioceseSchema = z.enum(DIOCESES);
+import { displayedQuoteSchema, type DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
 
 export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
 
@@ -60,12 +44,25 @@ export const registrationSchema = z
     email: z.string().trim().email("Informe um e-mail válido.").max(254),
     phone: z.string().trim().min(8).max(30),
     birthDate: birthDateSchema,
-    diocese: dioceseSchema,
+    choirId: z.string().uuid("Selecione um coro válido."),
+    displayedQuote: displayedQuoteSchema,
+    displayedShirtPriceCents: z.number().int().positive().nullable(),
     includeShirt: z.boolean(),
     shirtSize: shirtSizeSchema.or(z.literal("")),
   })
   .strict()
   .superRefine((value, context) => {
+    const coherentQuote =
+      value.displayedQuote.pricingType === "standard"
+        ? value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents
+        : value.displayedQuote.registrationPriceCents < value.displayedQuote.standardPriceCents;
+    if (!coherentQuote) {
+      context.addIssue({
+        code: "custom",
+        path: ["displayedQuote"],
+        message: "O valor exibido para a inscrição é inválido.",
+      });
+    }
     if (value.includeShirt && !value.shirtSize) {
       context.addIssue({
         code: "custom",
@@ -80,31 +77,50 @@ export const registrationSchema = z
         message: "O tamanho só pode ser informado quando a camisa está incluída.",
       });
     }
+    if (value.includeShirt && value.displayedShirtPriceCents === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["includeShirt"],
+        message: "A camisa não está disponível.",
+      });
+    }
   });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type CheckoutItem = { quantity: 1; price: number; description: string };
 
-export function buildCheckoutItems(input: RegistrationInput): CheckoutItem[] {
+export function buildCheckoutItems(
+  input: RegistrationInput,
+  trustedQuote: DisplayedQuote,
+  trustedShirtPriceCents: number | null,
+): CheckoutItem[] {
   const items: CheckoutItem[] = [
     {
       quantity: 1,
-      price: REGISTRATION_PRICE_CENTS,
+      price: trustedQuote.registrationPriceCents,
       description: "Inscrição — II Encontro de Coros",
     },
   ];
   if (input.includeShirt) {
+    if (trustedShirtPriceCents === null) throw new Error("A camisa não está disponível.");
     items.push({
       quantity: 1,
-      price: SHIRT_PRICE_CENTS,
+      price: trustedShirtPriceCents,
       description: `Camisa oficial — tamanho ${input.shirtSize}`,
     });
   }
   return items;
 }
 
-export function calculateOrderAmountCents(input: RegistrationInput): number {
-  return buildCheckoutItems(input).reduce((sum, item) => sum + item.price * item.quantity, 0);
+export function calculateOrderAmountCents(
+  input: RegistrationInput,
+  trustedQuote: DisplayedQuote,
+  trustedShirtPriceCents: number | null,
+): number {
+  return buildCheckoutItems(input, trustedQuote, trustedShirtPriceCents).reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
 }
 
 export const paymentLookupSchema = z.object({

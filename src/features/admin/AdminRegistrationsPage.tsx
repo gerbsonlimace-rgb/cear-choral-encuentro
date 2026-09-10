@@ -36,6 +36,7 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
+import { AdminNavigation } from "./AdminNavigation";
 
 type Props = {
   onSignedOut: () => void;
@@ -82,6 +83,26 @@ function Payment({ row }: { row: AdminRegistrationRow }) {
   return (
     <dl className="space-y-1 text-xs">
       <div className="flex flex-wrap gap-x-2">
+        <dt className="text-muted-foreground">Inscrição</dt>
+        <dd>
+          {row.pricingType === null
+            ? "Não informado"
+            : `${row.pricingType === "promotional" ? "Promocional" : "Normal"} · ${money(row.registrationPriceCents)}`}
+        </dd>
+      </div>
+      {row.pricingType === "promotional" && (
+        <div className="flex flex-wrap gap-x-2">
+          <dt className="text-muted-foreground">Valor normal</dt>
+          <dd>{money(row.standardPriceCents)}</dd>
+        </div>
+      )}
+      {row.shirtPriceCents !== null && (
+        <div className="flex flex-wrap gap-x-2">
+          <dt className="text-muted-foreground">Camisa</dt>
+          <dd>{money(row.shirtPriceCents)}</dd>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-x-2">
         <dt className="text-muted-foreground">Esperado</dt>
         <dd>{money(row.amountCents)}</dd>
       </div>
@@ -108,13 +129,18 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {["Inscrição", "Contato", "Origem / função", "Camisa", "Situação", "Pagamento"].map(
-                (label) => (
-                  <TableHead key={label} scope="col">
-                    {label}
-                  </TableHead>
-                ),
-              )}
+              {[
+                "Inscrição",
+                "Contato",
+                "Coro/Diocese / origem",
+                "Camisa",
+                "Situação",
+                "Pagamento",
+              ].map((label) => (
+                <TableHead key={label} scope="col">
+                  {label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -129,6 +155,7 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
                   <p className="mt-1 text-xs text-muted-foreground">{row.phone}</p>
                 </TableCell>
                 <TableCell className="max-w-44 align-top">
+                  <p className="break-words font-medium">{row.choirName}</p>
                   <p className="break-words">{row.city}</p>
                   <p className="mt-1 break-words text-xs text-muted-foreground">
                     {row.institution || "Não informado"}
@@ -163,6 +190,10 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
                   <dt className="text-muted-foreground">Contato</dt>
                   <dd className="break-all">{row.email}</dd>
                   <dd>{row.phone}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Coro/Diocese</dt>
+                  <dd className="break-words">{row.choirName}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Cidade</dt>
@@ -226,15 +257,15 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
         </dl>
       </div>
       <div className="border-t bg-muted/30 p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-foreground">Inscritos por diocese</h3>
-        {summary.byDiocese.length ? (
+        <h3 className="text-sm font-semibold text-foreground">Inscritos por coro/diocese</h3>
+        {summary.byChoir.length ? (
           <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.byDiocese.map((item) => (
+            {summary.byChoir.map((item) => (
               <li
-                key={item.diocese}
+                key={item.choirName}
                 className="flex min-w-0 items-center justify-between gap-3 border-b border-border/70 py-2.5"
               >
-                <span className="min-w-0 text-sm text-foreground">{item.diocese}</span>
+                <span className="min-w-0 text-sm text-foreground">{item.choirName}</span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
                   {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
                 </span>
@@ -242,7 +273,7 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Nenhuma diocese com inscrições.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Nenhum coro/diocese com inscrições.</p>
         )}
       </div>
     </section>
@@ -469,6 +500,7 @@ export function AdminRegistrationsPage({
             </div>
           )}
         </header>
+        {gate === "authorized" && <AdminNavigation current="registrations" />}
         <div aria-live="polite" aria-atomic="true" className="text-sm text-muted-foreground">
           <p>{statusText}</p>
           {announcement && <p>{announcement}</p>}
