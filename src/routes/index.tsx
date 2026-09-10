@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
+import heroChoirImage from "../assets/hero-encontro-coros-original-2026.png";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
@@ -209,39 +210,86 @@ function Header() {
 function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-teal">
-      <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(5,5,5,0.99)_0%,rgba(28,22,4,0.97)_54%,rgba(5,5,5,0.99)_100%)]" />
+      <img
+        src={heroChoirImage}
+        alt="Participantes do Encontro de Coros reunidos diante da igreja"
+        width={1536}
+        height={1024}
+        className="absolute inset-0 h-full w-full object-cover object-[65%_bottom] sm:object-[right_bottom]"
+        fetchPriority="high"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.66)_48%,rgba(0,0,0,0.84)_100%)] lg:bg-[linear-gradient(90deg,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.78)_52%,rgba(0,0,0,0.58)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
       <div className="relative section-padding">
         <div className="container-event grid items-center gap-6 px-4 sm:gap-10 lg:grid-cols-2 lg:gap-12 lg:px-0">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <img
               src={logoImage}
-              alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+              alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
               width={240}
               height={240}
               className="mb-4 w-64 max-w-[80vw] drop-shadow-2xl sm:hidden"
               fetchPriority="high"
             />
-            <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber/40 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm sm:px-4 sm:text-sm">
-              <Calendar className="h-4 w-4" />
-              20 a 22 de novembro de 2025
-            </span>
-            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
-              II Encontro de Coros Diocesanos e Litúrgicos do Regional NE 1 - CNBB
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90 sm:mt-6 sm:text-xl">
-              “Cantai para o Senhor um canto novo,
-              com arte sustentai a louvação!” Sl 32 (33), 3
-            </p>
-            <div className="mt-5 flex flex-col items-center justify-center gap-2 text-sm text-white/90 sm:mt-7 sm:flex-row sm:flex-wrap sm:gap-3 sm:text-base lg:justify-start">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-amber" />
-                <span className="font-semibold">Quixadá, CE</span>
+            <div
+              aria-label="Informações principais do evento"
+              className="grid w-full max-w-2xl gap-3 sm:grid-cols-2"
+            >
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/35 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+                  <Calendar aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </span>
+                <span>
+                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                    Data
+                  </span>
+                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                    20 a 22 de novembro de 2026
+                  </span>
+                </span>
               </div>
-              <div className="hidden h-5 w-px bg-white/30 sm:block" />
+              <div className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-black/35 px-4 py-3 text-left shadow-lg shadow-black/30 backdrop-blur-sm sm:px-5 sm:py-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground shadow-md shadow-black/20 sm:h-11 sm:w-11">
+                  <MapPin aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
+                </span>
+                <span>
+                  <span className="block text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-amber sm:text-xs">
+                    Cidade
+                  </span>
+                  <span className="mt-0.5 block text-base font-extrabold leading-tight text-white sm:text-lg">
+                    Quixadá, CE
+                  </span>
+                </span>
+              </div>
+            </div>
+            <h1 className="mt-4 max-w-2xl font-display text-[clamp(2rem,9.7vw,3.4rem)] font-extrabold leading-[1.02] text-white sm:mt-6 md:text-6xl">
+              II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB
+            </h1>
+            <blockquote className="relative mt-5 w-fit max-w-full border-x border-amber/45 px-4 py-3 text-center sm:mt-6 sm:px-8 sm:py-4 lg:text-left">
+              <span
+                aria-hidden="true"
+                className="absolute -left-1 -top-4 font-display text-6xl leading-none text-amber/70 sm:-left-2 sm:text-7xl"
+              >
+                “
+              </span>
+              <p className="font-display text-[clamp(0.85rem,2vw,1.125rem)] font-bold italic leading-snug tracking-normal text-white">
+                <span className="block whitespace-nowrap">Cantai para o Senhor um canto novo,</span>
+                <span className="block whitespace-nowrap">com arte sustentai a louvação!</span>
+              </p>
+              <cite className="mt-4 inline-flex rounded-full border border-amber/50 bg-amber px-3.5 py-1 font-body text-xs font-extrabold not-italic tracking-wide text-amber-foreground shadow-md shadow-black/20 sm:text-sm">
+                Sl 32 (33), 3
+              </cite>
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -bottom-8 font-display text-6xl leading-none text-amber/35 sm:-right-2 sm:text-7xl"
+              >
+                ”
+              </span>
+            </blockquote>
+            <div className="mt-5 flex items-center justify-center text-sm text-white/90 sm:mt-7 sm:text-base lg:justify-start">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-amber" />
-                 <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
+                <span className="font-semibold">Coralistas, Instrumentistas e Regentes</span>
               </div>
             </div>
             <div className="mt-6 flex w-full flex-col items-stretch justify-center gap-2 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-start">
@@ -271,7 +319,7 @@ function HeroSection() {
             <div className="relative w-full max-w-[18rem] sm:max-w-md lg:max-w-lg">
               <img
                 src={logoImage}
-                alt="Identidade visual do II Encontro de Coros Diocesanos do Regional Nordeste 1 - CNBB"
+                alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
                 width={512}
                 height={512}
                 className="relative w-full drop-shadow-2xl"
@@ -365,7 +413,7 @@ function AboutSection() {
           />
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
-               Palestrante Principal
+              Palestrante Principal
             </span>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
               Clayton Dias aprofunda o eixo formativo do encontro
