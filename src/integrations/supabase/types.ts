@@ -151,11 +151,11 @@ export type Database = {
           payment_status: string
           phone: string
           pricing_type: string | null
-          registration_price_cents: number | null
           receipt_url: string | null
+          registration_price_cents: number | null
           role: string | null
-          shirt_size: string | null
           shirt_price_cents: number | null
+          shirt_size: string | null
           standard_price_cents: number | null
         }
         Insert: {
@@ -183,11 +183,11 @@ export type Database = {
           payment_status?: string
           phone: string
           pricing_type?: string | null
-          registration_price_cents?: number | null
           receipt_url?: string | null
+          registration_price_cents?: number | null
           role?: string | null
-          shirt_size?: string | null
           shirt_price_cents?: number | null
+          shirt_size?: string | null
           standard_price_cents?: number | null
         }
         Update: {
@@ -215,11 +215,11 @@ export type Database = {
           payment_status?: string
           phone?: string
           pricing_type?: string | null
-          registration_price_cents?: number | null
           receipt_url?: string | null
+          registration_price_cents?: number | null
           role?: string | null
-          shirt_size?: string | null
           shirt_price_cents?: number | null
+          shirt_size?: string | null
           standard_price_cents?: number | null
         }
         Relationships: [
