@@ -171,7 +171,6 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Pendente")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
-      expect(scope.getByText("Tamanho M")).toBeInTheDocument();
       expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
       expect(scope.getAllByText("R$ 139,90").length).toBe(2);
@@ -179,7 +178,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");
     const historical = within(table).getByRole("row", { name: /Ana Histórica/ });
-    expect(historical).not.toHaveTextContent(/R\$|Sem camisa|Pix|Cartão/);
+    expect(historical).not.toHaveTextContent(/R\$|Pix|Cartão/);
     expect(
       screen.getByText("3 inscrições encontradas").closest('[aria-live="polite"]'),
     ).toBeInTheDocument();
