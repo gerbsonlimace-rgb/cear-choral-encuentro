@@ -33,6 +33,7 @@ import {
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
+  createSupabaseRegistrationPhotoStorage,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
@@ -51,7 +52,6 @@ const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 const choirId = "22222222-2222-4222-8222-222222222222";
-const cpf = "52998224725";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
 const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
 
@@ -83,6 +83,7 @@ const baseInput: RegistrationInput = {
   photo: registrationPhoto,
   displayedQuote: trustedSelection.quote,
 };
+const { photo: _photo, ...baseRegistrationInput } = baseInput;
 
 const lookup: PaymentLookup = {
   orderNsu: fixedOrderNsu,
@@ -213,10 +214,6 @@ function createFixture() {
     clearPendingPhoto: vi.fn(async () => {
       calls.push("clearPendingPhoto");
     }),
-    findByCpf: vi.fn(async () => {
-      calls.push("findByCpf");
-      return identityRecord;
-    }),
     findPayment: vi.fn(async () => record),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
       calls.push("markPaid");
@@ -294,15 +291,13 @@ describe("registration payment service", () => {
     const result = await fixture.service.startCheckout(baseInput);
 
     expect(fixture.calls).toEqual([
-      "findByCpf",
       "uploadPhoto",
       "createPending",
       "createCheckout",
       "saveCheckoutUrl",
     ]);
-    const { photo: _photo, ...registrationData } = baseInput;
     expect(fixture.repository.createPending).toHaveBeenCalledWith({
-      ...registrationData,
+      ...baseRegistrationInput,
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
       choirName: "Coro Diocesano de Quixadá",
@@ -324,21 +319,30 @@ describe("registration payment service", () => {
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
   });
 
-  it("rejects an existing CPF before uploading a photo or creating another registration", async () => {
-    fixture.setIdentityRecord({
-      id: "existing-registration",
+  it("uploads the participant photo and stores only its private path", async () => {
+    await fixture.service.startCheckout(baseInput);
+
+    expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+    const pendingInput = vi.mocked(fixture.repository.createPending).mock.calls[0]?.[0];
+    expect(pendingInput).toMatchObject({
+      photoPath: registrationPhotoPath,
+      voicePart: "soprano",
     });
-
-    await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow(
-      "Já existe uma inscrição para este CPF. Use Retomar pagamento.",
-    );
-
-    expect(fixture.calls).toEqual(["findByCpf"]);
-    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
-    expect(fixture.repository.createPending).not.toHaveBeenCalled();
+    expect(pendingInput).not.toHaveProperty("photo");
   });
 
-  it("leaves the registration pending and removes its photo when checkout creation fails", async () => {
+  it("removes the private photo reference when checkout creation fails", async () => {
+    vi.mocked(fixture.infinitePay.createCheckout).mockRejectedValueOnce(
+      new Error("checkout unavailable"),
+    );
+
+    await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow("checkout unavailable");
+
+    expect(fixture.repository.clearPendingPhoto).toHaveBeenCalledWith(fixedOrderNsu);
+    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
+  });
+
+  it("leaves the registration pending when checkout creation fails", async () => {
     vi.mocked(fixture.infinitePay.createCheckout).mockRejectedValueOnce(
       new Error("InfinitePay indisponível"),
     );
@@ -542,7 +546,7 @@ describe("Supabase registration repository", () => {
     const { photo: _photo, ...registrationData } = baseInput;
 
     await repository.createPending({
-      ...registrationData,
+      ...baseRegistrationInput,
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
       choirName: "Coro Diocesano de Quixadá",
@@ -558,7 +562,6 @@ describe("Supabase registration repository", () => {
         "insert",
         {
           name: "Maria da Silva",
-          cpf: "52998224725",
           photo_path: registrationPhotoPath,
           voice_part: "soprano",
           phone: "85999999999",
@@ -594,7 +597,7 @@ describe("Supabase registration repository", () => {
 
     await expect(
       repository.createPending({
-        ...registrationData,
+        ...baseRegistrationInput,
         orderNsu: fixedOrderNsu,
         amountCents: 10000,
         choirName: "Coro Diocesano de Quixadá",
@@ -606,33 +609,19 @@ describe("Supabase registration repository", () => {
     ).rejects.toThrow("Não foi possível salvar a inscrição");
   });
 
-  it("maps the CPF unique-index race to the stable resume message", async () => {
-    createSupabaseHarness({
-      insertResults: [
-        {
-          data: null,
-          error: {
-            code: "23505",
-            message: 'duplicate key value violates unique constraint "registrations_cpf_uidx"',
-          },
-        },
-      ],
-    });
+  it("clears a photo reference only while the registration is pending", async () => {
+    const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
-    const { photo: _photo, ...registrationData } = baseInput;
 
-    await expect(
-      repository.createPending({
-        ...registrationData,
-        orderNsu: fixedOrderNsu,
-        amountCents: 10000,
-        choirName: "Coro Diocesano de Quixadá",
-        photoPath: registrationPhotoPath,
-        pricingType: "promotional",
-        standardPriceCents: 30000,
-        registrationPriceCents: 10000,
-      }),
-    ).rejects.toThrow("Já existe uma inscrição para este CPF. Use Retomar pagamento.");
+    await repository.clearPendingPhoto(fixedOrderNsu);
+
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["update", { photo_path: null }],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["eq", "payment_status", "pending"],
+      ["execute"],
+    ]);
   });
 
   it("looks up and maps only payment columns", async () => {
@@ -854,5 +843,44 @@ describe("Supabase registration repository", () => {
         paidAt: fixedPaidAt,
       }),
     ).rejects.toThrow("Não foi possível consultar a inscrição");
+  });
+});
+
+describe("Supabase registration photo storage", () => {
+  beforeEach(() => {
+    storageFromMock.mockClear();
+    storageUploadMock.mockReset();
+    storageRemoveMock.mockReset();
+  });
+
+  it("rejects decoded photos larger than the bucket limit before uploading", async () => {
+    const storage = createSupabaseRegistrationPhotoStorage();
+    const oversizedPhoto = {
+      contentType: "image/jpeg" as const,
+      dataBase64: Buffer.alloc(MAX_REGISTRATION_PHOTO_BYTES + 1).toString("base64"),
+    };
+
+    await expect(storage.upload(fixedOrderNsu, oversizedPhoto)).rejects.toThrow(
+      "A foto deve ter até 5 MB",
+    );
+    expect(storageFromMock).not.toHaveBeenCalled();
+  });
+
+  it("uploads a new object to the private registration bucket", async () => {
+    storageUploadMock.mockResolvedValueOnce({
+      data: { path: registrationPhotoPath },
+      error: null,
+    });
+    const storage = createSupabaseRegistrationPhotoStorage();
+
+    await expect(storage.upload(fixedOrderNsu, registrationPhoto)).resolves.toBe(
+      registrationPhotoPath,
+    );
+    expect(storageFromMock).toHaveBeenCalledWith("registration-photos");
+    expect(storageUploadMock).toHaveBeenCalledWith(registrationPhotoPath, expect.any(Buffer), {
+      contentType: "image/jpeg",
+      cacheControl: "3600",
+      upsert: false,
+    });
   });
 });

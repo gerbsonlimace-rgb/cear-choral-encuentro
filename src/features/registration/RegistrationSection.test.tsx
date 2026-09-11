@@ -34,18 +34,16 @@ const loadConfiguration = vi.fn(async () => configuration);
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
-  await user.type(screen.getByLabelText("CPF"), "52998224725");
   await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
   await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
+  await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
   await user.upload(
     screen.getByLabelText("Foto do participante"),
     new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
   );
-  expect(
-    await screen.findAllByRole("img", { name: "Foto de Maria da Silva no crachá" }),
-  ).toHaveLength(2);
+  await screen.findByRole("img", { name: "Foto de Maria da Silva no crachá" });
 }
 
 describe("RegistrationSection", () => {
@@ -97,8 +95,25 @@ describe("RegistrationSection", () => {
       await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Coro Diocesano de Sobral" })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("R$ 50,00")).not.toBeInTheDocument();
+    const shirtCheckbox = screen.getByRole("checkbox", { name: /Incluir camisa oficial/ });
+    expect(shirtCheckbox).toBeInTheDocument();
+    expect(shirtCheckbox.closest("label")).toHaveTextContent("R$ 50,00");
+  });
+
+  it("offers the five musical profiles and fills the badge live", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+
+    const profile = screen.getByLabelText("Perfil musical");
+    for (const label of ["Soprano", "Contralto", "Tenor", "Baixo", "Não sei informar"]) {
+      expect(within(profile).getByRole("option", { name: label })).toBeInTheDocument();
+    }
+
+    await user.selectOptions(profile, "contralto");
+    expect(
+      within(screen.getByLabelText("Prévia do crachá")).getByText("Contralto"),
+    ).toBeInTheDocument();
   });
 
   it("automatically applies and explains the promotional price", async () => {
@@ -241,9 +256,7 @@ describe("RegistrationSection", () => {
       expect(startCheckout).toHaveBeenCalledWith(
         expect.objectContaining({
           choirId: quixadaId,
-          cpf: "52998224725",
-          voicePart: "nao_sei_informar",
-          photo: { contentType: "image/jpeg", dataBase64: "cGhvdG8=" },
+          voicePart: "soprano",
           displayedQuote: {
             pricingType: "promotional",
             standardPriceCents: 30000,

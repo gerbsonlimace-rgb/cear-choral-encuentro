@@ -33,6 +33,17 @@ export const cpfSchema = z
   .transform((value) => value.replace(/\D/g, ""))
   .refine(isValidCpf, "Informe um CPF válido.");
 
+const voicePartValues = ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"] as const;
+export const voicePartSchema = z.enum(voicePartValues);
+export type VoicePart = z.infer<typeof voicePartSchema>;
+export const voicePartOptions: ReadonlyArray<{ value: VoicePart; label: string }> = [
+  { value: "soprano", label: "Soprano" },
+  { value: "contralto", label: "Contralto" },
+  { value: "tenor", label: "Tenor" },
+  { value: "baixo", label: "Baixo" },
+  { value: "nao_sei_informar", label: "Não sei informar" },
+];
+
 const fortalezaDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Fortaleza",
   year: "numeric",
@@ -113,15 +124,6 @@ export const registrationSchema = z
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type RegistrationPhotoInput = z.infer<typeof registrationPhotoSchema>;
-
-export const registrationResumeSchema = z
-  .object({
-    cpf: cpfSchema,
-    birthDate: birthDateSchema,
-  })
-  .strict();
-
-export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 export type CheckoutItem = { quantity: 1; price: number; description: string };
 
 export function buildCheckoutItems(

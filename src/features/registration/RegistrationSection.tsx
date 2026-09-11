@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import eventLogo from "@/assets/logo-coros-preto.png";
 import pixLogo from "@/assets/logo-pix.svg";
 import eventLogo from "@/assets/logo-coros-preto.png";
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,13 @@ import {
 import {
   getFortalezaCalendarDate,
   registrationSchema,
+  shirtSizeSchema,
+  voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
+  type VoicePart,
 } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
-import { RegistrationResumeCard } from "./RegistrationResumeCard";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -39,9 +42,10 @@ type RegistrationSectionProps = {
   navigateToCheckout?: (url: string) => void;
 };
 
-type RegistrationForm = Omit<RegistrationInput, "choirId" | "displayedQuote"> & {
-  choirId: string;
-};
+type RegistrationForm = Omit<
+  RegistrationInput,
+  "choirId" | "displayedQuote" | "displayedShirtPriceCents" | "photo" | "voicePart"
+> & { choirId: string; voicePart: VoicePart | "" };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
 
@@ -63,7 +67,9 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   phone: "",
   birthDate: "",
   choirId: "",
-  voicePart: "nao_sei_informar",
+  voicePart: "",
+  includeShirt: false,
+  shirtSize: "",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
@@ -74,10 +80,12 @@ const inputClassName =
 function RegistrationBadgePreview({
   name,
   choirName,
+  voicePartLabel,
   photoPreviewUrl,
 }: {
   name: string;
   choirName: string;
+  voicePartLabel: string;
   photoPreviewUrl: string;
 }) {
   const participantName = name.trim() || "Seu nome";
@@ -126,6 +134,9 @@ function RegistrationBadgePreview({
         <p className="mx-auto mt-1 line-clamp-2 min-h-9 max-w-[15rem] text-center text-sm font-semibold leading-snug text-card-foreground">
           {choirName || "Seu coro/diocese"}
         </p>
+        <p className="mt-1 text-center text-xs font-bold text-amber">
+          {voicePartLabel || "Perfil musical"}
+        </p>
         <span className="mx-auto mt-3 block w-fit rounded-full bg-foreground px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber">
           Quixadá • 2026
         </span>
@@ -141,7 +152,7 @@ export function RegistrationSection({
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
-  const [form, setForm] = useState<Omit<RegistrationForm, "photo">>(initialForm);
+  const [form, setForm] = useState<RegistrationForm>(initialForm);
   const [photo, setPhoto] = useState<RegistrationPhotoInput | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoFileName, setPhotoFileName] = useState("");
@@ -192,6 +203,13 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
+  const selectedVoicePartLabel =
+    voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
+  const totalAmount =
+    registrationPriceCents === null
+      ? null
+      : registrationPriceCents +
+        (form.includeShirt && shirtPriceCents !== null ? shirtPriceCents : 0);
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
@@ -286,7 +304,7 @@ export function RegistrationSection({
   return (
     <section
       id="inscricao"
-      className="bg-background px-4 pb-5 pt-4 sm:px-6 sm:py-5 lg:min-h-[calc(100dvh-4.5rem)] lg:py-6"
+      className="bg-background px-4 py-5 sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-6"
     >
       <div className="container-event">
         <div className="mx-auto max-w-4xl text-center">
@@ -301,7 +319,7 @@ export function RegistrationSection({
             Preencha seus dados para participar do II Encontro de Coros Diocesanos e Litúrgicos do
             Regional Nordeste 1 - CNBB.
           </p>
-          <div className="mx-auto mt-3 flex w-full max-w-lg flex-col items-center justify-center gap-1.5 rounded-2xl border border-amber/40 bg-amber/10 px-4 py-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-2">
+          <div className="mx-auto mt-3 flex max-w-sm flex-col items-center justify-center gap-1.5 rounded-2xl border border-amber/40 bg-amber/10 px-4 py-2.5 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-2">
             <span className="text-xs font-bold text-muted-foreground">Inscrição</span>
             <span className="font-display text-2xl font-extrabold leading-none text-foreground">
               {registrationPriceCents === null
@@ -339,7 +357,7 @@ export function RegistrationSection({
               noValidate
               className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.75fr)] lg:gap-7"
             >
-              <div className="min-w-0 space-y-4">
+              <div className="min-w-0 space-y-3">
                 <fieldset className="space-y-3">
                   <legend className="flex items-center gap-2.5">
                     <span className="grid size-8 place-items-center rounded-lg bg-foreground text-background">
@@ -380,36 +398,6 @@ export function RegistrationSection({
                         />
                       </div>
                       {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="cpf" className="font-semibold">
-                        CPF
-                      </Label>
-                      <div className="relative">
-                        <BadgeCheck
-                          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        <Input
-                          id="cpf"
-                          required
-                          inputMode="numeric"
-                          autoComplete="off"
-                          maxLength={14}
-                          aria-invalid={Boolean(errors.cpf)}
-                          aria-describedby={errors.cpf ? "cpf-error" : undefined}
-                          value={form.cpf}
-                          onChange={(event) => handleChange("cpf", formatCpf(event.target.value))}
-                          placeholder="000.000.000-00"
-                          className={inputClassName}
-                        />
-                      </div>
-                      {errors.cpf && (
-                        <p id="cpf-error" role="alert" className="text-sm text-destructive">
-                          {errors.cpf}
-                        </p>
-                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -521,7 +509,36 @@ export function RegistrationSection({
                       )}
                     </div>
 
-                    <div className="space-y-1.5 md:col-span-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="voicePart" className="font-semibold">
+                        Perfil musical
+                      </Label>
+                      <div className="relative">
+                        <Music2
+                          className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <select
+                          id="voicePart"
+                          required
+                          value={form.voicePart}
+                          onChange={(event) => handleChange("voicePart", event.target.value)}
+                          className="min-h-11 w-full rounded-xl border border-border bg-background pl-10 pr-9 text-sm shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
+                        >
+                          <option value="">Selecione seu perfil</option>
+                          {voicePartOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {errors.voicePart && (
+                        <p className="text-sm text-destructive">{errors.voicePart}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
                       <Label htmlFor="photo" className="font-semibold">
                         Foto do participante
                       </Label>
@@ -555,13 +572,85 @@ export function RegistrationSection({
                         </p>
                       )}
                     </div>
+
+                    {shirtPriceCents !== null && (
+                      <div id="camisa" className="space-y-1.5">
+                        <span className="block text-sm font-semibold text-foreground">
+                          Camisa oficial
+                        </span>
+                        <div className="flex min-h-11 items-center gap-2 rounded-xl border border-amber/35 bg-amber/10 px-3">
+                          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              aria-label="Incluir camisa oficial"
+                              checked={form.includeShirt}
+                              onChange={(event) => {
+                                setForm((previous) => ({
+                                  ...previous,
+                                  includeShirt: event.target.checked,
+                                  shirtSize: event.target.checked ? previous.shirtSize : "",
+                                }));
+                                setErrors((previous) => ({
+                                  ...previous,
+                                  shirtSize: undefined,
+                                }));
+                              }}
+                              className="size-4 shrink-0 rounded border-border accent-foreground"
+                            />
+                            <span className="truncate text-xs text-foreground">
+                              <strong>Incluir</strong> por {formatCurrency(shirtPriceCents)}
+                            </span>
+                          </label>
+                          {form.includeShirt && (
+                            <div className="w-24 shrink-0">
+                              <Label htmlFor="shirtSize" className="sr-only">
+                                Tamanho da camisa
+                              </Label>
+                              <Select
+                                value={form.shirtSize}
+                                onValueChange={(value) => {
+                                  const parsed = shirtSizeSchema.safeParse(value);
+                                  if (parsed.success) {
+                                    setForm((previous) => ({
+                                      ...previous,
+                                      shirtSize: parsed.data,
+                                    }));
+                                    setErrors((previous) => ({
+                                      ...previous,
+                                      shirtSize: undefined,
+                                    }));
+                                  }
+                                }}
+                              >
+                                <SelectTrigger
+                                  id="shirtSize"
+                                  className="min-h-8 rounded-lg border-border bg-background text-xs"
+                                >
+                                  <SelectValue placeholder="Tamanho" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {["P", "M", "G", "GG", "XG"].map((size) => (
+                                    <SelectItem key={size} value={size}>
+                                      {size}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                        {errors.shirtSize && (
+                          <p className="text-xs text-destructive">{errors.shirtSize}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </fieldset>
 
                 {selectedChoir?.pricingType === "promotional" && (
                   <div
                     role="status"
-                    className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs leading-relaxed text-foreground"
+                    className="rounded-xl border border-amber/40 bg-amber/10 p-2.5 text-xs leading-relaxed text-foreground"
                   >
                     Este é um{" "}
                     <strong>
@@ -572,21 +661,21 @@ export function RegistrationSection({
                   </div>
                 )}
 
-                {registrationPriceCents !== null && (
-                  <div className="flex flex-col gap-3 rounded-xl border border-amber/30 bg-amber/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                {registrationPriceCents !== null && totalAmount !== null && (
+                  <div className="flex flex-col gap-2 rounded-xl border border-amber/30 bg-amber/5 p-2.5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <span className="grid size-8 place-items-center rounded-full bg-foreground text-background shadow-sm">
                         <ShieldCheck className="size-4" aria-hidden="true" />
                       </span>
                       <div>
-                        <p className="font-bold text-foreground">Valor da inscrição</p>
+                        <p className="font-bold text-foreground">Total da inscrição</p>
                         <p className="text-xs text-muted-foreground">
-                          Pagamento processado com segurança
+                          {form.includeShirt ? "Inscrição + camisa oficial" : "Pagamento seguro"}
                         </p>
                       </div>
                     </div>
                     <span className="font-display text-2xl font-extrabold leading-none text-foreground">
-                      {formatCurrency(registrationPriceCents)}
+                      {formatCurrency(totalAmount)}
                     </span>
                   </div>
                 )}
@@ -608,7 +697,7 @@ export function RegistrationSection({
                   </p>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Button
                     type="submit"
                     disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
@@ -624,31 +713,15 @@ export function RegistrationSection({
                 </div>
               </div>
 
-              <div className="lg:hidden">
-                <details className="rounded-xl border border-amber/30 bg-amber/5">
-                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-bold text-foreground">
-                    <span>Prévia do crachá</span>
-                  </summary>
-                  <div className="px-4 pb-4 pt-2">
-                    <RegistrationBadgePreview
-                      name={form.name}
-                      choirName={selectedChoir?.name ?? ""}
-                      photoPreviewUrl={photoPreviewUrl}
-                    />
-                  </div>
-                </details>
-              </div>
-              <div className="hidden lg:block">
-                <RegistrationBadgePreview
-                  name={form.name}
-                  choirName={selectedChoir?.name ?? ""}
-                  photoPreviewUrl={photoPreviewUrl}
-                />
-              </div>
+              <RegistrationBadgePreview
+                name={form.name}
+                choirName={selectedChoir?.name ?? ""}
+                voicePartLabel={selectedVoicePartLabel}
+                photoPreviewUrl={photoPreviewUrl}
+              />
             </form>
           </CardContent>
         </Card>
-        <RegistrationResumeCard />
       </div>
     </section>
   );

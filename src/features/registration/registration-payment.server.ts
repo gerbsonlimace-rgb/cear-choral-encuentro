@@ -18,8 +18,6 @@ import {
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
-const REGISTRATION_CPF_CONFLICT_MESSAGE =
-  "Já existe uma inscrição para este CPF. Use Retomar pagamento.";
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -69,7 +67,6 @@ export type RegistrationRepository = {
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
   clearPendingPhoto(orderNsu: string): Promise<void>;
-  findByCpf(cpf: string): Promise<RegistrationIdentityRecord | null>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
     orderNsu: string,
@@ -113,7 +110,11 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const orderNsu = deps.randomUUID();
-      const amountCents = calculateOrderAmountCents(input, selection.quote);
+      const amountCents = calculateOrderAmountCents(
+        input,
+        selection.quote,
+        selection.shirtPriceCents,
+      );
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
       const { photo: _photo, ...registrationData } = input;
 
@@ -127,6 +128,7 @@ export function createRegistrationPaymentService(deps: {
           pricingType: selection.quote.pricingType,
           standardPriceCents: selection.quote.standardPriceCents,
           registrationPriceCents: selection.quote.registrationPriceCents,
+          shirtPriceCents: input.includeShirt ? selection.shirtPriceCents : null,
         });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
@@ -137,7 +139,7 @@ export function createRegistrationPaymentService(deps: {
       try {
         checkout = await deps.infinitePay.createCheckout({
           orderNsu,
-          items: buildCheckoutItems(input, selection.quote),
+          items: buildCheckoutItems(input, selection.quote, selection.shirtPriceCents),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
         await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
@@ -278,7 +280,6 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
-        cpf: input.cpf,
         photo_path: input.photoPath,
         voice_part: input.voicePart,
         phone: input.phone,
@@ -327,8 +328,6 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
 
       if (error) throw new Error("Não foi possível limpar a foto da inscrição.");
     },
-
-    findByCpf,
 
     findPayment,
 

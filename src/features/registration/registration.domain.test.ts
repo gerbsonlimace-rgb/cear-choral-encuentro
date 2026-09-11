@@ -72,6 +72,25 @@ describe("registration domain", () => {
     ).toBe(false);
   });
 
+  it("accepts only the supported musical profiles", () => {
+    for (const voicePart of ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"]) {
+      expect(registrationSchema.safeParse({ ...baseInput, voicePart }).success).toBe(true);
+    }
+    expect(registrationSchema.safeParse({ ...baseInput, voicePart: "baritono" }).success).toBe(
+      false,
+    );
+  });
+
+  it("requires a supported participant photo", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, photo: undefined }).success).toBe(false);
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        photo: { contentType: "image/gif", dataBase64: "cGhvdG8=" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects impossible and future birth dates", () => {
     expect(registrationSchema.safeParse({ ...baseInput, birthDate: "2026-02-30" }).success).toBe(
       false,
