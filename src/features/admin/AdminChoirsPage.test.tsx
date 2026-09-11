@@ -66,14 +66,13 @@ describe("AdminChoirsPage", () => {
       "/regente",
     );
   });
-  it("shows three unconfigured global prices and an empty choir state", async () => {
+  it("shows unconfigured global prices and an empty choir state", async () => {
     setup();
 
     expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByRole("heading", { name: "Coros e valores" })).toBeInTheDocument();
     expect(screen.getByLabelText("Valor promocional")).toHaveValue("");
-    expect(screen.getByLabelText("Valor da camisa")).toHaveValue("");
-    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(3);
+    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(2);
     expect(screen.getByText("Nenhum coro cadastrado.")).toBeInTheDocument();
   });
 
@@ -83,7 +82,6 @@ describe("AdminChoirsPage", () => {
 
     await user.type(await screen.findByLabelText("Valor normal"), "300,00");
     await user.type(screen.getByLabelText("Valor promocional"), "100,00");
-    await user.type(screen.getByLabelText("Valor da camisa"), "50,00");
     await user.click(screen.getByRole("button", { name: "Salvar valores" }));
 
     await waitFor(() =>

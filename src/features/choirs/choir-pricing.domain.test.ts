@@ -65,13 +65,7 @@ describe("choir pricing domain", () => {
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
-        promotionalPriceCents: 10000,
-      }).success,
-    ).toBe(true);
-    expect(
-      pricingSettingsSchema.safeParse({
-        standardPriceCents: 30000,
-        promotionalPriceCents: 10000,
+        promotionalPriceCents: 0,
       }).success,
     ).toBe(false);
   });
