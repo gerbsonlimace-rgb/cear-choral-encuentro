@@ -174,4 +174,27 @@ describe("RegistrationSection", () => {
     );
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
   });
+
+  it("keeps the form and points a known CPF conflict to Retomar pagamento", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("Já existe uma inscrição para este CPF. Use Retomar pagamento."),
+      );
+    render(
+      <RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} />,
+    );
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+    await fillRequiredFields(user);
+
+    await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
+
+    expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute(
+      "href",
+      "#retomar-pagamento",
+    );
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
+  });
 });

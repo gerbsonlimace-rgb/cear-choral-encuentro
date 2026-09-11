@@ -22,6 +22,7 @@ import {
   shirtSizeSchema,
   type RegistrationInput,
 } from "./registration.domain";
+import { RegistrationResumeCard } from "./RegistrationResumeCard";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -59,6 +60,7 @@ export function RegistrationSection({
   const [form, setForm] = useState<RegistrationForm>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof RegistrationForm, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
+  const [hasCpfConflict, setHasCpfConflict] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const mounted = useRef(false);
@@ -147,6 +149,7 @@ export function RegistrationSection({
 
     setErrors({});
     setCheckoutError("");
+    setHasCpfConflict(false);
     setIsSubmitting(true);
     try {
       const { checkoutUrl } = await startCheckout(parsedForm.data);
@@ -154,14 +157,18 @@ export function RegistrationSection({
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");
+      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
       const shouldRefresh =
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
       setCheckoutError(
-        shouldRefresh
-          ? "A configuração de preços mudou. Confira o valor e tente novamente."
-          : "Não foi possível preparar o pagamento. Tente novamente.",
+        cpfConflict
+          ? "Já existe uma inscrição para este CPF."
+          : shouldRefresh
+            ? "A configuração de preços mudou. Confira o valor e tente novamente."
+            : "Não foi possível preparar o pagamento. Tente novamente.",
       );
+      setHasCpfConflict(cpfConflict);
       if (shouldRefresh) await refreshConfiguration(true);
     } finally {
       setIsSubmitting(false);
@@ -445,6 +452,17 @@ export function RegistrationSection({
                 {checkoutError && (
                   <p aria-live="polite" className="text-sm text-destructive">
                     {checkoutError}
+                    {hasCpfConflict && (
+                      <>
+                        {" "}
+                        <a
+                          href="#retomar-pagamento"
+                          className="font-bold underline underline-offset-4"
+                        >
+                          Retomar pagamento
+                        </a>
+                      </>
+                    )}
                   </p>
                 )}
                 <Button
@@ -458,6 +476,7 @@ export function RegistrationSection({
             </CardContent>
           </Card>
         </div>
+        <RegistrationResumeCard />
       </div>
     </section>
   );
