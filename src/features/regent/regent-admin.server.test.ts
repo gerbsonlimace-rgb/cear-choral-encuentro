@@ -42,6 +42,7 @@ function setup() {
     list: vi.fn(async () => [row]),
     findById: vi.fn(async () => row),
     findActiveByChoir: vi.fn(async () => null),
+    findByUserAndChoir: vi.fn(async () => null),
     grant: vi.fn(async () => row),
     replace: vi.fn(async () => row),
     revoke: vi.fn(async () => ({ ...row, revokedAt: "2026-09-11T12:00:00Z" })),
@@ -105,9 +106,70 @@ describe("regent administrative lifecycle", () => {
       expect(result).toMatchObject({ status: "error" });
       expect(JSON.stringify(result)).not.toContain("private DB");
       expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith("created-user");
+      expect(repository.findByUserAndChoir).toHaveBeenCalledExactlyOnceWith(
+        "created-user",
+        choirId,
+      );
+      expect(vi.mocked(repository.findByUserAndChoir).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(auth.deleteUser).mock.invocationCallOrder[0],
+      );
       expect(repository.revoke).not.toHaveBeenCalled();
     },
   );
+  it.each(["create", "replace"] as const)(
+    "retains the new Auth user when %s commits but its response is lost",
+    async (operation) => {
+      const { service, auth, repository } = setup();
+      let committed: AdminRegentRow | null = null;
+      vi.mocked(repository[operation === "create" ? "grant" : "replace"]).mockImplementation(
+        async () => {
+          committed = row;
+          throw new Error("response lost after commit");
+        },
+      );
+      vi.mocked(repository.findByUserAndChoir).mockImplementation(async () => committed);
+      await expect(service[operation](input, "admin-user")).resolves.toEqual({
+        status: "success",
+        regent: row,
+      });
+      expect(repository.findByUserAndChoir).toHaveBeenCalledExactlyOnceWith(
+        "created-user",
+        choirId,
+      );
+      expect(auth.deleteUser).not.toHaveBeenCalled();
+      expect(repository.revoke).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["create", "replace"] as const)(
+    "retains the Auth user when reconciliation after %s is unavailable",
+    async (operation) => {
+      const { service, auth, repository } = setup();
+      vi.mocked(repository[operation === "create" ? "grant" : "replace"]).mockRejectedValue(
+        new Error("response lost"),
+      );
+      vi.mocked(repository.findByUserAndChoir).mockRejectedValue(new Error("private DB details"));
+      const result = await service[operation](input, "admin-user");
+      expect(result).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("administrador"),
+      });
+      expect(JSON.stringify(result)).not.toContain("private DB details");
+      expect(auth.deleteUser).not.toHaveBeenCalled();
+    },
+  );
+  it("retains a created user whose committed membership was subsequently revoked", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.grant).mockRejectedValue(new Error("response lost"));
+    vi.mocked(repository.findByUserAndChoir).mockResolvedValue({
+      ...row,
+      revokedAt: "2026-09-11T12:00:00Z",
+    });
+    await expect(service.create(input, "admin-user")).resolves.toMatchObject({
+      status: "error",
+      message: expect.stringContaining("administrador"),
+    });
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
   it("does not attempt cleanup if Auth creation failed", async () => {
     const { service, auth, repository } = setup();
     vi.mocked(auth.createUser).mockRejectedValue(new Error("Auth failure"));
@@ -175,6 +237,44 @@ describe("regent administrative lifecycle", () => {
   });
 });
 describe("Supabase administrative adapters", () => {
+  it("reconciles by the exact new user and choir without hiding revoked history", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: row.id,
+          user_id: row.userId,
+          choir_id: choirId,
+          name: row.name,
+          email: row.email,
+          password_change_required: true,
+          revoked_at: "2026-09-11T12:00:00Z",
+        },
+        error: null,
+      })),
+    };
+    from.mockReturnValue(query);
+    await expect(
+      createSupabaseRegentAdminRepository().findByUserAndChoir("created-user", choirId),
+    ).resolves.toEqual({ ...row, revokedAt: "2026-09-11T12:00:00Z" });
+    expect(from).toHaveBeenCalledWith("choir_regents");
+    expect(query.eq.mock.calls).toEqual([
+      ["user_id", "created-user"],
+      ["choir_id", choirId],
+    ]);
+  });
+  it("does not interpret a failed reconciliation query as an absent membership", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({ data: null, error: { code: "PGRST116" } })),
+    };
+    from.mockReturnValue(query);
+    await expect(
+      createSupabaseRegentAdminRepository().findByUserAndChoir("created-user", choirId),
+    ).rejects.toThrow();
+  });
   it("maps replacement to the atomic RPC with no temporary password", async () => {
     rpc.mockResolvedValue({
       data: {
