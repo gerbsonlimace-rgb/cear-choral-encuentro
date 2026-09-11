@@ -310,7 +310,6 @@ export async function buildParticipantReceipt(
     font: regular,
     color: muted,
   });
-
   return {
     bytes: await document.save(),
     filename: `comprovante-inscricao-${sanitizeOrderCode(payment.orderNsu)}.pdf`,
@@ -326,16 +325,17 @@ export async function downloadParticipantReceipt(view: ParticipantRegistrationVi
   );
   const blob = new Blob([receipt.bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" });
   const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  let anchor: HTMLAnchorElement | null = null;
 
   try {
+    anchor = document.createElement("a");
     anchor.href = objectUrl;
     anchor.download = receipt.filename;
     anchor.hidden = true;
     document.body.append(anchor);
     anchor.click();
   } finally {
-    anchor.remove();
+    anchor?.remove();
     URL.revokeObjectURL(objectUrl);
   }
 }

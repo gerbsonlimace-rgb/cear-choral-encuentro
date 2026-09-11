@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { PDFDocument, PageSizes } from "pdf-lib";
+import { decodePDFRawStream, PDFArray, PDFDocument, PDFRawStream, PageSizes } from "pdf-lib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
@@ -40,6 +40,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function extractDrawnPageText(document: PDFDocument): string {
+  const contents = document.getPages()[0]?.node.Contents();
+  if (!contents) return "";
+  const streamReferences = contents instanceof PDFArray ? contents.asArray() : [contents];
+  const decodedOperators = streamReferences
+    .map((reference) => {
+      const stream = document.context.lookup(reference);
+      if (!(stream instanceof PDFRawStream)) throw new Error("Expected a raw PDF content stream");
+      return new TextDecoder("windows-1252").decode(decodePDFRawStream(stream).decode());
+    })
+    .join("\n");
+
+  return Array.from(decodedOperators.matchAll(/<([0-9a-f]+)>\s*Tj/gi), ([, hexadecimal]) => {
+    const bytes = Uint8Array.from(
+      hexadecimal.match(/.{2}/g)?.map((pair) => Number.parseInt(pair, 16)) ?? [],
+    );
+    return new TextDecoder("windows-1252").decode(bytes);
+  }).join("\n");
+}
+
 describe("participant receipt", () => {
   it("builds one safe A4 receipt with metadata and a sanitized filename", async () => {
     const logoBytes = await readFile(logoPath);
@@ -47,7 +67,7 @@ describe("participant receipt", () => {
     const receipt = await buildParticipantReceipt(paidView, logoBytes);
     const document = await PDFDocument.load(receipt.bytes);
     const [page] = document.getPages();
-    const serialized = new TextDecoder("latin1").decode(receipt.bytes);
+    const drawnText = extractDrawnPageText(document);
 
     expect(document.getPageCount()).toBe(1);
     expect(page.getWidth()).toBeCloseTo(PageSizes.A4[0], 1);
@@ -57,10 +77,22 @@ describe("participant receipt", () => {
       "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
     );
     expect(receipt.filename).toBe("comprovante-inscricao-pedido-1234.pdf");
-    expect(serialized).not.toContain(rawCpf);
-    expect(serialized).not.toContain(privateReceiptUrl);
-    expect(serialized).not.toContain("registration-photos/private-photo.png");
-    expect(serialized).not.toContain("private-token");
+    for (const visibleValue of [
+      "Maria da Silva",
+      "***.***.***-25",
+      "Pago",
+      "Cartão de crédito",
+      "3x",
+      "R$ 125,00",
+      "10/09/2026 às 12:30 (horário de Fortaleza)",
+      "Pedido / 1234 ??",
+    ]) {
+      expect(drawnText).toContain(visibleValue);
+    }
+    expect(drawnText).not.toContain(rawCpf);
+    expect(drawnText).not.toContain(privateReceiptUrl);
+    expect(drawnText).not.toContain("registration-photos/private-photo.png");
+    expect(drawnText).not.toContain("private-token");
   });
 
   it("downloads through a temporary object URL and always revokes it", async () => {
@@ -71,20 +103,14 @@ describe("participant receipt", () => {
         headers: { "content-type": "image/png" },
       }),
     );
-    const createObjectURL = vi.fn().mockReturnValue("blob:participant-receipt");
-    const revokeObjectURL = vi.fn();
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:participant-receipt");
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {
       throw new Error("download blocked");
     });
     vi.stubGlobal("fetch", fetchLogo);
-    Object.defineProperty(URL, "createObjectURL", {
-      configurable: true,
-      value: createObjectURL,
-    });
-    Object.defineProperty(URL, "revokeObjectURL", {
-      configurable: true,
-      value: revokeObjectURL,
-    });
 
     await expect(downloadParticipantReceipt(paidView)).rejects.toThrow("download blocked");
 
@@ -94,5 +120,19 @@ describe("participant receipt", () => {
     expect(click).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:participant-receipt");
     expect(document.querySelector("a[download]")).not.toBeInTheDocument();
+  });
+
+  it("revokes the object URL when temporary anchor creation fails", async () => {
+    const logoBytes = await readFile(logoPath);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(logoBytes, { status: 200 })));
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:participant-receipt");
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(document, "createElement").mockImplementation(() => {
+      throw new Error("anchor creation blocked");
+    });
+
+    await expect(downloadParticipantReceipt(paidView)).rejects.toThrow("anchor creation blocked");
+
+    expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:participant-receipt");
   });
 });
