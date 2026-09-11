@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
-import { requirePortalAccess } from "@/features/regent/regent-auth.middleware";
+import {
+  requirePortalAccess,
+  requirePortalReadyAccess,
+} from "@/features/regent/regent-auth.middleware";
 import { regentIdSchema, regentMutationSchema } from "@/features/regent/regent.domain";
 import {
   portalChoirSelectionSchema,
@@ -10,6 +13,8 @@ import {
   type RegentAccess,
 } from "@/features/regent/regent.domain";
 import type { PortalAccessProbe } from "@/features/regent/regent-auth.server";
+import type { PortalSummary } from "@/features/regent/regent-payments.domain";
+import type { PortalParticipantPage } from "@/features/regent/regent-portal.server";
 
 export function toRegentAccessState(probe: PortalAccessProbe): RegentAccess {
   if (!probe.authenticated) return { status: "unauthenticated" };
@@ -32,6 +37,66 @@ export const getRegentAccess = createServerFn({ method: "GET" }).handler(async (
   const { getPortalRequestAccess } = await import("@/features/regent/regent-auth.server");
   return toRegentAccessState(await getPortalRequestAccess());
 });
+
+const portalQuerySchema = z
+  .object({
+    choirId: z.string().uuid().optional(),
+    search: z.string().trim().max(100),
+    page: z.number().int().min(1),
+    pageSize: z.number().int().min(1).max(50),
+  })
+  .strict();
+const portalSummarySchema = z.object({ choirId: z.string().uuid().optional() }).strict();
+
+type PortalQueryInput = z.infer<typeof portalQuerySchema>;
+type PortalSummaryInput = z.infer<typeof portalSummarySchema>;
+type PortalService = {
+  list(
+    authorizedChoirId: string,
+    query: { search: string; page: number; pageSize: number },
+  ): Promise<PortalParticipantPage>;
+  summary(authorizedChoirId: string): Promise<PortalSummary>;
+};
+
+export function createRegentPortalHandlers(service: PortalService) {
+  return {
+    async list(access: PortalAccess, input: unknown) {
+      const parsed = portalQuerySchema.parse(input);
+      const choirId = resolvePortalChoirSelection(access, { choirId: parsed.choirId });
+      return service.list(choirId, {
+        search: parsed.search,
+        page: parsed.page,
+        pageSize: parsed.pageSize,
+      });
+    },
+    async summary(access: PortalAccess, input: unknown) {
+      const parsed = portalSummarySchema.parse(input);
+      const choirId = resolvePortalChoirSelection(access, { choirId: parsed.choirId });
+      return service.summary(choirId);
+    },
+  };
+}
+
+async function loadRegentPortalHandlers() {
+  const { getRegentPortalService } = await import("@/features/regent/regent-portal.server");
+  return createRegentPortalHandlers(getRegentPortalService());
+}
+
+export const listRegentPortalParticipants = createServerFn({ method: "POST" })
+  .middleware([requirePortalReadyAccess])
+  .validator(portalQuerySchema)
+  .handler(
+    ({ data, context }: { data: PortalQueryInput; context: { portalAccess: PortalAccess } }) =>
+      loadRegentPortalHandlers().then((handlers) => handlers.list(context.portalAccess, data)),
+  );
+
+export const getRegentPortalSummary = createServerFn({ method: "POST" })
+  .middleware([requirePortalReadyAccess])
+  .validator(portalSummarySchema)
+  .handler(
+    ({ data, context }: { data: PortalSummaryInput; context: { portalAccess: PortalAccess } }) =>
+      loadRegentPortalHandlers().then((handlers) => handlers.summary(context.portalAccess, data)),
+  );
 
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
 

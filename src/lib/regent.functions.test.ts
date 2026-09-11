@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
-import { requirePortalAccess } from "@/features/regent/regent-auth.middleware";
+import {
+  requirePortalAccess,
+  requirePortalReadyAccess,
+} from "@/features/regent/regent-auth.middleware";
+import type { PortalParticipantPage } from "@/features/regent/regent-portal.server";
+import type { PortalSummary } from "@/features/regent/regent-payments.domain";
 import {
   changeRegentPassword,
   completeRegentPasswordChange,
+  createRegentPortalHandlers,
   createRegentPasswordChangeService,
   createSupabaseRegentPasswordAuth,
   createSupabaseRegentPasswordChangeRepository,
   createAdminRegent,
+  getRegentPortalSummary,
   listAdminRegents,
+  listRegentPortalParticipants,
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
@@ -193,6 +201,88 @@ describe("portal handler choir selection", () => {
     ]) {
       expect(() => resolvePortalChoirSelection(admin, input)).toThrow();
     }
+  });
+});
+
+describe("regent portal handler factory", () => {
+  const emptyPage: PortalParticipantPage = { rows: [], total: 0, page: 1, pageSize: 20 };
+  const emptySummary: PortalSummary = {
+    totalParticipants: 0,
+    eligibleComplementCents: 0,
+    confirmedComplementCents: 0,
+    outstandingComplementCents: 0,
+  };
+
+  function setupPortalHandlers() {
+    const service = {
+      list: vi.fn().mockResolvedValue(emptyPage),
+      summary: vi.fn().mockResolvedValue(emptySummary),
+    };
+    return { service, handlers: createRegentPortalHandlers(service) };
+  }
+
+  it("ignores a regent-supplied choir and forwards only the server-authorized choir", async () => {
+    const { service, handlers } = setupPortalHandlers();
+
+    await expect(
+      handlers.list(regent, {
+        choirId: "22222222-2222-4222-8222-222222222222",
+        search: " Ana ",
+        page: 1,
+        pageSize: 20,
+      }),
+    ).resolves.toBe(emptyPage);
+
+    expect(service.list).toHaveBeenCalledExactlyOnceWith(regent.choirId, {
+      search: "Ana",
+      page: 1,
+      pageSize: 20,
+    });
+  });
+
+  it("requires an administrator to select a valid choir for list and summary", async () => {
+    const { service, handlers } = setupPortalHandlers();
+    const admin: PortalAccess = { role: "admin", userId: "admin-1", email: "adm@example.com" };
+
+    await handlers.list(admin, {
+      choirId: "22222222-2222-4222-8222-222222222222",
+      search: "",
+      page: 2,
+      pageSize: 50,
+    });
+    await handlers.summary(admin, {
+      choirId: "22222222-2222-4222-8222-222222222222",
+    });
+
+    expect(service.list).toHaveBeenCalledExactlyOnceWith("22222222-2222-4222-8222-222222222222", {
+      search: "",
+      page: 2,
+      pageSize: 50,
+    });
+    expect(service.summary).toHaveBeenCalledExactlyOnceWith("22222222-2222-4222-8222-222222222222");
+    await expect(handlers.summary(admin, {})).rejects.toThrow("Selecione um coro válido.");
+  });
+
+  it("applies strict query bounds before calling the portal service", async () => {
+    const { service, handlers } = setupPortalHandlers();
+
+    for (const input of [
+      { search: "a".repeat(101), page: 1, pageSize: 20 },
+      { search: "", page: 0, pageSize: 20 },
+      { search: "", page: 1, pageSize: 51 },
+      { search: "", page: 1, pageSize: 20, userId: "spoof" },
+    ]) {
+      await expect(handlers.list(regent, input)).rejects.toThrow();
+    }
+
+    expect(service.list).not.toHaveBeenCalled();
+  });
+
+  it("protects both public portal server functions with ready portal middleware", () => {
+    const list = listRegentPortalParticipants as unknown as { middlewares: unknown[] };
+    const summary = getRegentPortalSummary as unknown as { middlewares: unknown[] };
+    expect(list.middlewares).toContain(requirePortalReadyAccess);
+    expect(summary.middlewares).toContain(requirePortalReadyAccess);
   });
 });
 
