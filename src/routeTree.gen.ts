@@ -13,6 +13,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RegenteLoginRouteImport } from './routes/regente.login'
+import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
@@ -36,6 +38,16 @@ const PagamentoRoute = PagamentoRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegenteLoginRoute = RegenteLoginRouteImport.update({
+  id: '/regente/login',
+  path: '/regente/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
+  id: '/regente/alterar-senha',
+  path: '/regente/alterar-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
@@ -68,6 +80,8 @@ export interface FileRoutesByFullPath {
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
+  '/regente/login': typeof RegenteLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +92,8 @@ export interface FileRoutesByTo {
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
+  '/regente/login': typeof RegenteLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +105,8 @@ export interface FileRoutesById {
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
+  '/regente/login': typeof RegenteLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +119,8 @@ export interface FileRouteTypes {
     | '/admin/inscricoes'
     | '/admin/login'
     | '/api/infinitepay-webhook'
+    | '/regente/alterar-senha'
+    | '/regente/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +131,8 @@ export interface FileRouteTypes {
     | '/admin/inscricoes'
     | '/admin/login'
     | '/api/infinitepay-webhook'
+    | '/regente/alterar-senha'
+    | '/regente/login'
   id:
     | '__root__'
     | '/'
@@ -121,6 +143,8 @@ export interface FileRouteTypes {
     | '/admin/inscricoes'
     | '/admin/login'
     | '/api/infinitepay-webhook'
+    | '/regente/alterar-senha'
+    | '/regente/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +156,8 @@ export interface RootRouteChildren {
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
   ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
+  RegenteAlterarSenhaRoute: typeof RegenteAlterarSenhaRoute
+  RegenteLoginRoute: typeof RegenteLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -162,6 +188,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/regente/login': {
+      id: '/regente/login'
+      path: '/regente/login'
+      fullPath: '/regente/login'
+      preLoaderRoute: typeof RegenteLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/regente/alterar-senha': {
+      id: '/regente/alterar-senha'
+      path: '/regente/alterar-senha'
+      fullPath: '/regente/alterar-senha'
+      preLoaderRoute: typeof RegenteAlterarSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/infinitepay-webhook': {
@@ -204,6 +244,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
   ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
+  RegenteAlterarSenhaRoute: RegenteAlterarSenhaRoute,
+  RegenteLoginRoute: RegenteLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
