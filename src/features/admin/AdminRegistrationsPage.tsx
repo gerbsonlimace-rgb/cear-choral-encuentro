@@ -113,12 +113,6 @@ function Payment({ row }: { row: AdminRegistrationRow }) {
           <dd>{money(row.standardPriceCents)}</dd>
         </div>
       )}
-      {row.shirtPriceCents !== null && (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="text-muted-foreground">Camisa</dt>
-          <dd>{money(row.shirtPriceCents)}</dd>
-        </div>
-      )}
       <div className="flex flex-wrap gap-x-2">
         <dt className="text-muted-foreground">Esperado</dt>
         <dd>{money(row.amountCents)}</dd>
@@ -212,7 +206,6 @@ function RegistrationViews({
                 "Inscrição",
                 "Contato",
                 "Coro/Diocese / origem",
-                "Camisa",
                 "Situação",
                 "Pagamento",
               ].map((label) => (
@@ -242,7 +235,6 @@ function RegistrationViews({
                   </p>
                   <p className="mt-1 text-xs">{row.role}</p>
                 </TableCell>
-                <TableCell className="align-top text-xs">{row.shirtLabel}</TableCell>
                 <TableCell className="align-top">
                   <Status row={row} />
                   <ParticipantAccessActions
@@ -293,10 +285,6 @@ function RegistrationViews({
                 <div>
                   <dt className="text-muted-foreground">Instituição</dt>
                   <dd className="break-words">{row.institution || "Não informado"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Camisa</dt>
-                  <dd>{row.shirtLabel}</dd>
                 </div>
               </dl>
               <div className="border-t pt-3">

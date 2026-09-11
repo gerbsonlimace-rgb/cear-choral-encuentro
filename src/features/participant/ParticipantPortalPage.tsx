@@ -237,7 +237,6 @@ function Identification({
             {registration.voicePart != null && (
               <Detail label="Parte vocal">{voicePartLabels[registration.voicePart]}</Detail>
             )}
-            <Detail label="Camisa">{registration.includeShirt ? "Sim" : "Não"}</Detail>
             {registration.shirtSize != null && (
               <Detail label="Tamanho da camisa">{registration.shirtSize}</Detail>
             )}

@@ -34,7 +34,6 @@ import {
 import {
   getFortalezaCalendarDate,
   registrationSchema,
-  shirtSizeSchema,
   voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
@@ -50,7 +49,7 @@ type RegistrationSectionProps = {
 
 type RegistrationForm = Omit<
   RegistrationInput,
-  "choirId" | "displayedQuote" | "displayedShirtPriceCents" | "photo" | "voicePart"
+  "choirId" | "displayedQuote" | "photo" | "voicePart"
 > & { choirId: string; voicePart: VoicePart | "" };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
@@ -74,8 +73,6 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   birthDate: "",
   choirId: "",
   voicePart: "",
-  includeShirt: false,
-  shirtSize: "",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
@@ -209,14 +206,9 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
-  const shirtPriceCents = configuration?.shirtPriceCents ?? null;
   const selectedVoicePartLabel =
     voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
-  const totalAmount =
-    registrationPriceCents === null
-      ? null
-      : registrationPriceCents +
-        (form.includeShirt && shirtPriceCents !== null ? shirtPriceCents : 0);
+  const totalAmount = registrationPriceCents;
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
@@ -263,7 +255,6 @@ export function RegistrationSection({
         standardPriceCents: selectedChoir.standardPriceCents,
         registrationPriceCents: selectedChoir.registrationPriceCents,
       },
-      displayedShirtPriceCents: shirtPriceCents,
     });
     if (!parsedForm.success) {
       const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
@@ -695,7 +686,7 @@ export function RegistrationSection({
                       <div>
                         <p className="font-bold text-foreground">Total da inscrição</p>
                         <p className="text-xs text-muted-foreground">
-                          {form.includeShirt ? "Inscrição + camisa oficial" : "Pagamento seguro"}
+                          Pagamento seguro
                         </p>
                       </div>
                     </div>
