@@ -230,6 +230,27 @@ describe("regent complement checkout service", () => {
     expect(repository.markPending).not.toHaveBeenCalled();
   });
 
+  it("reports an unreconciled failed transition as pending without retrying the checkout", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(infinitePay.createCheckout).mockRejectedValue(
+      new InfinitePayProviderError("confirmed_rejection"),
+    );
+    vi.mocked(repository.markFailed).mockRejectedValue(
+      new TypeError("failed transition could not be proven"),
+    );
+
+    await expect(
+      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
+    ).rejects.toThrow(
+      "Não foi possível confirmar a liberação da reserva. Atualize a página e verifique o pagamento em aberto antes de tentar novamente.",
+    );
+
+    expect(repository.reserve).toHaveBeenCalledOnce();
+    expect(infinitePay.createCheckout).toHaveBeenCalledOnce();
+    expect(repository.markFailed).toHaveBeenCalledExactlyOnceWith(orderNsu);
+    expect(repository.markPending).not.toHaveBeenCalled();
+  });
+
   it("keeps the exact reservation open when the provider outcome is ambiguous", async () => {
     const { repository, infinitePay, service } = setup();
     vi.mocked(infinitePay.createCheckout).mockRejectedValue(new TypeError("response lost"));

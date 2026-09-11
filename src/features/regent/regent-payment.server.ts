@@ -15,6 +15,8 @@ const CHOIR_MESSAGE = "A inscrição não pertence ao coro autorizado.";
 const RESERVATION_UNKNOWN_MESSAGE = "Não foi possível confirmar a reserva do pagamento.";
 const CHECKOUT_UNKNOWN_MESSAGE =
   "A confirmação do checkout está pendente. Atualize a página antes de tentar novamente.";
+const RESERVATION_RELEASE_UNKNOWN_MESSAGE =
+  "Não foi possível confirmar a liberação da reserva. Atualize a página e verifique o pagamento em aberto antes de tentar novamente.";
 
 export type RegentPaymentRegistration = {
   id: string;
@@ -202,7 +204,11 @@ export function createRegentPaymentService({
           caught instanceof InfinitePayProviderError &&
           caught.outcome === "confirmed_rejection"
         ) {
-          await repository.markFailed(orderNsu).catch(() => undefined);
+          try {
+            await repository.markFailed(orderNsu);
+          } catch {
+            throw new Error(RESERVATION_RELEASE_UNKNOWN_MESSAGE);
+          }
           throw caught;
         }
         throw new Error(CHECKOUT_UNKNOWN_MESSAGE);
