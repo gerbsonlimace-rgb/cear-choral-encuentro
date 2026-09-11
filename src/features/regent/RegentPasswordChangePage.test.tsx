@@ -22,6 +22,8 @@ function setup(overrides = {}) {
     checkAccess: vi.fn().mockResolvedValue(gatedAccess),
     changePassword: vi.fn().mockResolvedValue({ status: "success" }),
     completeChange: vi.fn().mockResolvedValue({ status: "success" }),
+    getEmail: vi.fn(async () => "private@example.com"),
+    signIn: vi.fn(async () => ({ error: null })),
     onCompleted: vi.fn(),
     onAuthorized: vi.fn(),
     onLoginRequired: vi.fn(),
@@ -125,7 +127,10 @@ describe("RegentPasswordChangePage password flow", () => {
 
     await submitPasswords(user, "SenhaNova123");
 
-    expect(changePassword).toHaveBeenCalledExactlyOnceWith("SenhaNova123");
+    expect(changePassword).toHaveBeenCalledExactlyOnceWith(
+      "SenhaNova123",
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+    );
     expect(completeChange).not.toHaveBeenCalled();
     expect(onCompleted).toHaveBeenCalledOnce();
   });
@@ -133,6 +138,7 @@ describe("RegentPasswordChangePage password flow", () => {
   it("keeps protected change failures generic", async () => {
     const { user, completeChange, onCompleted } = setup({
       changePassword: vi.fn().mockRejectedValue(new Error("SECRET_AUTH_DETAIL")),
+      signIn: vi.fn(async () => ({ error: { code: "invalid_credentials" } })),
     });
 
     await submitPasswords(user, "SenhaNova123");
@@ -143,15 +149,16 @@ describe("RegentPasswordChangePage password flow", () => {
     expect(document.body).not.toHaveTextContent(/SenhaNova123|SECRET_AUTH_DETAIL/);
     expect(completeChange).not.toHaveBeenCalled();
     expect(onCompleted).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Tentar restaurar acesso" })).toBeInTheDocument();
   });
 
   it("retries completion with only the server proof after Auth already changed", async () => {
     const completeChange = vi.fn().mockResolvedValue({ status: "success" });
     const { user, changePassword, onCompleted } = setup({
-      changePassword: vi.fn().mockResolvedValue({
-        status: "completion_required",
-        retryToken,
-      }),
+      changePassword: vi.fn(async (_password: string, operationToken: string) => ({
+        status: "completion_required" as const,
+        retryToken: operationToken,
+      })),
       completeChange,
     });
 
@@ -165,8 +172,9 @@ describe("RegentPasswordChangePage password flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Tentar concluir novamente" }));
 
-    expect(changePassword).toHaveBeenCalledExactlyOnceWith("SenhaNova123");
-    expect(completeChange).toHaveBeenCalledExactlyOnceWith(retryToken);
+    const operationToken = vi.mocked(changePassword).mock.calls[0][1];
+    expect(changePassword).toHaveBeenCalledExactlyOnceWith("SenhaNova123", operationToken);
+    expect(completeChange).toHaveBeenCalledExactlyOnceWith(operationToken);
     expect(onCompleted).toHaveBeenCalledOnce();
   });
 
@@ -180,11 +188,89 @@ describe("RegentPasswordChangePage password flow", () => {
     );
     const { user, unmount, onCompleted, completeChange } = setup({ changePassword });
 
-    await submitPasswords(user, "SenhaNova123");
+    void submitPasswords(user, "SenhaNova123");
+    await vi.waitFor(() => expect(changePassword).toHaveBeenCalledOnce());
     unmount();
     await act(async () => resolveChange({ status: "success" }));
 
     expect(onCompleted).not.toHaveBeenCalled();
     expect(completeChange).not.toHaveBeenCalled();
+  });
+
+  it("restores a valid browser session after Auth invalidates the temporary session", async () => {
+    const getEmail = vi.fn(async () => "private@example.com");
+    const signIn = vi.fn(async () => ({ error: null }));
+    const { user, changePassword, onCompleted } = setup({ getEmail, signIn });
+
+    await submitPasswords(user, "SenhaNova123");
+
+    expect(changePassword).toHaveBeenCalledWith(
+      "SenhaNova123",
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+    );
+    expect(signIn).toHaveBeenCalledExactlyOnceWith("private@example.com", "SenhaNova123");
+    expect(onCompleted).toHaveBeenCalledOnce();
+  });
+
+  it("recovers a lost successful change response with the same operation and no second password update", async () => {
+    const completeChange = vi.fn(async () => ({ status: "success" }));
+    const signIn = vi.fn(async () => ({ error: null }));
+    const { user, changePassword, onCompleted } = setup({
+      getEmail: vi.fn(async () => "private@example.com"),
+      signIn,
+      changePassword: vi.fn().mockRejectedValue(new TypeError("transport lost")),
+      completeChange,
+    });
+
+    await submitPasswords(user, "SenhaNova123");
+
+    const operationToken = vi.mocked(changePassword).mock.calls[0][1];
+    expect(completeChange).toHaveBeenCalledExactlyOnceWith(operationToken);
+    expect(changePassword).toHaveBeenCalledOnce();
+    expect(onCompleted).toHaveBeenCalledOnce();
+  });
+
+  it("retries only session restoration after a transient browser Auth failure", async () => {
+    const completeChange = vi.fn(async () => ({ status: "success" as const }));
+    const signIn = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("browser transport lost"))
+      .mockResolvedValueOnce({ error: null });
+    const { user, changePassword, onCompleted } = setup({
+      signIn,
+      changePassword: vi.fn().mockRejectedValue(new TypeError("transport lost")),
+      completeChange,
+    });
+
+    await submitPasswords(user, "SenhaNova123");
+    expect(screen.queryByLabelText("Nova senha")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tentar restaurar acesso" }));
+
+    const operationToken = vi.mocked(changePassword).mock.calls[0][1];
+    expect(signIn).toHaveBeenCalledTimes(2);
+    expect(changePassword).toHaveBeenCalledOnce();
+    expect(completeChange).toHaveBeenCalledExactlyOnceWith(operationToken);
+    expect(onCompleted).toHaveBeenCalledOnce();
+  });
+
+  it("replays the same protected operation only after new credentials are confirmed absent", async () => {
+    const changePassword = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("transport lost"))
+      .mockResolvedValueOnce({ status: "success" });
+    const signIn = vi
+      .fn()
+      .mockResolvedValueOnce({ error: { code: "invalid_credentials" } })
+      .mockResolvedValueOnce({ error: { code: "invalid_credentials" } })
+      .mockResolvedValueOnce({ error: null });
+    const { user, onCompleted } = setup({ changePassword, signIn });
+
+    await submitPasswords(user, "SenhaNova123");
+    await user.click(screen.getByRole("button", { name: "Tentar restaurar acesso" }));
+
+    expect(changePassword).toHaveBeenCalledTimes(2);
+    expect(changePassword.mock.calls[1]).toEqual(changePassword.mock.calls[0]);
+    expect(onCompleted).toHaveBeenCalledOnce();
   });
 });

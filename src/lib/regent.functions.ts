@@ -36,18 +36,31 @@ export const getRegentAccess = createServerFn({ method: "GET" }).handler(async (
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
 
 export type RegentPasswordChangeRepository = {
-  armRetryProof(access: RegentPortalAccess, hash: string): Promise<void>;
+  armRetryProof(access: RegentPortalAccess, hash: string): Promise<boolean>;
   clearRetryProof(access: RegentPortalAccess, hash: string): Promise<void>;
   completeWithProof(access: RegentPortalAccess, hash: string): Promise<boolean>;
+  getPasswordOperation(
+    access: RegentPortalAccess,
+  ): Promise<{ kind: "admin" | "regent"; hash: string } | null>;
   isCompleted(access: RegentPortalAccess): Promise<boolean>;
 };
 
+type PasswordOperationProof = {
+  kind: "regent";
+  membership_id: string;
+  operation_hash: string;
+};
+
 type RegentPasswordAuth = {
-  updateUserById(userId: string, attributes: { password: string }): Promise<void>;
+  inspectUser(userId: string): Promise<{ email: string; appMetadata: Record<string, unknown> }>;
+  passwordMatches(email: string, password: string): Promise<"matches" | "different" | "unknown">;
+  updateUserById(
+    userId: string,
+    attributes: { password: string; appMetadata: Record<string, unknown> },
+  ): Promise<"updated" | "rejected" | "unknown">;
 };
 
 type RegentPasswordProofs = {
-  create(): Promise<{ token: string; hash: string }>;
   hash(token: string): Promise<string>;
 };
 
@@ -61,6 +74,21 @@ const passwordCompletionError = "Não foi possível concluir a alteração de se
 function requireRegentAccess(access: PortalAccess, message: string): RegentPortalAccess {
   if (access.role !== "regent") throw new Error(message);
   return access;
+}
+
+function operationProof(access: RegentPortalAccess, hash: string): PasswordOperationProof {
+  return { kind: "regent", membership_id: access.membershipId, operation_hash: hash };
+}
+
+function hasOperationProof(metadata: Record<string, unknown>, proof: PasswordOperationProof) {
+  const value = metadata.regent_password_operation;
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.kind === proof.kind &&
+    candidate.membership_id === proof.membership_id &&
+    candidate.operation_hash === proof.operation_hash
+  );
 }
 
 export function createRegentPasswordChangeService({
@@ -80,35 +108,98 @@ export function createRegentPasswordChangeService({
     }
   }
 
+  async function releaseOwnedClaim(access: RegentPortalAccess, hash: string, owned: boolean) {
+    if (!owned) return;
+    try {
+      await repository.clearRetryProof(access, hash);
+    } catch {
+      // Fail closed. Only this exact operation was targeted and a surviving claim
+      // keeps later administrator/regent password writes serialized.
+    }
+  }
+
   return {
-    async change(accessInput: PortalAccess, password: string): Promise<RegentPasswordChangeResult> {
+    async change(
+      accessInput: PortalAccess,
+      password: string,
+      operationToken: string,
+    ): Promise<RegentPasswordChangeResult> {
       const access = requireRegentAccess(accessInput, passwordChangeError);
-      let proof: { token: string; hash: string };
+      let hash: string;
       try {
-        proof = await proofs.create();
-        await repository.armRetryProof(access, proof.hash);
+        hash = await proofs.hash(operationToken);
       } catch {
         throw new Error(passwordChangeError);
       }
 
+      let claimedByThisCall = false;
       try {
-        await auth.updateUserById(access.userId, { password });
+        claimedByThisCall = await repository.armRetryProof(access, hash);
       } catch {
+        // A transport failure can follow a committed claim; reconcile below.
+      }
+      if (!claimedByThisCall) {
+        let currentOperation: Awaited<
+          ReturnType<RegentPasswordChangeRepository["getPasswordOperation"]>
+        >;
         try {
-          await repository.clearRetryProof(access, proof.hash);
+          currentOperation = await repository.getPasswordOperation(access);
         } catch {
-          // The raw proof is never returned when Auth fails, so an orphaned hash is unusable.
+          throw new Error(passwordChangeError);
         }
+        if (currentOperation?.kind !== "regent" || currentOperation.hash !== hash) {
+          throw new Error(passwordChangeError);
+        }
+      }
+
+      const proof = operationProof(access, hash);
+      let authUser: Awaited<ReturnType<RegentPasswordAuth["inspectUser"]>>;
+      try {
+        authUser = await auth.inspectUser(access.userId);
+      } catch {
+        await releaseOwnedClaim(access, hash, claimedByThisCall);
         throw new Error(passwordChangeError);
       }
 
+      if (!hasOperationProof(authUser.appMetadata, proof)) {
+        const match = await auth.passwordMatches(authUser.email, password);
+        if (match !== "different") {
+          await releaseOwnedClaim(access, hash, claimedByThisCall);
+          throw new Error(passwordChangeError);
+        }
+
+        const updateOutcome = await auth.updateUserById(access.userId, {
+          password,
+          appMetadata: {
+            ...authUser.appMetadata,
+            regent_password_operation: proof,
+          },
+        });
+        if (updateOutcome !== "updated") {
+          try {
+            authUser = await auth.inspectUser(access.userId);
+          } catch {
+            authUser = { email: authUser.email, appMetadata: {} };
+          }
+          if (!hasOperationProof(authUser.appMetadata, proof)) {
+            // A confirmed rejection cannot have applied either the password or
+            // the metadata proof. Unknown outcomes stay locked because the Auth
+            // write may still commit after this response.
+            if (updateOutcome === "rejected") {
+              await releaseOwnedClaim(access, hash, claimedByThisCall);
+            }
+            throw new Error(passwordChangeError);
+          }
+        }
+      }
+
       try {
-        if (await repository.completeWithProof(access, proof.hash)) return { status: "success" };
+        if (await repository.completeWithProof(access, hash)) return { status: "success" };
       } catch {
         // Reconcile below because the update response may have been lost after commit.
       }
       if (await isCompleted(access)) return { status: "success" };
-      return { status: "completion_required", retryToken: proof.token };
+      return { status: "completion_required", retryToken: operationToken };
     },
 
     async complete(accessInput: PortalAccess, retryToken: string) {
@@ -116,6 +207,10 @@ export function createRegentPasswordChangeService({
       let hash: string;
       try {
         hash = await proofs.hash(retryToken);
+        const authUser = await auth.inspectUser(access.userId);
+        if (!hasOperationProof(authUser.appMetadata, operationProof(access, hash))) {
+          throw new Error("Auth proof does not match");
+        }
         if (await repository.completeWithProof(access, hash)) return { status: "success" as const };
       } catch {
         // Reconcile below because the update response may have been lost after commit.
@@ -136,10 +231,6 @@ async function hashRetryToken(token: string) {
 }
 
 const passwordProofs: RegentPasswordProofs = {
-  async create() {
-    const token = bytesToHex(globalThis.crypto.getRandomValues(new Uint8Array(32)));
-    return { token, hash: await hashRetryToken(token) };
-  },
   hash: hashRetryToken,
 };
 
@@ -147,46 +238,50 @@ export function createSupabaseRegentPasswordChangeRepository(): RegentPasswordCh
   return {
     async armRetryProof(access, hash) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data, error } = await supabaseAdmin
-        .from("choir_regents")
-        .update({ password_change_retry_token_hash: hash })
-        .eq("id", access.membershipId)
-        .eq("user_id", access.userId)
-        .eq("password_change_required", true)
-        .is("revoked_at", null)
-        .select("id")
-        .maybeSingle();
-      if (error || !data) throw new Error("Password proof could not be armed");
+      const { data, error } = await supabaseAdmin.rpc("claim_choir_regent_password_operation", {
+        p_membership_id: access.membershipId,
+        p_user_id: access.userId,
+        p_operation_kind: "regent",
+        p_operation_hash: hash,
+      });
+      if (error) throw new Error("Password proof could not be armed");
+      return data;
     },
     async clearRetryProof(access, hash) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin
-        .from("choir_regents")
-        .update({ password_change_retry_token_hash: null })
-        .eq("id", access.membershipId)
-        .eq("user_id", access.userId)
-        .eq("password_change_required", true)
-        .eq("password_change_retry_token_hash", hash)
-        .is("revoked_at", null);
+      const { error } = await supabaseAdmin.rpc("release_choir_regent_password_operation", {
+        p_membership_id: access.membershipId,
+        p_user_id: access.userId,
+        p_operation_kind: "regent",
+        p_operation_hash: hash,
+      });
       if (error) throw new Error("Password proof could not be cleared");
     },
     async completeWithProof(access, hash) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin.rpc("finish_choir_regent_password_operation", {
+        p_membership_id: access.membershipId,
+        p_user_id: access.userId,
+        p_operation_kind: "regent",
+        p_operation_hash: hash,
+      });
+      if (error) throw new Error("Password completion failed");
+      return data;
+    },
+    async getPasswordOperation(access) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data, error } = await supabaseAdmin
         .from("choir_regents")
-        .update({
-          password_change_required: false,
-          password_change_retry_token_hash: null,
-        })
+        .select("password_change_operation_kind,password_change_retry_token_hash")
         .eq("id", access.membershipId)
         .eq("user_id", access.userId)
-        .eq("password_change_required", true)
-        .eq("password_change_retry_token_hash", hash)
         .is("revoked_at", null)
-        .select("id")
         .maybeSingle();
-      if (error) throw new Error("Password completion failed");
-      return data !== null;
+      if (error) throw new Error("Password operation could not be reconciled");
+      const kind = data?.password_change_operation_kind;
+      const hash = data?.password_change_retry_token_hash;
+      if ((kind !== "admin" && kind !== "regent") || !hash) return null;
+      return { kind, hash };
     },
     async isCompleted(access) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -203,12 +298,46 @@ export function createSupabaseRegentPasswordChangeRepository(): RegentPasswordCh
   };
 }
 
-function createSupabaseRegentPasswordAuth(): RegentPasswordAuth {
+export function createSupabaseRegentPasswordAuth(): RegentPasswordAuth {
   return {
+    async inspectUser(userId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const email = data.user?.email;
+      if (error || !email) throw new Error("Password Auth user unavailable");
+      return { email, appMetadata: data.user.app_metadata ?? {} };
+    },
+    async passwordMatches(email, password) {
+      const { createSupabaseAdminClient } = await import("@/integrations/supabase/client.server");
+      const probe = createSupabaseAdminClient();
+      try {
+        const { data, error } = await probe.auth.signInWithPassword({ email, password });
+        if (data.session) {
+          try {
+            await probe.auth.signOut({ scope: "local" });
+          } catch {
+            // The isolated server client has no persistent storage. A cleanup
+            // failure does not change the verified credential result.
+          }
+          return "matches";
+        }
+        return error?.code === "invalid_credentials" ? "different" : "unknown";
+      } catch {
+        return "unknown";
+      }
+    },
     async updateUserById(userId, attributes) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, attributes);
-      if (error) throw new Error("Password Auth update failed");
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password: attributes.password,
+          app_metadata: attributes.appMetadata,
+        });
+        if (!error && data.user) return "updated";
+        return error?.status && error.status < 500 ? "rejected" : "unknown";
+      } catch {
+        return "unknown";
+      }
     },
   };
 }
@@ -231,9 +360,13 @@ const retryTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
 
 export const changeRegentPassword = createServerFn({ method: "POST" })
   .middleware([requirePortalAccess])
-  .validator(z.object({ password: newPasswordSchema }).strict())
+  .validator(z.object({ password: newPasswordSchema, operationToken: retryTokenSchema }).strict())
   .handler(({ data, context }) =>
-    getRegentPasswordChangeService().change(context.portalAccess, data.password),
+    getRegentPasswordChangeService().change(
+      context.portalAccess,
+      data.password,
+      data.operationToken,
+    ),
   );
 
 export const completeRegentPasswordChange = createServerFn({ method: "POST" })

@@ -25,7 +25,18 @@ export type RegentAdminRepository = {
   grant(input: RegentGrant): Promise<AdminRegentRow>;
   replace(input: RegentGrant): Promise<AdminRegentRow>;
   revoke(id: string, actorId: string): Promise<AdminRegentRow>;
-  requirePasswordChange(id: string): Promise<AdminRegentRow>;
+  claimPasswordOperation(id: string, userId: string, kind: "admin", hash: string): Promise<boolean>;
+  getPasswordOperation(
+    id: string,
+    userId: string,
+  ): Promise<{ kind: "admin" | "regent"; hash: string } | null>;
+  finishPasswordOperation(
+    id: string,
+    userId: string,
+    kind: "admin",
+    hash: string,
+  ): Promise<AdminRegentRow>;
+  releasePasswordOperation(id: string, userId: string, kind: "admin", hash: string): Promise<void>;
 };
 export type RegentAuthAdminPort = {
   findUserByEmail(email: string): Promise<{ id: string } | null>;
@@ -35,7 +46,11 @@ export type RegentAuthAdminPort = {
     emailConfirm: true;
   }): Promise<{ id: string }>;
   deleteUser(userId: string): Promise<void>;
-  updateUserById(userId: string, input: { password: string }): Promise<void>;
+  inspectUser(userId: string): Promise<{ appMetadata: Record<string, unknown> }>;
+  updateUserById(
+    userId: string,
+    input: { password: string; appMetadata: Record<string, unknown> },
+  ): Promise<"updated" | "rejected" | "unknown">;
 };
 
 const failure = (): RegentAdminResult => ({
@@ -56,6 +71,37 @@ export class RegentGrantFailure extends Error {
   ) {
     super("Regent grant was not confirmed");
   }
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashOperationToken(token: string) {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return bytesToHex(new Uint8Array(digest));
+}
+
+function createOperationToken() {
+  return bytesToHex(globalThis.crypto.getRandomValues(new Uint8Array(32)));
+}
+
+function adminOperationProof(id: string, hash: string) {
+  return { kind: "admin", membership_id: id, operation_hash: hash } as const;
+}
+
+function hasAdminOperationProof(
+  metadata: Record<string, unknown>,
+  proof: ReturnType<typeof adminOperationProof>,
+) {
+  const value = metadata.regent_password_operation;
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.kind === proof.kind &&
+    candidate.membership_id === proof.membership_id &&
+    candidate.operation_hash === proof.operation_hash
+  );
 }
 
 export function createRegentAdminService({
@@ -150,15 +196,83 @@ export function createRegentAdminService({
       }
     },
     async resetPassword(id: string, password: string): Promise<RegentAdminResult> {
+      let claimedByThisCall = false;
+      let authProven = false;
+      let regent: AdminRegentRow | null = null;
+      let hash = "";
       try {
-        const regent = await repository.findById(id);
+        regent = await repository.findById(id);
         if (!regent || regent.revokedAt)
           return { status: "error", message: "O regente não está ativo. Atualize a lista." };
-        // Fail closed: never install a temporary password before the portal gate is set.
-        const updated = await repository.requirePasswordChange(id);
-        await auth.updateUserById(regent.userId, { password });
-        return success(updated);
+
+        hash = await hashOperationToken(createOperationToken());
+        let claimResponseUnknown = false;
+        try {
+          claimedByThisCall = await repository.claimPasswordOperation(
+            id,
+            regent.userId,
+            "admin",
+            hash,
+          );
+        } catch {
+          claimResponseUnknown = true;
+        }
+
+        if (!claimedByThisCall) {
+          const current = await repository.getPasswordOperation(id, regent.userId);
+          if (!current || current.kind !== "admin") return failure();
+          if (claimResponseUnknown && current.hash === hash) {
+            // This exact claim may have committed before its response was lost.
+          } else {
+            const authUser = await auth.inspectUser(regent.userId);
+            const proof = adminOperationProof(id, current.hash);
+            if (!hasAdminOperationProof(authUser.appMetadata, proof)) return failure();
+            return success(
+              await repository.finishPasswordOperation(id, regent.userId, "admin", current.hash),
+            );
+          }
+        }
+
+        let authUser = await auth.inspectUser(regent.userId);
+        const proof = adminOperationProof(id, hash);
+        authProven = hasAdminOperationProof(authUser.appMetadata, proof);
+
+        if (!authProven) {
+          const updateOutcome = await auth.updateUserById(regent.userId, {
+            password,
+            appMetadata: {
+              ...authUser.appMetadata,
+              regent_password_operation: proof,
+            },
+          });
+          if (updateOutcome === "updated") {
+            authProven = true;
+          } else {
+            try {
+              authUser = await auth.inspectUser(regent.userId);
+              authProven = hasAdminOperationProof(authUser.appMetadata, proof);
+            } catch {
+              authProven = false;
+            }
+            if (!authProven) {
+              if (updateOutcome === "rejected" && claimedByThisCall) {
+                await repository.releasePasswordOperation(id, regent.userId, "admin", hash);
+                claimedByThisCall = false;
+              }
+              return failure();
+            }
+          }
+        }
+
+        return success(await repository.finishPasswordOperation(id, regent.userId, "admin", hash));
       } catch {
+        if (claimedByThisCall && !authProven && regent && hash) {
+          try {
+            await repository.releasePasswordOperation(id, regent.userId, "admin", hash);
+          } catch {
+            // Fail closed. An exact in-flight operation is never replaced by another caller.
+          }
+        }
         return failure();
       }
     },
@@ -306,19 +420,53 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
           .single(),
       );
     },
-    requirePasswordChange(id) {
-      return returning(
-        supabaseAdmin
-          .from("choir_regents")
-          .update({
-            password_change_required: true,
-            password_change_retry_token_hash: null,
-          })
-          .eq("id", id)
-          .is("revoked_at", null)
-          .select(columns)
-          .single(),
-      );
+    async claimPasswordOperation(id, userId, kind, hash) {
+      const { data, error } = await supabaseAdmin.rpc("claim_choir_regent_password_operation", {
+        p_membership_id: id,
+        p_user_id: userId,
+        p_operation_kind: kind,
+        p_operation_hash: hash,
+      });
+      checkError(error);
+      return data === true;
+    },
+    async getPasswordOperation(id, userId) {
+      const { data, error } = await supabaseAdmin
+        .from("choir_regents")
+        .select("password_change_operation_kind,password_change_retry_token_hash")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .is("revoked_at", null)
+        .maybeSingle();
+      checkError(error);
+      const kind = data?.password_change_operation_kind;
+      const hash = data?.password_change_retry_token_hash;
+      if ((kind !== "admin" && kind !== "regent") || !hash) return null;
+      return { kind, hash };
+    },
+    async finishPasswordOperation(id, userId, kind, hash) {
+      const { data, error } = await supabaseAdmin.rpc("finish_choir_regent_password_operation", {
+        p_membership_id: id,
+        p_user_id: userId,
+        p_operation_kind: kind,
+        p_operation_hash: hash,
+      });
+      checkError(error);
+      if (!data) throw new Error("Password operation could not be finished");
+      const updated = await this.findById(id);
+      if (!updated || updated.revokedAt || !updated.passwordChangeRequired) {
+        throw new Error("Password operation final state unavailable");
+      }
+      return updated;
+    },
+    async releasePasswordOperation(id, userId, kind, hash) {
+      const { error } = await supabaseAdmin.rpc("release_choir_regent_password_operation", {
+        p_membership_id: id,
+        p_user_id: userId,
+        p_operation_kind: kind,
+        p_operation_hash: hash,
+      });
+      checkError(error);
     },
   };
 }
@@ -352,10 +500,22 @@ export function createSupabaseRegentAuthAdmin(): RegentAuthAdminPort {
       const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
       checkError(error);
     },
+    async inspectUser(userId) {
+      const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (error || !data.user) throw new Error("Regent Auth user unavailable");
+      return { appMetadata: data.user.app_metadata ?? {} };
+    },
     async updateUserById(userId, input) {
-      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, input);
-      checkError(error);
-      if (!data.user) throw new Error("Auth user not updated");
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password: input.password,
+          app_metadata: input.appMetadata,
+        });
+        if (!error && data.user) return "updated";
+        return error?.status && error.status < 500 ? "rejected" : "unknown";
+      } catch {
+        return "unknown";
+      }
     },
   };
 }

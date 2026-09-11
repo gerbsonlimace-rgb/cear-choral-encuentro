@@ -14,6 +14,7 @@ const { from, rpc, authAdmin } = vi.hoisted(() => ({
   rpc: vi.fn(),
   authAdmin: {
     createUser: vi.fn(),
+    getUserById: vi.fn(),
     updateUserById: vi.fn(),
     deleteUser: vi.fn(),
     listUsers: vi.fn(),
@@ -47,13 +48,17 @@ function setup() {
     grant: vi.fn(async () => row),
     replace: vi.fn(async () => row),
     revoke: vi.fn(async () => ({ ...row, revokedAt: "2026-09-11T12:00:00Z" })),
-    requirePasswordChange: vi.fn(async () => row),
+    claimPasswordOperation: vi.fn(async () => true),
+    getPasswordOperation: vi.fn(async () => null),
+    finishPasswordOperation: vi.fn(async () => row),
+    releasePasswordOperation: vi.fn(async () => {}),
   };
   const auth: RegentAuthAdminPort = {
     findUserByEmail: vi.fn(async () => null),
     createUser: vi.fn(async () => ({ id: "created-user" })),
     deleteUser: vi.fn(async () => {}),
-    updateUserById: vi.fn(async () => {}),
+    inspectUser: vi.fn(async () => ({ appMetadata: {} })),
+    updateUserById: vi.fn(async (): Promise<"updated" | "rejected" | "unknown"> => "updated"),
   };
   return { repository, auth, service: createRegentAdminService({ repository, auth }) };
 }
@@ -230,22 +235,36 @@ describe("regent administrative lifecycle", () => {
     expect(repository.revoke).not.toHaveBeenCalled();
     expect(repository.grant).not.toHaveBeenCalled();
   });
-  it("resets the membership's resolved user and closes the password gate first", async () => {
+  it("claims the membership before resetting its resolved Auth user and finishes afterward", async () => {
     const { service, auth, repository } = setup();
     await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
       status: "success",
     });
-    expect(repository.requirePasswordChange).toHaveBeenCalledExactlyOnceWith(row.id);
+    const claim = vi.mocked(repository.claimPasswordOperation);
+    const finish = vi.mocked(repository.finishPasswordOperation);
+    expect(claim).toHaveBeenCalledWith(row.id, row.userId, "admin", expect.any(String));
+    const operationHash = claim.mock.calls[0][3];
     expect(auth.updateUserById).toHaveBeenCalledWith("created-user", {
       password: "NewPassword123",
+      appMetadata: {
+        regent_password_operation: {
+          kind: "admin",
+          membership_id: row.id,
+          operation_hash: operationHash,
+        },
+      },
     });
-    expect(vi.mocked(repository.requirePasswordChange).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(finish).toHaveBeenCalledExactlyOnceWith(row.id, row.userId, "admin", operationHash);
+    expect(claim.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(auth.updateUserById).mock.invocationCallOrder[0],
     );
+    expect(vi.mocked(auth.updateUserById).mock.invocationCallOrder[0]).toBeLessThan(
+      finish.mock.invocationCallOrder[0],
+    );
   });
-  it("does not change Auth when the password gate cannot be set", async () => {
+  it("does not change Auth when a durable password operation cannot be claimed", async () => {
     const { service, auth, repository } = setup();
-    vi.mocked(repository.requirePasswordChange).mockRejectedValue(new Error("DB error"));
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
     await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
       status: "error",
     });
@@ -258,6 +277,110 @@ describe("regent administrative lifecycle", () => {
       status: "error",
     });
     expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+  it("lets only one durable password operation reach Auth during an admin/regent interleaving", async () => {
+    const { service, auth, repository } = setup();
+    const claimPasswordOperation = vi.fn(async () => false);
+    Object.assign(repository, { claimPasswordOperation });
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(claimPasswordOperation).toHaveBeenCalledWith(
+      row.id,
+      row.userId,
+      "admin",
+      expect.any(String),
+    );
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("retries the same completed admin operation without invalidating sessions again", async () => {
+    const { service, auth, repository } = setup();
+    Object.assign(repository, {
+      claimPasswordOperation: vi.fn(async () => false),
+      getPasswordOperation: vi.fn(async () => ({
+        kind: "admin",
+        hash: "b".repeat(64),
+      })),
+      finishPasswordOperation: vi.fn(async () => row),
+    });
+    Object.assign(auth, {
+      inspectUser: vi.fn(async () => ({
+        appMetadata: {
+          regent_password_operation: {
+            kind: "admin",
+            membership_id: row.id,
+            operation_hash: "b".repeat(64),
+          },
+        },
+      })),
+    });
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "success",
+    });
+
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(repository.finishPasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      "b".repeat(64),
+    );
+  });
+
+  it("recovers an unknown Auth reset response from its durable metadata proof", async () => {
+    const { service, auth, repository } = setup();
+    let writtenMetadata: Record<string, unknown> = {};
+    vi.mocked(auth.updateUserById).mockImplementation(async (_userId, attributes) => {
+      writtenMetadata = attributes.appMetadata;
+      return "unknown";
+    });
+    vi.mocked(auth.inspectUser)
+      .mockResolvedValueOnce({ appMetadata: {} })
+      .mockImplementation(async () => ({ appMetadata: writtenMetadata }));
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "success",
+    });
+
+    expect(auth.updateUserById).toHaveBeenCalledOnce();
+    expect(auth.inspectUser).toHaveBeenCalledTimes(2);
+    expect(repository.finishPasswordOperation).toHaveBeenCalledOnce();
+    expect(repository.releasePasswordOperation).not.toHaveBeenCalled();
+  });
+
+  it("keeps the claim locked when an unknown Auth reset cannot yet be proven", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.updateUserById).mockResolvedValue("unknown");
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(auth.inspectUser).toHaveBeenCalledTimes(2);
+    expect(repository.releasePasswordOperation).not.toHaveBeenCalled();
+    expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
+  });
+
+  it("releases only its own claim after a confirmed Auth rejection", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.updateUserById).mockResolvedValue("rejected");
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    const operationHash = vi.mocked(repository.claimPasswordOperation).mock.calls[0][3];
+    expect(repository.releasePasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+    );
+    expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
   });
   it("records who revoked access without deleting the Auth account", async () => {
     const { service, auth, repository } = setup();
@@ -379,34 +502,30 @@ describe("Supabase administrative adapters", () => {
     });
     expect(from).not.toHaveBeenCalled();
   });
-  it("clears stale retry proof before requiring another password change", async () => {
-    const response = {
-      data: {
-        id: row.id,
-        choir_id: choirId,
-        user_id: row.userId,
-        name: row.name,
-        email: row.email,
-        password_change_required: true,
-        revoked_at: null,
-      },
-      error: null,
-    };
+  it("reads the exact active password operation for recovery", async () => {
     const query = {
-      update: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn(async () => response),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          password_change_operation_kind: "admin",
+          password_change_retry_token_hash: "b".repeat(64),
+        },
+        error: null,
+      })),
     };
     from.mockReturnValue(query);
 
-    await createSupabaseRegentAdminRepository().requirePasswordChange(row.id);
+    await expect(
+      createSupabaseRegentAdminRepository().getPasswordOperation(row.id, row.userId),
+    ).resolves.toEqual({ kind: "admin", hash: "b".repeat(64) });
 
-    expect(query.update).toHaveBeenCalledExactlyOnceWith({
-      password_change_required: true,
-      password_change_retry_token_hash: null,
-    });
+    expect(query.eq.mock.calls).toEqual([
+      ["id", row.id],
+      ["user_id", row.userId],
+    ]);
+    expect(query.is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
   });
   it("uses email_confirm without sending an invitation", async () => {
     authAdmin.createUser.mockResolvedValue({ data: { user: { id: "new" } }, error: null });
@@ -436,16 +555,36 @@ describe("Supabase administrative adapters", () => {
     });
     expect(authAdmin.listUsers).toHaveBeenLastCalledWith({ page: 2, perPage: 1000 });
   });
-  it("uses the direct Auth admin reset API", async () => {
+  it("uses the direct Auth admin reset API with operation metadata", async () => {
     authAdmin.updateUserById.mockResolvedValue({
       data: { user: { id: "created-user" } },
       error: null,
     });
-    await createSupabaseRegentAuthAdmin().updateUserById("created-user", {
-      password: "NewPassword123",
-    });
+    await expect(
+      createSupabaseRegentAuthAdmin().updateUserById("created-user", {
+        password: "NewPassword123",
+        appMetadata: { retained: true, regent_password_operation: { kind: "admin" } },
+      }),
+    ).resolves.toBe("updated");
     expect(authAdmin.updateUserById).toHaveBeenCalledWith("created-user", {
       password: "NewPassword123",
+      app_metadata: { retained: true, regent_password_operation: { kind: "admin" } },
     });
+  });
+
+  it("classifies Auth reset rejection separately from an unknown transport result", async () => {
+    authAdmin.updateUserById.mockResolvedValueOnce({
+      data: { user: null },
+      error: { code: "same_password", status: 422 },
+    });
+    const adapter = createSupabaseRegentAuthAdmin();
+    await expect(
+      adapter.updateUserById("created-user", { password: "same", appMetadata: {} }),
+    ).resolves.toBe("rejected");
+
+    authAdmin.updateUserById.mockRejectedValueOnce(new TypeError("transport lost"));
+    await expect(
+      adapter.updateUserById("created-user", { password: "unknown", appMetadata: {} }),
+    ).resolves.toBe("unknown");
   });
 });
