@@ -310,7 +310,10 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
       return returning(
         supabaseAdmin
           .from("choir_regents")
-          .update({ password_change_required: true })
+          .update({
+            password_change_required: true,
+            password_change_retry_token_hash: null,
+          })
           .eq("id", id)
           .is("revoked_at", null)
           .select(columns)

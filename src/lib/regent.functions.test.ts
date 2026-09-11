@@ -2,25 +2,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
 import { requirePortalAccess } from "@/features/regent/regent-auth.middleware";
 import {
+  changeRegentPassword,
   completeRegentPasswordChange,
+  createRegentPasswordChangeService,
+  createSupabaseRegentPasswordChangeRepository,
   createAdminRegent,
   listAdminRegents,
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
+  type RegentPasswordChangeRepository,
 } from "./regent.functions";
 
-const { from, update, eq, is, select, maybeSingle } = vi.hoisted(() => ({
+const { from, update, eq, is, select, maybeSingle, authAdmin } = vi.hoisted(() => ({
   from: vi.fn(),
   update: vi.fn(),
   eq: vi.fn(),
   is: vi.fn(),
   select: vi.fn(),
   maybeSingle: vi.fn(),
+  authAdmin: { updateUserById: vi.fn() },
 }));
 
 vi.mock("@/integrations/supabase/client.server", () => ({
-  supabaseAdmin: { from },
+  supabaseAdmin: { from, auth: { admin: authAdmin } },
 }));
 
 vi.mock("@tanstack/react-start", async (importOriginal) => {
@@ -173,9 +178,12 @@ describe("portal handler choir selection", () => {
   });
 });
 
-describe("regent password completion boundary", () => {
-  it("requires portal middleware and no caller-selected identifier", () => {
-    const fn = completeRegentPasswordChange as unknown as {
+describe("regent password server boundaries", () => {
+  it.each([
+    ["change", changeRegentPassword],
+    ["completion", completeRegentPasswordChange],
+  ])("requires portal middleware on %s", (_name, serverFunction) => {
+    const fn = serverFunction as unknown as {
       method: string;
       middlewares: unknown[];
       validate: (input: unknown) => unknown;
@@ -183,42 +191,167 @@ describe("regent password completion boundary", () => {
 
     expect(fn.method).toBe("POST");
     expect(fn.middlewares).toContain(requirePortalAccess);
-    expect(fn.validate({ userId: "victim", membershipId: "other" })).toBeUndefined();
   });
 
-  it("clears only the authenticated regent's active membership", async () => {
-    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
+  it("accepts a password only on change and a server proof only on completion", () => {
+    const change = changeRegentPassword as unknown as { validate: (input: unknown) => unknown };
+    const complete = completeRegentPasswordChange as unknown as {
+      validate: (input: unknown) => unknown;
+    };
+    const token = "a".repeat(64);
 
-    await expect(fn({ context: { portalAccess: regent } })).resolves.toEqual({
-      status: "success",
+    expect(change.validate({ password: "SenhaNova123" })).toEqual({ password: "SenhaNova123" });
+    expect(() => change.validate({ password: "short" })).toThrow();
+    expect(() => change.validate({ password: "SenhaNova123", userId: "victim" })).toThrow();
+    expect(complete.validate({ retryToken: token })).toEqual({ retryToken: token });
+    expect(() => complete.validate({})).toThrow();
+    expect(() => complete.validate({ retryToken: token, password: "SenhaNova123" })).toThrow();
+  });
+});
+
+describe("regent password change service", () => {
+  const token = "a".repeat(64);
+  const tokenHash = "b".repeat(64);
+
+  function setupPasswordService() {
+    const repository: RegentPasswordChangeRepository = {
+      armRetryProof: vi.fn(async () => {}),
+      clearRetryProof: vi.fn(async () => {}),
+      completeWithProof: vi.fn(async () => true),
+      isCompleted: vi.fn(async () => false),
+    };
+    const auth = { updateUserById: vi.fn(async () => {}) };
+    const proofs = {
+      create: vi.fn(async () => ({ token, hash: tokenHash })),
+      hash: vi.fn(async () => tokenHash),
+    };
+    return {
+      repository,
+      auth,
+      proofs,
+      service: createRegentPasswordChangeService({ repository, auth, proofs }),
+    };
+  }
+
+  it("arms a hashed proof before server-side Auth and clears with that proof afterward", async () => {
+    const { service, repository, auth } = setupPasswordService();
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "success" });
+
+    expect(repository.armRetryProof).toHaveBeenCalledWith(regent, tokenHash);
+    expect(repository.armRetryProof).not.toHaveBeenCalledWith(regent, token);
+    expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(regent.userId, {
+      password: "SenhaNova123",
+    });
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(vi.mocked(repository.armRetryProof).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(auth.updateUserById).mock.invocationCallOrder[0],
+    );
+    expect(vi.mocked(auth.updateUserById).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.completeWithProof).mock.invocationCallOrder[0],
+    );
+  });
+
+  it("exposes the raw retry token only after Auth succeeds and completion remains pending", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.completeWithProof).mockRejectedValue(new Error("database unavailable"));
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "completion_required",
+      retryToken: token,
     });
 
-    expect(from).toHaveBeenCalledExactlyOnceWith("choir_regents");
-    expect(update).toHaveBeenCalledExactlyOnceWith({ password_change_required: false });
-    expect(eq).toHaveBeenCalledWith("id", regent.membershipId);
-    expect(eq).toHaveBeenCalledWith("user_id", regent.userId);
-    expect(is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
-    expect(select).toHaveBeenCalledExactlyOnceWith("id");
+    expect(auth.updateUserById).toHaveBeenCalledOnce();
+    expect(repository.isCompleted).toHaveBeenCalledWith(regent);
+  });
+
+  it("does not expose proof when Auth fails and clears only its own stale hash", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(auth.updateUserById).mockRejectedValue(new Error("SECRET_AUTH_DETAIL"));
+
+    await expect(service.change(regent, "SenhaNova123")).rejects.toThrow(
+      "Não foi possível alterar a senha.",
+    );
+
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.completeWithProof).not.toHaveBeenCalled();
+  });
+
+  it("accepts completion only with a matching server proof for the active caller", async () => {
+    const { service, repository, proofs } = setupPasswordService();
+    const suppliedToken = "c".repeat(64);
+
+    await expect(service.complete(regent, suppliedToken)).resolves.toEqual({ status: "success" });
+
+    expect(proofs.hash).toHaveBeenCalledExactlyOnceWith(suppliedToken);
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+  });
+
+  it("rejects direct completion when the proof does not match a still-gated membership", async () => {
+    const { service, repository } = setupPasswordService();
+    vi.mocked(repository.completeWithProof).mockResolvedValue(false);
+    vi.mocked(repository.isCompleted).mockResolvedValue(false);
+
+    await expect(service.complete(regent, "c".repeat(64))).rejects.toThrow(
+      "Não foi possível concluir a alteração de senha.",
+    );
+  });
+
+  it("treats a lost completion response as success when reconciliation sees the gate closed", async () => {
+    const { service, repository } = setupPasswordService();
+    vi.mocked(repository.completeWithProof).mockRejectedValue(new Error("response lost"));
+    vi.mocked(repository.isCompleted).mockResolvedValue(true);
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "success" });
   });
 
   it("rejects administrators without touching a regent membership", async () => {
-    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
+    const { service, repository, auth } = setupPasswordService();
+    const admin: PortalAccess = { role: "admin", userId: "admin", email: null };
 
-    await expect(
-      fn({ context: { portalAccess: { role: "admin", userId: "admin", email: null } } }),
-    ).rejects.toThrow("Não foi possível concluir a alteração de senha.");
-    expect(from).not.toHaveBeenCalled();
-  });
-
-  it("hides database details when no active caller membership is updated", async () => {
-    maybeSingle.mockResolvedValue({
-      data: null,
-      error: { message: "SECRET_DATABASE_DETAIL" },
-    });
-    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
-
-    await expect(fn({ context: { portalAccess: regent } })).rejects.toThrow(
+    await expect(service.change(admin, "SenhaNova123")).rejects.toThrow(
+      "Não foi possível alterar a senha.",
+    );
+    await expect(service.complete(admin, token)).rejects.toThrow(
       "Não foi possível concluir a alteração de senha.",
     );
+    expect(repository.armRetryProof).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+});
+
+describe("Supabase regent password proof adapter", () => {
+  it("arms only the gated active caller membership with the proof hash", async () => {
+    const hash = "b".repeat(64);
+
+    await createSupabaseRegentPasswordChangeRepository().armRetryProof(regent, hash);
+
+    expect(update).toHaveBeenCalledExactlyOnceWith({ password_change_retry_token_hash: hash });
+    expect(eq.mock.calls).toEqual([
+      ["id", regent.membershipId],
+      ["user_id", regent.userId],
+      ["password_change_required", true],
+    ]);
+    expect(is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
+  });
+
+  it("clears the gate only for an active caller row with the matching proof hash", async () => {
+    const hash = "b".repeat(64);
+
+    await expect(
+      createSupabaseRegentPasswordChangeRepository().completeWithProof(regent, hash),
+    ).resolves.toBe(true);
+
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      password_change_required: false,
+      password_change_retry_token_hash: null,
+    });
+    expect(eq.mock.calls).toEqual([
+      ["id", regent.membershipId],
+      ["user_id", regent.userId],
+      ["password_change_required", true],
+      ["password_change_retry_token_hash", hash],
+    ]);
+    expect(is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
   });
 });
