@@ -100,10 +100,7 @@ describe("landing page access", () => {
       "/acessar",
     );
     expect(screen.getAllByRole("link", { name: "Acessar portal" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Inscrever" })).toHaveAttribute(
-      "href",
-      "#inscricao",
-    );
+    expect(screen.getByRole("link", { name: "Inscrever" })).toHaveAttribute("href", "#inscricao");
   });
 });
 
