@@ -28,12 +28,19 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 }));
 
 import {
+  DEFAULT_INFINITEPAY_HANDLE,
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
+
+describe("InfinitePay configuration", () => {
+  it("defaults new checkouts to the Lucas account", () => {
+    expect(DEFAULT_INFINITEPAY_HANDLE).toBe("lucas-soares-xwv");
+  });
+});
 
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";

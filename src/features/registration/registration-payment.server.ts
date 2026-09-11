@@ -373,12 +373,14 @@ export function createSupabaseRegistrationPhotoStorage(): RegistrationPhotoStora
 
 let paymentService: ReturnType<typeof createRegistrationPaymentService> | undefined;
 
+export const DEFAULT_INFINITEPAY_HANDLE = "lucas-soares-xwv";
+
 export function getRegistrationPaymentService() {
   if (!paymentService) {
     paymentService = createRegistrationPaymentService({
       repository: createSupabaseRegistrationRepository(),
       infinitePay: createInfinitePayClient(fetch, {
-        handle: process.env.INFINITEPAY_HANDLE?.trim() || "antonio-gerbson",
+        handle: process.env.INFINITEPAY_HANDLE?.trim() || DEFAULT_INFINITEPAY_HANDLE,
         siteUrl:
           process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosdiocesanosce.lovable.app",
       }),

@@ -28,7 +28,7 @@ npm run dev
 
 ## InfinitePay checkout
 
-- InfiniteTag padrão: `antonio-gerbson`
+- InfiniteTag padrão: `lucas-soares-xwv`
 - Webhook: `https://encontrocorosce.lovable.app/api/infinitepay-webhook`
 - Retorno: `https://encontrocorosce.lovable.app/pagamento`
 - Variáveis opcionais de servidor: `INFINITEPAY_HANDLE` e `PUBLIC_SITE_URL`
