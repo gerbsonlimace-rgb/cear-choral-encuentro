@@ -30,6 +30,10 @@ vi.mock("@/components/ui/carousel", () => ({
   CarouselPrevious: () => null,
 }));
 
+vi.mock("@/lib/sponsor.functions", () => ({
+  getPublicSponsors: vi.fn(async () => []),
+}));
+
 import { Route } from "./index";
 
 beforeAll(() => {
@@ -160,5 +164,23 @@ describe("Quixadá city spots", () => {
       }),
     ).toBeInTheDocument();
     expect(content.getByRole("img", { name: "Catedral Jesus, Maria e José" })).toBeInTheDocument();
+  });
+});
+
+describe("landing page sponsors", () => {
+  it("keeps institutional partners while configured sponsors are empty", async () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const section = document.querySelector<HTMLElement>("#patrocinadores");
+    expect(section).not.toBeNull();
+    const content = within(section!);
+
+    expect(
+      content.getByRole("heading", { name: "Instituições que conduzem o encontro" }),
+    ).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(content.queryByRole("img", { name: "Unicatolica" })).not.toBeInTheDocument(),
+    );
   });
 });

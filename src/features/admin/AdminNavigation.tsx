@@ -1,5 +1,5 @@
 type AdminNavigationProps = {
-  current: "registrations" | "choirs";
+  current: "registrations" | "choirs" | "sponsors";
 };
 
 export function AdminNavigation({ current }: AdminNavigationProps) {
@@ -18,6 +18,9 @@ export function AdminNavigation({ current }: AdminNavigationProps) {
       </a>
       <a href="/admin/coros" className={linkClass(current === "choirs")}>
         Coros e valores
+      </a>
+      <a href="/admin/patrocinadores" className={linkClass(current === "sponsors")}>
+        Patrocinadores
       </a>
     </nav>
   );
