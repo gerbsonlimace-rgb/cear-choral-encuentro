@@ -27,7 +27,7 @@ function isValidCpf(value: string): boolean {
   return calculateDigit(9) === Number(value[9]) && calculateDigit(10) === Number(value[10]);
 }
 
-export const cpfSchema = z
+const cpfSchema = z
   .string()
   .trim()
   .transform((value) => value.replace(/\D/g, ""))
@@ -50,7 +50,7 @@ export function getFortalezaCalendarDate(instant = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-export const birthDateSchema = z
+const birthDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de nascimento válida.")
   .refine((value) => {
@@ -67,15 +67,6 @@ export const birthDateSchema = z
     (value) => value <= getFortalezaCalendarDate(),
     "A data de nascimento não pode estar no futuro.",
   );
-
-export const registrationResumeSchema = z
-  .object({
-    cpf: cpfSchema,
-    birthDate: birthDateSchema,
-  })
-  .strict();
-
-export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 
 export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BYTES / 3) * 4;
