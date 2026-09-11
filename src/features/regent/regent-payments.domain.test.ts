@@ -3,6 +3,7 @@ import {
   buildBrazilWhatsAppUrl,
   calculateComplementState,
   complementCheckoutSchema,
+  formatComplementCents,
   type ComplementPaymentRow,
 } from "./regent-payments.domain";
 
@@ -134,6 +135,13 @@ describe("complement checkout input", () => {
     ]) {
       expect(complementCheckoutSchema.safeParse(input).success).toBe(false);
     }
+  });
+});
+
+describe("complement money presentation", () => {
+  it("formats integer cents consistently as Brazilian currency", () => {
+    expect(formatComplementCents(20_000)).toBe("R$ 200,00");
+    expect(formatComplementCents(1)).toBe("R$ 0,01");
   });
 });
 

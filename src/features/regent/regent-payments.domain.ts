@@ -51,6 +51,21 @@ export interface PortalSummary {
   outstandingComplementCents: number;
 }
 
+const complementCurrencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+/** Formats a non-negative integer-cent amount for portal presentation. */
+export function formatComplementCents(amountCents: number): string {
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
+    throw new RangeError(
+      "O valor do complemento deve ser um número inteiro de centavos não negativo.",
+    );
+  }
+  return complementCurrencyFormatter.format(amountCents / 100);
+}
+
 export const complementCheckoutSchema = z
   .object({
     registrationId: z.string().uuid(),
