@@ -77,7 +77,7 @@ export const registrationResumeSchema = z
 
 export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 
-export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
+
 
 export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BYTES / 3) * 4;
@@ -106,9 +106,6 @@ export const registrationSchema = z
     voicePart: voicePartSchema,
     photo: registrationPhotoSchema,
     displayedQuote: displayedQuoteSchema,
-    displayedShirtPriceCents: z.number().int().positive().nullable().optional(),
-    includeShirt: z.boolean().optional(),
-    shirtSize: shirtSizeSchema.or(z.literal("")).optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -123,29 +120,6 @@ export const registrationSchema = z
         message: "O valor exibido para a inscrição é inválido.",
       });
     }
-    const includeShirt = value.includeShirt ?? false;
-    const shirtSize = value.shirtSize ?? "";
-    if (includeShirt && !shirtSize) {
-      context.addIssue({
-        code: "custom",
-        path: ["shirtSize"],
-        message: "Escolha o tamanho da camisa.",
-      });
-    }
-    if (!includeShirt && shirtSize) {
-      context.addIssue({
-        code: "custom",
-        path: ["shirtSize"],
-        message: "O tamanho só pode ser informado quando a camisa está incluída.",
-      });
-    }
-    if (includeShirt && value.displayedShirtPriceCents == null) {
-      context.addIssue({
-        code: "custom",
-        path: ["includeShirt"],
-        message: "A camisa não está disponível.",
-      });
-    }
   });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -155,32 +129,21 @@ export type CheckoutItem = { quantity: 1; price: number; description: string };
 export function buildCheckoutItems(
   _input: RegistrationInput,
   trustedQuote: DisplayedQuote,
-  trustedShirtPriceCents: number | null = null,
 ): CheckoutItem[] {
-  const items: CheckoutItem[] = [
+  return [
     {
       quantity: 1,
       price: trustedQuote.registrationPriceCents,
       description: "Inscrição — II Encontro de Coros",
     },
   ];
-  if (_input.includeShirt) {
-    if (trustedShirtPriceCents === null) throw new Error("A camisa não está disponível.");
-    items.push({
-      quantity: 1,
-      price: trustedShirtPriceCents,
-      description: `Camisa oficial — tamanho ${_input.shirtSize ?? ""}`,
-    });
-  }
-  return items;
 }
 
 export function calculateOrderAmountCents(
   input: RegistrationInput,
   trustedQuote: DisplayedQuote,
-  trustedShirtPriceCents: number | null = null,
 ): number {
-  return buildCheckoutItems(input, trustedQuote, trustedShirtPriceCents).reduce(
+  return buildCheckoutItems(input, trustedQuote).reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
