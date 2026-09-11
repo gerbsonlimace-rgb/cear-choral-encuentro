@@ -12,7 +12,6 @@ import {
   UserRound,
 } from "lucide-react";
 
-import eventLogo from "@/assets/logo-coros-preto.png";
 import pixLogo from "@/assets/logo-pix.svg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,69 +79,88 @@ const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 const inputClassName =
   "min-h-11 rounded-xl border-border bg-background pl-10 text-sm shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
-function RegistrationBadgePreview({
-  name,
-  choirName,
-  voicePartLabel,
-  photoPreviewUrl,
+function RegistrationPriceSummary({
+  selectedChoir,
 }: {
-  name: string;
-  choirName: string;
-  voicePartLabel: string;
-  photoPreviewUrl: string;
+  selectedChoir: PublicRegistrationConfiguration["choirs"][number] | null;
 }) {
-  const participantName = name.trim() || "Seu nome";
+  const discountCents = selectedChoir
+    ? selectedChoir.standardPriceCents - selectedChoir.registrationPriceCents
+    : null;
 
   return (
     <aside
-      aria-label="Prévia do crachá"
-      className="relative mx-auto flex min-h-[23rem] w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl bg-muted/35 px-5 pb-4 pt-14"
+      aria-label="Resumo do valor da inscrição"
+      className="relative overflow-hidden rounded-2xl bg-foreground p-5 text-background shadow-lg shadow-foreground/20 lg:sticky lg:top-24"
     >
       <div
-        className="absolute left-1/2 top-0 h-24 w-28 -translate-x-1/2 rounded-b-full border-[0.65rem] border-t-0 border-foreground"
+        className="absolute -right-10 -top-12 size-36 rounded-full bg-amber/20 blur-2xl"
         aria-hidden="true"
       />
-      <div
-        className="absolute left-1/2 top-[4.55rem] z-10 h-7 w-7 -translate-x-1/2 rounded-md bg-amber shadow-inner ring-4 ring-background/70"
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-[18.5rem] rounded-2xl border-2 border-foreground border-t-[0.65rem] border-t-amber bg-card px-5 pb-4 pt-3 shadow-[0.55rem_0.65rem_0_rgba(214,168,38,0.28)]">
-        <img
-          src={eventLogo}
-          alt="Logo do Encontro de Coros"
-          className="mx-auto h-10 w-auto object-contain"
-        />
-        <div className="mx-auto mt-2 h-32 w-32 overflow-hidden rounded-2xl border-4 border-amber bg-muted">
-          {photoPreviewUrl ? (
-            <img
-              src={photoPreviewUrl}
-              alt={`Foto de ${participantName} no crachá`}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="grid h-full place-items-center px-6 text-center text-muted-foreground">
-              <span>
-                <Camera className="mx-auto mb-2 size-10" aria-hidden="true" />
-                <span className="text-xs">Sua foto aparece aqui</span>
-              </span>
-            </div>
-          )}
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber">
+            Resumo do investimento
+          </p>
+          <ShieldCheck className="size-5 text-amber" aria-hidden="true" />
         </div>
-        <p className="mt-3 text-center text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          Participante
-        </p>
-        <p className="truncate text-center font-display text-xl font-bold text-card-foreground">
-          {participantName}
-        </p>
-        <p className="mx-auto mt-1 line-clamp-2 min-h-9 max-w-[15rem] text-center text-sm font-semibold leading-snug text-card-foreground">
-          {choirName || "Seu coro/diocese"}
-        </p>
-        <p className="mt-1 text-center text-xs font-bold text-amber">
-          {voicePartLabel || "Perfil musical"}
-        </p>
-        <span className="mx-auto mt-3 block w-fit rounded-full bg-foreground px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber">
-          Quixadá • 2026
-        </span>
+
+        {selectedChoir ? (
+          <>
+            <p className="mt-3 text-sm text-background/70">{selectedChoir.name}</p>
+            {selectedChoir.pricingType === "promotional" && discountCents !== null ? (
+              <div className="mt-4 space-y-2 border-t border-background/15 pt-4 text-sm">
+                <div className="flex items-center justify-between gap-4 text-background/70">
+                  <span>Valor normal</span>
+                  <span className="line-through">
+                    {formatCurrency(selectedChoir.standardPriceCents)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-amber">
+                  <span>Desconto das rifas</span>
+                  <span className="font-bold">− {formatCurrency(discountCents)}</span>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-4 border-t border-background/15 pt-3">
+                  <span className="font-bold">Você paga agora</span>
+                  <span className="font-display text-3xl font-extrabold">
+                    {formatCurrency(selectedChoir.registrationPriceCents)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-end justify-between gap-4 border-t border-background/15 pt-4">
+                <span className="font-bold">Valor da inscrição</span>
+                <span className="font-display text-3xl font-extrabold">
+                  {formatCurrency(selectedChoir.registrationPriceCents)}
+                </span>
+              </div>
+            )}
+
+            {selectedChoir.pricingType === "promotional" && discountCents !== null && (
+              <div
+                role="status"
+                className="mt-5 rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90"
+              >
+                <p className="font-bold text-amber">Programa de venda de rifas</p>
+                <p className="mt-1">
+                  Prezado coralista, o <strong>{selectedChoir.name}</strong> aderiu ao programa de
+                  venda de rifas. Para conseguir este desconto, você deve vender um total de 25
+                  rifas. O valor arrecadado deve ser repassado ao seu regente, que ficará
+                  responsável por coletá-lo e pagar o valor restante da inscrição.
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mt-5 rounded-xl border border-dashed border-background/25 p-4 text-center text-sm text-background/70">
+            Selecione seu coro/diocese para ver o valor da inscrição.
+          </div>
+        )}
+
+        <div className="mt-5 flex items-center gap-2 border-t border-background/15 pt-4 text-xs text-background/65">
+          <img src={pixLogo} alt="" className="h-4 w-auto brightness-0 invert" aria-hidden="true" />
+          Pix sem taxa • cartão em até 12x
+        </div>
       </div>
     </aside>
   );
@@ -157,7 +175,6 @@ export function RegistrationSection({
   const [configurationError, setConfigurationError] = useState("");
   const [form, setForm] = useState<RegistrationForm>(initialForm);
   const [photo, setPhoto] = useState<RegistrationPhotoInput | null>(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoFileName, setPhotoFileName] = useState("");
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
@@ -205,11 +222,6 @@ export function RegistrationSection({
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,
     [configuration, form.choirId],
   );
-  const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
-  const selectedVoicePartLabel =
-    voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
-  const totalAmount = registrationPriceCents;
-
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -217,14 +229,12 @@ export function RegistrationSection({
 
   const handlePhotoChange = async (file: File | undefined) => {
     setPhoto(null);
-    setPhotoPreviewUrl("");
     setPhotoFileName("");
     if (!file) return;
 
     try {
       const prepared = await prepareRegistrationPhoto(file);
       setPhoto(prepared.payload);
-      setPhotoPreviewUrl(prepared.previewUrl);
       setPhotoFileName(file.name);
       setErrors((previous) => ({ ...previous, photo: undefined }));
     } catch (caught) {
@@ -303,33 +313,21 @@ export function RegistrationSection({
   return (
     <section
       id="inscricao"
-      className="bg-background px-4 py-5 sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-6"
+      className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_15%_0%,rgba(244,193,54,0.3),transparent_32%),linear-gradient(135deg,#14120f_0%,#3b2a16_52%,#17130f_100%)] px-4 py-8 text-white sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-10"
     >
       <div className="container-event">
         <div className="mx-auto max-w-4xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber">
+          <span className="inline-flex items-center gap-2 rounded-full bg-amber px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground shadow-lg shadow-amber/20">
             <BadgeCheck className="size-4" aria-hidden="true" />
             Inscrição
           </span>
-          <h2 className="mt-2 font-display text-[clamp(1.8rem,6vw,2.65rem)] font-bold leading-tight text-foreground">
-            Garanta sua participação
+          <h2 className="mt-3 font-display text-[clamp(2rem,6vw,3.2rem)] font-bold leading-tight text-white">
+            Realize sua inscrição
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-2 text-sm leading-relaxed text-white/75 sm:text-base">
             Preencha seus dados para participar do II Encontro de Coros Diocesanos e Litúrgicos do
             Regional Nordeste 1 - CNBB.
           </p>
-          <div className="mx-auto mt-3 flex max-w-sm flex-col items-center justify-center gap-1.5 rounded-2xl border border-amber/40 bg-amber/10 px-4 py-2.5 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-2">
-            <span className="text-xs font-bold text-muted-foreground">Inscrição</span>
-            <span className="font-display text-2xl font-extrabold leading-none text-foreground">
-              {registrationPriceCents === null
-                ? "Selecione seu coro"
-                : formatCurrency(registrationPriceCents)}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-foreground">
-              <img src={pixLogo} alt="" className="h-4 w-auto" aria-hidden="true" /> Pix sem taxa •
-              cartão em até 12x
-            </span>
-          </div>
         </div>
 
         {configurationError && (
@@ -348,13 +346,13 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="relative mx-auto mt-5 max-w-7xl overflow-hidden rounded-3xl border-border bg-card shadow-xl shadow-foreground/10">
+        <Card className="relative mx-auto mt-7 max-w-7xl overflow-hidden rounded-3xl border-white/15 bg-card shadow-2xl shadow-black/30">
           <div className="h-1.5 bg-amber" aria-hidden="true" />
           <CardContent className="p-4 sm:p-5 lg:p-6">
             <form
               onSubmit={handleSubmit}
               noValidate
-              className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.75fr)] lg:gap-7"
+              className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.8fr)] lg:gap-8"
             >
               <div className="min-w-0 space-y-3">
                 <fieldset className="space-y-3">
@@ -588,42 +586,8 @@ export function RegistrationSection({
                         </p>
                       )}
                     </div>
-
                   </div>
                 </fieldset>
-
-                {selectedChoir?.pricingType === "promotional" && (
-                  <div
-                    role="status"
-                    className="rounded-xl border border-amber/40 bg-amber/10 p-2.5 text-xs leading-relaxed text-foreground"
-                  >
-                    Este é um{" "}
-                    <strong>
-                      valor promocional de {formatCurrency(selectedChoir.registrationPriceCents)}
-                    </strong>{" "}
-                    porque o coralista deverá vender rifas para subsidiar o valor restante da
-                    inscrição de {formatCurrency(selectedChoir.standardPriceCents)}.
-                  </div>
-                )}
-
-                {registrationPriceCents !== null && totalAmount !== null && (
-                  <div className="flex flex-col gap-2 rounded-xl border border-amber/30 bg-amber/5 p-2.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-8 place-items-center rounded-full bg-foreground text-background shadow-sm">
-                        <ShieldCheck className="size-4" aria-hidden="true" />
-                      </span>
-                      <div>
-                        <p className="font-bold text-foreground">Total da inscrição</p>
-                        <p className="text-xs text-muted-foreground">
-                          Pagamento seguro
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-display text-2xl font-extrabold leading-none text-foreground">
-                      {formatCurrency(totalAmount)}
-                    </span>
-                  </div>
-                )}
 
                 {checkoutError && (
                   <p role="alert" aria-live="polite" className="text-sm text-destructive">
@@ -658,12 +622,7 @@ export function RegistrationSection({
                 </div>
               </div>
 
-              <RegistrationBadgePreview
-                name={form.name}
-                choirName={selectedChoir?.name ?? ""}
-                voicePartLabel={selectedVoicePartLabel}
-                photoPreviewUrl={photoPreviewUrl}
-              />
+              <RegistrationPriceSummary selectedChoir={selectedChoir} />
             </form>
           </CardContent>
         </Card>

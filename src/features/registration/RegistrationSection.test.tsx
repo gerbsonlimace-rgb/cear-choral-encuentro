@@ -43,7 +43,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
     screen.getByLabelText("Foto do participante"),
     new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
   );
-  await screen.findByRole("img", { name: "Foto de Maria da Silva no crachá" });
+  await screen.findByText("maria.jpg");
 }
 
 describe("RegistrationSection", () => {
@@ -52,40 +52,44 @@ describe("RegistrationSection", () => {
     vi.clearAllMocks();
   });
 
-  it("shows the compact registration form with a required participant photo", async () => {
+  it("shows the highlighted registration form with a required photo and payment summary", async () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
 
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+    expect(screen.getByRole("heading", { name: "Realize sua inscrição" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Dados pessoais" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Participação" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
     expect(screen.getByLabelText("CPF")).toHaveClass("min-h-11");
     expect(screen.getByLabelText("Nome completo")).toHaveClass("min-h-11");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
-    expect(screen.getAllByLabelText("Prévia do crachá")).toHaveLength(1);
+    expect(screen.getByLabelText("Resumo do valor da inscrição")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Prévia do crachá")).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Camisa oficial")).not.toBeInTheDocument();
   });
 
-  it("fills the badge preview with the participant name, choir and selected photo", async () => {
+  it("shows the promotional discount calculation and raffle message for the selected choir", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
 
-    const [badge] = screen.getAllByLabelText("Prévia do crachá");
-    await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
-    await user.upload(
-      screen.getByLabelText("Foto do participante"),
-      new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
-    );
 
-    expect(within(badge).getByText("Maria da Silva")).toBeInTheDocument();
-    expect(within(badge).getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
-    const photo = await within(badge).findByRole("img", {
-      name: "Foto de Maria da Silva no crachá",
-    });
-    expect(photo).toHaveAttribute("src", expect.stringMatching(/^data:image\/jpeg;base64,/));
+    const summary = screen.getByLabelText("Resumo do valor da inscrição");
+    expect(within(summary).getByText("Valor normal")).toBeInTheDocument();
+    expect(within(summary).getByText("R$ 300,00")).toBeInTheDocument();
+    expect(within(summary).getByText("Desconto das rifas")).toBeInTheDocument();
+    expect(within(summary).getByText("− R$ 200,00")).toBeInTheDocument();
+    expect(within(summary).getByText("Você paga agora")).toBeInTheDocument();
+    expect(within(summary).getByText("R$ 100,00")).toBeInTheDocument();
+    const raffleStatus = screen.getByRole("status");
+    expect(raffleStatus).toHaveTextContent(
+      /prezado coralista, o coro diocesano de quixadá aderiu ao programa de venda de rifas.*25 rifas.*regente/i,
+    );
+    expect(
+      within(raffleStatus).getByText("Coro Diocesano de Quixadá", { exact: true }).tagName,
+    ).toBe("STRONG");
   });
 
   it("loads the administratively configured choirs", async () => {
@@ -98,7 +102,7 @@ describe("RegistrationSection", () => {
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
   });
 
-  it("offers the five musical profiles and fills the badge live", async () => {
+  it("offers the five musical profiles", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
@@ -109,9 +113,7 @@ describe("RegistrationSection", () => {
     }
 
     await user.selectOptions(profile, "contralto");
-    expect(
-      within(screen.getByLabelText("Prévia do crachá")).getByText("Contralto"),
-    ).toBeInTheDocument();
+    expect(profile).toHaveValue("contralto");
   });
 
   it("automatically applies and explains the promotional price", async () => {
@@ -121,10 +123,10 @@ describe("RegistrationSection", () => {
 
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
 
-    expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /valor promocional.*vender rifas.*subsidiar o valor restante/i,
+    expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent(
+      "Você paga agoraR$ 100,00",
     );
+    expect(screen.getByRole("status")).toHaveTextContent(/25 rifas.*regente/i);
   });
 
   it("uses the normal price for a choir without promotion", async () => {
@@ -134,7 +136,9 @@ describe("RegistrationSection", () => {
 
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), sobralId);
 
-    expect(screen.getAllByText("R$ 300,00").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent(
+      "Valor da inscriçãoR$ 300,00",
+    );
     expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
   });
 
