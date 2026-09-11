@@ -9,6 +9,7 @@ import type { PortalSummary } from "@/features/regent/regent-payments.domain";
 import {
   changeRegentPassword,
   completeRegentPasswordChange,
+  createComplementPaymentVerificationHandler,
   createRegentPortalHandlers,
   createRegentPasswordChangeService,
   createSupabaseRegentPasswordAuth,
@@ -20,6 +21,7 @@ import {
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
+  startComplementCheckout,
   verifyComplementPayment,
   type RegentPasswordChangeRepository,
 } from "./regent.functions";
@@ -286,6 +288,30 @@ describe("regent portal handler factory", () => {
     expect(summary.middlewares).toContain(requirePortalReadyAccess);
     const verify = verifyComplementPayment as unknown as { middlewares: unknown[] };
     expect(verify.middlewares).toContain(requirePortalReadyAccess);
+  });
+});
+
+describe("complement confirmation server boundary", () => {
+  const lookup = {
+    orderNsu: "22222222-2222-4222-8222-222222222222",
+    transactionNsu: "transaction-123",
+    slug: "invoice-123",
+  };
+
+  it("requires ready portal access and forwards the authoritative access identity", async () => {
+    const service = { reconcilePaymentForAccess: vi.fn().mockResolvedValue({ status: "pending" }) };
+    const handler = createComplementPaymentVerificationHandler(service);
+    const fn = verifyComplementPayment as unknown as {
+      method: string;
+      middlewares: unknown[];
+      validate: (input: unknown) => unknown;
+    };
+
+    expect(fn.method).toBe("POST");
+    expect(fn.middlewares).toContain(requirePortalReadyAccess);
+    expect(fn.validate(lookup)).toEqual(lookup);
+    await expect(handler(regent, lookup)).resolves.toEqual({ status: "pending" });
+    expect(service.reconcilePaymentForAccess).toHaveBeenCalledExactlyOnceWith(lookup, regent);
   });
 });
 

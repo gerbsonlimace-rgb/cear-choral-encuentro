@@ -6,6 +6,7 @@ import type { PortalAccess } from "./regent.domain";
 import {
   createRegentPaymentService,
   createSupabaseRegentPaymentRepository,
+  resolveRegentInfinitePayConfig,
   type RegentPaymentRecord,
   type RegentPaymentRepository,
 } from "./regent-payment.server";
@@ -472,6 +473,87 @@ describe("regent complement checkout service", () => {
     ).rejects.toThrow("Pedido não encontrado.");
     expect(infinitePay.checkPayment).not.toHaveBeenCalled();
   });
+
+  it("rejects a ready regent's reconciliation attempt for another choir before provider verification", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue({
+      id: "payment-1",
+      registrationId,
+      choirId: "44444444-4444-4444-8444-444444444444",
+      amountCents: 5_000,
+      status: "pending",
+      orderNsu,
+      checkoutUrl,
+      initiatedBy: regent.userId,
+      initiatedByName: regent.name,
+      initiatedAs: "regent",
+    });
+
+    await expect(service.reconcilePaymentForAccess(paymentLookup, regent)).rejects.toThrow(
+      "A inscrição não pertence ao coro autorizado.",
+    );
+    expect(infinitePay.checkPayment).not.toHaveBeenCalled();
+    expect(repository.markPaid).not.toHaveBeenCalled();
+  });
+
+  it("drops an unsafe return receipt before saving a confirmed complement", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue({
+      id: "payment-1",
+      registrationId,
+      choirId,
+      amountCents: 5_000,
+      status: "pending",
+      orderNsu,
+      checkoutUrl,
+      initiatedBy: regent.userId,
+      initiatedByName: regent.name,
+      initiatedAs: "regent",
+    });
+    vi.mocked(infinitePay.checkPayment).mockResolvedValue({
+      paid: true,
+      amountCents: 5_000,
+      paidAmountCents: 5_000,
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    vi.mocked(repository.markPaid).mockResolvedValue({
+      id: "payment-1",
+      registrationId,
+      choirId,
+      amountCents: 5_000,
+      status: "paid",
+      orderNsu,
+      checkoutUrl,
+      initiatedBy: regent.userId,
+      initiatedByName: regent.name,
+      initiatedAs: "regent",
+      transactionNsu: paymentLookup.transactionNsu,
+      paymentMethod: "pix",
+      installments: 1,
+    });
+
+    await service.reconcilePayment({
+      ...paymentLookup,
+      receiptUrl: "https://infinitepay.com.br.evil.example/receipt",
+    });
+
+    expect(repository.markPaid).toHaveBeenCalledWith(
+      orderNsu,
+      expect.objectContaining({ receiptUrl: undefined }),
+    );
+  });
+});
+
+describe("regent InfinitePay configuration", () => {
+  it("uses the approved registration account by default while preserving an explicit override", () => {
+    expect(resolveRegentInfinitePayConfig({})).toMatchObject({ handle: "antonio-gerbson" });
+    expect(
+      resolveRegentInfinitePayConfig({ INFINITEPAY_HANDLE: "  alternate-account  " }),
+    ).toMatchObject({
+      handle: "alternate-account",
+    });
+  });
 });
 
 describe("Supabase complement payment repository", () => {
@@ -486,6 +568,27 @@ describe("Supabase complement payment repository", () => {
     initiated_by: regent.userId,
     initiated_by_name: regent.name,
     initiated_as: "regent",
+  };
+  const paidDatabasePayment = {
+    ...databasePayment,
+    status: "paid",
+    infinitepay_invoice_slug: paymentLookup.slug,
+    infinitepay_transaction_nsu: paymentLookup.transactionNsu,
+    payment_method: "pix",
+    installments: 1,
+    paid_amount_cents: 5_000,
+    receipt_url: paymentLookup.receiptUrl,
+    paid_at: "2026-09-11T15:30:00.000Z",
+  };
+  const paymentConfirmation = {
+    amountCents: 5_000,
+    transactionNsu: paymentLookup.transactionNsu,
+    invoiceSlug: paymentLookup.slug,
+    paymentMethod: "pix" as const,
+    installments: 1,
+    paidAmountCents: 5_000,
+    receiptUrl: paymentLookup.receiptUrl,
+    paidAt: "2026-09-11T15:30:00.000Z",
   };
 
   beforeEach(() => {
@@ -623,5 +726,31 @@ describe("Supabase complement payment repository", () => {
 
     expect(update).toHaveBeenCalledExactlyOnceWith({ status: "failed" });
     expect(eq).toHaveBeenCalledWith("order_nsu", orderNsu);
+  });
+
+  it.each([
+    ["status", { status: "pending" }],
+    ["order", { order_nsu: "44444444-4444-4444-8444-444444444444" }],
+    ["original amount", { amount_cents: 5_001 }],
+    ["transaction", { infinitepay_transaction_nsu: "other-transaction" }],
+  ])("rejects a returned paid-update row with a different %s", async (_field, change) => {
+    maybeSingle.mockResolvedValue({ data: { ...paidDatabasePayment, ...change }, error: null });
+    const repository = createSupabaseRegentPaymentRepository();
+
+    await expect(repository.markPaid(orderNsu, paymentConfirmation)).rejects.toThrow(
+      "Transação divergente ou pedido indisponível.",
+    );
+  });
+
+  it("accepts only an exact returned paid-update row", async () => {
+    maybeSingle.mockResolvedValue({ data: paidDatabasePayment, error: null });
+    const repository = createSupabaseRegentPaymentRepository();
+
+    await expect(repository.markPaid(orderNsu, paymentConfirmation)).resolves.toMatchObject({
+      status: "paid",
+      orderNsu,
+      amountCents: 5_000,
+      transactionNsu: paymentLookup.transactionNsu,
+    });
   });
 });

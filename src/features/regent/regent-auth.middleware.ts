@@ -19,7 +19,7 @@ export const requirePortalReadyAccess = createMiddleware({ type: "function" })
     if (context.portalAccess.role === "regent" && context.portalAccess.passwordChangeRequired) {
       throw new Error("Altere sua senha antes de acessar a área do regente.");
     }
-    return next();
+    return next({ context: { portalAccess: context.portalAccess } });
   });
 
 /** Request middleware for full-page routes; function middleware remains the server-function guard. */

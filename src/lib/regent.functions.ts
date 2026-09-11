@@ -22,7 +22,10 @@ import {
   paymentLookupSchema,
   type PaymentLookup,
 } from "@/features/registration/registration.domain";
-import type { ComplementPaymentPublicStatus } from "@/features/regent/regent-payment.server";
+import type {
+  ComplementPaymentPublicStatus,
+  RegentPaymentService,
+} from "@/features/regent/regent-payment.server";
 import type { PortalParticipantPage } from "@/features/regent/regent-portal.server";
 
 export function toRegentAccessState(probe: PortalAccessProbe): RegentAccess {
@@ -131,9 +134,18 @@ export const startComplementCheckout = createServerFn({ method: "POST" })
 export const verifyComplementPayment = createServerFn({ method: "POST" })
   .middleware([requirePortalReadyAccess])
   .validator(paymentLookupSchema)
-  .handler(({ data }: { data: PaymentLookup }): Promise<ComplementPaymentPublicStatus> =>
-    loadRegentPaymentService().then((service) => service.reconcilePayment(data)),
+  .handler(({ data, context }: { data: PaymentLookup; context: { portalAccess: PortalAccess } }) =>
+    loadRegentPaymentService().then((service) =>
+      createComplementPaymentVerificationHandler(service)(context.portalAccess, data),
+    ),
   );
+
+export function createComplementPaymentVerificationHandler(
+  service: Pick<RegentPaymentService, "reconcilePaymentForAccess">,
+) {
+  return (access: PortalAccess, input: unknown): Promise<ComplementPaymentPublicStatus> =>
+    service.reconcilePaymentForAccess(paymentLookupSchema.parse(input), access);
+}
 
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
 

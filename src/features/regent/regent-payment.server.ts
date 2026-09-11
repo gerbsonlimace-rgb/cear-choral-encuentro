@@ -147,6 +147,25 @@ function safePaidTotal(payments: RegentAccountingPayment[]) {
   return total;
 }
 
+function requirePaymentAccess(payment: RegentPaymentRecord, access: PortalAccess) {
+  if (access.role === "regent" && payment.choirId !== access.choirId) {
+    throw new Error(CHOIR_MESSAGE);
+  }
+}
+
+function isExactPaidConfirmation(
+  payment: RegentPaymentRecord,
+  orderNsu: string,
+  confirmation: { amountCents: number; transactionNsu: string },
+) {
+  return (
+    payment.status === "paid" &&
+    payment.orderNsu === orderNsu &&
+    payment.amountCents === confirmation.amountCents &&
+    payment.transactionNsu === confirmation.transactionNsu
+  );
+}
+
 export function createRegentPaymentService({
   repository,
   infinitePay,
@@ -158,6 +177,44 @@ export function createRegentPaymentService({
   randomUUID: () => string;
   now?: () => string;
 }) {
+  const reconcile = async (
+    lookup: PaymentLookup,
+    access?: PortalAccess,
+  ): Promise<ComplementPaymentPublicStatus> => {
+    const payment = await repository.findByOrderNsu(lookup.orderNsu);
+    if (!payment) throw new Error("Pedido não encontrado.");
+    if (access) requirePaymentAccess(payment, access);
+
+    if (payment.status === "paid") {
+      if (payment.transactionNsu !== lookup.transactionNsu) {
+        throw new Error("Transação divergente para pedido já confirmado.");
+      }
+      return toComplementPaymentPublicStatus(payment);
+    }
+    if (payment.status !== "pending") return { status: "pending" };
+
+    const checked = await infinitePay.checkPayment(lookup);
+    if (!checked.paid) return { status: "pending" };
+    if (checked.amountCents !== payment.amountCents) {
+      throw new Error("Valor do pagamento divergente.");
+    }
+    if (checked.paidAmountCents < payment.amountCents) {
+      throw new Error("Valor pago é inferior ao valor do pedido.");
+    }
+
+    const confirmed = await repository.markPaid(lookup.orderNsu, {
+      amountCents: payment.amountCents,
+      transactionNsu: lookup.transactionNsu,
+      invoiceSlug: lookup.slug,
+      paymentMethod: checked.paymentMethod,
+      installments: checked.installments,
+      paidAmountCents: checked.paidAmountCents,
+      receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
+      paidAt: now(),
+    });
+    return toComplementPaymentPublicStatus(confirmed);
+  };
+
   return {
     findByOrderNsu: repository.findByOrderNsu,
     async startCheckout(input: ComplementCheckoutInput, access: PortalAccess) {
@@ -257,39 +314,10 @@ export function createRegentPaymentService({
       return { checkoutUrl: checkout.url, orderNsu };
     },
 
-    async reconcilePayment(lookup: PaymentLookup): Promise<ComplementPaymentPublicStatus> {
-      const payment = await repository.findByOrderNsu(lookup.orderNsu);
-      if (!payment) throw new Error("Pedido não encontrado.");
+    reconcilePayment: (lookup: PaymentLookup) => reconcile(lookup),
 
-      if (payment.status === "paid") {
-        if (payment.transactionNsu !== lookup.transactionNsu) {
-          throw new Error("Transação divergente para pedido já confirmado.");
-        }
-        return toComplementPaymentPublicStatus(payment);
-      }
-      if (payment.status !== "pending") return { status: "pending" };
-
-      const checked = await infinitePay.checkPayment(lookup);
-      if (!checked.paid) return { status: "pending" };
-      if (checked.amountCents !== payment.amountCents) {
-        throw new Error("Valor do pagamento divergente.");
-      }
-      if (checked.paidAmountCents < payment.amountCents) {
-        throw new Error("Valor pago é inferior ao valor do pedido.");
-      }
-
-      const confirmed = await repository.markPaid(lookup.orderNsu, {
-        amountCents: payment.amountCents,
-        transactionNsu: lookup.transactionNsu,
-        invoiceSlug: lookup.slug,
-        paymentMethod: checked.paymentMethod,
-        installments: checked.installments,
-        paidAmountCents: checked.paidAmountCents,
-        receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
-        paidAt: now(),
-      });
-      return toComplementPaymentPublicStatus(confirmed);
-    },
+    reconcilePaymentForAccess: (lookup: PaymentLookup, access: PortalAccess) =>
+      reconcile(lookup, access),
 
     async getComplementPaymentStatus(
       orderNsu: string,
@@ -297,8 +325,17 @@ export function createRegentPaymentService({
       const payment = await repository.findByOrderNsu(orderNsu);
       return payment ? toComplementPaymentPublicStatus(payment) : null;
     },
+
+    async getComplementPaymentStatusForAccess(orderNsu: string, access: PortalAccess) {
+      const payment = await repository.findByOrderNsu(orderNsu);
+      if (!payment) return null;
+      requirePaymentAccess(payment, access);
+      return toComplementPaymentPublicStatus(payment);
+    },
   };
 }
+
+export type RegentPaymentService = ReturnType<typeof createRegentPaymentService>;
 
 function toComplementPaymentPublicStatus(
   record: RegentPaymentRecord,
@@ -569,6 +606,7 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
     },
 
     async markPaid(orderNsu, confirmation) {
+      let returned: RegentPaymentRecord | undefined;
       try {
         const { data, error } = await supabaseAdmin
           .from("registration_complement_payments")
@@ -586,9 +624,16 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
           .eq("status", "pending")
           .select(paymentColumns)
           .maybeSingle();
-        if (!error && data) return mapPaymentRow(data as PaymentDatabaseRow);
+        if (!error && data) {
+          returned = mapPaymentRow(data as PaymentDatabaseRow);
+        }
       } catch {
         // Reconcile the exact transaction because the provider call is idempotent.
+      }
+
+      if (returned) {
+        if (isExactPaidConfirmation(returned, orderNsu, confirmation)) return returned;
+        throw new Error("Transação divergente ou pedido indisponível.");
       }
 
       const existing = await findByOrderNsu(orderNsu);
@@ -606,15 +651,21 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
 
 let regentPaymentService: ReturnType<typeof createRegentPaymentService> | undefined;
 
+export function resolveRegentInfinitePayConfig(environment: {
+  INFINITEPAY_HANDLE?: string;
+  PUBLIC_SITE_URL?: string;
+}) {
+  return {
+    handle: environment.INFINITEPAY_HANDLE?.trim() || "antonio-gerbson",
+    siteUrl: environment.PUBLIC_SITE_URL?.trim() || "https://encontrocorosce.lovable.app",
+  };
+}
+
 export function getRegentPaymentService() {
   if (!regentPaymentService) {
     regentPaymentService = createRegentPaymentService({
       repository: createSupabaseRegentPaymentRepository(),
-      infinitePay: createInfinitePayClient(fetch, {
-        handle: process.env.INFINITEPAY_HANDLE?.trim() || "lucas-soares-xwv",
-        siteUrl:
-          process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosdiocesanosce.lovable.app",
-      }),
+      infinitePay: createInfinitePayClient(fetch, resolveRegentInfinitePayConfig(process.env)),
       randomUUID: () => crypto.randomUUID(),
     });
   }
