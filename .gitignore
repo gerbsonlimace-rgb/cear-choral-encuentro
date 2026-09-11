@@ -11,10 +11,13 @@ node_modules
 dist
 dist-ssr
 .output
+tmp/
 .vinxi
 .tanstack/**
 .nitro
 *.local
+.worktrees/
+supabase/.temp/
 
 # Wrangler / Cloudflare
 .wrangler/

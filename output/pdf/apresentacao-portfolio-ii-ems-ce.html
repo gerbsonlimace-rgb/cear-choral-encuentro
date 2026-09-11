@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>II Encontro de Música Sacra do Ceará - Apresentação</title>
+    <style>
+      @page {
+        size: 13.333in 7.5in;
+        margin: 0;
+      }
+
+      :root {
+        --blue: #073f9f;
+        --blue-dark: #051845;
+        --gold: #f2bd35;
+        --green: #15814f;
+        --paper: #f8f9ff;
+        --ink: #101b3c;
+        --muted: #56617b;
+        --line: rgba(16, 27, 60, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: #dfe4f2;
+        color: var(--ink);
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+      }
+
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .deck {
+        width: 100%;
+      }
+
+      .slide {
+        position: relative;
+        display: grid;
+        width: 13.333in;
+        height: 7.5in;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+        background: var(--paper);
+      }
+
+      .slide:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .dark {
+        background:
+          radial-gradient(circle at 85% 18%, rgba(242, 189, 53, 0.34), transparent 28%),
+          linear-gradient(135deg, #051845 0%, #073f9f 58%, #031132 100%);
+        color: white;
+      }
+
+      .cover {
+        background:
+          radial-gradient(circle at 82% 16%, rgba(242, 189, 53, 0.32), transparent 28%),
+          radial-gradient(circle at 16% 92%, rgba(21, 129, 79, 0.24), transparent 30%),
+          linear-gradient(135deg, #061a58 0%, #0a46ad 56%, #04205f 100%);
+        color: white;
+      }
+
+      .cover .kicker {
+        background: rgba(255, 255, 255, 0.16);
+        color: var(--gold);
+      }
+
+      .cover h1 {
+        max-width: 6.95in;
+        color: white;
+        font-size: 0.68in;
+      }
+
+      .cover .lead {
+        color: rgba(255, 255, 255, 0.84);
+      }
+
+      .cover .meta {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .cover .pill {
+        border-color: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .cover .logo-hero {
+        width: 3.72in;
+        filter: drop-shadow(0 0.08in 0.14in rgba(0, 0, 0, 0.18));
+      }
+
+      .cover .number,
+      .cover .footer-note {
+        color: rgba(255, 255, 255, 0.56);
+      }
+
+      .content {
+        position: relative;
+        z-index: 2;
+        padding: 0.62in 0.72in;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.02fr 0.98fr;
+        gap: 0.48in;
+        align-items: center;
+      }
+
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        background: rgba(242, 189, 53, 0.16);
+        color: var(--gold);
+        padding: 0.1in 0.18in;
+        font-size: 0.18in;
+        font-weight: 800;
+      }
+
+      .light-kicker {
+        background: rgba(7, 63, 159, 0.1);
+        color: var(--blue);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 7.7in;
+        margin-top: 0.28in;
+        font-size: 0.72in;
+        font-weight: 900;
+      }
+
+      h2 {
+        margin-top: 0.22in;
+        font-size: 0.56in;
+        font-weight: 900;
+      }
+
+      h3 {
+        font-size: 0.3in;
+        font-weight: 900;
+      }
+
+      .lead {
+        max-width: 6.2in;
+        margin-top: 0.22in;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.25in;
+        line-height: 1.42;
+      }
+
+      .body {
+        margin-top: 0.2in;
+        color: var(--muted);
+        font-size: 0.22in;
+        line-height: 1.45;
+      }
+
+      .dark .body {
+        color: rgba(255, 255, 255, 0.78);
+      }
+
+      .logo-hero {
+        width: 4.05in;
+        border-radius: 0.12in;
+        filter: drop-shadow(0 0.2in 0.32in rgba(0, 0, 0, 0.34));
+      }
+
+      .hero-card {
+        display: grid;
+        place-items: center;
+      }
+
+      .cover-frame {
+        display: grid;
+        place-items: center;
+        width: 4.32in;
+        height: 4.32in;
+        border-radius: 0.16in;
+        background: rgba(3, 17, 50, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+      }
+
+      .meta {
+        display: flex;
+        gap: 0.14in;
+        flex-wrap: wrap;
+        margin-top: 0.38in;
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 0.18in;
+        font-weight: 800;
+      }
+
+      .pill {
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        padding: 0.09in 0.16in;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2 {
+        display: grid;
+        gap: 0.18in;
+        margin-top: 0.38in;
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .tile {
+        min-height: 1.4in;
+        border: 1px solid var(--line);
+        border-radius: 0.14in;
+        background: white;
+        padding: 0.22in;
+      }
+
+      .tile strong {
+        display: block;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.25in;
+        line-height: 1.08;
+      }
+
+      .tile span {
+        display: block;
+        margin-top: 0.1in;
+        color: var(--muted);
+        font-size: 0.16in;
+        line-height: 1.36;
+      }
+
+      .photo {
+        width: 100%;
+        height: 4.7in;
+        border-radius: 0.16in;
+        object-fit: cover;
+      }
+
+      .city-collage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 2.35in 2.35in;
+        gap: 0.14in;
+      }
+
+      .city-photo {
+        position: relative;
+        overflow: hidden;
+        margin: 0;
+        border-radius: 0.16in;
+      }
+
+      .city-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .city-wide {
+        grid-row: span 2;
+      }
+
+      .caption {
+        position: absolute;
+        left: 0.14in;
+        bottom: 0.14in;
+        border-radius: 999px;
+        background: rgba(5, 24, 69, 0.78);
+        color: white;
+        padding: 0.06in 0.11in;
+        font-size: 0.12in;
+        font-weight: 800;
+      }
+
+      .portrait {
+        height: 5.2in;
+        object-position: center;
+      }
+
+      .quote {
+        border-left: 0.06in solid var(--gold);
+        padding-left: 0.22in;
+      }
+
+      .schedule {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.18in;
+        margin-top: 0.3in;
+      }
+
+      .day {
+        overflow: hidden;
+        border-radius: 0.14in;
+        background: white;
+        border: 1px solid var(--line);
+      }
+
+      .day-head {
+        background: var(--blue);
+        color: white;
+        padding: 0.18in 0.2in;
+      }
+
+      .day-head span {
+        color: rgba(255, 255, 255, 0.74);
+        font-size: 0.15in;
+        font-weight: 800;
+      }
+
+      .day-head h3 {
+        margin-top: 0.03in;
+        font-size: 0.26in;
+      }
+
+      .event {
+        display: grid;
+        grid-template-columns: 0.62in 1fr;
+        gap: 0.12in;
+        padding: 0.13in 0.2in;
+        border-top: 1px solid var(--line);
+      }
+
+      .time {
+        color: var(--blue);
+        font-size: 0.15in;
+        font-weight: 900;
+      }
+
+      .event strong {
+        display: block;
+        font-size: 0.16in;
+      }
+
+      .event span {
+        display: block;
+        margin-top: 0.03in;
+        color: var(--muted);
+        font-size: 0.13in;
+        line-height: 1.28;
+      }
+
+      .price {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.14in;
+        margin-top: 0.28in;
+      }
+
+      .price b {
+        color: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.54in;
+        line-height: 0.9;
+      }
+
+      .shirt {
+        width: 4.5in;
+        height: 4.5in;
+        border-radius: 0.16in;
+        object-fit: cover;
+      }
+
+      .pix-box {
+        display: grid;
+        grid-template-columns: 1fr 1.1fr;
+        gap: 0.24in;
+        margin-top: 0.3in;
+      }
+
+      .qr {
+        display: grid;
+        place-items: center;
+        min-height: 2.4in;
+        border: 1px solid rgba(7, 63, 159, 0.18);
+        border-radius: 0.14in;
+        background: rgba(7, 63, 159, 0.06);
+        text-align: center;
+      }
+
+      .qr img {
+        width: 1.1in;
+      }
+
+      .qr strong {
+        display: grid;
+        place-items: center;
+        width: 1.45in;
+        height: 1.45in;
+        margin-top: 0.18in;
+        border-radius: 0.1in;
+        background: white;
+        color: var(--blue);
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      .total {
+        border-radius: 0.14in;
+        background: white;
+        border: 1px solid var(--line);
+        padding: 0.24in;
+      }
+
+      .total .value {
+        margin-top: 0.06in;
+        color: var(--blue);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.48in;
+        font-weight: 900;
+      }
+
+      .code {
+        margin-top: 0.18in;
+        border-radius: 0.1in;
+        background: #edf1fb;
+        color: #293452;
+        padding: 0.12in;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 0.1in;
+        line-height: 1.35;
+        word-break: break-all;
+      }
+
+      .partner-card {
+        display: grid;
+        align-content: space-between;
+        min-height: 2.35in;
+        border-radius: 0.14in;
+        background: white;
+        padding: 0.24in;
+      }
+
+      .partner-card img {
+        width: 100%;
+        max-height: 1.12in;
+        object-fit: contain;
+      }
+
+      .partner-card .round-logo {
+        max-height: 1.35in;
+      }
+
+      .partner-card small {
+        color: var(--blue);
+        font-size: 0.14in;
+        font-weight: 900;
+      }
+
+      .sponsor-strip {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.14in;
+        margin-top: 0.32in;
+      }
+
+      .sponsor {
+        display: grid;
+        place-items: center;
+        height: 1.35in;
+        border-radius: 0.12in;
+        background: white;
+        padding: 0.16in;
+      }
+
+      .sponsor img {
+        width: 100%;
+        max-height: 0.74in;
+        object-fit: contain;
+      }
+
+      .footer-note {
+        position: absolute;
+        right: 0.72in;
+        bottom: 0.42in;
+        z-index: 3;
+        color: rgba(255, 255, 255, 0.64);
+        font-size: 0.13in;
+        font-weight: 700;
+      }
+
+      .light-note {
+        color: rgba(16, 27, 60, 0.48);
+      }
+
+      .number {
+        position: absolute;
+        left: 0.72in;
+        bottom: 0.42in;
+        z-index: 3;
+        color: rgba(16, 27, 60, 0.42);
+        font-size: 0.13in;
+        font-weight: 900;
+      }
+
+      .dark .number {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide cover">
+        <div class="content split">
+          <div>
+            <span class="kicker">20 a 22 de novembro de 2025 - Quixadá, CE</span>
+            <h1>II Encontro de Música Sacra do Estado do Ceará</h1>
+            <p class="lead">
+              Três dias de formação, celebração e espiritualidade pela música sacra, reunindo
+              músicos, regentes, cantores, liturgistas e fiéis.
+            </p>
+            <div class="meta">
+              <span class="pill">Formação musical</span>
+              <span class="pill">Celebrações</span>
+              <span class="pill">Concerto sacro</span>
+            </div>
+          </div>
+          <div class="hero-card">
+            <div class="cover-frame">
+              <img class="logo-hero" src="assets/logo-apresentacao-leve.jpg" alt="Logo do II Encontro de Música Sacra" />
+            </div>
+          </div>
+        </div>
+        <div class="number">01</div>
+        <div class="footer-note light-note">Apresentação institucional</div>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <span class="kicker light-kicker">Sobre o encontro</span>
+          <h2>Uma celebração viva da tradição musical sacra</h2>
+          <p class="body">
+            O encontro conecta formação técnica, repertório litúrgico, experiência coral e vida
+            comunitária. A linguagem visual preserva o respeito pelo tema sacro, mas com uma energia
+            jovem, vibrante e acolhedora.
+          </p>
+          <div class="grid-4">
+            <article class="tile"><strong>Formação</strong><span>Oficinas com músicos e liturgistas experientes.</span></article>
+            <article class="tile"><strong>Celebração</strong><span>Missas e momentos de oração com música sacra.</span></article>
+            <article class="tile"><strong>Concerto</strong><span>Apresentação especial do repertório trabalhado.</span></article>
+            <article class="tile"><strong>Comunidade</strong><span>Encontro entre grupos musicais de todo o Ceará.</span></article>
+          </div>
+        </div>
+        <div class="number">02</div>
+        <div class="footer-note light-note">II EMS-CE</div>
+      </section>
+
+      <section class="slide">
+        <div class="content split">
+          <div>
+            <span class="kicker light-kicker">Participação especial</span>
+            <h2>Clayton Dias aprofunda o eixo formativo</h2>
+            <p class="body quote">
+              Maestro, pesquisador e professor, Clayton atua em música sacra, canto gregoriano,
+              regência, história da música sacra e musicologia litúrgica. Sua presença aproxima
+              prática coral, tradição litúrgica e pesquisa musical.
+            </p>
+            <div class="grid-3">
+              <article class="tile"><strong>Canto gregoriano</strong><span>Tradição, repertório e interpretação.</span></article>
+              <article class="tile"><strong>Regência coral</strong><span>Condução, respiração e unidade do grupo.</span></article>
+              <article class="tile"><strong>Liturgia</strong><span>Música a serviço da celebração.</span></article>
+            </div>
+          </div>
+          <img class="photo portrait" src="../../src/assets/clayton-dias.jpg" alt="Clayton Dias em interior de igreja" />
+        </div>
+        <div class="number">03</div>
+        <div class="footer-note light-note">Eixo formativo</div>
+      </section>
+
+      <section class="slide dark">
+        <div class="content split">
+          <div>
+            <span class="kicker">Quixadá, Ceará</span>
+            <h2>Uma cidade histórica cercada por monólitos</h2>
+            <p class="lead">
+              Quixadá mistura fé, música, literatura, natureza e aventura. O cenário dos monólitos
+              cria uma experiência de encontro que vai além da programação.
+            </p>
+            <div class="grid-2">
+              <article class="tile"><strong>155 anos</strong><span>Cidade emancipada em 27 de outubro de 1870.</span></article>
+              <article class="tile"><strong>Sertão em cena</strong><span>Açude Cedro, Galinha Choca e Santuário Rainha do Sertão.</span></article>
+            </div>
+          </div>
+          <div class="city-collage">
+            <figure class="city-photo city-wide">
+              <img src="assets/quixada-acude-cedro-galinha-choca.jpg" alt="Açude Cedro e Pedra da Galinha Choca em Quixadá" />
+              <figcaption class="caption">Açude Cedro e Galinha Choca</figcaption>
+            </figure>
+            <figure class="city-photo">
+              <img src="assets/quixada-santuario-rainha-sertao.jpg" alt="Santuário Rainha do Sertão em Quixadá" />
+              <figcaption class="caption">Santuário Rainha do Sertão</figcaption>
+            </figure>
+            <figure class="city-photo">
+              <img src="assets/quixada-monolitos.jpg" alt="Monólitos de Quixadá" />
+              <figcaption class="caption">Terra dos monólitos</figcaption>
+            </figure>
+          </div>
+        </div>
+        <div class="number">04</div>
+        <div class="footer-note">Cidade anfitriã</div>
+      </section>
+
+      <section class="slide">
+        <div class="content">
+          <span class="kicker light-kicker">Programação</span>
+          <h2>Três dias de música, formação e fé</h2>
+          <div class="schedule">
+            <article class="day">
+              <div class="day-head"><span>Quinta-feira</span><h3>20 de novembro</h3></div>
+              <div class="event"><div class="time">14h</div><div><strong>Credenciamento e acolhida</strong><span>Entrega de materiais.</span></div></div>
+              <div class="event"><div class="time">15h</div><div><strong>Oficina de Canto Litúrgico</strong><span>Técnicas vocais e repertório.</span></div></div>
+              <div class="event"><div class="time">17h</div><div><strong>Palestra de abertura</strong><span>A música sacra na Igreja do Nordeste.</span></div></div>
+              <div class="event"><div class="time">19h</div><div><strong>Missa de Abertura</strong><span>Com participação dos corais.</span></div></div>
+            </article>
+            <article class="day">
+              <div class="day-head"><span>Sexta-feira</span><h3>21 de novembro</h3></div>
+              <div class="event"><div class="time">08h30</div><div><strong>Oração da manhã</strong><span>Momento de espiritualidade.</span></div></div>
+              <div class="event"><div class="time">09h</div><div><strong>Oficina de Regência Coral</strong><span>Gestos, respiração e condução.</span></div></div>
+              <div class="event"><div class="time">14h</div><div><strong>Liturgia e Música</strong><span>Documentos da Igreja.</span></div></div>
+              <div class="event"><div class="time">20h</div><div><strong>Concerto Sacro</strong><span>Corais e instrumentistas.</span></div></div>
+            </article>
+            <article class="day">
+              <div class="day-head"><span>Sábado</span><h3>22 de novembro</h3></div>
+              <div class="event"><div class="time">08h30</div><div><strong>Formação para instrumentistas</strong><span>Acompanhamento litúrgico.</span></div></div>
+              <div class="event"><div class="time">10h30</div><div><strong>Roda de conversa</strong><span>Desafios da música sacra no Ceará.</span></div></div>
+              <div class="event"><div class="time">14h</div><div><strong>Ensaio técnico final</strong><span>Últimos ajustes.</span></div></div>
+              <div class="event"><div class="time">17h</div><div><strong>Missa de Encerramento</strong><span>Celebração solene.</span></div></div>
+            </article>
+          </div>
+        </div>
+        <div class="number">05</div>
+        <div class="footer-note light-note">Programação sujeita a ajustes</div>
+      </section>
+
+      <section class="slide dark">
+        <div class="content split">
+          <div>
+            <span class="kicker">Inscrição e camisa</span>
+            <h2>Participação simples, visual forte e valor claro</h2>
+            <p class="lead">
+              A inscrição estática apresenta valor base, opção de incluir a camisa oficial e cálculo
+              automático do total.
+            </p>
+            <div class="price"><span>Inscrição</span><b>R$ 100,00</b></div>
+            <div class="price"><span>Camisa oficial</span><b>R$ 39,90</b></div>
+          </div>
+          <img class="shirt" src="../../src/assets/camisa-evento-musica-sacra.png" alt="Camisa oficial do encontro" />
+        </div>
+        <div class="number">06</div>
+        <div class="footer-note">Fluxo estático sem backend</div>
+      </section>
+
+      <section class="slide dark">
+        <div class="content">
+          <span class="kicker">Apoio, organização e parceiros</span>
+          <h2>Uma realização construída em comunidade</h2>
+          <div class="grid-2">
+            <article class="partner-card">
+              <small>Organização</small>
+              <img class="round-logo" src="../../src/assets/organizacao-coro-diocesano-quixada.png" alt="Coro Diocesano de Quixadá" />
+              <h3>Coro Diocesano de Quixadá</h3>
+            </article>
+            <article class="partner-card">
+              <small>Apoio institucional</small>
+              <img src="../../src/assets/apoio-diocese-quixada.png" alt="Diocese de Quixadá" />
+              <h3>Diocese de Quixadá</h3>
+            </article>
+          </div>
+          <div class="sponsor-strip">
+            <div class="sponsor"><img src="../../src/assets/patrocinador-unicatolica.png" alt="Unicatólica" /></div>
+            <div class="sponsor"><img src="../../src/assets/patrocinador-pinheiro.png" alt="Pinheiro Supermercado" /></div>
+            <div class="sponsor"><img src="../../src/assets/patrocinador-nosso-atacarejo.png" alt="Nosso Atacarejo" /></div>
+            <div class="sponsor"><img src="../../src/assets/patrocinador-cultura-quixada.png" alt="Cultura Quixadá" /></div>
+            <div class="sponsor"><img src="../../src/assets/patrocinador-ampliart.png" alt="Ampliart" /></div>
+          </div>
+        </div>
+        <div class="number">07</div>
+        <div class="footer-note">II Encontro de Música Sacra do Estado do Ceará</div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,14 +1,19 @@
-# Welcome to your Lovable project
+# II Encontro de Coros Diocesados do Ceará
+
+Crie uma landing page para oevento "II Encontro de Mùsica Sacra do Estado do Ceará" de 20 a 22 de Novembro.
+Deve ter inormalções sobre o evneto programação e inscrição online.
 
 This project was built with [Lovable](https://lovable.dev).
 
+**Live app**: https://encontrocorosce.lovable.app
+
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/12147374-4203-4e9f-9634-296f68f73e48).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -21,9 +26,13 @@ npm i
 npm run dev
 ```
 
-## Built with
+## InfinitePay checkout
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+- InfiniteTag padrão: `antonio-gerbson`
+- Webhook: `https://encontrocorosce.lovable.app/api/infinitepay-webhook`
+- Retorno: `https://encontrocorosce.lovable.app/pagamento`
+- Variáveis opcionais de servidor: `INFINITEPAY_HANDLE` e `PUBLIC_SITE_URL`
+
+Antes da publicação, habilite Checkout Integrado na conta InfinitePay e configure o cartão para repassar as taxas ao participante. Pix permanece com taxa zero conforme as condições vigentes da InfinitePay.
+
+A migração Supabase deve ser aplicada antes do novo código servido. Não publique apenas uma dessas partes.

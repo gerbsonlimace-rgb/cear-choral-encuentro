@@ -9,38 +9,134 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
+import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PagamentoRoute = PagamentoRouteImport.update({
+  id: '/pagamento',
+  path: '/pagamento',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
+  id: '/api/infinitepay-webhook',
+  path: '/api/infinitepay-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminInscricoesRoute = AdminInscricoesRouteImport.update({
+  id: '/admin/inscricoes',
+  path: '/admin/inscricoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCorosRoute = AdminCorosRouteImport.update({
+  id: '/admin/coros',
+  path: '/admin/coros',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/coros': typeof AdminCorosRoute
+  '/admin/inscricoes': typeof AdminInscricoesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/coros': typeof AdminCorosRoute
+  '/admin/inscricoes': typeof AdminInscricoesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pagamento': typeof PagamentoRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/coros': typeof AdminCorosRoute
+  '/admin/inscricoes': typeof AdminInscricoesRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/coros'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/coros'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/pagamento'
+    | '/sitemap.xml'
+    | '/admin/coros'
+    | '/admin/inscricoes'
+    | '/admin/login'
+    | '/api/infinitepay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PagamentoRoute: typeof PagamentoRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  AdminCorosRoute: typeof AdminCorosRoute
+  AdminInscricoesRoute: typeof AdminInscricoesRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pagamento': {
+      id: '/pagamento'
+      path: '/pagamento'
+      fullPath: '/pagamento'
+      preLoaderRoute: typeof PagamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +144,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/infinitepay-webhook': {
+      id: '/api/infinitepay-webhook'
+      path: '/api/infinitepay-webhook'
+      fullPath: '/api/infinitepay-webhook'
+      preLoaderRoute: typeof ApiInfinitepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/inscricoes': {
+      id: '/admin/inscricoes'
+      path: '/admin/inscricoes'
+      fullPath: '/admin/inscricoes'
+      preLoaderRoute: typeof AdminInscricoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/coros': {
+      id: '/admin/coros'
+      path: '/admin/coros'
+      fullPath: '/admin/coros'
+      preLoaderRoute: typeof AdminCorosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PagamentoRoute: PagamentoRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  AdminCorosRoute: AdminCorosRoute,
+  AdminInscricoesRoute: AdminInscricoesRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
