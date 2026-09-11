@@ -19,6 +19,9 @@ export function AdminNavigation({ current }: AdminNavigationProps) {
       <a href="/admin/coros" className={linkClass(current === "choirs")}>
         Coros e valores
       </a>
+      <a href="/regente" className={linkClass(false)}>
+        Área dos regentes
+      </a>
     </nav>
   );
 }
