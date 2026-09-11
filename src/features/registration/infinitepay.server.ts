@@ -3,6 +3,13 @@ import type { CheckoutItem, PaymentLookup } from "./registration.domain";
 
 const INFINITEPAY_API_URL = "https://api.checkout.infinitepay.io";
 const PROVIDER_ERROR_MESSAGE = "Não foi possível comunicar com a InfinitePay.";
+export const EXTERNAL_CHECKOUT_DISABLED_MESSAGE =
+  "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.";
+
+const providerErrorSchema = z.object({
+  error: z.string().optional(),
+  message: z.string().optional(),
+});
 
 const checkoutResponseSchema = z
   .object({
@@ -91,6 +98,26 @@ async function postJson(fetcher: typeof fetch, path: string, body: unknown) {
   }
 
   if (!response.ok) {
+    const responseBody = await response.text().catch(() => "");
+    let providerError: z.infer<typeof providerErrorSchema> | undefined;
+
+    try {
+      providerError = providerErrorSchema.parse(JSON.parse(responseBody));
+    } catch {
+      providerError = undefined;
+    }
+
+    console.error("[InfinitePay] request rejected", {
+      path,
+      status: response.status,
+      code: providerError?.error,
+      providerMessage: providerError?.message,
+    });
+
+    if (providerError?.error === "external_checkout_not_enabled") {
+      throw new Error(EXTERNAL_CHECKOUT_DISABLED_MESSAGE);
+    }
+
     throw new Error(PROVIDER_ERROR_MESSAGE);
   }
 
