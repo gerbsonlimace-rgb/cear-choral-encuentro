@@ -200,13 +200,13 @@
   padding-left: 1rem;
   padding-right: 1rem;
   padding-top: 2.5rem;
-  padding-bottom: 2.5rem;
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
 
   @media (min-width: 768px) {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     padding-top: 6rem;
-    padding-bottom: 6rem;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   }
 
   @media (min-width: 1024px) {

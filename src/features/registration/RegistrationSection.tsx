@@ -12,8 +12,8 @@ import {
   UserRound,
 } from "lucide-react";
 
-import eventLogo from "@/assets/logo-coros-preto.png";
 import pixLogo from "@/assets/logo-pix.svg";
+import eventLogo from "@/assets/logo-coros-preto.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,10 +27,8 @@ import {
 import {
   getFortalezaCalendarDate,
   registrationSchema,
-  voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
-  type VoicePart,
 } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
 import { RegistrationResumeCard } from "./RegistrationResumeCard";
@@ -41,12 +39,8 @@ type RegistrationSectionProps = {
   navigateToCheckout?: (url: string) => void;
 };
 
-type RegistrationForm = Omit<
-  RegistrationInput,
-  "choirId" | "displayedQuote" | "photo" | "voicePart"
-> & {
+type RegistrationForm = Omit<RegistrationInput, "choirId" | "displayedQuote"> & {
   choirId: string;
-  voicePart: VoicePart | "";
 };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
@@ -62,30 +56,28 @@ function formatCpf(value: string): string {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
-const initialForm: RegistrationForm = {
+const initialForm: Omit<RegistrationForm, "photo"> = {
   name: "",
   cpf: "",
   email: "",
   phone: "",
   birthDate: "",
   choirId: "",
-  voicePart: "",
+  voicePart: "nao_sei_informar",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 
 const inputClassName =
-  "min-h-14 rounded-xl border-border bg-background pl-12 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-teal/30";
+  "min-h-11 rounded-xl border-border bg-background pl-10 text-sm shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 function RegistrationBadgePreview({
   name,
   choirName,
-  voicePartLabel,
   photoPreviewUrl,
 }: {
   name: string;
   choirName: string;
-  voicePartLabel: string;
   photoPreviewUrl: string;
 }) {
   const participantName = name.trim() || "Seu nome";
@@ -93,7 +85,7 @@ function RegistrationBadgePreview({
   return (
     <aside
       aria-label="Prévia do crachá"
-      className="relative mx-auto flex min-h-[23rem] w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl bg-muted/35 px-5 pb-4 pt-14 lg:sticky lg:top-24"
+      className="relative mx-auto flex min-h-[23rem] w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl bg-muted/35 px-5 pb-4 pt-14"
     >
       <div
         className="absolute left-1/2 top-0 h-24 w-28 -translate-x-1/2 rounded-b-full border-[0.65rem] border-t-0 border-foreground"
@@ -134,9 +126,6 @@ function RegistrationBadgePreview({
         <p className="mx-auto mt-1 line-clamp-2 min-h-9 max-w-[15rem] text-center text-sm font-semibold leading-snug text-card-foreground">
           {choirName || "Seu coro/diocese"}
         </p>
-        <p className="mt-1 text-center text-xs font-bold text-amber">
-          {voicePartLabel || "Perfil musical"}
-        </p>
         <span className="mx-auto mt-3 block w-fit rounded-full bg-foreground px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber">
           Quixadá • 2026
         </span>
@@ -152,7 +141,7 @@ export function RegistrationSection({
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
-  const [form, setForm] = useState<RegistrationForm>(initialForm);
+  const [form, setForm] = useState<Omit<RegistrationForm, "photo">>(initialForm);
   const [photo, setPhoto] = useState<RegistrationPhotoInput | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoFileName, setPhotoFileName] = useState("");
@@ -203,10 +192,8 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
-  const selectedVoicePartLabel =
-    voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
 
-  const handleChange = (field: keyof RegistrationForm, value: string) => {
+  const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
   };
@@ -267,32 +254,27 @@ export function RegistrationSection({
     setHasCpfConflict(false);
     setIsSubmitting(true);
     try {
-      const result = await startCheckout(parsedForm.data);
-      if (!result.ok) {
-        const normalizedMessage = result.message.toLocaleLowerCase("pt-BR");
-        const shouldRefresh =
-          normalizedMessage.includes("configuração de preços mudou") ||
-          normalizedMessage.includes("coro selecionado não está disponível");
-        const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
-        setCheckoutError(cpfConflict ? "Já existe uma inscrição para este CPF." : result.message);
-        setHasCpfConflict(cpfConflict);
-        if (shouldRefresh) await refreshConfiguration(true);
-        return;
-      }
-      navigateToCheckout(result.checkoutUrl);
+      const checkout = await startCheckout(parsedForm.data);
+      if (!checkout.ok) throw new Error(checkout.message);
+      navigateToCheckout(checkout.checkoutUrl);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");
+      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
+      const externalCheckoutDisabled = normalizedMessage.includes(
+        "checkout externo da infinitepay ainda não foi ativado",
+      );
       const shouldRefresh =
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
-      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
       setCheckoutError(
-        cpfConflict
-          ? "Já existe uma inscrição para este CPF."
-          : shouldRefresh
-            ? "A configuração de preços mudou. Confira o valor e tente novamente."
-            : "Não foi possível preparar o pagamento. Tente novamente.",
+        externalCheckoutDisabled
+          ? message
+          : cpfConflict
+            ? "Já existe uma inscrição para este CPF."
+            : shouldRefresh
+              ? "A configuração de preços mudou. Confira o valor e tente novamente."
+              : "Não foi possível preparar o pagamento. Tente novamente.",
       );
       setHasCpfConflict(cpfConflict);
       if (shouldRefresh) await refreshConfiguration(true);
@@ -302,28 +284,31 @@ export function RegistrationSection({
   };
 
   return (
-    <section id="inscricao" className="section-padding bg-background">
-      <div className="container-event px-5 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
+    <section
+      id="inscricao"
+      className="bg-background px-4 pb-5 pt-4 sm:px-6 sm:py-5 lg:min-h-[calc(100dvh-4.5rem)] lg:py-6"
+    >
+      <div className="container-event">
+        <div className="mx-auto max-w-4xl text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber">
             <BadgeCheck className="size-4" aria-hidden="true" />
             Inscrição
           </span>
-          <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
+          <h2 className="mt-2 font-display text-[clamp(1.8rem,6vw,2.65rem)] font-bold leading-tight text-foreground">
             Garanta sua participação
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Preencha seus dados para participar do II Encontro de Coros Diocesanos e Litúrgicos do
             Regional Nordeste 1 - CNBB.
           </p>
-          <div className="mx-auto mt-6 flex max-w-sm flex-col items-center justify-center gap-2 rounded-2xl border border-amber/40 bg-amber/10 px-5 py-4 sm:inline-flex sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-3">
-            <span className="text-sm font-bold text-muted-foreground">Inscrição</span>
-            <span className="font-display text-3xl font-extrabold leading-none text-foreground">
+          <div className="mx-auto mt-3 flex w-full max-w-lg flex-col items-center justify-center gap-1.5 rounded-2xl border border-amber/40 bg-amber/10 px-4 py-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-3 sm:rounded-full sm:py-2">
+            <span className="text-xs font-bold text-muted-foreground">Inscrição</span>
+            <span className="font-display text-2xl font-extrabold leading-none text-foreground">
               {registrationPriceCents === null
                 ? "Selecione seu coro"
                 : formatCurrency(registrationPriceCents)}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-bold text-teal">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-foreground">
               <img src={pixLogo} alt="" className="h-4 w-auto" aria-hidden="true" /> Pix sem taxa •
               cartão em até 12x
             </span>
@@ -331,289 +316,252 @@ export function RegistrationSection({
         </div>
 
         {configurationError && (
-          <div className="mx-auto mt-8 flex max-w-4xl flex-col items-center gap-3 text-center">
-            <p role="alert" className="text-destructive">
+          <div className="mx-auto mt-3 flex max-w-4xl flex-col items-center justify-center gap-2 text-center sm:flex-row">
+            <p role="alert" className="text-sm text-destructive">
               {configurationError}
             </p>
-            <Button type="button" variant="outline" onClick={() => void refreshConfiguration()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshConfiguration()}
+            >
               Tentar novamente
             </Button>
           </div>
         )}
 
-        <Card className="relative mx-auto mt-9 max-w-5xl overflow-hidden rounded-3xl border-border bg-card shadow-xl shadow-teal/10 sm:mt-12">
-          <div className="h-1.5 bg-teal" aria-hidden="true" />
-          <CardContent className="grid items-start gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.75fr)] lg:p-10">
-            <form onSubmit={handleSubmit} className="space-y-9">
-              <fieldset className="space-y-5">
-                <legend className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-xl bg-teal/10 text-teal">
-                    <UserRound className="size-5" aria-hidden="true" />
-                  </span>
-                  <span>
-                    <span
-                      role="heading"
-                      aria-level={3}
-                      className="block font-display text-xl font-extrabold text-foreground sm:text-2xl"
-                    >
-                      Dados pessoais
+        <Card className="relative mx-auto mt-5 max-w-7xl overflow-hidden rounded-3xl border-border bg-card shadow-xl shadow-foreground/10">
+          <div className="h-1.5 bg-amber" aria-hidden="true" />
+          <CardContent className="p-4 sm:p-5 lg:p-6">
+            <form
+              onSubmit={handleSubmit}
+              noValidate
+              className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.75fr)] lg:gap-7"
+            >
+              <div className="min-w-0 space-y-4">
+                <fieldset className="space-y-3">
+                  <legend className="flex items-center gap-2.5">
+                    <span className="grid size-8 place-items-center rounded-lg bg-foreground text-background">
+                      <UserRound className="size-4" aria-hidden="true" />
                     </span>
-                    <span className="mt-0.5 block text-sm font-normal text-muted-foreground">
-                      Informe os dados da pessoa participante.
-                    </span>
-                  </span>
-                </legend>
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="font-semibold">
-                      Nome completo
-                    </Label>
-                    <div className="relative">
-                      <UserRound
-                        className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="name"
-                        required
-                        autoComplete="name"
-                        value={form.name}
-                        onChange={(event) => handleChange("name", event.target.value)}
-                        placeholder="Seu nome e sobrenome"
-                        className={inputClassName}
-                      />
-                    </div>
-                    {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cpf" className="font-semibold">
-                      CPF
-                    </Label>
-                    <div className="relative">
-                      <BadgeCheck
-                        className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="cpf"
-                        required
-                        inputMode="numeric"
-                        autoComplete="off"
-                        maxLength={14}
-                        aria-invalid={Boolean(errors.cpf)}
-                        aria-describedby={errors.cpf ? "cpf-error" : undefined}
-                        value={form.cpf}
-                        onChange={(event) => handleChange("cpf", formatCpf(event.target.value))}
-                        placeholder="000.000.000-00"
-                        className={inputClassName}
-                      />
-                    </div>
-                    {errors.cpf && (
-                      <p id="cpf-error" role="alert" className="text-sm text-destructive">
-                        {errors.cpf}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="font-semibold">
-                      E-mail
-                    </Label>
-                    <div className="relative">
-                      <Mail
-                        className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="email"
-                        type="email"
-                        required
-                        autoComplete="email"
-                        value={form.email}
-                        onChange={(event) => handleChange("email", event.target.value)}
-                        placeholder="seunome@email.com"
-                        className={inputClassName}
-                      />
-                    </div>
-                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="font-semibold">
-                      WhatsApp
-                    </Label>
-                    <div className="relative">
-                      <Phone
-                        className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        required
-                        autoComplete="tel"
-                        value={form.phone}
-                        onChange={(event) => handleChange("phone", event.target.value)}
-                        placeholder="(88) 99999-9999"
-                        className={inputClassName}
-                      />
-                    </div>
-                    {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="birthDate" className="font-semibold">
-                      Data de nascimento
-                    </Label>
-                    <div className="relative md:max-w-[calc(50%-0.625rem)]">
-                      <CalendarDays
-                        className="pointer-events-none absolute left-4 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="birthDate"
-                        type="date"
-                        required
-                        max={getFortalezaCalendarDate()}
-                        value={form.birthDate}
-                        onChange={(event) => handleChange("birthDate", event.target.value)}
-                        className={inputClassName}
-                      />
-                    </div>
-                    {errors.birthDate && (
-                      <p className="text-sm text-destructive">{errors.birthDate}</p>
-                    )}
-                  </div>
-                </div>
-              </fieldset>
-
-              <div className="h-px bg-border" aria-hidden="true" />
-
-              <fieldset className="space-y-5">
-                <legend className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-xl bg-amber/15 text-amber">
-                    <Music2 className="size-5" aria-hidden="true" />
-                  </span>
-                  <span>
-                    <span
-                      role="heading"
-                      aria-level={3}
-                      className="block font-display text-xl font-extrabold text-foreground sm:text-2xl"
-                    >
-                      Participação
-                    </span>
-                    <span className="mt-0.5 block text-sm font-normal text-muted-foreground">
-                      Selecione o coro ou diocese para confirmar o valor.
-                    </span>
-                  </span>
-                </legend>
-
-                <div className="space-y-2">
-                  <Label htmlFor="choirId" className="font-semibold">
-                    Coro/Diocese
-                  </Label>
-                  <div className="relative">
-                    <Music2
-                      className="pointer-events-none absolute left-4 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <select
-                      id="choirId"
-                      required
-                      value={form.choirId}
-                      onChange={(event) => handleChange("choirId", event.target.value)}
-                      disabled={!configuration || configuration.choirs.length === 0}
-                      className="min-h-14 w-full rounded-xl border border-border bg-background pl-12 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-teal/30 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">
-                        {isLoadingConfiguration ? "Carregando coros…" : "Selecione o coro/diocese"}
-                      </option>
-                      {configuration?.choirs.map((choir) => (
-                        <option key={choir.id} value={choir.id}>
-                          {choir.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {configuration?.choirs.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      As inscrições estarão disponíveis após o cadastro dos coros e valores.
-                    </p>
-                  )}
-                  {errors.choirId && <p className="text-sm text-destructive">{errors.choirId}</p>}
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="voicePart" className="font-semibold">
-                      Perfil musical
-                    </Label>
-                    <div className="relative">
-                      <Music2
-                        className="pointer-events-none absolute left-4 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <select
-                        id="voicePart"
-                        required
-                        value={form.voicePart}
-                        onChange={(event) => handleChange("voicePart", event.target.value)}
-                        className="min-h-14 w-full rounded-xl border border-border bg-background pl-12 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-teal/30"
+                    <span>
+                      <span
+                        role="heading"
+                        aria-level={3}
+                        className="block font-display text-lg font-extrabold text-foreground"
                       >
-                        <option value="">Selecione seu perfil</option>
-                        {voicePartOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {errors.voicePart && (
-                      <p className="text-sm text-destructive">{errors.voicePart}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="photo" className="font-semibold">
-                      Foto do participante
-                    </Label>
-                    <label
-                      htmlFor="photo"
-                      className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-amber/60 bg-amber/5 px-4 transition-colors hover:bg-amber/10"
-                    >
-                      <Camera className="size-5 shrink-0 text-amber" aria-hidden="true" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-foreground">
-                          {photoFileName || "Escolher foto"}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          JPG, PNG ou WebP • até 5 MB
-                        </span>
+                        Dados pessoais
                       </span>
-                      <input
-                        id="photo"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="sr-only"
-                        aria-invalid={Boolean(errors.photo)}
-                        aria-describedby={errors.photo ? "photo-error" : undefined}
-                        onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
-                      />
-                    </label>
-                    {errors.photo && (
-                      <p id="photo-error" role="alert" className="text-sm text-destructive">
-                        {errors.photo}
-                      </p>
-                    )}
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Informe os dados da pessoa participante.
+                      </span>
+                    </span>
+                  </legend>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="font-semibold">
+                        Nome completo
+                      </Label>
+                      <div className="relative">
+                        <UserRound
+                          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="name"
+                          required
+                          autoComplete="name"
+                          value={form.name}
+                          onChange={(event) => handleChange("name", event.target.value)}
+                          placeholder="Seu nome e sobrenome"
+                          className={inputClassName}
+                        />
+                      </div>
+                      {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cpf" className="font-semibold">
+                        CPF
+                      </Label>
+                      <div className="relative">
+                        <BadgeCheck
+                          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="cpf"
+                          required
+                          inputMode="numeric"
+                          autoComplete="off"
+                          maxLength={14}
+                          aria-invalid={Boolean(errors.cpf)}
+                          aria-describedby={errors.cpf ? "cpf-error" : undefined}
+                          value={form.cpf}
+                          onChange={(event) => handleChange("cpf", formatCpf(event.target.value))}
+                          placeholder="000.000.000-00"
+                          className={inputClassName}
+                        />
+                      </div>
+                      {errors.cpf && (
+                        <p id="cpf-error" role="alert" className="text-sm text-destructive">
+                          {errors.cpf}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email" className="font-semibold">
+                        E-mail
+                      </Label>
+                      <div className="relative">
+                        <Mail
+                          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="email"
+                          type="email"
+                          required
+                          autoComplete="email"
+                          value={form.email}
+                          onChange={(event) => handleChange("email", event.target.value)}
+                          placeholder="seunome@email.com"
+                          className={inputClassName}
+                        />
+                      </div>
+                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone" className="font-semibold">
+                        WhatsApp
+                      </Label>
+                      <div className="relative">
+                        <Phone
+                          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          required
+                          autoComplete="tel"
+                          value={form.phone}
+                          onChange={(event) => handleChange("phone", event.target.value)}
+                          placeholder="(88) 99999-9999"
+                          className={inputClassName}
+                        />
+                      </div>
+                      {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="birthDate" className="font-semibold">
+                        Data de nascimento
+                      </Label>
+                      <div className="relative">
+                        <CalendarDays
+                          className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          id="birthDate"
+                          type="date"
+                          required
+                          max={getFortalezaCalendarDate()}
+                          value={form.birthDate}
+                          onChange={(event) => handleChange("birthDate", event.target.value)}
+                          className={inputClassName}
+                        />
+                      </div>
+                      {errors.birthDate && (
+                        <p className="text-sm text-destructive">{errors.birthDate}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="choirId" className="font-semibold">
+                        Coro/Diocese
+                      </Label>
+                      <div className="relative">
+                        <Music2
+                          className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <select
+                          id="choirId"
+                          required
+                          value={form.choirId}
+                          onChange={(event) => handleChange("choirId", event.target.value)}
+                          disabled={!configuration || configuration.choirs.length === 0}
+                          className="min-h-11 w-full rounded-xl border border-border bg-background pl-10 pr-9 text-sm shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">
+                            {isLoadingConfiguration
+                              ? "Carregando coros…"
+                              : "Selecione o coro/diocese"}
+                          </option>
+                          {configuration?.choirs.map((choir) => (
+                            <option key={choir.id} value={choir.id}>
+                              {choir.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {configuration?.choirs.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          As inscrições estarão disponíveis após o cadastro dos coros e valores.
+                        </p>
+                      )}
+                      {errors.choirId && (
+                        <p className="text-sm text-destructive">{errors.choirId}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="photo" className="font-semibold">
+                        Foto do participante
+                      </Label>
+                      <label
+                        htmlFor="photo"
+                        className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 text-sm shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-amber/30"
+                      >
+                        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                          <Camera className="size-4 shrink-0 text-foreground" aria-hidden="true" />
+                          <span className="truncate">
+                            {photoFileName || "JPG, PNG ou WebP • até 5 MB"}
+                          </span>
+                        </span>
+                        <span className="shrink-0 rounded-lg bg-amber/20 px-2.5 py-1 text-xs font-bold text-foreground">
+                          Escolher
+                        </span>
+                        <input
+                          id="photo"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          required
+                          aria-invalid={Boolean(errors.photo)}
+                          aria-describedby={errors.photo ? "photo-error" : undefined}
+                          className="sr-only"
+                          onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
+                        />
+                      </label>
+                      {errors.photo && (
+                        <p id="photo-error" role="alert" className="text-sm text-destructive">
+                          {errors.photo}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </fieldset>
 
                 {selectedChoir?.pricingType === "promotional" && (
                   <div
                     role="status"
-                    className="rounded-2xl border border-amber/40 bg-amber/10 p-4 text-sm leading-relaxed text-foreground sm:p-5"
+                    className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs leading-relaxed text-foreground"
                   >
                     Este é um{" "}
                     <strong>
@@ -623,62 +571,81 @@ export function RegistrationSection({
                     inscrição de {formatCurrency(selectedChoir.standardPriceCents)}.
                   </div>
                 )}
-              </fieldset>
 
-              {registrationPriceCents !== null && (
-                <div className="flex flex-col gap-4 rounded-2xl border border-teal/20 bg-teal/5 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-10 place-items-center rounded-full bg-white text-teal shadow-sm">
-                      <ShieldCheck className="size-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                      <p className="font-bold text-foreground">Valor da inscrição</p>
-                      <p className="text-sm text-muted-foreground">
-                        Pagamento processado com segurança
-                      </p>
+                {registrationPriceCents !== null && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-amber/30 bg-amber/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-8 place-items-center rounded-full bg-foreground text-background shadow-sm">
+                        <ShieldCheck className="size-4" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <p className="font-bold text-foreground">Valor da inscrição</p>
+                        <p className="text-xs text-muted-foreground">
+                          Pagamento processado com segurança
+                        </p>
+                      </div>
                     </div>
+                    <span className="font-display text-2xl font-extrabold leading-none text-foreground">
+                      {formatCurrency(registrationPriceCents)}
+                    </span>
                   </div>
-                  <span className="font-display text-3xl font-extrabold leading-none text-teal">
-                    {formatCurrency(registrationPriceCents)}
-                  </span>
+                )}
+
+                {checkoutError && (
+                  <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                    {checkoutError}
+                    {hasCpfConflict && (
+                      <>
+                        {" "}
+                        <a
+                          href="#retomar-pagamento"
+                          className="font-bold underline underline-offset-4"
+                        >
+                          Retomar pagamento
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
+                    className="min-h-11 w-full rounded-full bg-foreground px-6 text-sm font-extrabold text-background hover:bg-foreground/90"
+                  >
+                    {isSubmitting ? "Preparando pagamento…" : "Continuar para pagamento"}
+                    {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
+                  </Button>
+                  <p className="flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-muted-foreground">
+                    <LockKeyhole className="size-4 shrink-0" aria-hidden="true" /> Seus dados serão
+                    usados apenas para processar a inscrição.
+                  </p>
                 </div>
-              )}
+              </div>
 
-              {checkoutError && (
-                <p role="alert" aria-live="polite" className="text-sm text-destructive">
-                  {checkoutError}
-                  {hasCpfConflict && (
-                    <>
-                      {" "}
-                      <a href="#retomar-pagamento" className="font-bold underline">
-                        Retomar pagamento
-                      </a>
-                    </>
-                  )}
-                </p>
-              )}
-
-              <div className="space-y-3">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
-                  className="min-h-14 w-full rounded-full bg-teal px-6 text-base font-extrabold text-white hover:bg-teal/90 sm:text-lg"
-                >
-                  {isSubmitting ? "Preparando pagamento…" : "Continuar para pagamento"}
-                  {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
-                </Button>
-                <p className="flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                  <LockKeyhole className="size-4 shrink-0" aria-hidden="true" /> Seus dados serão
-                  usados apenas para processar a inscrição.
-                </p>
+              <div className="lg:hidden">
+                <details className="rounded-xl border border-amber/30 bg-amber/5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-bold text-foreground">
+                    <span>Prévia do crachá</span>
+                  </summary>
+                  <div className="px-4 pb-4 pt-2">
+                    <RegistrationBadgePreview
+                      name={form.name}
+                      choirName={selectedChoir?.name ?? ""}
+                      photoPreviewUrl={photoPreviewUrl}
+                    />
+                  </div>
+                </details>
+              </div>
+              <div className="hidden lg:block">
+                <RegistrationBadgePreview
+                  name={form.name}
+                  choirName={selectedChoir?.name ?? ""}
+                  photoPreviewUrl={photoPreviewUrl}
+                />
               </div>
             </form>
-            <RegistrationBadgePreview
-              name={form.name}
-              choirName={selectedChoir?.name ?? ""}
-              voicePartLabel={selectedVoicePartLabel}
-              photoPreviewUrl={photoPreviewUrl}
-            />
           </CardContent>
         </Card>
         <RegistrationResumeCard />

@@ -17,6 +17,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocinadores'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as RegenteIndexRouteImport } from './routes/regente.index'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
@@ -63,6 +64,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPatrocinadoresRoute = AdminPatrocinadoresRouteImport.update({
+  id: '/admin/patrocinadores',
+  path: '/admin/patrocinadores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
   id: '/api/infinitepay-webhook',
   path: '/api/infinitepay-webhook',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   AdminCorosRoute: typeof AdminCorosRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPatrocinadoresRoute: typeof AdminPatrocinadoresRoute
   ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
 }
 
@@ -249,6 +262,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/patrocinadores': {
+      id: '/admin/patrocinadores'
+      path: '/admin/patrocinadores'
+      fullPath: '/admin/patrocinadores'
+      preLoaderRoute: typeof AdminPatrocinadoresRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/infinitepay-webhook': {
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCorosRoute: AdminCorosRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPatrocinadoresRoute: AdminPatrocinadoresRoute,
   ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
 }
 export const routeTree = rootRouteImport

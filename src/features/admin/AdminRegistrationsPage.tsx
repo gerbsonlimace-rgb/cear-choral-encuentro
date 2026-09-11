@@ -227,10 +227,12 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
 
 function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
   const metrics = [
-    { label: "Total", value: summary.total, emphasis: true },
-    { label: "Pagas", value: summary.paid },
-    { label: "Pendentes", value: summary.pending },
-    { label: "Históricas", value: summary.legacy },
+    { label: "Total", value: String(summary.total), emphasis: true },
+    { label: "Pagas", value: String(summary.paid) },
+    { label: "Pendentes", value: String(summary.pending) },
+    { label: "Históricas", value: String(summary.legacy) },
+    { label: "Recebido", value: money(summary.receivedCents), emphasis: true },
+    { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
   ];
 
   return (
@@ -243,7 +245,7 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
           <h2 className="text-base font-semibold text-foreground">Visão geral</h2>
           <p className="text-xs text-muted-foreground">Todos os registros</p>
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
           {metrics.map((metric) => (
             <div key={metric.label}>
               <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
@@ -263,14 +265,19 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
         {summary.byChoir.length ? (
           <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
             {summary.byChoir.map((item) => (
-              <li
-                key={item.choirName}
-                className="flex min-w-0 items-center justify-between gap-3 border-b border-border/70 py-2.5"
-              >
-                <span className="min-w-0 text-sm text-foreground">{item.choirName}</span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                  {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
-                </span>
+              <li key={item.choirName} className="min-w-0 border-b border-border/70 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 text-sm font-medium text-foreground">
+                    {item.choirName}
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                    {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>Recebido: {money(item.receivedCents)}</span>
+                  <span>Pendente do regente: {money(item.pendingRegentCents)}</span>
+                </div>
               </li>
             ))}
           </ul>

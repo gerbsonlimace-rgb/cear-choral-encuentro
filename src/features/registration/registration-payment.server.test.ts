@@ -29,6 +29,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 
 import {
   DEFAULT_INFINITEPAY_HANDLE,
+  DEFAULT_INFINITEPAY_SITE_URL,
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
@@ -40,12 +41,15 @@ describe("InfinitePay configuration", () => {
   it("defaults new checkouts to the Lucas account", () => {
     expect(DEFAULT_INFINITEPAY_HANDLE).toBe("lucas-soares-xwv");
   });
+
+  it("returns customers to the live confirmation page by default", () => {
+    expect(DEFAULT_INFINITEPAY_SITE_URL).toBe("https://encontrocorosce.lovable.app");
+  });
 });
 
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
-const existingCheckoutUrl = "https://checkout.infinitepay.com.br/existing";
 const choirId = "22222222-2222-4222-8222-222222222222";
 const cpf = "52998224725";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
@@ -120,7 +124,7 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at";
-const identityColumns = "birth_date,payment_status,checkout_url";
+const identityColumns = "id";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -192,11 +196,7 @@ function createSupabaseHarness(
 function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
-  let identityRecord: {
-    birthDate: string;
-    paymentStatus: "pending" | "paid" | "legacy";
-    checkoutUrl: string | null;
-  } | null = null;
+  let identityRecord: { id: string } | null = null;
 
   const repository: RegistrationRepository = {
     createPending: vi.fn(async (input) => {
@@ -210,12 +210,12 @@ function createFixture() {
     saveCheckoutUrl: vi.fn(async () => {
       calls.push("saveCheckoutUrl");
     }),
+    clearPendingPhoto: vi.fn(async () => {
+      calls.push("clearPendingPhoto");
+    }),
     findByCpf: vi.fn(async () => {
       calls.push("findByCpf");
       return identityRecord;
-    }),
-    clearPendingPhoto: vi.fn(async () => {
-      calls.push("clearPendingPhoto");
     }),
     findPayment: vi.fn(async () => record),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
@@ -326,9 +326,7 @@ describe("registration payment service", () => {
 
   it("rejects an existing CPF before uploading a photo or creating another registration", async () => {
     fixture.setIdentityRecord({
-      birthDate: "1990-05-20",
-      paymentStatus: "pending",
-      checkoutUrl: existingCheckoutUrl,
+      id: "existing-registration",
     });
 
     await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow(
@@ -338,62 +336,6 @@ describe("registration payment service", () => {
     expect(fixture.calls).toEqual(["findByCpf"]);
     expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
     expect(fixture.repository.createPending).not.toHaveBeenCalled();
-  });
-
-  it("resumes the persisted checkout when CPF and birth date match", async () => {
-    fixture.setIdentityRecord({
-      birthDate: "1990-05-12",
-      paymentStatus: "pending",
-      checkoutUrl: existingCheckoutUrl,
-    });
-
-    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
-      {
-        status: "pending",
-        checkoutUrl: existingCheckoutUrl,
-      },
-    );
-  });
-
-  it("uses the same public error for an unknown CPF and a mismatched birth date", async () => {
-    fixture.setIdentityRecord({
-      birthDate: "1990-05-12",
-      paymentStatus: "pending",
-      checkoutUrl: existingCheckoutUrl,
-    });
-
-    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1991-01-01" })).rejects.toThrow(
-      "Não foi possível localizar uma inscrição com os dados informados.",
-    );
-
-    fixture.setIdentityRecord(null);
-    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).rejects.toThrow(
-      "Não foi possível localizar uma inscrição com os dados informados.",
-    );
-  });
-
-  it("reports a paid registration without exposing its checkout", async () => {
-    fixture.setIdentityRecord({
-      birthDate: "1990-05-12",
-      paymentStatus: "paid",
-      checkoutUrl: existingCheckoutUrl,
-    });
-
-    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
-      { status: "paid" },
-    );
-  });
-
-  it("directs a matching pending registration without a checkout to the organization", async () => {
-    fixture.setIdentityRecord({
-      birthDate: "1990-05-12",
-      paymentStatus: "pending",
-      checkoutUrl: null,
-    });
-
-    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).rejects.toThrow(
-      "Procure a organização para continuar o pagamento.",
-    );
   });
 
   it("leaves the registration pending and removes its photo when checkout creation fails", async () => {
@@ -615,7 +557,6 @@ describe("Supabase registration repository", () => {
       [
         "insert",
         {
-          id: fixedOrderNsu,
           name: "Maria da Silva",
           cpf: "52998224725",
           photo_path: registrationPhotoPath,
@@ -734,26 +675,18 @@ describe("Supabase registration repository", () => {
     ]);
   });
 
-  it("looks up a registration identity by CPF without selecting participant data", async () => {
+  it("checks an existing CPF without selecting participant data", async () => {
     const database = createSupabaseHarness({
       maybeSingleResults: [
         {
-          data: {
-            birth_date: "1990-05-12",
-            payment_status: "pending",
-            checkout_url: existingCheckoutUrl,
-          },
+          data: { id: "registration-1" },
           error: null,
         },
       ],
     });
     const repository = createSupabaseRegistrationRepository();
 
-    await expect(repository.findByCpf(cpf)).resolves.toEqual({
-      birthDate: "1990-05-12",
-      paymentStatus: "pending",
-      checkoutUrl: existingCheckoutUrl,
-    });
+    await expect(repository.findByCpf(cpf)).resolves.toEqual({ id: "registration-1" });
     expect(database.trace).toEqual([
       ["from", "registrations"],
       ["select", identityColumns],

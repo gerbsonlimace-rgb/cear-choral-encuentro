@@ -47,8 +47,14 @@ export function buildReceiptRows(receipt: ReceiptData) {
     { label: "Participante", value: receipt.participantName },
     { label: "Coro", value: receipt.choirName },
     { label: "Tipo", value: RECEIPT_ITEM_DESCRIPTION },
-    { label: "Valor pago", value: paidCents !== undefined ? formatCurrencyBRL(paidCents) : undefined },
-    { label: "Forma de pagamento", value: formatPaymentMethod(receipt.paymentMethod, receipt.installments) },
+    {
+      label: "Valor pago",
+      value: paidCents !== undefined ? formatCurrencyBRL(paidCents) : undefined,
+    },
+    {
+      label: "Forma de pagamento",
+      value: formatPaymentMethod(receipt.paymentMethod, receipt.installments),
+    },
     { label: "Data e hora", value: formatPaidAt(receipt.paidAt) },
     { label: "Código do pedido", value: formatOrderCode(receipt.orderNsu) },
   ].filter((row): row is { label: string; value: string } => Boolean(row.value));
@@ -126,7 +132,7 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
 
   const baseUrl = (
     options?.siteUrl ??
-    (typeof window !== "undefined" ? window.location.origin : "https://encontrocorosdiocesanosce.lovable.app")
+    (typeof window !== "undefined" ? window.location.origin : "https://encontrocorosce.lovable.app")
   ).replace(/\/$/, "");
   const participantAreaUrl = `${baseUrl}${PARTICIPANT_AREA_PATH}`;
 

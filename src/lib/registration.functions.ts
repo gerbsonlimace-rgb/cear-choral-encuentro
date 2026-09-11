@@ -4,10 +4,17 @@ import {
   registrationResumeSchema,
   registrationSchema,
 } from "@/features/registration/registration.domain";
-import type {
-  RegistrationPaymentService,
-  RegistrationResumeResult,
-} from "@/features/registration/registration-payment.server";
+
+export type RegistrationResumeResult =
+  | { status: "pending"; checkoutUrl: string }
+  | { status: "paid" };
+
+export function createRegistrationResumeHandler(
+  service: { resumeCheckout: (input: unknown) => Promise<RegistrationResumeResult> },
+) {
+  return async (input: unknown): Promise<RegistrationResumeResult> =>
+    service.resumeCheckout(registrationResumeSchema.parse(input));
+}
 
 export function getRegistrationCheckoutFailureMessage(caught: unknown): string {
   const message = caught instanceof Error ? caught.message : "";
@@ -18,13 +25,6 @@ export function getRegistrationCheckoutFailureMessage(caught: unknown): string {
   )
     return message;
   return "Não foi possível preparar o pagamento. Tente novamente.";
-}
-
-export function createRegistrationResumeHandler(
-  service: Pick<RegistrationPaymentService, "resumeCheckout">,
-) {
-  return async (input: unknown): Promise<RegistrationResumeResult> =>
-    service.resumeCheckout(registrationResumeSchema.parse(input));
 }
 
 export type StartRegistrationCheckoutResult =
@@ -52,7 +52,11 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
         message:
           message === EXTERNAL_CHECKOUT_DISABLED_MESSAGE
             ? EXTERNAL_CHECKOUT_DISABLED_MESSAGE
-            : getRegistrationCheckoutFailureMessage(caught),
+            : message.includes("Já existe uma inscrição para este CPF") ||
+                message.includes("configuração de preços mudou") ||
+                message.includes("Coro selecionado não está disponível")
+              ? message
+              : "Não foi possível preparar o pagamento. Tente novamente.",
       };
     }
   });
@@ -62,7 +66,11 @@ export const resumeRegistrationCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getRegistrationPaymentService } =
       await import("@/features/registration/registration-payment.server");
-    return createRegistrationResumeHandler(getRegistrationPaymentService())(data);
+    return createRegistrationResumeHandler(
+      getRegistrationPaymentService() as unknown as {
+        resumeCheckout: (input: unknown) => Promise<RegistrationResumeResult>;
+      },
+    )(data);
   });
 
 export const verifyRegistrationPayment = createServerFn({ method: "POST" })

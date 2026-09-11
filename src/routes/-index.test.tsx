@@ -162,3 +162,19 @@ describe("Quixadá city spots", () => {
     expect(content.getByRole("img", { name: "Catedral Jesus, Maria e José" })).toBeInTheDocument();
   });
 });
+
+describe("landing page sponsors", () => {
+  it("renders the institutional partners and the published sponsor", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const section = document.querySelector<HTMLElement>("#patrocinadores");
+    expect(section).not.toBeNull();
+    const content = within(section!);
+
+    expect(
+      content.getByRole("heading", { name: "Instituições que conduzem o encontro" }),
+    ).toBeInTheDocument();
+    expect(content.getByRole("img", { name: "Unicatolica" })).toBeInTheDocument();
+  });
+});

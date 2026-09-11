@@ -52,7 +52,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       {
         property: "og:title",
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
+          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: SOCIAL_IMAGE_URL },
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/")({
       {
         name: "twitter:description",
         content:
-          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
+          "De 20 a 22 de novembro de 2026, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.",
       },
       { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
@@ -188,27 +188,33 @@ function Header() {
         <Button
           asChild
           size="sm"
-          className="h-9 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-10 sm:px-5"
+          className="h-10 min-h-10 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
         >
           <a href="#inscricao">Inscrever</a>
         </Button>
       </div>
-      <nav className="scrollbar-none hidden gap-2 overflow-x-auto border-t border-teal/10 px-4 py-2 text-sm font-bold text-muted-foreground sm:flex lg:hidden">
-        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+      <nav
+        aria-label="Atalhos mobile"
+        className="scrollbar-none flex gap-1.5 overflow-x-auto border-t border-teal/10 px-4 py-2 text-xs font-bold text-muted-foreground sm:gap-2 lg:hidden"
+      >
+        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10">
           Sobre
         </a>
-        <a href="#quixada" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+        <a
+          href="#quixada"
+          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
+        >
           Quixadá
         </a>
         <a
           href="#programacao"
-          className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10"
+          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
         >
           Programação
         </a>
         <a
           href="#inscricao"
-          className="shrink-0 rounded-full bg-amber px-4 py-2 text-amber-foreground active:bg-amber/80"
+          className="shrink-0 rounded-full bg-amber px-4 py-2.5 text-amber-foreground active:bg-amber/80"
         >
           Inscrição
         </a>
@@ -226,7 +232,7 @@ function HeroSection() {
       <Button
         asChild
         size="lg"
-        className="h-12 rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:px-8"
+        className="h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
       >
         <a href="#inscricao" className="justify-center">
           Faça sua inscrição
@@ -237,7 +243,7 @@ function HeroSection() {
         asChild
         variant="outline"
         size="lg"
-        className="h-12 rounded-full border-2 border-white bg-white px-7 text-base font-bold text-teal hover:bg-white/90 sm:h-14 sm:px-8"
+        className="h-12 w-full rounded-full border-2 border-white bg-white px-7 text-base font-bold text-teal hover:bg-white/90 sm:h-14 sm:w-auto sm:px-8"
       >
         <a href="#programacao" className="justify-center">
           Programação
@@ -268,7 +274,7 @@ function HeroSection() {
 
       <div
         data-hero-frame
-        className="relative z-10 mx-auto grid min-h-[calc(100svh-3.5rem)] w-full max-w-[90rem] gap-7 px-5 py-10 sm:px-8 sm:py-14 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10 lg:px-12 lg:py-16"
+        className="relative z-10 mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-[90rem] gap-7 px-5 py-10 sm:min-h-[calc(100svh-3.5rem)] sm:px-8 sm:py-14 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10 lg:px-12 lg:py-16"
       >
         <div
           data-hero-copy
@@ -397,7 +403,7 @@ function AboutSection() {
           </div>
         </div>
 
-        <div className="mt-9 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">
+        <div className="mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
             <CardContent className="p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
@@ -828,7 +834,7 @@ function ProgramSection() {
         >
           <CarouselContent className="items-start">
             {schedule.map((day, index) => (
-              <CarouselItem key={index} className="basis-[88%]">
+              <CarouselItem key={index} className="basis-[92%] sm:basis-[88%]">
                 <ProgramDayCard day={day} />
               </CarouselItem>
             ))}
@@ -863,7 +869,7 @@ function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
             return (
               <div
                 key={itemIndex}
-                className="grid grid-cols-[4.5rem_1.75rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
+                className="grid grid-cols-[3.75rem_1.55rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
               >
                 <span className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">
                   {item.time ?? "Na sequência"}

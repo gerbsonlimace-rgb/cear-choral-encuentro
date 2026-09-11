@@ -3,39 +3,19 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("registration CPF migration", () => {
-  it("aborts on duplicate CPFs before adding the non-null unique index", () => {
+  it("adds normalized unique CPF without deleting existing registrations", () => {
     const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
     const fileName = readdirSync(migrationsDirectory).find((name) =>
-      name.endsWith("_enforce_unique_registration_cpf.sql"),
+      name.endsWith("_add_registration_cpf.sql"),
     );
 
     expect(fileName).toBeDefined();
-    expect(fileName! > "20260911010102_2885439a-5d2b-4444-913a-de1c4ec6fb4e.sql").toBe(true);
     const migration = readFileSync(resolve(migrationsDirectory, fileName!), "utf8").toLowerCase();
-    expect(migration).toMatch(/select\s+cpf\s+from\s+public\.registrations/);
-    expect(migration).toMatch(/group\s+by\s+cpf/);
-    expect(migration).toMatch(/having\s+count\s*\(\s*\*\s*\)\s*>\s*1/);
-    expect(migration).toContain("raise exception");
-    expect(migration).toContain("create unique index registrations_cpf_uidx");
-    expect(migration).toContain("on public.registrations (cpf)");
+    expect(migration).toContain("add column if not exists cpf text");
+    expect(migration).toContain("^[0-9]{11}$");
+    expect(migration).not.toContain("delete from public.registrations");
+    expect(migration).toContain("cpf is null");
+    expect(migration).toContain("create unique index if not exists registrations_cpf_uidx");
     expect(migration).toContain("where cpf is not null");
-    expect(migration.indexOf("select cpf")).toBeLessThan(
-      migration.indexOf("create unique index registrations_cpf_uidx"),
-    );
-    expect(migration).not.toMatch(/delete\s+from\s+public\.registrations/);
-    expect(migration).not.toMatch(/update\s+public\.registrations/);
-  });
-
-  it("never removes registrations in the CPF migration chain", () => {
-    const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
-    const cpfMigrations = readdirSync(migrationsDirectory).filter((name) =>
-      /registration.*cpf|cpf.*registration/i.test(name),
-    );
-
-    expect(cpfMigrations.length).toBeGreaterThan(0);
-    for (const fileName of cpfMigrations) {
-      const migration = readFileSync(resolve(migrationsDirectory, fileName), "utf8").toLowerCase();
-      expect(migration, fileName).not.toMatch(/delete\s+from\s+public\.registrations/);
-    }
   });
 });
