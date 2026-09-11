@@ -1,10 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { CheckCircle2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
+import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 import type { PaymentLookup } from "./registration.domain";
+
 
 type PaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
