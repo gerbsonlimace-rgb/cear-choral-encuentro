@@ -3,6 +3,7 @@ import {
   createRegentAdminService,
   createSupabaseRegentAdminRepository,
   createSupabaseRegentAuthAdmin,
+  RegentGrantFailure,
   type AdminRegentRow,
   type RegentAdminRepository,
   type RegentAuthAdminPort,
@@ -97,11 +98,13 @@ describe("regent administrative lifecycle", () => {
     expect(auth.createUser).not.toHaveBeenCalled();
   });
   it.each(["create", "replace"] as const)(
-    "cleans up only the just-created user after a failed %s grant",
+    "cleans up only the just-created user after a confirmed %s rejection and absent link",
     async (operation) => {
       const { service, auth, repository } = setup();
-      vi.mocked(repository.grant).mockRejectedValue(new Error("private DB failure"));
-      vi.mocked(repository.replace).mockRejectedValue(new Error("private DB failure"));
+      vi.mocked(repository.grant).mockRejectedValue(new RegentGrantFailure("confirmed_rejection"));
+      vi.mocked(repository.replace).mockRejectedValue(
+        new RegentGrantFailure("confirmed_rejection"),
+      );
       const result = await service[operation](input, "admin-user");
       expect(result).toMatchObject({ status: "error" });
       expect(JSON.stringify(result)).not.toContain("private DB");
@@ -114,6 +117,35 @@ describe("regent administrative lifecycle", () => {
         vi.mocked(auth.deleteUser).mock.invocationCallOrder[0],
       );
       expect(repository.revoke).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["create", "replace"] as const)(
+    "keeps the Auth user after unknown %s failure even when a commit is invisible at reconciliation",
+    async (operation) => {
+      const { service, auth, repository } = setup();
+      let committed: AdminRegentRow | null = null;
+      let accountExists = true;
+      vi.mocked(auth.deleteUser).mockImplementation(async () => {
+        accountExists = false;
+      });
+      vi.mocked(repository[operation === "create" ? "grant" : "replace"]).mockRejectedValue(
+        new Error("transport disconnected while write still runs"),
+      );
+      vi.mocked(repository.findByUserAndChoir).mockImplementation(async () => committed);
+      const result = await service[operation](input, "admin-user");
+      // The original database statement can finish only after the reconciliation snapshot.
+      committed = row;
+      expect(result).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("administrador"),
+      });
+      expect(repository.findByUserAndChoir).toHaveBeenCalledExactlyOnceWith(
+        "created-user",
+        choirId,
+      );
+      expect(auth.deleteUser).not.toHaveBeenCalled();
+      expect(accountExists).toBe(true);
+      expect(committed.userId).toBe("created-user");
     },
   );
   it.each(["create", "replace"] as const)(
@@ -179,7 +211,7 @@ describe("regent administrative lifecycle", () => {
   });
   it("reports failed cleanup without attempting to delete a different user", async () => {
     const { service, auth, repository } = setup();
-    vi.mocked(repository.grant).mockRejectedValue(new Error("failure"));
+    vi.mocked(repository.grant).mockRejectedValue(new RegentGrantFailure("confirmed_rejection"));
     vi.mocked(auth.deleteUser).mockRejectedValue(new Error("cleanup failure"));
     await expect(service.create(input, "admin-user")).resolves.toMatchObject({
       status: "error",
@@ -237,6 +269,48 @@ describe("regent administrative lifecycle", () => {
   });
 });
 describe("Supabase administrative adapters", () => {
+  const grant = {
+    choirId,
+    userId: row.userId,
+    name: row.name,
+    email: row.email,
+    passwordChangeRequired: true as const,
+    grantedBy: "admin-user",
+  };
+  it.each(["grant", "replace"] as const)(
+    "marks a completed database constraint rejection as confirmed for %s",
+    async (operation) => {
+      const response = {
+        data: null,
+        error: { code: "23505", message: "private database details" },
+      };
+      rpc.mockResolvedValue(response);
+      from.mockReturnValue({
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn(async () => response),
+      });
+      await expect(createSupabaseRegentAdminRepository()[operation](grant)).rejects.toMatchObject({
+        outcome: "confirmed_rejection",
+        conflict: true,
+      });
+    },
+  );
+  it.each(["", "08007", "40003", "PGRST116"])(
+    "keeps response code %s unknown rather than inferring rollback",
+    async (code) => {
+      rpc.mockResolvedValue({ data: null, error: { code, message: "unknown result" } });
+      await expect(createSupabaseRegentAdminRepository().replace(grant)).rejects.toMatchObject({
+        outcome: "unknown",
+      });
+    },
+  );
+  it("marks a thrown transport failure unknown even if it carries a database-like code", async () => {
+    rpc.mockRejectedValue(Object.assign(new Error("connection lost"), { code: "23505" }));
+    await expect(createSupabaseRegentAdminRepository().replace(grant)).rejects.toMatchObject({
+      outcome: "unknown",
+    });
+  });
   it("reconciles by the exact new user and choir without hiding revoked history", async () => {
     const query = {
       select: vi.fn().mockReturnThis(),

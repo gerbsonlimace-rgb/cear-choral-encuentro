@@ -46,9 +46,17 @@ const success = (regent: AdminRegentRow): RegentAdminResult => ({ status: "succe
 const reviewRequired = (): RegentAdminResult => ({
   status: "error",
   message:
-    "A conta criada foi mantida e precisa de revisão por um administrador. Atualize a lista e não repita o cadastro com outro e-mail.",
+    "O estado da conta criada precisa de revisão por um administrador. Atualize a lista e não repita o cadastro com outro e-mail.",
 });
 class RegentConflict extends Error {}
+export class RegentGrantFailure extends Error {
+  constructor(
+    readonly outcome: "confirmed_rejection" | "unknown",
+    readonly conflict = false,
+  ) {
+    super("Regent grant was not confirmed");
+  }
+}
 
 export function createRegentAdminService({
   repository,
@@ -104,12 +112,18 @@ export function createRegentAdminService({
               ? success(membership)
               : reviewRequired();
           }
+          // An empty read cannot prove an in-flight write rolled back. Only a
+          // completed, authoritative database rejection permits compensation.
+          if (!(error instanceof RegentGrantFailure) || error.outcome !== "confirmed_rejection") {
+            return reviewRequired();
+          }
           await auth.deleteUser(createdUserId);
         } catch {
           return reviewRequired();
         }
       }
-      return error instanceof RegentConflict
+      return error instanceof RegentConflict ||
+        (error instanceof RegentGrantFailure && error.conflict)
         ? {
             status: "conflict",
             message:
@@ -177,11 +191,42 @@ function checkError(error: { code?: string } | null) {
 }
 
 export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
+  type QueryResult = { data: unknown; error: { code?: string } | null };
   async function returning(query: PromiseLike<{ data: unknown; error: { code?: string } | null }>) {
     const { data, error } = await query;
     checkError(error);
     if (!data) throw new Error("Regent not found");
     return mapRow(data as RegentRow);
+  }
+  async function returningGrant(query: PromiseLike<QueryResult>) {
+    let response: QueryResult;
+    try {
+      response = await query;
+    } catch {
+      // Thrown errors do not establish whether the statement has completed.
+      throw new RegentGrantFailure("unknown");
+    }
+    if (response.error) {
+      // These SQLSTATEs confirm statement rejection/rollback. Transport errors,
+      // PostgREST response-shaping errors and unknown-completion SQLSTATEs do not.
+      const confirmed = [
+        "23502",
+        "23503",
+        "23505",
+        "23514",
+        "42501",
+        "P0001",
+        "40001",
+        "40P01",
+        "57014",
+      ].includes(response.error.code ?? "");
+      throw new RegentGrantFailure(
+        confirmed ? "confirmed_rejection" : "unknown",
+        confirmed && response.error.code === "23505",
+      );
+    }
+    if (!response.data) throw new RegentGrantFailure("unknown");
+    return mapRow(response.data as RegentRow);
   }
   return {
     async list() {
@@ -224,7 +269,7 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
       return data ? mapRow(data) : null;
     },
     grant(input) {
-      return returning(
+      return returningGrant(
         supabaseAdmin
           .from("choir_regents")
           .insert({
@@ -240,7 +285,7 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
       );
     },
     replace(input) {
-      return returning(
+      return returningGrant(
         supabaseAdmin.rpc("replace_active_choir_regent", {
           p_choir_id: input.choirId,
           p_user_id: input.userId,
