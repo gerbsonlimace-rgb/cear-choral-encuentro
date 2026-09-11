@@ -52,7 +52,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
+          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       {
         property: "og:title",
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
+          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: SOCIAL_IMAGE_URL },
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/")({
       {
         name: "twitter:description",
         content:
-          "De 20 a 22 de novembro de 2026, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.",
+          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { name: "twitter:image", content: SOCIAL_IMAGE_URL },
     ],
