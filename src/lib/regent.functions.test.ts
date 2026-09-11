@@ -227,12 +227,15 @@ describe("regent password server boundaries", () => {
 });
 
 describe("regent password change service", () => {
-  const tokenHash = "b".repeat(64);
+  const operationHash = "b".repeat(64);
+  const candidateFingerprint = "c".repeat(64);
 
   function setupPasswordService() {
     const repository: RegentPasswordChangeRepository = {
       armRetryProof: vi.fn(async () => true),
-      clearRetryProof: vi.fn(async () => {}),
+      verifyCandidate: vi.fn(async () => true),
+      makeRetryable: vi.fn(async () => true),
+      clearRetryProof: vi.fn(async () => true),
       completeWithProof: vi.fn(async () => true),
       getPasswordOperation: vi.fn(async () => null),
       isCompleted: vi.fn(async () => false),
@@ -241,9 +244,10 @@ describe("regent password change service", () => {
       inspectUser: vi.fn(async () => ({ email: regent.email!, appMetadata: {} })),
       passwordMatches: vi.fn(async (): Promise<"matches" | "different" | "unknown"> => "different"),
       updateUserById: vi.fn(async (): Promise<"updated" | "rejected" | "unknown"> => "updated"),
+      updateAppMetadata: vi.fn(async (): Promise<"updated" | "rejected" | "unknown"> => "updated"),
     };
     const proofs = {
-      createHash: vi.fn(async () => tokenHash),
+      createOperation: vi.fn(async () => ({ operationHash, candidateFingerprint })),
     };
     return {
       repository,
@@ -260,18 +264,27 @@ describe("regent password change service", () => {
       status: "success",
     });
 
-    expect(repository.armRetryProof).toHaveBeenCalledWith(regent, tokenHash);
+    expect(repository.armRetryProof).toHaveBeenCalledWith(
+      regent,
+      operationHash,
+      candidateFingerprint,
+    );
+    expect(repository.verifyCandidate).toHaveBeenCalledWith(
+      regent,
+      operationHash,
+      candidateFingerprint,
+    );
     expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(regent.userId, {
       password: "SenhaNova123",
       appMetadata: {
         regent_password_operation: {
           kind: "regent",
           membership_id: regent.membershipId,
-          operation_hash: tokenHash,
+          operation_hash: operationHash,
         },
       },
     });
-    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, operationHash);
     expect(vi.mocked(repository.armRetryProof).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(auth.updateUserById).mock.invocationCallOrder[0],
     );
@@ -298,7 +311,11 @@ describe("regent password change service", () => {
 
     await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
 
-    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(
+      regent,
+      operationHash,
+      "candidate_verified",
+    );
     expect(repository.completeWithProof).not.toHaveBeenCalled();
   });
 
@@ -306,7 +323,9 @@ describe("regent password change service", () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "regent",
-      hash: tokenHash,
+      hash: operationHash,
+      stage: "candidate_verified",
+      candidateFingerprint,
     });
     vi.mocked(auth.inspectUser).mockResolvedValue({
       email: regent.email,
@@ -314,14 +333,14 @@ describe("regent password change service", () => {
         regent_password_operation: {
           kind: "regent",
           membership_id: regent.membershipId,
-          operation_hash: tokenHash,
+          operation_hash: operationHash,
         },
       },
     });
 
     await expect(service.complete(regent)).resolves.toEqual({ status: "success" });
 
-    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, operationHash);
   });
 
   it("rejects direct completion when the proof does not match a still-gated membership", async () => {
@@ -332,7 +351,9 @@ describe("regent password change service", () => {
     });
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "regent",
-      hash: tokenHash,
+      hash: operationHash,
+      stage: "candidate_verified",
+      candidateFingerprint,
     });
     vi.mocked(repository.completeWithProof).mockResolvedValue(false);
     vi.mocked(repository.isCompleted).mockResolvedValue(false);
@@ -369,6 +390,7 @@ describe("regent password change service", () => {
     const { repository, proofs } = setupPasswordService();
     const auth = {
       updateUserById: vi.fn(async () => {}),
+      updateAppMetadata: vi.fn(async () => "updated" as const),
       inspectUser: vi.fn(async () => ({ email: regent.email, appMetadata: {} })),
       passwordMatches: vi.fn(async () => "matches" as const),
     };
@@ -380,13 +402,18 @@ describe("regent password change service", () => {
 
     expect(auth.passwordMatches).toHaveBeenCalledExactlyOnceWith(regent.email, "SenhaTemp123");
     expect(auth.updateUserById).not.toHaveBeenCalled();
-    expect(repository.clearRetryProof).toHaveBeenCalled();
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(
+      regent,
+      operationHash,
+      "claimed",
+    );
   });
 
   it("recovers an operation whose Auth response was lost without changing the password again", async () => {
     const { repository, proofs } = setupPasswordService();
     const auth = {
       updateUserById: vi.fn(async () => "unknown" as const),
+      updateAppMetadata: vi.fn(async () => "updated" as const),
       inspectUser: vi
         .fn()
         .mockResolvedValueOnce({ email: regent.email, appMetadata: {} })
@@ -396,7 +423,7 @@ describe("regent password change service", () => {
             regent_password_operation: {
               kind: "regent",
               membership_id: regent.membershipId,
-              operation_hash: tokenHash,
+              operation_hash: operationHash,
             },
           },
         }),
@@ -419,7 +446,9 @@ describe("regent password change service", () => {
     vi.mocked(repository.armRetryProof).mockRejectedValue(new TypeError("transport lost"));
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "regent",
-      hash: tokenHash,
+      hash: operationHash,
+      stage: "claimed",
+      candidateFingerprint,
     });
 
     await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
@@ -427,7 +456,7 @@ describe("regent password change service", () => {
     });
 
     expect(auth.updateUserById).toHaveBeenCalledOnce();
-    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, operationHash);
   });
 
   it("releases an exact read-back claim if pre-Auth inspection fails", async () => {
@@ -435,7 +464,9 @@ describe("regent password change service", () => {
     vi.mocked(repository.armRetryProof).mockRejectedValue(new TypeError("claim response lost"));
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "regent",
-      hash: tokenHash,
+      hash: operationHash,
+      stage: "claimed",
+      candidateFingerprint,
     });
     vi.mocked(auth.inspectUser).mockRejectedValue(new TypeError("Auth unavailable"));
 
@@ -443,7 +474,11 @@ describe("regent password change service", () => {
       status: "rejected",
     });
 
-    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(
+      regent,
+      operationHash,
+      "claimed",
+    );
     expect(auth.updateUserById).not.toHaveBeenCalled();
   });
 
@@ -452,7 +487,9 @@ describe("regent password change service", () => {
     vi.mocked(repository.armRetryProof).mockResolvedValue(false);
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "admin",
-      hash: tokenHash,
+      hash: operationHash,
+      stage: "claimed",
+      candidateFingerprint: null,
     });
 
     await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
@@ -475,6 +512,142 @@ describe("regent password change service", () => {
     expect(repository.completeWithProof).not.toHaveBeenCalled();
   });
 
+  it("adopts the same candidate after an unknown unapplied Auth result and reissues the exact operation", async () => {
+    const { service, repository, auth, proofs } = setupPasswordService();
+    vi.mocked(auth.updateUserById)
+      .mockResolvedValueOnce("unknown")
+      .mockResolvedValueOnce("updated");
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "recovery_required",
+    });
+
+    vi.mocked(proofs.createOperation).mockResolvedValueOnce({
+      operationHash: "d".repeat(64),
+      candidateFingerprint,
+    });
+    vi.mocked(repository.armRetryProof).mockResolvedValueOnce(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValueOnce({
+      kind: "regent",
+      hash: operationHash,
+      stage: "retryable",
+      candidateFingerprint,
+    });
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "success" });
+
+    expect(auth.updateUserById).toHaveBeenNthCalledWith(2, regent.userId, {
+      password: "SenhaNova123",
+      appMetadata: {
+        regent_password_operation: {
+          kind: "regent",
+          membership_id: regent.membershipId,
+          operation_hash: operationHash,
+        },
+      },
+    });
+    expect(repository.completeWithProof).toHaveBeenCalledWith(regent, operationHash);
+    expect(repository.clearRetryProof).not.toHaveBeenCalled();
+  });
+
+  it("repairs only Auth metadata when the same verified candidate already became current", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.armRetryProof).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: operationHash,
+      stage: "candidate_verified",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("matches");
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "success" });
+
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(auth.updateAppMetadata).toHaveBeenCalledExactlyOnceWith(regent.userId, {
+      regent_password_operation: {
+        kind: "regent",
+        membership_id: regent.membershipId,
+        operation_hash: operationHash,
+      },
+    });
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, operationHash);
+  });
+
+  it("reconciles a lost metadata-repair response from the exact Auth proof", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.armRetryProof).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: operationHash,
+      stage: "retryable",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("matches");
+    vi.mocked(auth.updateAppMetadata).mockRejectedValue(new TypeError("response lost"));
+    vi.mocked(auth.inspectUser)
+      .mockResolvedValueOnce({ email: regent.email, appMetadata: {} })
+      .mockResolvedValueOnce({
+        email: regent.email,
+        appMetadata: {
+          regent_password_operation: {
+            kind: "regent",
+            membership_id: regent.membershipId,
+            operation_hash: operationHash,
+          },
+        },
+      });
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "success" });
+
+    expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, operationHash);
+  });
+
+  it("keeps the candidate retryable when metadata repair is still unproven", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.armRetryProof).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: operationHash,
+      stage: "retryable",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("matches");
+    vi.mocked(auth.updateAppMetadata).mockRejectedValue(new TypeError("Auth unavailable"));
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "recovery_required",
+    });
+
+    expect(repository.clearRetryProof).not.toHaveBeenCalled();
+    expect(repository.completeWithProof).not.toHaveBeenCalled();
+  });
+
+  it("rejects a different candidate while an unproven operation may still write Auth", async () => {
+    const { service, repository, auth, proofs } = setupPasswordService();
+    vi.mocked(proofs.createOperation).mockResolvedValue({
+      operationHash: "d".repeat(64),
+      candidateFingerprint: "e".repeat(64),
+    });
+    vi.mocked(repository.armRetryProof).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: operationHash,
+      stage: "candidate_verified",
+      candidateFingerprint,
+    });
+
+    await expect(service.change(regent, "OutraSenha123")).resolves.toEqual({
+      status: "rejected",
+    });
+
+    expect(auth.inspectUser).not.toHaveBeenCalled();
+    expect(auth.passwordMatches).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(auth.updateAppMetadata).not.toHaveBeenCalled();
+    expect(repository.clearRetryProof).not.toHaveBeenCalled();
+  });
+
   it("releases its claim when the current-password probe is unavailable before any Auth write", async () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(auth.passwordMatches).mockResolvedValue("unknown");
@@ -482,7 +655,11 @@ describe("regent password change service", () => {
     await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
 
     expect(auth.updateUserById).not.toHaveBeenCalled();
-    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(
+      regent,
+      operationHash,
+      "claimed",
+    );
   });
 });
 
@@ -490,14 +667,67 @@ describe("Supabase regent password proof adapter", () => {
   it("arms only the gated active caller membership with the proof hash", async () => {
     const hash = "b".repeat(64);
 
-    await createSupabaseRegentPasswordChangeRepository().armRetryProof(regent, hash);
+    const candidate = "c".repeat(64);
 
-    expect(rpc).toHaveBeenCalledExactlyOnceWith("claim_choir_regent_password_operation", {
+    await createSupabaseRegentPasswordChangeRepository().armRetryProof(regent, hash, candidate);
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("claim_choir_regent_password_candidate_operation", {
+      p_candidate_fingerprint: candidate,
       p_membership_id: regent.membershipId,
       p_user_id: regent.userId,
-      p_operation_kind: "regent",
       p_operation_hash: hash,
     });
+  });
+
+  it("durably verifies the exact candidate before any Auth password write", async () => {
+    const hash = "b".repeat(64);
+    const candidate = "c".repeat(64);
+
+    await createSupabaseRegentPasswordChangeRepository().verifyCandidate(regent, hash, candidate);
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith(
+      "verify_choir_regent_password_operation_candidate",
+      {
+        p_candidate_fingerprint: candidate,
+        p_membership_id: regent.membershipId,
+        p_user_id: regent.userId,
+        p_operation_hash: hash,
+      },
+    );
+  });
+
+  it("marks only the exact verified candidate retryable after an unknown Auth result", async () => {
+    const hash = "b".repeat(64);
+    const candidate = "c".repeat(64);
+
+    await createSupabaseRegentPasswordChangeRepository().makeRetryable(regent, hash, candidate);
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("mark_choir_regent_password_operation_retryable", {
+      p_candidate_fingerprint: candidate,
+      p_membership_id: regent.membershipId,
+      p_user_id: regent.userId,
+      p_operation_hash: hash,
+    });
+  });
+
+  it("releases only the exact expected candidate stage", async () => {
+    const hash = "b".repeat(64);
+
+    await createSupabaseRegentPasswordChangeRepository().clearRetryProof(
+      regent,
+      hash,
+      "candidate_verified",
+    );
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith(
+      "release_choir_regent_password_candidate_operation",
+      {
+        p_expected_stage: "candidate_verified",
+        p_membership_id: regent.membershipId,
+        p_user_id: regent.userId,
+        p_operation_hash: hash,
+      },
+    );
   });
 
   it("clears the gate only for an active caller row with the matching proof hash", async () => {

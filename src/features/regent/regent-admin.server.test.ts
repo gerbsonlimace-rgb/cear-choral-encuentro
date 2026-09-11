@@ -51,6 +51,7 @@ function setup() {
     claimPasswordOperation: vi.fn(async () => true),
     getPasswordOperation: vi.fn(async () => null),
     finishPasswordOperation: vi.fn(async () => row),
+    finishRegentPasswordOperation: vi.fn(async () => {}),
     releasePasswordOperation: vi.fn(async () => {}),
   };
   const auth: RegentAuthAdminPort = {
@@ -351,6 +352,94 @@ describe("regent administrative lifecycle", () => {
     );
   });
 
+  it("finishes a proven regent operation then applies the current administrator reset", async () => {
+    const { service, auth, repository } = setup();
+    Object.assign(repository, {
+      claimPasswordOperation: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
+      getPasswordOperation: vi.fn(async () => ({
+        kind: "regent" as const,
+        hash: "b".repeat(64),
+      })),
+    });
+    vi.mocked(auth.inspectUser).mockResolvedValue({
+      appMetadata: {
+        regent_password_operation: {
+          kind: "regent",
+          membership_id: row.id,
+          operation_hash: "b".repeat(64),
+        },
+      },
+    });
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "success",
+    });
+
+    const claims = vi.mocked(repository.claimPasswordOperation);
+    const currentHash = claims.mock.calls[1][3];
+    expect(repository.finishRegentPasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "b".repeat(64),
+    );
+    expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(row.userId, {
+      password: "NewPassword123",
+      appMetadata: {
+        regent_password_operation: {
+          kind: "admin",
+          membership_id: row.id,
+          operation_hash: currentHash,
+        },
+      },
+    });
+    expect(
+      vi.mocked(repository.finishRegentPasswordOperation).mock.invocationCallOrder[0],
+    ).toBeLessThan(claims.mock.invocationCallOrder[1]);
+  });
+
+  it("does not report success for the current reset when a fresh admin claim loses the race", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.claimPasswordOperation)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
+    vi.mocked(repository.getPasswordOperation)
+      .mockResolvedValueOnce({ kind: "regent", hash: "b".repeat(64) })
+      .mockResolvedValueOnce(null);
+    vi.mocked(auth.inspectUser).mockResolvedValue({
+      appMetadata: {
+        regent_password_operation: {
+          kind: "regent",
+          membership_id: row.id,
+          operation_hash: "b".repeat(64),
+        },
+      },
+    });
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(repository.finishRegentPasswordOperation).toHaveBeenCalledOnce();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
+  });
+
+  it("does not finalize an unproven regent operation before an administrator reset", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: "b".repeat(64),
+    });
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(repository.finishRegentPasswordOperation).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+
   it("releases an exact read-back admin claim if pre-Auth inspection fails", async () => {
     const { service, auth, repository } = setup();
     vi.mocked(repository.claimPasswordOperation).mockRejectedValue(
@@ -571,6 +660,22 @@ describe("Supabase administrative adapters", () => {
       ["user_id", row.userId],
     ]);
     expect(query.is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
+  });
+  it("finishes an Auth-proven regent operation through the exact shared RPC", async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+
+    await createSupabaseRegentAdminRepository().finishRegentPasswordOperation(
+      row.id,
+      row.userId,
+      "b".repeat(64),
+    );
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("finish_choir_regent_password_operation", {
+      p_membership_id: row.id,
+      p_user_id: row.userId,
+      p_operation_kind: "regent",
+      p_operation_hash: "b".repeat(64),
+    });
   });
   it("uses email_confirm without sending an invitation", async () => {
     authAdmin.createUser.mockResolvedValue({ data: { user: { id: "new" } }, error: null });

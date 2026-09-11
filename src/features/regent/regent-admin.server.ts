@@ -36,6 +36,7 @@ export type RegentAdminRepository = {
     kind: "admin",
     hash: string,
   ): Promise<AdminRegentRow>;
+  finishRegentPasswordOperation(id: string, userId: string, hash: string): Promise<void>;
   releasePasswordOperation(id: string, userId: string, kind: "admin", hash: string): Promise<void>;
 };
 export type RegentAuthAdminPort = {
@@ -86,13 +87,13 @@ function createOperationToken() {
   return bytesToHex(globalThis.crypto.getRandomValues(new Uint8Array(32)));
 }
 
-function adminOperationProof(id: string, hash: string) {
-  return { kind: "admin", membership_id: id, operation_hash: hash } as const;
+function passwordOperationProof(id: string, kind: "admin" | "regent", hash: string) {
+  return { kind, membership_id: id, operation_hash: hash } as const;
 }
 
-function hasAdminOperationProof(
+function hasPasswordOperationProof(
   metadata: Record<string, unknown>,
-  proof: ReturnType<typeof adminOperationProof>,
+  proof: ReturnType<typeof passwordOperationProof>,
 ) {
   const value = metadata.regent_password_operation;
   if (!value || typeof value !== "object") return false;
@@ -220,18 +221,24 @@ export function createRegentAdminService({
 
         if (!claimedByThisCall) {
           const current = await repository.getPasswordOperation(id, regent.userId);
-          if (!current || current.kind !== "admin") return failure();
-          if (claimResponseUnknown && current.hash === hash) {
+          if (!current) return failure();
+          if (claimResponseUnknown && current.kind === "admin" && current.hash === hash) {
             claimedByThisCall = true;
           } else {
             const authUser = await auth.inspectUser(regent.userId);
-            const proof = adminOperationProof(id, current.hash);
-            if (!hasAdminOperationProof(authUser.appMetadata, proof)) return failure();
+            const proof = passwordOperationProof(id, current.kind, current.hash);
+            if (!hasPasswordOperationProof(authUser.appMetadata, proof)) return failure();
             try {
-              await repository.finishPasswordOperation(id, regent.userId, "admin", current.hash);
+              if (current.kind === "admin") {
+                await repository.finishPasswordOperation(id, regent.userId, "admin", current.hash);
+              } else {
+                await repository.finishRegentPasswordOperation(id, regent.userId, current.hash);
+              }
             } catch {
               const remaining = await repository.getPasswordOperation(id, regent.userId);
-              if (remaining?.kind === "admin" && remaining.hash === current.hash) return failure();
+              if (remaining?.kind === current.kind && remaining.hash === current.hash) {
+                return failure();
+              }
             }
 
             claimResponseUnknown = false;
@@ -256,8 +263,8 @@ export function createRegentAdminService({
         }
 
         let authUser = await auth.inspectUser(regent.userId);
-        const proof = adminOperationProof(id, hash);
-        authProven = hasAdminOperationProof(authUser.appMetadata, proof);
+        const proof = passwordOperationProof(id, "admin", hash);
+        authProven = hasPasswordOperationProof(authUser.appMetadata, proof);
 
         if (!authProven) {
           const updateOutcome = await auth.updateUserById(regent.userId, {
@@ -272,7 +279,7 @@ export function createRegentAdminService({
           } else {
             try {
               authUser = await auth.inspectUser(regent.userId);
-              authProven = hasAdminOperationProof(authUser.appMetadata, proof);
+              authProven = hasPasswordOperationProof(authUser.appMetadata, proof);
             } catch {
               authProven = false;
             }
@@ -480,6 +487,16 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
         throw new Error("Password operation final state unavailable");
       }
       return updated;
+    },
+    async finishRegentPasswordOperation(id, userId, hash) {
+      const { data, error } = await supabaseAdmin.rpc("finish_choir_regent_password_operation", {
+        p_membership_id: id,
+        p_user_id: userId,
+        p_operation_kind: "regent",
+        p_operation_hash: hash,
+      });
+      checkError(error);
+      if (!data) throw new Error("Regent password operation could not be finished");
     },
     async releasePasswordOperation(id, userId, kind, hash) {
       const { error } = await supabaseAdmin.rpc("release_choir_regent_password_operation", {
