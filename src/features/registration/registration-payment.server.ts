@@ -24,6 +24,10 @@ export type RegistrationPaymentRecord = {
   paymentMethod: "pix" | "credit_card" | null;
   installments: number | null;
   receiptUrl: string | null;
+  participantName?: string | null;
+  choirName?: string | null;
+  paidAmountCents?: number | null;
+  paidAt?: string | null;
 };
 
 export type PublicPaymentStatus =
@@ -33,7 +37,14 @@ export type PublicPaymentStatus =
       paymentMethod: "pix" | "credit_card";
       installments: number;
       receiptUrl?: string;
+      orderNsu?: string;
+      amountCents?: number;
+      paidAmountCents?: number;
+      paidAt?: string;
+      participantName?: string;
+      choirName?: string;
     };
+
 
 export type RegistrationRepository = {
   createPending(
