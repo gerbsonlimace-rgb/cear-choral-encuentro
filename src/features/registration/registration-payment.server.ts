@@ -319,12 +319,12 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         institution: null,
         role: null,
         observations: null,
-        include_shirt: input.includeShirt ?? false,
-        shirt_size: input.shirtSize ?? null,
+        include_shirt: false,
+        shirt_size: null,
         pricing_type: input.pricingType,
         standard_price_cents: input.standardPriceCents,
         registration_price_cents: input.registrationPriceCents,
-        shirt_price_cents: input.shirtPriceCents ?? null,
+        shirt_price_cents: null,
         amount_cents: input.amountCents,
         payment_status: "pending",
         order_nsu: input.orderNsu,
@@ -333,7 +333,14 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       if (error?.code === "23505" && error.message.includes("registrations_cpf_uidx")) {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
       }
-      if (error) throw new Error("Não foi possível salvar a inscrição.");
+      if (error) {
+        console.error("[Registration] insert failed", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        });
+        throw new Error("Não foi possível salvar a inscrição.");
+      }
     },
 
     saveCheckoutUrl: async (orderNsu, checkoutUrl) => {
