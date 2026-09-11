@@ -88,7 +88,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
   return {
