@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB. De 20 a 22 de novembro de 2026, em Quixadá. Celebre a tradição, a formação e a fé pela música sacra.",
+          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       {
         name: "author",
@@ -100,7 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "De 20 a 22 de novembro de 2026, em Quixadá. Inscreva-se no II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.",
+          "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_URL },
