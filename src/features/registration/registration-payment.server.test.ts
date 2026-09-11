@@ -79,7 +79,7 @@ const trustedSelection = {
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
-  cpf: "52998224725",
+  cpf,
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
