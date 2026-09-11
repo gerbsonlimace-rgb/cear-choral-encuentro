@@ -14,11 +14,17 @@ import {
 
 import eventLogo from "@/assets/logo-coros-preto.png";
 import pixLogo from "@/assets/logo-pix.svg";
-import eventLogo from "@/assets/logo-coros-preto.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
@@ -203,6 +209,7 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
+  const shirtPriceCents = configuration?.shirtPriceCents ?? null;
   const selectedVoicePartLabel =
     voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
   const totalAmount =
@@ -256,6 +263,7 @@ export function RegistrationSection({
         standardPriceCents: selectedChoir.standardPriceCents,
         registrationPriceCents: selectedChoir.registrationPriceCents,
       },
+      displayedShirtPriceCents: shirtPriceCents,
     });
     if (!parsedForm.success) {
       const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
@@ -421,6 +429,23 @@ export function RegistrationSection({
                         />
                       </div>
                       {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cpf" className="font-semibold">
+                        CPF
+                      </Label>
+                      <Input
+                        id="cpf"
+                        required
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={form.cpf}
+                        onChange={(event) => handleChange("cpf", formatCpf(event.target.value))}
+                        placeholder="000.000.000-00"
+                        className={inputClassName}
+                      />
+                      {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
                     </div>
 
                     <div className="space-y-1.5">

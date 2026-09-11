@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { getParticipantRequestAccess, loadRegistration } = vi.hoisted(() => ({
+const { getParticipantRequestAccess, loadRegistration, loginParticipantWithCredentials } = vi.hoisted(() => ({
   getParticipantRequestAccess: vi.fn(),
   loadRegistration: vi.fn(),
+  loginParticipantWithCredentials: vi.fn(),
 }));
 
 vi.mock("@/features/participant/participant-auth.server", () => ({
   getParticipantRequestAccess,
   getParticipantRegistrationLoader: () => ({ load: loadRegistration }),
+}));
+
+vi.mock("@/features/registration/participant-area.server", () => ({
+  loginParticipantWithCredentials,
 }));
 
 vi.mock("@tanstack/react-start", async (importOriginal) => {
@@ -24,6 +29,9 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
         handler(handler: (input: unknown) => unknown) {
           return Object.assign(handler, { method: options.method, middlewares });
         },
+        validator() {
+          return builder;
+        },
       };
       return builder;
     },
@@ -31,7 +39,7 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
 });
 
 import { requireParticipantAccess } from "@/features/participant/participant-auth.middleware";
-import { getParticipantAccess, getParticipantRegistration } from "./participant.functions";
+import { getParticipantAccess, getParticipantRegistration, loginParticipant } from "./participant.functions";
 
 const ownAccess = {
   status: "authorized" as const,
@@ -47,6 +55,19 @@ type ServerFunction = {
 };
 
 describe("participant server-function boundaries", () => {
+  it("passes validated credentials to the participant login service", async () => {
+    loginParticipantWithCredentials.mockResolvedValue({ ok: true, registrations: [] });
+    const serverFunction = loginParticipant as unknown as ServerFunction;
+
+    await expect(
+      serverFunction({ data: { email: " Maria@Example.com ", password: "secret" } }),
+    ).resolves.toEqual({ ok: true, registrations: [] });
+    expect(loginParticipantWithCredentials).toHaveBeenCalledExactlyOnceWith({
+      email: " Maria@Example.com ",
+      password: "secret",
+    });
+  });
+
   it("exposes a read-only neutral access probe", async () => {
     getParticipantRequestAccess.mockResolvedValue({ status: "unavailable" });
     const serverFunction = getParticipantAccess as unknown as ServerFunction;

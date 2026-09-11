@@ -1,17 +1,6 @@
 import { z } from "zod";
 import { displayedQuoteSchema, type DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
 
-const voicePartValues = ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"] as const;
-export const voicePartSchema = z.enum(voicePartValues);
-export type VoicePart = z.infer<typeof voicePartSchema>;
-export const voicePartOptions: ReadonlyArray<{ value: VoicePart; label: string }> = [
-  { value: "soprano", label: "Soprano" },
-  { value: "contralto", label: "Contralto" },
-  { value: "tenor", label: "Tenor" },
-  { value: "baixo", label: "Baixo" },
-  { value: "nao_sei_informar", label: "Não sei informar" },
-];
-
 function isValidCpf(value: string): boolean {
   if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
 
@@ -79,6 +68,17 @@ export const birthDateSchema = z
     "A data de nascimento não pode estar no futuro.",
   );
 
+export const registrationResumeSchema = z
+  .object({
+    cpf: cpfSchema,
+    birthDate: birthDateSchema,
+  })
+  .strict();
+
+export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
+
+export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
+
 export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BYTES / 3) * 4;
 
@@ -106,6 +106,9 @@ export const registrationSchema = z
     voicePart: voicePartSchema,
     photo: registrationPhotoSchema,
     displayedQuote: displayedQuoteSchema,
+    displayedShirtPriceCents: z.number().int().positive().nullable().optional(),
+    includeShirt: z.boolean().optional(),
+    shirtSize: shirtSizeSchema.or(z.literal("")).optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -120,6 +123,29 @@ export const registrationSchema = z
         message: "O valor exibido para a inscrição é inválido.",
       });
     }
+    const includeShirt = value.includeShirt ?? false;
+    const shirtSize = value.shirtSize ?? "";
+    if (includeShirt && !shirtSize) {
+      context.addIssue({
+        code: "custom",
+        path: ["shirtSize"],
+        message: "Escolha o tamanho da camisa.",
+      });
+    }
+    if (!includeShirt && shirtSize) {
+      context.addIssue({
+        code: "custom",
+        path: ["shirtSize"],
+        message: "O tamanho só pode ser informado quando a camisa está incluída.",
+      });
+    }
+    if (includeShirt && value.displayedShirtPriceCents == null) {
+      context.addIssue({
+        code: "custom",
+        path: ["includeShirt"],
+        message: "A camisa não está disponível.",
+      });
+    }
   });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -129,21 +155,32 @@ export type CheckoutItem = { quantity: 1; price: number; description: string };
 export function buildCheckoutItems(
   _input: RegistrationInput,
   trustedQuote: DisplayedQuote,
+  trustedShirtPriceCents: number | null = null,
 ): CheckoutItem[] {
-  return [
+  const items: CheckoutItem[] = [
     {
       quantity: 1,
       price: trustedQuote.registrationPriceCents,
       description: "Inscrição — II Encontro de Coros",
     },
   ];
+  if (_input.includeShirt) {
+    if (trustedShirtPriceCents === null) throw new Error("A camisa não está disponível.");
+    items.push({
+      quantity: 1,
+      price: trustedShirtPriceCents,
+      description: `Camisa oficial — tamanho ${_input.shirtSize ?? ""}`,
+    });
+  }
+  return items;
 }
 
 export function calculateOrderAmountCents(
   input: RegistrationInput,
   trustedQuote: DisplayedQuote,
+  trustedShirtPriceCents: number | null = null,
 ): number {
-  return buildCheckoutItems(input, trustedQuote).reduce(
+  return buildCheckoutItems(input, trustedQuote, trustedShirtPriceCents).reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );

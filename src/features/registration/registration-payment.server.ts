@@ -19,6 +19,8 @@ import {
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
+const REGISTRATION_CPF_CONFLICT_MESSAGE =
+  "Já existe uma inscrição para este CPF. Use Retomar pagamento.";
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -33,6 +35,7 @@ export type RegistrationPaymentRecord = {
   choirName?: string | null;
   paidAmountCents?: number | null;
   paidAt?: string | null;
+  shirtSize?: string | null;
 };
 
 export type PublicPaymentStatus =
@@ -59,6 +62,7 @@ export type RegistrationResumeResult =
   { status: "pending"; checkoutUrl: string } | { status: "paid" };
 
 export type RegistrationRepository = {
+  findByCpf?: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
   createPending(
     input: Omit<RegistrationInput, "photo"> & {
       orderNsu: string;
@@ -68,6 +72,7 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
+      shirtPriceCents?: number | null;
     },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
@@ -115,7 +120,7 @@ export function createRegistrationPaymentService(deps: {
 
   return {
     startCheckout: async (input: RegistrationInput) => {
-      const existing = await deps.repository.findByCpf(input.cpf);
+      const existing = await deps.repository.findByCpf?.(input.cpf);
       if (existing) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
 
       const selection = await deps.resolveChoirSelection(input.choirId);
@@ -146,7 +151,7 @@ export function createRegistrationPaymentService(deps: {
           pricingType: selection.quote.pricingType,
           standardPriceCents: selection.quote.standardPriceCents,
           registrationPriceCents: selection.quote.registrationPriceCents,
-          shirtPriceCents: input.includeShirt ? selection.shirtPriceCents : null,
+          ...(input.includeShirt ? { shirtPriceCents: selection.shirtPriceCents } : {}),
         });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
@@ -315,12 +320,12 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         institution: null,
         role: null,
         observations: null,
-        include_shirt: false,
-        shirt_size: null,
+        include_shirt: input.includeShirt ?? false,
+        shirt_size: input.shirtSize ?? null,
         pricing_type: input.pricingType,
         standard_price_cents: input.standardPriceCents,
         registration_price_cents: input.registrationPriceCents,
-        shirt_price_cents: null,
+        shirt_price_cents: input.shirtPriceCents ?? null,
         amount_cents: input.amountCents,
         payment_status: "pending",
         order_nsu: input.orderNsu,

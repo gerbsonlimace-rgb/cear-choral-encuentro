@@ -33,7 +33,6 @@ import {
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
-  createSupabaseRegistrationPhotoStorage,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
