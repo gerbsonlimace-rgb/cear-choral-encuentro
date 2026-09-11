@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { paymentLookupSchema } from "@/features/registration/registration.domain";
 import { ComplementPaymentConfirmationPage } from "@/features/regent/ComplementPaymentConfirmationPage";
-import { requirePortalReadyRequestAccess } from "@/features/regent/regent-auth.middleware";
 
 const returnSearchSchema = z.object({
   order_nsu: z.string().optional(),
@@ -11,9 +10,6 @@ const returnSearchSchema = z.object({
   receipt_url: z.string().optional(),
 });
 export const Route = createFileRoute("/regente/pagamento")({
-  server: {
-    middleware: [requirePortalReadyRequestAccess],
-  },
   validateSearch: (search) => returnSearchSchema.parse(search),
   component: RegentPaymentReturnRoute,
 });

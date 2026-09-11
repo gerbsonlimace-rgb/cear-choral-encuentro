@@ -20,6 +20,7 @@ import {
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
+  verifyComplementPayment,
   type RegentPasswordChangeRepository,
 } from "./regent.functions";
 
@@ -283,6 +284,8 @@ describe("regent portal handler factory", () => {
     const summary = getRegentPortalSummary as unknown as { middlewares: unknown[] };
     expect(list.middlewares).toContain(requirePortalReadyAccess);
     expect(summary.middlewares).toContain(requirePortalReadyAccess);
+    const verify = verifyComplementPayment as unknown as { middlewares: unknown[] };
+    expect(verify.middlewares).toContain(requirePortalReadyAccess);
   });
 });
 

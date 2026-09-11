@@ -24,7 +24,10 @@ InfinitePay. Não devem ser portadas por aplicação cega de patches de outro re
 
 ## Dependência planejada da Task 10
 
-A rota `/regente/pagamento` exige `requirePortalReadyAccess` no servidor e, após
-confirmação, redireciona para `/regente`. A rota `/regente` será criada pela Task 11;
-essa ausência é uma dependência planejada e não deve ser resolvida com um placeholder
-na Task 10.
+A função `verifyComplementPayment` permanece protegida por `requirePortalReadyAccess`.
+O retorno da InfinitePay renderiza primeiro sem dados privados: o token do portal fica
+no `localStorage` e só é anexado pelo cliente ao server function, portanto não se usa
+request middleware na rota full-page (evitando 500 antes da renderização). Após
+confirmação, a página redireciona para `/regente`. A rota `/regente` será criada pela
+Task 11; essa ausência é uma dependência planejada e não deve ser resolvida com um
+placeholder na Task 10.

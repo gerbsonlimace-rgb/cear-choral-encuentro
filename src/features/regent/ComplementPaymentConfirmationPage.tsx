@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyComplementPayment } from "@/lib/regent.functions";
@@ -18,22 +18,27 @@ export function ComplementPaymentConfirmationPage({
 }: Props) {
   const [state, setState] = useState<State>(lookup ? "processing" : "error");
   const [attempt, setAttempt] = useState(0);
+  const verifyPaymentRef = useRef(verifyPayment);
+  const onSuccessRef = useRef(onSuccess);
+  verifyPaymentRef.current = verifyPayment;
+  onSuccessRef.current = onSuccess;
   useEffect(() => {
     if (!lookup) return;
     let active = true;
-    void verifyPayment(lookup)
+    void verifyPaymentRef
+      .current(lookup)
       .then((result) => {
         if (!active) return;
         if (result.status === "paid") {
           setState("paid");
-          onSuccess?.();
+          onSuccessRef.current?.();
         } else setState("pending");
       })
       .catch(() => active && setState("error"));
     return () => {
       active = false;
     };
-  }, [attempt, lookup, onSuccess, verifyPayment]);
+  }, [attempt, lookup]);
   const title =
     state === "paid"
       ? "Pagamento confirmado"
