@@ -262,6 +262,91 @@ describe("participant registration loader", () => {
 });
 
 describe("Supabase participant repository", () => {
+  function query(result: { data: Record<string, unknown> | null; error: unknown }) {
+    const select = vi.fn();
+    const eq = vi.fn();
+    const maybeSingle = vi.fn(async () => result);
+    const builder = { select, eq, maybeSingle };
+    select.mockReturnValue(builder);
+    eq.mockReturnValue(builder);
+    return builder;
+  }
+
+  it("queries only the verified user's active account and its paid registration", async () => {
+    const accountQuery = query({
+      data: {
+        id: activePaidAccount.accountId,
+        registration_id: activePaidAccount.registrationId,
+        user_id: activePaidAccount.userId,
+        access_status: activePaidAccount.accessStatus,
+      },
+      error: null,
+    });
+    const registrationQuery = query({
+      data: { id: activePaidAccount.registrationId, payment_status: "paid" },
+      error: null,
+    });
+    from.mockImplementation((table) => {
+      if (table === "participant_accounts") return accountQuery;
+      if (table === "registrations") return registrationQuery;
+      throw new Error(`Unexpected table: ${String(table)}`);
+    });
+
+    await expect(
+      createSupabaseParticipantRepository().findAccessByUserId("user-1"),
+    ).resolves.toEqual(activePaidAccount);
+
+    expect(from.mock.calls).toEqual([["participant_accounts"], ["registrations"]]);
+    expect(accountQuery.select).toHaveBeenCalledExactlyOnceWith(
+      "id,registration_id,user_id,access_status",
+    );
+    expect(accountQuery.eq.mock.calls).toEqual([
+      ["user_id", "user-1"],
+      ["access_status", "active"],
+    ]);
+    expect(accountQuery.maybeSingle).toHaveBeenCalledOnce();
+    expect(registrationQuery.select).toHaveBeenCalledExactlyOnceWith("id,payment_status");
+    expect(registrationQuery.eq.mock.calls).toEqual([
+      ["id", activePaidAccount.registrationId],
+      ["payment_status", "paid"],
+    ]);
+    expect(registrationQuery.maybeSingle).toHaveBeenCalledOnce();
+  });
+
+  it("stops after maybeSingle returns no active account", async () => {
+    const accountQuery = query({ data: null, error: null });
+    from.mockReturnValue(accountQuery);
+
+    await expect(
+      createSupabaseParticipantRepository().findAccessByUserId("user-1"),
+    ).resolves.toBeNull();
+
+    expect(from).toHaveBeenCalledExactlyOnceWith("participant_accounts");
+    expect(accountQuery.maybeSingle).toHaveBeenCalledOnce();
+  });
+
+  it("returns no access when maybeSingle finds no paid linked registration", async () => {
+    const accountQuery = query({
+      data: {
+        id: activePaidAccount.accountId,
+        registration_id: activePaidAccount.registrationId,
+        user_id: activePaidAccount.userId,
+        access_status: activePaidAccount.accessStatus,
+      },
+      error: null,
+    });
+    const registrationQuery = query({ data: null, error: null });
+    from.mockImplementation((table) =>
+      table === "participant_accounts" ? accountQuery : registrationQuery,
+    );
+
+    await expect(
+      createSupabaseParticipantRepository().findAccessByUserId("user-1"),
+    ).resolves.toBeNull();
+
+    expect(registrationQuery.maybeSingle).toHaveBeenCalledOnce();
+  });
+
   it("creates a private photo URL for exactly 60 seconds", async () => {
     storageFrom.mockReturnValue({ createSignedUrl });
     createSignedUrl.mockResolvedValue({
@@ -274,6 +359,21 @@ describe("Supabase participant repository", () => {
     ).resolves.toBe("https://signed.example/photo");
     expect(storageFrom).toHaveBeenCalledExactlyOnceWith("registration-photos");
     expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith("private/photo.jpg", 60);
+  });
+
+  it.each([
+    ["a signing error", { data: null, error: { message: "storage unavailable" } }],
+    ["a missing signed URL", { data: { signedUrl: null }, error: null }],
+  ])("returns null for %s without exposing the private path", async (_case, response) => {
+    storageFrom.mockReturnValue({ createSignedUrl });
+    createSignedUrl.mockResolvedValue(response);
+    const privatePath = "private/participant/photo.jpg";
+
+    const result = await createSupabaseParticipantRepository().createPhotoUrl(privatePath);
+
+    expect(result).toBeNull();
+    expect(JSON.stringify(result)).not.toContain(privatePath);
+    expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith(privatePath, 60);
   });
 });
 
