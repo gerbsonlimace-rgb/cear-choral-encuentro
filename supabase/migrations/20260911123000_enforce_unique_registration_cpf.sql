@@ -14,6 +14,6 @@ begin
 end
 $$;
 
-create unique index registrations_cpf_uidx
+create unique index if not exists registrations_cpf_uidx
   on public.registrations (cpf)
   where cpf is not null;
