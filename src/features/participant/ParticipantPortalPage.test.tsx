@@ -181,8 +181,6 @@ describe("ParticipantPortalPage", () => {
       "Paróquia Catedral",
       "Regente",
       "Soprano",
-      "Sim",
-      "M",
       "Promocional",
       "Pago",
       "Cartão de crédito",
@@ -270,7 +268,6 @@ describe("ParticipantPortalPage", () => {
       expect(within(identification).queryByText(absentLabel)).not.toBeInTheDocument();
     }
     expect(identification).not.toHaveTextContent(/null|undefined/i);
-    expect(within(identification).getByText("Não")).toBeInTheDocument();
   });
 
   it("replaces a failed signed photo with the neutral avatar fallback", async () => {

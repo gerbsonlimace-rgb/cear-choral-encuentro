@@ -17,7 +17,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,choir_name,email,phone,city,institution,role,include_shirt,shirt_size,pricing_type,standard_price_cents,registration_price_cents,shirt_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
+  "id,created_at,name,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -116,10 +116,10 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Camisa;Tipo do valor;Valor normal;Valor da inscrição;Valor da camisa;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
     expect(lines[1]).toBe(
-      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Sem camisa;Normal;R$ 30,00;R$ 30,00;Não informado;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;Não informado;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");
