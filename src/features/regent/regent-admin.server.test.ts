@@ -296,10 +296,10 @@ describe("regent administrative lifecycle", () => {
     expect(auth.updateUserById).not.toHaveBeenCalled();
   });
 
-  it("retries the same completed admin operation without invalidating sessions again", async () => {
+  it("finishes an older proven admin operation then applies the currently requested password", async () => {
     const { service, auth, repository } = setup();
     Object.assign(repository, {
-      claimPasswordOperation: vi.fn(async () => false),
+      claimPasswordOperation: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
       getPasswordOperation: vi.fn(async () => ({
         kind: "admin",
         hash: "b".repeat(64),
@@ -322,13 +322,58 @@ describe("regent administrative lifecycle", () => {
       status: "success",
     });
 
-    expect(auth.updateUserById).not.toHaveBeenCalled();
-    expect(repository.finishPasswordOperation).toHaveBeenCalledExactlyOnceWith(
+    const claims = vi.mocked(repository.claimPasswordOperation);
+    const currentHash = claims.mock.calls[1][3];
+    expect(currentHash).not.toBe("b".repeat(64));
+    expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(row.userId, {
+      password: "NewPassword123",
+      appMetadata: {
+        regent_password_operation: {
+          kind: "admin",
+          membership_id: row.id,
+          operation_hash: currentHash,
+        },
+      },
+    });
+    expect(repository.finishPasswordOperation).toHaveBeenNthCalledWith(
+      1,
       row.id,
       row.userId,
       "admin",
       "b".repeat(64),
     );
+    expect(repository.finishPasswordOperation).toHaveBeenNthCalledWith(
+      2,
+      row.id,
+      row.userId,
+      "admin",
+      currentHash,
+    );
+  });
+
+  it("releases an exact read-back admin claim if pre-Auth inspection fails", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.claimPasswordOperation).mockRejectedValue(
+      new TypeError("claim response lost"),
+    );
+    vi.mocked(repository.getPasswordOperation).mockImplementation(async () => ({
+      kind: "admin",
+      hash: vi.mocked(repository.claimPasswordOperation).mock.calls[0][3],
+    }));
+    vi.mocked(auth.inspectUser).mockRejectedValue(new TypeError("Auth unavailable"));
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    const operationHash = vi.mocked(repository.claimPasswordOperation).mock.calls[0][3];
+    expect(repository.releasePasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+    );
+    expect(auth.updateUserById).not.toHaveBeenCalled();
   });
 
   it("recovers an unknown Auth reset response from its durable metadata proof", async () => {

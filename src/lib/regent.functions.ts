@@ -61,12 +61,15 @@ type RegentPasswordAuth = {
 };
 
 type RegentPasswordProofs = {
-  hash(token: string): Promise<string>;
+  createHash(): Promise<string>;
 };
 
 export type RegentPasswordChangeResult =
   | { status: "success" }
-  | { status: "completion_required"; retryToken: string };
+  | { status: "rejected" }
+  | { status: "recovery_required" };
+
+export type RegentPasswordCompletionResult = { status: "success" } | { status: "not_ready" };
 
 const passwordChangeError = "Não foi possível alterar a senha.";
 const passwordCompletionError = "Não foi possível concluir a alteração de senha.";
@@ -119,24 +122,21 @@ export function createRegentPasswordChangeService({
   }
 
   return {
-    async change(
-      accessInput: PortalAccess,
-      password: string,
-      operationToken: string,
-    ): Promise<RegentPasswordChangeResult> {
+    async change(accessInput: PortalAccess, password: string): Promise<RegentPasswordChangeResult> {
       const access = requireRegentAccess(accessInput, passwordChangeError);
       let hash: string;
       try {
-        hash = await proofs.hash(operationToken);
+        hash = await proofs.createHash();
       } catch {
-        throw new Error(passwordChangeError);
+        return { status: "rejected" };
       }
 
       let claimedByThisCall = false;
+      let claimResponseUnknown = false;
       try {
         claimedByThisCall = await repository.armRetryProof(access, hash);
       } catch {
-        // A transport failure can follow a committed claim; reconcile below.
+        claimResponseUnknown = true;
       }
       if (!claimedByThisCall) {
         let currentOperation: Awaited<
@@ -145,11 +145,14 @@ export function createRegentPasswordChangeService({
         try {
           currentOperation = await repository.getPasswordOperation(access);
         } catch {
-          throw new Error(passwordChangeError);
+          return { status: "rejected" };
         }
         if (currentOperation?.kind !== "regent" || currentOperation.hash !== hash) {
-          throw new Error(passwordChangeError);
+          return { status: "rejected" };
         }
+        // Only an unknown response can belong to this invocation's fresh random
+        // hash. Restoring ownership permits exact cleanup before any Auth write.
+        claimedByThisCall = claimResponseUnknown;
       }
 
       const proof = operationProof(access, hash);
@@ -158,23 +161,33 @@ export function createRegentPasswordChangeService({
         authUser = await auth.inspectUser(access.userId);
       } catch {
         await releaseOwnedClaim(access, hash, claimedByThisCall);
-        throw new Error(passwordChangeError);
+        return { status: "rejected" };
       }
 
       if (!hasOperationProof(authUser.appMetadata, proof)) {
-        const match = await auth.passwordMatches(authUser.email, password);
+        let match: Awaited<ReturnType<RegentPasswordAuth["passwordMatches"]>> = "unknown";
+        try {
+          match = await auth.passwordMatches(authUser.email, password);
+        } catch {
+          match = "unknown";
+        }
         if (match !== "different") {
           await releaseOwnedClaim(access, hash, claimedByThisCall);
-          throw new Error(passwordChangeError);
+          return { status: "rejected" };
         }
 
-        const updateOutcome = await auth.updateUserById(access.userId, {
-          password,
-          appMetadata: {
-            ...authUser.appMetadata,
-            regent_password_operation: proof,
-          },
-        });
+        let updateOutcome: Awaited<ReturnType<RegentPasswordAuth["updateUserById"]>> = "unknown";
+        try {
+          updateOutcome = await auth.updateUserById(access.userId, {
+            password,
+            appMetadata: {
+              ...authUser.appMetadata,
+              regent_password_operation: proof,
+            },
+          });
+        } catch {
+          updateOutcome = "unknown";
+        }
         if (updateOutcome !== "updated") {
           try {
             authUser = await auth.inspectUser(access.userId);
@@ -187,8 +200,9 @@ export function createRegentPasswordChangeService({
             // write may still commit after this response.
             if (updateOutcome === "rejected") {
               await releaseOwnedClaim(access, hash, claimedByThisCall);
+              return { status: "rejected" };
             }
-            throw new Error(passwordChangeError);
+            return { status: "recovery_required" };
           }
         }
       }
@@ -199,24 +213,33 @@ export function createRegentPasswordChangeService({
         // Reconcile below because the update response may have been lost after commit.
       }
       if (await isCompleted(access)) return { status: "success" };
-      return { status: "completion_required", retryToken: operationToken };
+      return { status: "recovery_required" };
     },
 
-    async complete(accessInput: PortalAccess, retryToken: string) {
+    async complete(accessInput: PortalAccess): Promise<RegentPasswordCompletionResult> {
       const access = requireRegentAccess(accessInput, passwordCompletionError);
-      let hash: string;
+      if (await isCompleted(access)) return { status: "success" };
+
+      let operation: Awaited<ReturnType<RegentPasswordChangeRepository["getPasswordOperation"]>>;
       try {
-        hash = await proofs.hash(retryToken);
+        operation = await repository.getPasswordOperation(access);
+      } catch {
+        return { status: "not_ready" };
+      }
+      if (!operation || operation.kind !== "regent") return { status: "not_ready" };
+
+      try {
         const authUser = await auth.inspectUser(access.userId);
-        if (!hasOperationProof(authUser.appMetadata, operationProof(access, hash))) {
-          throw new Error("Auth proof does not match");
+        if (!hasOperationProof(authUser.appMetadata, operationProof(access, operation.hash))) {
+          return { status: "not_ready" };
         }
-        if (await repository.completeWithProof(access, hash)) return { status: "success" as const };
+        if (await repository.completeWithProof(access, operation.hash))
+          return { status: "success" };
       } catch {
         // Reconcile below because the update response may have been lost after commit.
       }
-      if (await isCompleted(access)) return { status: "success" as const };
-      throw new Error(passwordCompletionError);
+      if (await isCompleted(access)) return { status: "success" };
+      return { status: "not_ready" };
     },
   };
 }
@@ -225,13 +248,10 @@ function bytesToHex(bytes: Uint8Array) {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-async function hashRetryToken(token: string) {
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return bytesToHex(new Uint8Array(digest));
-}
-
 const passwordProofs: RegentPasswordProofs = {
-  hash: hashRetryToken,
+  async createHash() {
+    return bytesToHex(globalThis.crypto.getRandomValues(new Uint8Array(32)));
+  },
 };
 
 export function createSupabaseRegentPasswordChangeRepository(): RegentPasswordChangeRepository {
@@ -314,10 +334,10 @@ export function createSupabaseRegentPasswordAuth(): RegentPasswordAuth {
         const { data, error } = await probe.auth.signInWithPassword({ email, password });
         if (data.session) {
           try {
-            await probe.auth.signOut({ scope: "local" });
+            const { error: signOutError } = await probe.auth.signOut({ scope: "local" });
+            if (signOutError) return "unknown";
           } catch {
-            // The isolated server client has no persistent storage. A cleanup
-            // failure does not change the verified credential result.
+            return "unknown";
           }
           return "matches";
         }
@@ -356,25 +376,18 @@ function getRegentPasswordChangeService() {
 }
 
 const newPasswordSchema = z.string().min(8).max(128);
-const retryTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
 
 export const changeRegentPassword = createServerFn({ method: "POST" })
   .middleware([requirePortalAccess])
-  .validator(z.object({ password: newPasswordSchema, operationToken: retryTokenSchema }).strict())
+  .validator(z.object({ password: newPasswordSchema }).strict())
   .handler(({ data, context }) =>
-    getRegentPasswordChangeService().change(
-      context.portalAccess,
-      data.password,
-      data.operationToken,
-    ),
+    getRegentPasswordChangeService().change(context.portalAccess, data.password),
   );
 
 export const completeRegentPasswordChange = createServerFn({ method: "POST" })
   .middleware([requirePortalAccess])
-  .validator(z.object({ retryToken: retryTokenSchema }).strict())
-  .handler(({ data, context }) =>
-    getRegentPasswordChangeService().complete(context.portalAccess, data.retryToken),
-  );
+  .validator(z.undefined())
+  .handler(({ context }) => getRegentPasswordChangeService().complete(context.portalAccess));
 
 const temporaryPasswordSchema = z
   .string()
