@@ -218,6 +218,12 @@ function ConfirmedPayment({
                 Ver comprovante
               </a>
             )}
+            <a
+              href="/participante"
+              className="font-semibold text-teal underline-offset-4 hover:underline"
+            >
+              Acessar área do participante
+            </a>
             <a href="/" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
               Voltar ao início
             </a>

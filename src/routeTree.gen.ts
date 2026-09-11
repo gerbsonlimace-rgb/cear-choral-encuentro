@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
@@ -20,6 +21,11 @@ import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParticipanteRoute = ParticipanteRouteImport.update({
+  id: '/participante',
+  path: '/participante',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PagamentoRoute = PagamentoRouteImport.update({
@@ -56,6 +62,7 @@ const AdminCorosRoute = AdminCorosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/pagamento': typeof PagamentoRoute
+  '/participante': typeof ParticipanteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pagamento': typeof PagamentoRoute
+  '/participante': typeof ParticipanteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/pagamento': typeof PagamentoRoute
+  '/participante': typeof ParticipanteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/pagamento'
+    | '/participante'
     | '/sitemap.xml'
     | '/admin/coros'
     | '/admin/inscricoes'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/pagamento'
+    | '/participante'
     | '/sitemap.xml'
     | '/admin/coros'
     | '/admin/inscricoes'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/pagamento'
+    | '/participante'
     | '/sitemap.xml'
     | '/admin/coros'
     | '/admin/inscricoes'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PagamentoRoute: typeof PagamentoRoute
+  ParticipanteRoute: typeof ParticipanteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminCorosRoute: typeof AdminCorosRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/participante': {
+      id: '/participante'
+      path: '/participante'
+      fullPath: '/participante'
+      preLoaderRoute: typeof ParticipanteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pagamento': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PagamentoRoute: PagamentoRoute,
+  ParticipanteRoute: ParticipanteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminCorosRoute: AdminCorosRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
