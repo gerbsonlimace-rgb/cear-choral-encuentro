@@ -379,6 +379,35 @@ describe("Supabase administrative adapters", () => {
     });
     expect(from).not.toHaveBeenCalled();
   });
+  it("clears stale retry proof before requiring another password change", async () => {
+    const response = {
+      data: {
+        id: row.id,
+        choir_id: choirId,
+        user_id: row.userId,
+        name: row.name,
+        email: row.email,
+        password_change_required: true,
+        revoked_at: null,
+      },
+      error: null,
+    };
+    const query = {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn(async () => response),
+    };
+    from.mockReturnValue(query);
+
+    await createSupabaseRegentAdminRepository().requirePasswordChange(row.id);
+
+    expect(query.update).toHaveBeenCalledExactlyOnceWith({
+      password_change_required: true,
+      password_change_retry_token_hash: null,
+    });
+  });
   it("uses email_confirm without sending an invitation", async () => {
     authAdmin.createUser.mockResolvedValue({ data: { user: { id: "new" } }, error: null });
     await createSupabaseRegentAuthAdmin().createUser({

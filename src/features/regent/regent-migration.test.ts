@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 
 const migrations = path.resolve(process.cwd(), "supabase/migrations");
 const files = readdirSync(migrations).filter((name) => name.endsWith("_create_regent_portal.sql"));
+const passwordProofFiles = readdirSync(migrations).filter((name) =>
+  name.endsWith("_add_regent_password_change_proof.sql"),
+);
 
 // These are migration contracts, not execution tests: a local PostgreSQL run is
 // still required before deployment to verify trigger behavior and concurrency.
@@ -130,5 +133,21 @@ describe("regent portal migration contract", () => {
       "old.status = 'pending' and new.status in ('paid', 'failed', 'expired')",
     );
     expect(normalized).toContain("old.status in ('paid', 'failed', 'expired')");
+  });
+});
+
+describe("regent password change proof migration contract", () => {
+  it("adds one nullable SHA-256 retry proof constrained to a required password change", () => {
+    expect(passwordProofFiles).toHaveLength(1);
+    const sql = readFileSync(path.join(migrations, passwordProofFiles[0]), "utf8")
+      .replace(/--[^\n]*/g, "")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+
+    expect(sql).toContain(
+      "alter table public.choir_regents add column password_change_retry_token_hash text",
+    );
+    expect(sql).toContain("password_change_retry_token_hash ~ '^[0-9a-f]{64}$'");
+    expect(sql).toContain("password_change_required or password_change_retry_token_hash is null");
   });
 });

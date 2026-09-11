@@ -80,6 +80,7 @@ export type Database = {
           id: string;
           name: string;
           password_change_required: boolean;
+          password_change_retry_token_hash: string | null;
           revoked_at: string | null;
           revoked_by: string | null;
           user_id: string;
@@ -92,6 +93,7 @@ export type Database = {
           id?: string;
           name: string;
           password_change_required?: boolean;
+          password_change_retry_token_hash?: string | null;
           revoked_at?: string | null;
           revoked_by?: string | null;
           user_id: string;
@@ -104,6 +106,7 @@ export type Database = {
           id?: string;
           name?: string;
           password_change_required?: boolean;
+          password_change_retry_token_hash?: string | null;
           revoked_at?: string | null;
           revoked_by?: string | null;
           user_id?: string;

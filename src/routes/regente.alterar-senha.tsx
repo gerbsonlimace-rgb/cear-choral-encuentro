@@ -13,5 +13,11 @@ export const Route = createFileRoute("/regente/alterar-senha")({
 
 function RegentPasswordChangeRoute() {
   const navigate = useNavigate();
-  return <RegentPasswordChangePage onCompleted={() => navigate({ href: "/regente" })} />;
+  return (
+    <RegentPasswordChangePage
+      onCompleted={() => navigate({ href: "/regente" })}
+      onAuthorized={() => navigate({ href: "/regente" })}
+      onLoginRequired={() => navigate({ to: "/regente/login" })}
+    />
+  );
 }

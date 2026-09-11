@@ -3,50 +3,69 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import { completeRegentPasswordChange } from "@/lib/regent.functions";
+import {
+  changeRegentPassword,
+  completeRegentPasswordChange,
+  getRegentAccess,
+  type RegentPasswordChangeResult,
+} from "@/lib/regent.functions";
+import type { RegentAccess } from "./regent.domain";
 
 type Props = {
   onCompleted: () => void;
-  updatePassword?: (attributes: { password: string }) => Promise<{ error: unknown }>;
-  completeChange?: () => Promise<unknown>;
+  onAuthorized: () => void;
+  onLoginRequired: () => void;
+  checkAccess?: () => Promise<RegentAccess>;
+  changePassword?: (password: string) => Promise<RegentPasswordChangeResult>;
+  completeChange?: (retryToken: string) => Promise<unknown>;
 };
 
-const defaultUpdatePassword: NonNullable<Props["updatePassword"]> = (attributes) =>
-  supabase.auth.updateUser(attributes);
+const defaultChangePassword: NonNullable<Props["changePassword"]> = (password) =>
+  changeRegentPassword({ data: { password } });
+const defaultCompleteChange: NonNullable<Props["completeChange"]> = (retryToken) =>
+  completeRegentPasswordChange({ data: { retryToken } });
 
 export function RegentPasswordChangePage({
   onCompleted,
-  updatePassword = defaultUpdatePassword,
-  completeChange = completeRegentPasswordChange,
+  onAuthorized,
+  onLoginRequired,
+  checkAccess = getRegentAccess,
+  changePassword = defaultChangePassword,
+  completeChange = defaultCompleteChange,
 }: Props) {
+  const [accessReady, setAccessReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
-  const [completionRetry, setCompletionRetry] = useState(false);
+  const [retryToken, setRetryToken] = useState("");
   const [error, setError] = useState("");
   const busy = useRef(false);
-  const changedPassword = useRef("");
+  const mounted = useRef(true);
+  const callbacks = useRef({ onAuthorized, onLoginRequired });
+  callbacks.current = { onAuthorized, onLoginRequired };
 
-  useEffect(
-    () => () => {
-      changedPassword.current = "";
-    },
-    [],
-  );
-
-  async function finishCompletion() {
-    try {
-      await completeChange();
-      changedPassword.current = "";
-      onCompleted();
-      return true;
-    } catch {
-      setCompletionRetry(true);
-      setError("Sua senha foi alterada, mas não foi possível liberar o acesso.");
-      return false;
-    }
-  }
+  useEffect(() => {
+    let active = true;
+    mounted.current = true;
+    void checkAccess()
+      .then((access) => {
+        if (!active) return;
+        if (access.status === "password_change_required") {
+          setAccessReady(true);
+        } else if (access.status === "authorized") {
+          callbacks.current.onAuthorized();
+        } else {
+          callbacks.current.onLoginRequired();
+        }
+      })
+      .catch(() => {
+        if (active) callbacks.current.onLoginRequired();
+      });
+    return () => {
+      active = false;
+      mounted.current = false;
+    };
+  }, [checkAccess]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -64,31 +83,48 @@ export function RegentPasswordChangePage({
     busy.current = true;
     setPending(true);
     try {
-      const result = await updatePassword({ password });
-      if (result.error) throw result.error;
+      const result = await changePassword(password);
+      if (!mounted.current) return;
+      setPassword("");
+      setConfirmation("");
+      if (result.status === "success") {
+        onCompleted();
+      } else {
+        setRetryToken(result.retryToken);
+        setError("Sua senha foi alterada, mas não foi possível liberar o acesso.");
+      }
     } catch {
-      setError("Não foi possível alterar a senha. Tente novamente.");
+      if (mounted.current) setError("Não foi possível alterar a senha. Tente novamente.");
+    } finally {
       busy.current = false;
-      setPending(false);
-      return;
+      if (mounted.current) setPending(false);
     }
-
-    changedPassword.current = password;
-    setPassword("");
-    setConfirmation("");
-    await finishCompletion();
-    busy.current = false;
-    setPending(false);
   }
 
   async function retryCompletion() {
-    if (busy.current) return;
+    if (busy.current || !retryToken) return;
     busy.current = true;
     setPending(true);
     setError("");
-    await finishCompletion();
-    busy.current = false;
-    setPending(false);
+    try {
+      await completeChange(retryToken);
+      if (mounted.current) onCompleted();
+    } catch {
+      if (mounted.current) {
+        setError("Sua senha foi alterada, mas não foi possível liberar o acesso.");
+      }
+    } finally {
+      busy.current = false;
+      if (mounted.current) setPending(false);
+    }
+  }
+
+  if (!accessReady) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+        <p className="text-sm text-muted-foreground">Verificando acesso…</p>
+      </main>
+    );
   }
 
   return (
@@ -111,7 +147,7 @@ export function RegentPasswordChangePage({
               {error}
             </p>
           )}
-          {completionRetry ? (
+          {retryToken ? (
             <Button className="w-full" disabled={pending} onClick={retryCompletion}>
               {pending ? "Concluindo…" : "Tentar concluir novamente"}
             </Button>
