@@ -1,5 +1,6 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { createSupabaseAdminClient, supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
+import { createAdminPasswordCandidateFingerprint } from "./regent-password-candidate.server";
 import type { RegentMutation } from "./regent.domain";
 
 export type AdminRegentRow = RegentMutation & {
@@ -25,11 +26,29 @@ export type RegentAdminRepository = {
   grant(input: RegentGrant): Promise<AdminRegentRow>;
   replace(input: RegentGrant): Promise<AdminRegentRow>;
   revoke(id: string, actorId: string): Promise<AdminRegentRow>;
-  claimPasswordOperation(id: string, userId: string, kind: "admin", hash: string): Promise<boolean>;
+  claimPasswordOperation(
+    id: string,
+    userId: string,
+    kind: "admin",
+    hash: string,
+    candidateFingerprint: string,
+  ): Promise<boolean>;
+  markPasswordOperationRetryable(
+    id: string,
+    userId: string,
+    kind: "admin",
+    hash: string,
+    candidateFingerprint: string,
+  ): Promise<boolean>;
   getPasswordOperation(
     id: string,
     userId: string,
-  ): Promise<{ kind: "admin" | "regent"; hash: string } | null>;
+  ): Promise<{
+    kind: "admin" | "regent";
+    hash: string;
+    stage: "claimed" | "candidate_verified" | "retryable" | "legacy";
+    candidateFingerprint: string | null;
+  } | null>;
   finishPasswordOperation(
     id: string,
     userId: string,
@@ -37,7 +56,14 @@ export type RegentAdminRepository = {
     hash: string,
   ): Promise<AdminRegentRow>;
   finishRegentPasswordOperation(id: string, userId: string, hash: string): Promise<void>;
-  releasePasswordOperation(id: string, userId: string, kind: "admin", hash: string): Promise<void>;
+  releasePasswordOperation(
+    id: string,
+    userId: string,
+    kind: "admin",
+    hash: string,
+    candidateFingerprint: string,
+    expectedStage: "claimed",
+  ): Promise<boolean>;
 };
 export type RegentAuthAdminPort = {
   findUserByEmail(email: string): Promise<{ id: string } | null>;
@@ -48,10 +74,22 @@ export type RegentAuthAdminPort = {
   }): Promise<{ id: string }>;
   deleteUser(userId: string): Promise<void>;
   inspectUser(userId: string): Promise<{ appMetadata: Record<string, unknown> }>;
+  passwordMatches(email: string, password: string): Promise<"matches" | "different" | "unknown">;
   updateUserById(
     userId: string,
     input: { password: string; appMetadata: Record<string, unknown> },
   ): Promise<"updated" | "rejected" | "unknown">;
+  updateAppMetadata(
+    userId: string,
+    appMetadata: Record<string, unknown>,
+  ): Promise<"updated" | "rejected" | "unknown">;
+};
+type RegentAdminPasswordProofs = {
+  createOperation(
+    id: string,
+    userId: string,
+    password: string,
+  ): Promise<{ operationHash: string; candidateFingerprint: string }>;
 };
 
 const failure = (): RegentAdminResult => ({
@@ -108,9 +146,11 @@ function hasPasswordOperationProof(
 export function createRegentAdminService({
   repository,
   auth,
+  proofs,
 }: {
   repository: RegentAdminRepository;
   auth: RegentAuthAdminPort;
+  proofs: RegentAdminPasswordProofs;
 }) {
   async function provision(
     input: RegentCreation,
@@ -201,12 +241,16 @@ export function createRegentAdminService({
       let authProven = false;
       let regent: AdminRegentRow | null = null;
       let hash = "";
+      let candidateFingerprint = "";
+      let stage: "claimed" | "retryable" | "legacy" | "candidate_verified" | undefined;
       try {
         regent = await repository.findById(id);
         if (!regent || regent.revokedAt)
           return { status: "error", message: "O regente não está ativo. Atualize a lista." };
 
-        hash = await hashOperationToken(createOperationToken());
+        const operation = await proofs.createOperation(id, regent.userId, password);
+        hash = operation.operationHash;
+        candidateFingerprint = operation.candidateFingerprint;
         let claimResponseUnknown = false;
         try {
           claimedByThisCall = await repository.claimPasswordOperation(
@@ -214,6 +258,7 @@ export function createRegentAdminService({
             regent.userId,
             "admin",
             hash,
+            candidateFingerprint,
           );
         } catch {
           claimResponseUnknown = true;
@@ -222,8 +267,39 @@ export function createRegentAdminService({
         if (!claimedByThisCall) {
           const current = await repository.getPasswordOperation(id, regent.userId);
           if (!current) return failure();
-          if (claimResponseUnknown && current.kind === "admin" && current.hash === hash) {
+          if (
+            claimResponseUnknown &&
+            current.kind === "admin" &&
+            current.hash === hash &&
+            current.candidateFingerprint === candidateFingerprint
+          ) {
             claimedByThisCall = true;
+            stage = current.stage;
+          } else if (
+            current.kind === "admin" &&
+            (current.stage === "claimed" || current.stage === "retryable") &&
+            current.candidateFingerprint === candidateFingerprint
+          ) {
+            hash = current.hash;
+            stage = current.stage;
+            const authUser = await auth.inspectUser(regent.userId);
+            const currentProof = passwordOperationProof(id, "admin", hash);
+            if (hasPasswordOperationProof(authUser.appMetadata, currentProof)) {
+              return success(
+                await repository.finishPasswordOperation(id, regent.userId, "admin", hash),
+              );
+            }
+            if (stage === "claimed") {
+              const promoted = await repository.markPasswordOperationRetryable(
+                id,
+                regent.userId,
+                "admin",
+                hash,
+                candidateFingerprint,
+              );
+              if (!promoted) return failure();
+              stage = "retryable";
+            }
           } else {
             const authUser = await auth.inspectUser(regent.userId);
             const proof = passwordOperationProof(id, current.kind, current.hash);
@@ -248,23 +324,54 @@ export function createRegentAdminService({
                 regent.userId,
                 "admin",
                 hash,
+                candidateFingerprint,
               );
             } catch {
               claimResponseUnknown = true;
             }
             if (!claimedByThisCall) {
               const retried = await repository.getPasswordOperation(id, regent.userId);
-              if (!claimResponseUnknown || retried?.kind !== "admin" || retried.hash !== hash) {
+              if (
+                !claimResponseUnknown ||
+                retried?.kind !== "admin" ||
+                retried.hash !== hash ||
+                retried.candidateFingerprint !== candidateFingerprint
+              ) {
                 return failure();
               }
               claimedByThisCall = true;
+              stage = retried.stage;
             }
           }
         }
 
+        stage ??= "claimed";
+
         let authUser = await auth.inspectUser(regent.userId);
         const proof = passwordOperationProof(id, "admin", hash);
         authProven = hasPasswordOperationProof(authUser.appMetadata, proof);
+
+        if (!authProven && stage === "retryable") {
+          const match = await auth.passwordMatches(regent.email, password);
+          if (match === "unknown") return failure();
+          if (match === "matches") {
+            const metadataOutcome = await auth.updateAppMetadata(regent.userId, {
+              ...authUser.appMetadata,
+              regent_password_operation: proof,
+            });
+            if (metadataOutcome === "updated") {
+              authProven = true;
+            } else {
+              try {
+                authUser = await auth.inspectUser(regent.userId);
+                authProven = hasPasswordOperationProof(authUser.appMetadata, proof);
+              } catch {
+                authProven = false;
+              }
+            }
+            if (!authProven) return failure();
+          }
+        }
 
         if (!authProven) {
           const updateOutcome = await auth.updateUserById(regent.userId, {
@@ -284,9 +391,28 @@ export function createRegentAdminService({
               authProven = false;
             }
             if (!authProven) {
-              if (updateOutcome === "rejected" && claimedByThisCall) {
-                await repository.releasePasswordOperation(id, regent.userId, "admin", hash);
+              if (updateOutcome === "rejected" && stage === "claimed") {
+                await repository.releasePasswordOperation(
+                  id,
+                  regent.userId,
+                  "admin",
+                  hash,
+                  candidateFingerprint,
+                  "claimed",
+                );
                 claimedByThisCall = false;
+              } else {
+                try {
+                  await repository.markPasswordOperationRetryable(
+                    id,
+                    regent.userId,
+                    "admin",
+                    hash,
+                    candidateFingerprint,
+                  );
+                } catch {
+                  // The exact candidate remains bound for a later same-candidate retry.
+                }
               }
               return failure();
             }
@@ -295,9 +421,16 @@ export function createRegentAdminService({
 
         return success(await repository.finishPasswordOperation(id, regent.userId, "admin", hash));
       } catch {
-        if (claimedByThisCall && !authProven && regent && hash) {
+        if (claimedByThisCall && !authProven && regent && hash && candidateFingerprint) {
           try {
-            await repository.releasePasswordOperation(id, regent.userId, "admin", hash);
+            await repository.releasePasswordOperation(
+              id,
+              regent.userId,
+              "admin",
+              hash,
+              candidateFingerprint,
+              "claimed",
+            );
           } catch {
             // Fail closed. An exact in-flight operation is never replaced by another caller.
           }
@@ -449,20 +582,38 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
           .single(),
       );
     },
-    async claimPasswordOperation(id, userId, kind, hash) {
-      const { data, error } = await supabaseAdmin.rpc("claim_choir_regent_password_operation", {
-        p_membership_id: id,
-        p_user_id: userId,
-        p_operation_kind: kind,
-        p_operation_hash: hash,
-      });
+    async claimPasswordOperation(id, userId, _kind, hash, candidateFingerprint) {
+      const { data, error } = await supabaseAdmin.rpc(
+        "claim_choir_regent_admin_password_candidate_operation",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_membership_id: id,
+          p_user_id: userId,
+          p_operation_hash: hash,
+        },
+      );
+      checkError(error);
+      return data === true;
+    },
+    async markPasswordOperationRetryable(id, userId, _kind, hash, candidateFingerprint) {
+      const { data, error } = await supabaseAdmin.rpc(
+        "mark_choir_regent_admin_password_operation_retryable",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_membership_id: id,
+          p_user_id: userId,
+          p_operation_hash: hash,
+        },
+      );
       checkError(error);
       return data === true;
     },
     async getPasswordOperation(id, userId) {
       const { data, error } = await supabaseAdmin
         .from("choir_regents")
-        .select("password_change_operation_kind,password_change_retry_token_hash")
+        .select(
+          "password_change_operation_kind,password_change_retry_token_hash,password_change_operation_stage,password_change_candidate_fingerprint",
+        )
         .eq("id", id)
         .eq("user_id", userId)
         .is("revoked_at", null)
@@ -470,8 +621,19 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
       checkError(error);
       const kind = data?.password_change_operation_kind;
       const hash = data?.password_change_retry_token_hash;
-      if ((kind !== "admin" && kind !== "regent") || !hash) return null;
-      return { kind, hash };
+      const stage = data?.password_change_operation_stage;
+      const candidateFingerprint = data?.password_change_candidate_fingerprint ?? null;
+      if (
+        (kind !== "admin" && kind !== "regent") ||
+        !hash ||
+        (stage !== "claimed" &&
+          stage !== "candidate_verified" &&
+          stage !== "retryable" &&
+          stage !== "legacy")
+      ) {
+        return null;
+      }
+      return { kind, hash, stage, candidateFingerprint };
     },
     async finishPasswordOperation(id, userId, kind, hash) {
       const { data, error } = await supabaseAdmin.rpc("finish_choir_regent_password_operation", {
@@ -498,14 +660,19 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
       checkError(error);
       if (!data) throw new Error("Regent password operation could not be finished");
     },
-    async releasePasswordOperation(id, userId, kind, hash) {
-      const { error } = await supabaseAdmin.rpc("release_choir_regent_password_operation", {
-        p_membership_id: id,
-        p_user_id: userId,
-        p_operation_kind: kind,
-        p_operation_hash: hash,
-      });
+    async releasePasswordOperation(id, userId, _kind, hash, candidateFingerprint, expectedStage) {
+      const { data, error } = await supabaseAdmin.rpc(
+        "release_choir_regent_admin_password_candidate_operation",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_expected_stage: expectedStage,
+          p_membership_id: id,
+          p_user_id: userId,
+          p_operation_hash: hash,
+        },
+      );
       checkError(error);
+      return data === true;
     },
   };
 }
@@ -544,11 +711,40 @@ export function createSupabaseRegentAuthAdmin(): RegentAuthAdminPort {
       if (error || !data.user) throw new Error("Regent Auth user unavailable");
       return { appMetadata: data.user.app_metadata ?? {} };
     },
+    async passwordMatches(email, password) {
+      const probe = createSupabaseAdminClient();
+      try {
+        const { data, error } = await probe.auth.signInWithPassword({ email, password });
+        if (data.session) {
+          try {
+            const { error: signOutError } = await probe.auth.signOut({ scope: "local" });
+            if (signOutError) return "unknown";
+          } catch {
+            return "unknown";
+          }
+          return "matches";
+        }
+        return error?.code === "invalid_credentials" ? "different" : "unknown";
+      } catch {
+        return "unknown";
+      }
+    },
     async updateUserById(userId, input) {
       try {
         const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
           password: input.password,
           app_metadata: input.appMetadata,
+        });
+        if (!error && data.user) return "updated";
+        return error?.status && error.status < 500 ? "rejected" : "unknown";
+      } catch {
+        return "unknown";
+      }
+    },
+    async updateAppMetadata(userId, appMetadata) {
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          app_metadata: appMetadata,
         });
         if (!error && data.user) return "updated";
         return error?.status && error.status < 500 ? "rejected" : "unknown";
@@ -563,5 +759,17 @@ export function getRegentAdminService() {
   return createRegentAdminService({
     repository: createSupabaseRegentAdminRepository(),
     auth: createSupabaseRegentAuthAdmin(),
+    proofs: {
+      async createOperation(id, userId, password) {
+        return {
+          operationHash: await hashOperationToken(createOperationToken()),
+          candidateFingerprint: await createAdminPasswordCandidateFingerprint({
+            membershipId: id,
+            userId,
+            password,
+          }),
+        };
+      },
+    },
   });
 }

@@ -380,6 +380,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_choir_regent_admin_password_candidate_operation: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_choir_regent_password_candidate_operation: {
         Args: {
           p_candidate_fingerprint: string;
@@ -407,9 +416,28 @@ export type Database = {
         };
         Returns: boolean;
       };
+      mark_choir_regent_admin_password_operation_retryable: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       mark_choir_regent_password_operation_retryable: {
         Args: {
           p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      release_choir_regent_admin_password_candidate_operation: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_expected_stage: string;
           p_membership_id: string;
           p_operation_hash: string;
           p_user_id: string;
