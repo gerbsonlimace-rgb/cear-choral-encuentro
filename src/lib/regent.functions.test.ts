@@ -1,4 +1,41 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { requireAdmin } from "@/features/admin/admin-auth.middleware";
+import {
+  createAdminRegent,
+  listAdminRegents,
+  replaceAdminRegent,
+  revokeAdminRegent,
+  resetAdminRegentPassword,
+} from "./regent.functions";
+
+vi.mock("@tanstack/react-start", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-start")>();
+  return {
+    ...actual,
+    createServerFn: (options: { method: string }) => {
+      const middlewares: unknown[] = [];
+      let validator: { parse: (input: unknown) => unknown } | undefined;
+      const builder = {
+        middleware(value: unknown[]) {
+          middlewares.push(...value);
+          return builder;
+        },
+        validator(value: typeof validator) {
+          validator = value;
+          return builder;
+        },
+        handler(handler: (input: unknown) => unknown) {
+          return Object.assign(handler, {
+            method: options.method,
+            middlewares,
+            validate: (input: unknown) => validator?.parse(input),
+          });
+        },
+      };
+      return builder;
+    },
+  };
+});
 import { resolvePortalChoirSelection, toRegentAccessState } from "./regent.functions";
 import type { PortalAccess } from "@/features/regent/regent.domain";
 
@@ -11,6 +48,44 @@ const regent: PortalAccess = {
   email: "private@example.com",
   passwordChangeRequired: false,
 };
+
+describe("admin regent server function boundaries", () => {
+  it.each([
+    ["list", () => listAdminRegents, "GET"],
+    ["create", () => createAdminRegent, "POST"],
+    ["replace", () => replaceAdminRegent, "POST"],
+    ["revoke", () => revokeAdminRegent, "POST"],
+    ["reset", () => resetAdminRegentPassword, "POST"],
+  ])("requires administrator middleware on %s", (_name, getFunction, method) => {
+    const fn = (getFunction as () => unknown)() as { method: string; middlewares: unknown[] };
+    expect(fn).toBeDefined();
+    expect(fn.method).toBe(method);
+    expect(fn.middlewares).toContain(requireAdmin);
+  });
+  it("normalizes creation data and rejects spoofed actor IDs and short passwords", () => {
+    const fn = createAdminRegent as unknown as { validate: (input: unknown) => unknown };
+    const input = {
+      choirId: regent.choirId,
+      name: " Ana Silva ",
+      email: " REGENTE@example.com ",
+      password: "SenhaTemp123",
+    };
+    expect(fn.validate(input)).toEqual({
+      ...input,
+      name: "Ana Silva",
+      email: "regente@example.com",
+    });
+    expect(() => fn.validate({ ...input, grantedBy: "spoof" })).toThrow();
+    expect(() => fn.validate({ ...input, password: "123" })).toThrow();
+  });
+  it("accepts only a membership ID for resets, never a client-selected Auth user", () => {
+    const fn = resetAdminRegentPassword as unknown as { validate: (input: unknown) => unknown };
+    expect(() =>
+      fn.validate({ id: regent.choirId, password: "SenhaTemp123", userId: "victim" }),
+    ).toThrow();
+    expect(() => fn.validate({ id: "invalid", password: "SenhaTemp123" })).toThrow();
+  });
+});
 
 describe("public regent access state", () => {
   it("returns unauthenticated without identity data", () => {

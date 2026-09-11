@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminChoirsPage } from "./AdminChoirsPage";
 import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
 
+vi.mock("@/lib/regent.functions", () => ({
+  listAdminRegents: vi.fn(async () => []),
+  createAdminRegent: vi.fn(),
+  replaceAdminRegent: vi.fn(),
+  revokeAdminRegent: vi.fn(),
+  resetAdminRegentPassword: vi.fn(),
+}));
+
 const emptyData: AdminChoirPricing = {
   settings: {
     standardPriceCents: null,
@@ -50,6 +58,15 @@ function setup(overrides: Partial<React.ComponentProps<typeof AdminChoirsPage>> 
 }
 
 describe("AdminChoirsPage", () => {
+  it("includes regent management using loaded choir options and the public portal link", async () => {
+    setup({ loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })) });
+    expect(await screen.findByRole("heading", { name: "Regentes" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Coro")).toHaveTextContent("Coro Diocesano de Quixadá");
+    expect(screen.getByRole("link", { name: "Área dos regentes" })).toHaveAttribute(
+      "href",
+      "/regente",
+    );
+  });
   it("shows three unconfigured global prices and an empty choir state", async () => {
     setup();
 

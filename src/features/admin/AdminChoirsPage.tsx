@@ -44,6 +44,7 @@ import {
 import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
 import { getAdminAccess } from "@/lib/admin.functions";
 import { AdminNavigation } from "./AdminNavigation";
+import { AdminRegentsPanel } from "./AdminRegentsPanel";
 
 type ServerMutation<TInput, TOutput> = (input: { data: TInput }) => Promise<TOutput>;
 
@@ -406,6 +407,7 @@ export function AdminChoirsPage({
                 </div>
               )}
             </section>
+            <AdminRegentsPanel choirs={data.choirs} />
           </>
         )}
       </div>
