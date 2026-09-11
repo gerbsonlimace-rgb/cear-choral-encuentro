@@ -425,16 +425,32 @@ describe("registration payment service", () => {
     });
   });
 
-  it("provisions participant access only after the newly confirmed payment is durable", async () => {
+  it("waits for the durable paid write to resolve before provisioning participant access", async () => {
     fixture.setRecord(pendingRecord());
+    const confirmed: RegistrationPaymentRecord = {
+      ...pendingRecord(),
+      paymentStatus: "paid",
+      transactionNsu: lookup.transactionNsu,
+      paymentMethod: "credit_card",
+      installments: 2,
+    };
+    let resolveMarkPaid!: (record: RegistrationPaymentRecord) => void;
+    const markPaidPending = new Promise<RegistrationPaymentRecord>((resolve) => {
+      resolveMarkPaid = resolve;
+    });
+    vi.mocked(fixture.repository.markPaid).mockImplementationOnce(() => markPaidPending);
 
-    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+    const reconciliation = fixture.service.reconcilePayment(lookup);
+
+    await vi.waitFor(() => expect(fixture.repository.markPaid).toHaveBeenCalledOnce());
+    expect(fixture.provisionParticipant).not.toHaveBeenCalled();
+
+    resolveMarkPaid(confirmed);
+
+    await expect(reconciliation).resolves.toMatchObject({
       status: "paid",
       participantAccessStatus: "active",
     });
-    expect(vi.mocked(fixture.repository.markPaid).mock.invocationCallOrder[0]).toBeLessThan(
-      fixture.provisionParticipant.mock.invocationCallOrder[0],
-    );
     expect(fixture.provisionParticipant).toHaveBeenCalledWith("registration-1");
   });
 
