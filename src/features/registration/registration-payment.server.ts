@@ -72,7 +72,6 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
-      shirtPriceCents?: number | null;
     },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
