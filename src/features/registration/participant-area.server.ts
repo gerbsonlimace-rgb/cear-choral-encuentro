@@ -73,9 +73,8 @@ export function toParticipantView(row: ParticipantRow): ParticipantRegistrationV
     ...(row.paid_at ? { paidAt: row.paid_at } : {}),
     ...(row.order_nsu ? { orderNsu: row.order_nsu } : {}),
     ...(row.receipt_url ? { receiptUrl: row.receipt_url } : {}),
-    ...(row.paymentStatusPlaceholder ? {} : {}),
     ...(row.payment_status !== "paid" && row.checkout_url ? { checkoutUrl: row.checkout_url } : {}),
-  } as ParticipantRegistrationView;
+  };
 }
 
 export async function loginParticipantWithCredentials(credentials: {
