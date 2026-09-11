@@ -277,8 +277,9 @@ export function getRegistrationPaymentService() {
     paymentService = createRegistrationPaymentService({
       repository: createSupabaseRegistrationRepository(),
       infinitePay: createInfinitePayClient(fetch, {
-        handle: process.env.INFINITEPAY_HANDLE?.trim() || "antonio-gerbson",
-        siteUrl: process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosce.lovable.app",
+        handle: process.env.INFINITEPAY_HANDLE?.trim() || "lucas-soares-xwv",
+        siteUrl: process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosdiocesanosce.lovable.app",
+
       }),
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
