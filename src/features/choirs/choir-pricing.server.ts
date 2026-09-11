@@ -26,7 +26,6 @@ export type AdminChoirPricing = {
 export type ResolvedChoirSelection = {
   choir: AdminChoir;
   quote: NonNullable<ReturnType<typeof resolveChoirPrice>>;
-  shirtPriceCents: number | null;
 };
 
 const sortChoirs = (choirs: AdminChoir[]) =>
@@ -43,7 +42,6 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
       ]);
 
       return {
-        shirtPriceCents: settings.shirtPriceCents,
         choirs: sortChoirs(choirs).flatMap((choir) => {
           const quote = resolveChoirPrice(choir, settings);
           return quote ? [{ id: choir.id, name: choir.name, ...quote }] : [];
@@ -60,7 +58,7 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
       if (!choir || !quote) {
         throw new Error("O coro selecionado não está disponível para inscrição.");
       }
-      return { choir, quote, shirtPriceCents: settings.shirtPriceCents };
+      return { choir, quote };
     },
 
     async getAdminData(): Promise<AdminChoirPricing> {
@@ -89,18 +87,16 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
   };
 }
 
-const settingsColumns = "standard_price_cents,promotional_price_cents,shirt_price_cents" as const;
+const settingsColumns = "standard_price_cents,promotional_price_cents" as const;
 const choirColumns = "id,name,uses_promotional_price,is_active,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
   promotional_price_cents: number | null;
-  shirt_price_cents: number | null;
 }): PricingSettings {
   return pricingSettingsSchema.parse({
     standardPriceCents: row.standard_price_cents,
     promotionalPriceCents: row.promotional_price_cents,
-    shirtPriceCents: row.shirt_price_cents,
   });
 }
 
@@ -156,7 +152,6 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
         .update({
           standard_price_cents: input.standardPriceCents,
           promotional_price_cents: input.promotionalPriceCents,
-          shirt_price_cents: input.shirtPriceCents,
           updated_at: new Date().toISOString(),
         })
         .eq("id", true)
