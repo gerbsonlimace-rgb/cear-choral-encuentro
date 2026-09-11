@@ -104,9 +104,9 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("Inscrição confirmada", marginX, 160);
+  doc.text("Inscrição confirmada", marginX, 176);
 
-  let y = 196;
+  let y = 212;
   for (const row of buildReceiptRows(receipt)) {
     doc.setDrawColor(230, 230, 230);
     doc.line(marginX, y - 16, pageWidth - marginX, y - 16);
@@ -123,13 +123,32 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
 
   doc.setDrawColor(230, 230, 230);
   doc.line(marginX, y - 16, pageWidth - marginX, y - 16);
+
+  const baseUrl = (
+    options?.siteUrl ??
+    (typeof window !== "undefined" ? window.location.origin : "https://encontrocorosdiocesanosce.lovable.app")
+  ).replace(/\/$/, "");
+  const participantAreaUrl = `${baseUrl}${PARTICIPANT_AREA_PATH}`;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Área do participante", marginX, y + 6);
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(15, 76, 74);
+  doc.textWithLink(participantAreaUrl, marginX, y + 24, { url: participantAreaUrl });
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
   doc.text(
+    "Acesse com o e-mail da inscrição e a senha: CPF + data de nascimento.",
+    marginX,
+    y + 42,
+  );
+  doc.text(
     "Documento gerado automaticamente pelo site do evento. Pagamento processado pela InfinitePay.",
     marginX,
-    y + 12,
+    y + 60,
   );
 
   const code = formatOrderCode(receipt.orderNsu);
