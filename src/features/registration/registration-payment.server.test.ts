@@ -18,7 +18,7 @@ const { storageFromMock, storageRemoveMock, storageUploadMock, supabaseAdminMock
       storageFromMock,
       storageRemoveMock,
       storageUploadMock,
-      supabaseAdminMock: { from: vi.fn(), storage: { from: storageFromMock } },
+      supabaseAdminMock: { from: vi.fn(), rpc: vi.fn(), storage: { from: storageFromMock } },
     };
   },
 );
