@@ -54,6 +54,7 @@ describe("InfinitePay configuration", () => {
 
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
+const cpf = "52998224725";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 const choirId = "22222222-2222-4222-8222-222222222222";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
