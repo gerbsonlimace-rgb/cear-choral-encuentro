@@ -1,23 +1,42 @@
+import type { ComplementPaymentPublicStatus } from "@/features/regent/regent-payment.server";
 import type { PaymentLookup } from "./registration.domain";
-import type { PublicPaymentStatus } from "./registration-payment.server";
-import type { PortalAccess } from "@/features/regent/regent.domain";
+import type {
+  PublicPaymentStatus,
+  RegistrationPaymentService,
+} from "./registration-payment.server";
 
-const webhookAccess: PortalAccess = { role: "admin", userId: "infinitepay-webhook", email: null };
+type ReconciliationStatus = Pick<PublicPaymentStatus, "status"> | ComplementPaymentPublicStatus;
+
+type ComplementPaymentService = {
+  getComplementPaymentStatus(orderNsu: string): Promise<ComplementPaymentPublicStatus | null>;
+  reconcilePayment(lookup: PaymentLookup): Promise<ComplementPaymentPublicStatus>;
+};
+
+type RegistrationReconciliationService = Pick<RegistrationPaymentService, "reconcilePayment">;
 
 export function createPaymentReconciliationDispatcher({
   complement,
   registration,
 }: {
-  complement: {
-    findByOrderNsu(orderNsu: string): Promise<unknown>;
-    reconcilePayment(lookup: PaymentLookup, access: PortalAccess): Promise<PublicPaymentStatus>;
-  };
-  registration: { reconcilePayment(lookup: PaymentLookup): Promise<PublicPaymentStatus> };
+  complement: ComplementPaymentService;
+  registration: RegistrationReconciliationService;
 }) {
-  return async (lookup: PaymentLookup) => {
-    const complementPayment = await complement.findByOrderNsu(lookup.orderNsu);
-    return complementPayment
-      ? complement.reconcilePayment(lookup, webhookAccess)
-      : registration.reconcilePayment(lookup);
+  return async (lookup: PaymentLookup): Promise<ReconciliationStatus> => {
+    const complementStatus = await complement.getComplementPaymentStatus(lookup.orderNsu);
+    if (complementStatus) return complement.reconcilePayment(lookup);
+    return registration.reconcilePayment(lookup);
   };
+}
+
+export async function dispatchPaymentReconciliation(
+  lookup: PaymentLookup,
+): Promise<ReconciliationStatus> {
+  const [{ getRegentPaymentService }, { getRegistrationPaymentService }] = await Promise.all([
+    import("@/features/regent/regent-payment.server"),
+    import("./registration-payment.server"),
+  ]);
+  return createPaymentReconciliationDispatcher({
+    complement: getRegentPaymentService(),
+    registration: getRegistrationPaymentService(),
+  })(lookup);
 }

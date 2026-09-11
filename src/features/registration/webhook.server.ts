@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { PaymentLookup } from "./registration.domain";
-import type { PublicPaymentStatus } from "./registration-payment.server";
 
 const webhookSchema = z
   .object({
@@ -24,7 +23,7 @@ const failedResponse = () =>
 
 export async function handleInfinitePayWebhook(
   request: Request,
-  reconcile: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>,
+  reconcile: (lookup: PaymentLookup) => Promise<{ status: "pending" | "paid" }>,
 ): Promise<Response> {
   let raw: unknown;
   try {

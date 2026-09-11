@@ -5,6 +5,7 @@ import {
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
 } from "@/features/registration/infinitepay.server";
+import type { PaymentLookup } from "@/features/registration/registration.domain";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { ComplementCheckoutInput, ComplementPaymentStatus } from "./regent-payments.domain";
 import { calculateComplementState } from "./regent-payments.domain";
@@ -52,13 +53,19 @@ export type RegentPaymentRecord = Omit<RegentPaymentReservation, "status"> & {
   status: ComplementPaymentStatus;
   checkoutUrl: string | null;
   transactionNsu?: string | null;
-  invoiceSlug?: string | null;
   paymentMethod?: "pix" | "credit_card" | null;
   installments?: number | null;
-  paidAmountCents?: number | null;
   receiptUrl?: string | null;
-  paidAt?: string | null;
 };
+
+export type ComplementPaymentPublicStatus =
+  | { status: "pending" }
+  | {
+      status: "paid";
+      paymentMethod: "pix" | "credit_card";
+      installments: number;
+      receiptUrl?: string;
+    };
 
 export type RegentPaymentRepository = {
   findRegistration(registrationId: string): Promise<RegentPaymentRegistration | null>;
@@ -71,6 +78,7 @@ export type RegentPaymentRepository = {
   markPaid(
     orderNsu: string,
     confirmation: {
+      amountCents: number;
       transactionNsu: string;
       invoiceSlug: string;
       paymentMethod: "pix" | "credit_card";
@@ -143,7 +151,7 @@ export function createRegentPaymentService({
   repository,
   infinitePay,
   randomUUID,
-  now,
+  now = () => new Date().toISOString(),
 }: {
   repository: RegentPaymentRepository;
   infinitePay: InfinitePayClient;
@@ -249,82 +257,72 @@ export function createRegentPaymentService({
       return { checkoutUrl: checkout.url, orderNsu };
     },
 
-    async reconcilePayment(
-      lookup: import("@/features/registration/registration.domain").PaymentLookup,
-      access: PortalAccess,
-    ) {
-      const current = await repository.findByOrderNsu(lookup.orderNsu);
-      if (!current) throw new Error("Pedido complementar não encontrado.");
-      if (access.role === "regent" && current.choirId !== access.choirId) {
-        throw new Error(CHOIR_MESSAGE);
-      }
-      if (current.status === "paid") {
-        if (current.transactionNsu !== lookup.transactionNsu) {
-          throw new Error("Transação divergente para pagamento complementar já confirmado.");
+    async reconcilePayment(lookup: PaymentLookup): Promise<ComplementPaymentPublicStatus> {
+      const payment = await repository.findByOrderNsu(lookup.orderNsu);
+      if (!payment) throw new Error("Pedido não encontrado.");
+
+      if (payment.status === "paid") {
+        if (payment.transactionNsu !== lookup.transactionNsu) {
+          throw new Error("Transação divergente para pedido já confirmado.");
         }
-        return toPublicComplementStatus(current);
+        return toComplementPaymentPublicStatus(payment);
       }
+      if (payment.status !== "pending") return { status: "pending" };
 
       const checked = await infinitePay.checkPayment(lookup);
-      if (!checked.paid) return { status: "pending" as const };
-      if (checked.amountCents !== current.amountCents) {
+      if (!checked.paid) return { status: "pending" };
+      if (checked.amountCents !== payment.amountCents) {
         throw new Error("Valor do pagamento divergente.");
       }
-      if (checked.paidAmountCents < current.amountCents) {
+      if (checked.paidAmountCents < payment.amountCents) {
         throw new Error("Valor pago é inferior ao valor do pedido.");
       }
-      const confirmation = {
+
+      const confirmed = await repository.markPaid(lookup.orderNsu, {
+        amountCents: payment.amountCents,
         transactionNsu: lookup.transactionNsu,
         invoiceSlug: lookup.slug,
         paymentMethod: checked.paymentMethod,
         installments: checked.installments,
         paidAmountCents: checked.paidAmountCents,
         receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
-        paidAt: (now ?? (() => new Date().toISOString()))(),
-      };
-      try {
-        return toPublicComplementStatus(await repository.markPaid(lookup.orderNsu, confirmation));
-      } catch {
-        const existing = await repository.findByOrderNsu(lookup.orderNsu);
-        if (
-          existing?.status === "paid" &&
-          existing.transactionNsu === confirmation.transactionNsu &&
-          existing.amountCents === current.amountCents
-        ) {
-          return toPublicComplementStatus(existing);
-        }
-        throw new Error("Transação divergente ou pedido indisponível.");
-      }
+        paidAt: now(),
+      });
+      return toComplementPaymentPublicStatus(confirmed);
     },
 
-    async getComplementPaymentStatus(orderNsu: string) {
+    async getComplementPaymentStatus(
+      orderNsu: string,
+    ): Promise<ComplementPaymentPublicStatus | null> {
       const payment = await repository.findByOrderNsu(orderNsu);
-      if (!payment) throw new Error("Pedido complementar não encontrado.");
-      return payment.status === "paid"
-        ? toPublicComplementStatus(payment)
-        : { status: "pending" as const };
+      return payment ? toComplementPaymentPublicStatus(payment) : null;
     },
   };
 }
 
-function toPublicComplementStatus(record: RegentPaymentRecord) {
+function toComplementPaymentPublicStatus(
+  record: RegentPaymentRecord,
+): ComplementPaymentPublicStatus {
+  if (
+    record.status !== "paid" ||
+    !record.paymentMethod ||
+    !record.installments ||
+    !record.transactionNsu
+  ) {
+    return { status: "pending" };
+  }
   return {
-    status: "paid" as const,
-    paymentMethod: record.paymentMethod!,
-    installments: record.installments!,
-    orderNsu: record.orderNsu,
-    amountCents: record.amountCents,
-    paidAmountCents: record.paidAmountCents!,
-    ...(record.invoiceSlug ? { invoiceSlug: record.invoiceSlug } : {}),
+    status: "paid",
+    paymentMethod: record.paymentMethod,
+    installments: record.installments,
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
-    ...(record.paidAt ? { paidAt: record.paidAt } : {}),
   };
 }
 
 const registrationColumns =
   "id,choir_id,payment_status,pricing_type,standard_price_cents,registration_price_cents" as const;
 const paymentColumns =
-  "id,registration_id,choir_id,amount_cents,status,order_nsu,checkout_url,initiated_by,initiated_by_name,initiated_as,infinitepay_invoice_slug,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at" as const;
+  "id,registration_id,choir_id,amount_cents,status,order_nsu,checkout_url,infinitepay_invoice_slug,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at,initiated_by,initiated_by_name,initiated_as" as const;
 
 type PaymentDatabaseRow = {
   id: string;
@@ -334,6 +332,13 @@ type PaymentDatabaseRow = {
   status: string;
   order_nsu: string;
   checkout_url: string | null;
+  infinitepay_invoice_slug?: string | null;
+  infinitepay_transaction_nsu?: string | null;
+  payment_method?: string | null;
+  installments?: number | null;
+  paid_amount_cents?: number | null;
+  receipt_url?: string | null;
+  paid_at?: string | null;
   initiated_by: string;
   initiated_by_name: string;
   initiated_as: string;
@@ -370,16 +375,14 @@ function mapPaymentRow(row: PaymentDatabaseRow): RegentPaymentRecord {
     initiatedBy: row.initiated_by,
     initiatedByName: row.initiated_by_name,
     initiatedAs: row.initiated_as,
-    transactionNsu: row.infinitepay_transaction_nsu ?? null,
-    invoiceSlug: row.infinitepay_invoice_slug ?? null,
-    paymentMethod:
-      row.payment_method === "pix" || row.payment_method === "credit_card"
-        ? row.payment_method
-        : null,
-    installments: row.installments ?? null,
-    paidAmountCents: row.paid_amount_cents ?? null,
-    receiptUrl: row.receipt_url ?? null,
-    paidAt: row.paid_at ?? null,
+    ...(row.infinitepay_transaction_nsu !== undefined
+      ? { transactionNsu: row.infinitepay_transaction_nsu }
+      : {}),
+    ...(row.payment_method === "pix" || row.payment_method === "credit_card"
+      ? { paymentMethod: row.payment_method }
+      : {}),
+    ...(row.installments !== undefined ? { installments: row.installments } : {}),
+    ...(row.receipt_url !== undefined ? { receiptUrl: row.receipt_url } : {}),
   };
 }
 
@@ -566,9 +569,8 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
     },
 
     async markPaid(orderNsu, confirmation) {
-      let response: { data: PaymentDatabaseRow | null; error: { message?: string } | null };
       try {
-        response = (await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("registration_complement_payments")
           .update({
             status: "paid",
@@ -583,12 +585,21 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
           .eq("order_nsu", orderNsu)
           .eq("status", "pending")
           .select(paymentColumns)
-          .maybeSingle()) as unknown as typeof response;
+          .maybeSingle();
+        if (!error && data) return mapPaymentRow(data as PaymentDatabaseRow);
       } catch {
-        throw new RegentPaymentRepositoryOutcomeUnknown();
+        // Reconcile the exact transaction because the provider call is idempotent.
       }
-      if (response.error || !response.data) throw new RegentPaymentRepositoryOutcomeUnknown();
-      return mapPaymentRow(response.data);
+
+      const existing = await findByOrderNsu(orderNsu);
+      if (
+        existing?.status === "paid" &&
+        existing.amountCents === confirmation.amountCents &&
+        existing.transactionNsu === confirmation.transactionNsu
+      ) {
+        return existing;
+      }
+      throw new Error("Transação divergente ou pedido indisponível.");
     },
   };
 }

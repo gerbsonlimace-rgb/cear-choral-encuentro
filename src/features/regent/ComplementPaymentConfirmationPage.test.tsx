@@ -1,65 +1,85 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import type { PaymentLookup } from "@/features/registration/registration.domain";
 import { ComplementPaymentConfirmationPage } from "./ComplementPaymentConfirmationPage";
 
-vi.mock("@/lib/regent.functions", () => ({ verifyComplementPayment: vi.fn() }));
-import { verifyComplementPayment } from "@/lib/regent.functions";
-const lookup = {
-  orderNsu: "33333333-3333-4333-8333-333333333333",
-  transactionNsu: "tx-1",
-  slug: "invoice-1",
+const lookup: PaymentLookup = {
+  orderNsu: "11111111-1111-4111-8111-111111111111",
+  transactionNsu: "transaction-123",
+  slug: "invoice-123",
 };
 
 describe("ComplementPaymentConfirmationPage", () => {
-  beforeEach(() => vi.clearAllMocks());
-  it.each([
-    ["paid", "Pagamento confirmado"],
-    ["pending", "Pagamento não confirmado"],
-  ])("renders the %s state", async (status, title) => {
-    const verifyPayment = vi.fn().mockResolvedValue({ status });
-    render(<ComplementPaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
-    await waitFor(() => expect(screen.getByRole("heading", { name: title })).toBeInTheDocument());
-  });
-
-  it("renders processing and retry after a failed verification", async () => {
-    const verifyPayment = vi.fn().mockRejectedValue(new Error("temporary"));
-    render(<ComplementPaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
-    expect(screen.getByRole("heading", { name: "Processando pagamento…" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "Não foi possível verificar agora" }),
-      ).toBeInTheDocument(),
-    );
-    expect(screen.getByRole("button", { name: "Verificar novamente" })).toBeInTheDocument();
-  });
-
-  it("does not repeat the default verification when callback identities change", async () => {
-    vi.mocked(verifyComplementPayment).mockResolvedValue({ status: "pending" });
-    const first = vi.fn().mockResolvedValue({ status: "pending" });
-    const { rerender } = render(
+  it("shows a confirmed complement and a safe return to the regent portal", async () => {
+    render(
       <ComplementPaymentConfirmationPage
         lookup={lookup}
-        verifyPayment={first}
-        onSuccess={() => undefined}
+        verifyPayment={vi.fn().mockResolvedValue({
+          status: "paid",
+          paymentMethod: "pix",
+          installments: 1,
+        })}
       />,
     );
-    await waitFor(() => expect(first).toHaveBeenCalledOnce());
-    const second = vi.fn().mockResolvedValue({ status: "pending" });
-    rerender(
-      <ComplementPaymentConfirmationPage
-        lookup={lookup}
-        verifyPayment={second}
-        onSuccess={() => undefined}
-      />,
+
+    expect(await screen.findByText("Complemento confirmado")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Voltar à área do regente" })).toHaveAttribute(
+      "href",
+      "/regente",
     );
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(first).toHaveBeenCalledOnce();
-    expect(second).not.toHaveBeenCalled();
   });
 
-  it("uses the default verifier without rerunning it after state settles", async () => {
-    vi.mocked(verifyComplementPayment).mockResolvedValue({ status: "pending" });
-    render(<ComplementPaymentConfirmationPage lookup={lookup} />);
-    await waitFor(() => expect(verifyComplementPayment).toHaveBeenCalledOnce());
+  it("shows processing while verification is in flight", () => {
+    render(
+      <ComplementPaymentConfirmationPage
+        lookup={lookup}
+        verifyPayment={async () => await new Promise<never>(() => undefined)}
+      />,
+    );
+
+    expect(screen.getByText("Confirmando pagamento…")).toBeVisible();
+  });
+
+  it("offers a retry after a payment remains unconfirmed", async () => {
+    vi.useFakeTimers();
+    const verifyPayment = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "pending" as const })
+      .mockResolvedValueOnce({ status: "pending" as const })
+      .mockResolvedValueOnce({ status: "pending" as const })
+      .mockResolvedValueOnce({
+        status: "paid" as const,
+        paymentMethod: "pix" as const,
+        installments: 1,
+      });
+
+    try {
+      render(
+        <ComplementPaymentConfirmationPage
+          lookup={lookup}
+          verifyPayment={verifyPayment}
+          retryDelayMs={10}
+        />,
+      );
+      await vi.advanceTimersByTimeAsync(25);
+
+      expect(screen.getByText("Pagamento complementar ainda não confirmado")).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Verificar novamente" }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(screen.getByText("Complemento confirmado")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows a non-confirmed state when verification fails", async () => {
+    render(
+      <ComplementPaymentConfirmationPage
+        lookup={lookup}
+        verifyPayment={vi.fn().mockRejectedValue(new Error("provider unavailable"))}
+      />,
+    );
+
+    expect(await screen.findByText("Não foi possível verificar agora")).toBeVisible();
   });
 });

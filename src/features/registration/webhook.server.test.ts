@@ -74,6 +74,24 @@ describe("InfinitePay webhook", () => {
     await expect(response.json()).resolves.toEqual({ success: true, message: null });
   });
 
+  it("acknowledges a confirmed complement without trusting webhook payment fields", async () => {
+    const reconcile = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+    });
+
+    const response = await handleInfinitePayWebhook(jsonRequest(validBody), reconcile);
+
+    expect(response.status).toBe(200);
+    expect(reconcile).toHaveBeenCalledWith({
+      orderNsu: validBody.order_nsu,
+      transactionNsu: validBody.transaction_nsu,
+      slug: validBody.invoice_slug,
+      receiptUrl: validBody.receipt_url,
+    });
+  });
+
   it("rejects an otherwise valid payload with an unexpected property", async () => {
     const reconcile = vi.fn();
 
