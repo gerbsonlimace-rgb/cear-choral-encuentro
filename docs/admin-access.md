@@ -11,7 +11,7 @@ O aplicativo não cria administradores automaticamente e não oferece cadastro p
    `public.admin_users` com esse UUID em `user_id`.
 5. Confirme o acesso pelo painel sem consultar ou expor a chave `service_role`.
 
-## Revogação
+## Revogaçãoo
 
 Em uma sessão SQL administrativa autorizada, preencha `revoked_at = now()` e
 `revoked_by` na associação ativa. Não apague nem reutilize a linha. Uma futura
