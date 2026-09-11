@@ -16,6 +16,7 @@ import { getParticipantAccess, getParticipantRegistration } from "@/lib/particip
 
 import type { ParticipantAccess } from "./participant-auth.server";
 import type { ParticipantRegistrationView } from "./participant.domain";
+import { downloadParticipantReceipt } from "./participant-receipt";
 import { ParticipantPasswordDialog } from "./ParticipantPasswordDialog";
 
 const sections = ["Identificação", "Playlist", "Partituras e Manuais", "Certificado"] as const;
@@ -33,6 +34,7 @@ type Props = {
   }) => Promise<{ error: unknown }>;
   updatePassword?: (password: string) => Promise<{ error: unknown }>;
   getSignedInEmail?: () => Promise<{ email: string | null; error: unknown }>;
+  downloadReceipt?: (view: ParticipantRegistrationView) => Promise<void>;
 };
 
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
@@ -156,8 +158,29 @@ const voicePartLabels: Record<
   nao_sei_informar: "Não sei informar",
 };
 
-function Identification({ view }: { view: ParticipantRegistrationView }) {
+function Identification({
+  view,
+  downloadReceipt,
+}: {
+  view: ParticipantRegistrationView;
+  downloadReceipt: (view: ParticipantRegistrationView) => Promise<void>;
+}) {
   const { identity, registration, payment } = view;
+  const [receiptState, setReceiptState] = useState<"idle" | "working" | "error">("idle");
+  const canDownloadReceipt =
+    Boolean(payment.orderNsu?.trim()) && payment.paidAmountCents != null && Boolean(payment.paidAt);
+
+  async function handleReceiptDownload() {
+    if (receiptState === "working") return;
+    setReceiptState("working");
+    try {
+      await downloadReceipt(view);
+      setReceiptState("idle");
+    } catch {
+      setReceiptState("error");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -274,6 +297,23 @@ function Identification({ view }: { view: ParticipantRegistrationView }) {
               </Detail>
             )}
           </dl>
+          {canDownloadReceipt && (
+            <div className="mt-5 space-y-2 border-t pt-5">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={receiptState === "working"}
+                onClick={() => void handleReceiptDownload()}
+              >
+                {receiptState === "working" ? "Gerando PDF…" : "Baixar comprovante em PDF"}
+              </Button>
+              {receiptState === "error" && (
+                <p role="alert" className="text-sm text-destructive">
+                  Não foi possível gerar o comprovante em PDF. Tente novamente.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -283,14 +323,16 @@ function Identification({ view }: { view: ParticipantRegistrationView }) {
 function PortalSection({
   selected,
   view,
+  downloadReceipt,
 }: {
   selected: Section;
   view: ParticipantRegistrationView;
+  downloadReceipt: (view: ParticipantRegistrationView) => Promise<void>;
 }) {
   return (
     <section id="participant-section-panel" role="tabpanel" aria-label={selected} tabIndex={0}>
       {selected === "Identificação" ? (
-        <Identification view={view} />
+        <Identification view={view} downloadReceipt={downloadReceipt} />
       ) : (
         <Card>
           <CardHeader>
@@ -318,6 +360,7 @@ export function ParticipantPortalPage({
   reauthenticateForPasswordChange,
   updatePassword,
   getSignedInEmail,
+  downloadReceipt = downloadParticipantReceipt,
 }: Props) {
   const [gate, setGate] = useState<
     "checking" | "loading" | "ready" | "error" | "redirecting" | "leaving"
@@ -452,7 +495,7 @@ export function ParticipantPortalPage({
             className="hidden rounded-xl border bg-background p-2 md:block"
             orientation="vertical"
           />
-          <PortalSection selected={selected} view={view} />
+          <PortalSection selected={selected} view={view} downloadReceipt={downloadReceipt} />
         </div>
       </div>
       <ParticipantPasswordDialog

@@ -66,6 +66,7 @@ type PortalOverrides = Partial<{
   }) => Promise<{ error: unknown }>;
   updatePassword: (password: string) => Promise<{ error: unknown }>;
   getSignedInEmail: () => Promise<{ email: string | null; error: unknown }>;
+  downloadReceipt: (view: ParticipantRegistrationView) => Promise<void>;
 }>;
 
 function setup(overrides: PortalOverrides = {}) {
@@ -80,6 +81,7 @@ function setup(overrides: PortalOverrides = {}) {
     getSignedInEmail: vi
       .fn()
       .mockResolvedValue({ email: "sessao-verificada@example.com", error: null }),
+    downloadReceipt: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   render(<ParticipantPortalPage {...props} />);
@@ -367,5 +369,50 @@ describe("ParticipantPortalPage", () => {
       password: "senha-atual",
     });
     expect(updatePassword).toHaveBeenCalledExactlyOnceWith("nova-senha");
+  });
+
+  it("offers the PDF only for a complete paid snapshot and retries a generation failure", async () => {
+    const downloadReceipt = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("PRIVATE_PDF_DETAIL"))
+      .mockResolvedValueOnce(undefined);
+    const { user } = setup({ downloadReceipt });
+    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    const downloadButton = within(identification).getByRole("button", {
+      name: "Baixar comprovante em PDF",
+    });
+
+    await user.click(downloadButton);
+
+    expect(await within(identification).findByRole("alert")).toHaveTextContent(
+      "Não foi possível gerar o comprovante em PDF. Tente novamente.",
+    );
+    expect(identification).not.toHaveTextContent("PRIVATE_PDF_DETAIL");
+
+    await user.click(downloadButton);
+
+    await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(within(identification).queryByRole("alert")).not.toBeInTheDocument(),
+    );
+    expect(downloadReceipt).toHaveBeenNthCalledWith(1, fullView);
+    expect(downloadReceipt).toHaveBeenNthCalledWith(2, fullView);
+  });
+
+  it.each([
+    ["order", { orderNsu: null }],
+    ["paid amount", { paidAmountCents: null }],
+    ["payment date", { paidAt: null }],
+  ])("hides the PDF action without the required %s", async (_field, paymentOverride) => {
+    const incompleteView: ParticipantRegistrationView = {
+      ...fullView,
+      payment: { ...fullView.payment, ...paymentOverride },
+    };
+    setup({ loadRegistration: vi.fn().mockResolvedValue(incompleteView) });
+
+    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    expect(
+      within(identification).queryByRole("button", { name: "Baixar comprovante em PDF" }),
+    ).not.toBeInTheDocument();
   });
 });
