@@ -122,7 +122,7 @@ export function calculateComplementState(
 }
 
 export function buildBrazilWhatsAppUrl(phone: string): string | null {
-  if (!/^[\d ()-]+$/.test(phone)) return null;
+  if (/[^0-9() -]/.test(phone)) return null;
   const digits = phone.replace(/\D/g, "");
   if (!/^[1-9]\d{9,10}$/.test(digits)) return null;
   return `https://wa.me/55${digits}`;

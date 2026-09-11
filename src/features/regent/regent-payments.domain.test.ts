@@ -155,4 +155,10 @@ describe("Brazilian WhatsApp URL", () => {
   ])("does not generate a link for invalid Brazilian number %s", (phone) => {
     expect(buildBrazilWhatsAppUrl(phone)).toBeNull();
   });
+
+  it("rejects line terminators after an otherwise valid phone", () => {
+    for (const terminator of ["\n", "\r", "\r\n"]) {
+      expect(buildBrazilWhatsAppUrl(`(88) 99999-1234${terminator}`)).toBeNull();
+    }
+  });
 });
