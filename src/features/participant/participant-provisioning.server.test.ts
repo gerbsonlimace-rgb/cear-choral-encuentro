@@ -1,0 +1,466 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  ParticipantLinkFailure,
+  createParticipantProvisioningService,
+  createSupabaseParticipantAuthAdmin,
+  createSupabaseParticipantProvisioningRepository,
+  type PaidRegistrationIdentity,
+  type ParticipantAccountRow,
+  type ParticipantAuthAdmin,
+  type ParticipantProvisioningRepository,
+} from "./participant-provisioning.server";
+
+const { from, rpc, authAdmin } = vi.hoisted(() => ({
+  from: vi.fn(),
+  rpc: vi.fn(),
+  authAdmin: {
+    createUser: vi.fn(),
+    deleteUser: vi.fn(),
+    updateUserById: vi.fn(),
+    listUsers: vi.fn(),
+  },
+}));
+
+vi.mock("@/integrations/supabase/client.server", () => ({
+  supabaseAdmin: { from, rpc, auth: { admin: authAdmin } },
+}));
+
+const registrationId = "11111111-1111-4111-8111-111111111111";
+const accountId = "22222222-2222-4222-8222-222222222222";
+const claimId = "33333333-3333-4333-8333-333333333333";
+const adminUserId = "44444444-4444-4444-8444-444444444444";
+const createdUserId = "55555555-5555-4555-8555-555555555555";
+
+const paidRegistration: PaidRegistrationIdentity = {
+  id: registrationId,
+  email: " Participante@Example.com ",
+  cpf: "529.982.247-25",
+  birthDate: "1990-01-15",
+};
+
+const claimedAccount: ParticipantAccountRow = {
+  id: accountId,
+  registrationId,
+  userId: null,
+  accessStatus: "pending",
+  provisioningClaimId: claimId,
+};
+
+function setup() {
+  const repository: ParticipantProvisioningRepository = {
+    findPaidRegistration: vi.fn(async () => paidRegistration),
+    claim: vi.fn(async () => claimedAccount),
+    activate: vi.fn(async () => true),
+    fail: vi.fn(async () => {}),
+    findByRegistration: vi.fn(async () => claimedAccount),
+    appendEvent: vi.fn(async () => {}),
+  };
+  const auth: ParticipantAuthAdmin = {
+    findUserByEmail: vi.fn(async () => null),
+    createUser: vi.fn(async () => ({ id: createdUserId })),
+    deleteUser: vi.fn(async () => {}),
+    updatePassword: vi.fn(async () => {}),
+  };
+  const service = createParticipantProvisioningService({
+    repository,
+    auth,
+    createClaimId: () => claimId,
+  });
+  return { repository, auth, service };
+}
+
+describe("participant provisioning service", () => {
+  it("does not claim or call Auth when the registration is missing or unpaid", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.findPaidRegistration).mockResolvedValue(null);
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(repository.claim).not.toHaveBeenCalled();
+    expect(auth.findUserByEmail).not.toHaveBeenCalled();
+    expect(auth.createUser).not.toHaveBeenCalled();
+  });
+
+  it("returns an existing active link without calling Auth", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.claim).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: createdUserId,
+      provisioningClaimId: null,
+    });
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(auth.findUserByEmail).not.toHaveBeenCalled();
+    expect(auth.createUser).not.toHaveBeenCalled();
+  });
+
+  it("lets only the current claim holder call Auth", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.claim).mockResolvedValue({
+      ...claimedAccount,
+      provisioningClaimId: "66666666-6666-4666-8666-666666666666",
+    });
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(auth.findUserByEmail).not.toHaveBeenCalled();
+    expect(auth.createUser).not.toHaveBeenCalled();
+    expect(repository.activate).not.toHaveBeenCalled();
+  });
+
+  it("marks an occupied normalized email as conflict without modifying its Auth user", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "conflict" });
+
+    expect(auth.findUserByEmail).toHaveBeenCalledWith("participante@example.com");
+    expect(auth.createUser).not.toHaveBeenCalled();
+    expect(auth.updatePassword).not.toHaveBeenCalled();
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+    expect(repository.fail).toHaveBeenCalledWith({
+      accountId,
+      registrationId,
+      claimId,
+      status: "conflict",
+      code: "EMAIL_CONFLICT",
+    });
+    expect(repository.appendEvent).toHaveBeenCalledWith({
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "email_conflict",
+      errorCode: "EMAIL_CONFLICT",
+    });
+  });
+
+  it("reports the reconciled state when conflict finalization loses its response", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.fail).mockRejectedValue(new Error("response lost"));
+    vi.mocked(repository.findByRegistration).mockResolvedValue(claimedAccount);
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("creates a confirmed Auth user, activates the exact claim, and audits no secrets", async () => {
+    const { repository, auth, service } = setup();
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(auth.createUser).toHaveBeenCalledWith({
+      email: "participante@example.com",
+      password: "5299822472515011990",
+      emailConfirm: true,
+    });
+    expect(repository.activate).toHaveBeenCalledWith({
+      accountId,
+      registrationId,
+      claimId,
+      userId: createdUserId,
+    });
+    expect(vi.mocked(repository.claim).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(auth.createUser).mock.invocationCallOrder[0],
+    );
+    expect(vi.mocked(auth.createUser).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.activate).mock.invocationCallOrder[0],
+    );
+    const auditPayload = JSON.stringify(vi.mocked(repository.appendEvent).mock.calls);
+    expect(auditPayload).not.toContain("52998224725");
+    expect(auditPayload).not.toContain("15011990");
+    expect(auditPayload).not.toContain(claimId);
+    expect(auditPayload).not.toContain("token");
+    expect(repository.appendEvent).toHaveBeenCalledWith({
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "provisioned",
+    });
+  });
+
+  it("compensates only its new user after an authoritative rejected link and absent reconciliation", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.activate).mockResolvedValue(false);
+    vi.mocked(repository.findByRegistration).mockResolvedValue(claimedAccount);
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(repository.findByRegistration).toHaveBeenCalledExactlyOnceWith(registrationId);
+    expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith(createdUserId);
+    expect(vi.mocked(repository.findByRegistration).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(auth.deleteUser).mock.invocationCallOrder[0],
+    );
+    expect(repository.fail).toHaveBeenCalledWith({
+      accountId,
+      registrationId,
+      claimId,
+      status: "pending",
+      code: "LINK_REJECTED",
+    });
+  });
+
+  it("reconciles a lost activation response to active before considering cleanup", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.activate).mockRejectedValue(new ParticipantLinkFailure("unknown"));
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: createdUserId,
+      provisioningClaimId: null,
+    });
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(repository.findByRegistration).toHaveBeenCalledExactlyOnceWith(registrationId);
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+    expect(repository.fail).not.toHaveBeenCalled();
+  });
+
+  it("removes only its orphan after an authoritative rejection reveals another active link", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.activate).mockRejectedValue(
+      new ParticipantLinkFailure("confirmed_rejection"),
+    );
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: "77777777-7777-4777-8777-777777777777",
+      provisioningClaimId: null,
+    });
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith(createdUserId);
+    expect(repository.fail).not.toHaveBeenCalled();
+  });
+
+  it("never deletes the new user when an unknown link outcome is still invisible", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.activate).mockRejectedValue(new ParticipantLinkFailure("unknown"));
+    vi.mocked(repository.findByRegistration).mockResolvedValue(claimedAccount);
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(repository.findByRegistration).toHaveBeenCalledExactlyOnceWith(registrationId);
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("keeps a paid registration pending after Auth fails and audits only a safe code", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(auth.createUser).mockRejectedValue(
+      Object.assign(new Error("provider returned CPF 52998224725 and password"), {
+        token: "SECRET",
+      }),
+    );
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "pending" });
+
+    expect(repository.activate).not.toHaveBeenCalled();
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+    expect(repository.fail).toHaveBeenCalledWith({
+      accountId,
+      registrationId,
+      claimId,
+      status: "pending",
+      code: "AUTH_UNAVAILABLE",
+    });
+    const auditPayload = JSON.stringify(vi.mocked(repository.appendEvent).mock.calls);
+    expect(auditPayload).toContain("AUTH_UNAVAILABLE");
+    expect(auditPayload).not.toContain("52998224725");
+    expect(auditPayload).not.toContain("SECRET");
+    expect(auditPayload).not.toContain("password");
+  });
+
+  it("records reprocessing before reusing the same provisioning path", async () => {
+    const { repository, service } = setup();
+
+    await expect(service.reprocess(registrationId, adminUserId)).resolves.toEqual({
+      status: "active",
+    });
+
+    expect(repository.appendEvent).toHaveBeenNthCalledWith(1, {
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "reprocess_requested",
+      adminUserId,
+    });
+    expect(repository.findPaidRegistration).toHaveBeenCalledOnce();
+    expect(repository.claim).toHaveBeenCalledOnce();
+  });
+
+  it("resets only an active linked paid participant to the server-derived initial password", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: createdUserId,
+      provisioningClaimId: null,
+    });
+
+    await expect(service.resetInitialPassword(registrationId, adminUserId)).resolves.toEqual({
+      status: "success",
+      sessionsRevoked: false,
+    });
+
+    expect(auth.updatePassword).toHaveBeenCalledExactlyOnceWith(
+      createdUserId,
+      "5299822472515011990",
+    );
+    expect(repository.appendEvent).toHaveBeenCalledWith({
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "password_reset",
+      adminUserId,
+    });
+    expect(JSON.stringify(vi.mocked(repository.appendEvent).mock.calls)).not.toContain(
+      "52998224725",
+    );
+  });
+
+  it.each([
+    { paid: null, account: claimedAccount },
+    { paid: paidRegistration, account: null },
+    { paid: paidRegistration, account: claimedAccount },
+    {
+      paid: paidRegistration,
+      account: { ...claimedAccount, accessStatus: "active" as const, userId: null },
+    },
+  ])(
+    "refuses password reset unless the account is paid, active, and linked",
+    async ({ paid, account }) => {
+      const { repository, auth, service } = setup();
+      vi.mocked(repository.findPaidRegistration).mockResolvedValue(paid);
+      vi.mocked(repository.findByRegistration).mockResolvedValue(account);
+
+      await expect(service.resetInitialPassword(registrationId, adminUserId)).rejects.toThrow(
+        "Participant password reset unavailable",
+      );
+
+      expect(auth.updatePassword).not.toHaveBeenCalled();
+      expect(repository.appendEvent).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("Supabase participant adapters", () => {
+  beforeEach(() => {
+    from.mockReset();
+    rpc.mockReset();
+    authAdmin.createUser.mockReset();
+    authAdmin.deleteUser.mockReset();
+    authAdmin.updateUserById.mockReset();
+    authAdmin.listUsers.mockReset();
+  });
+
+  it("normalizes the email and checks every Auth page", async () => {
+    authAdmin.listUsers
+      .mockResolvedValueOnce({
+        data: { users: [{ id: "other", email: "other@example.com" }], nextPage: 2 },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { users: [{ id: "existing", email: "PARTICIPANTE@example.com" }], nextPage: null },
+        error: null,
+      });
+
+    await expect(
+      createSupabaseParticipantAuthAdmin().findUserByEmail(" Participante@Example.com "),
+    ).resolves.toEqual({ id: "existing" });
+
+    expect(authAdmin.listUsers).toHaveBeenNthCalledWith(1, { page: 1, perPage: 1000 });
+    expect(authAdmin.listUsers).toHaveBeenNthCalledWith(2, { page: 2, perPage: 1000 });
+  });
+
+  it("uses confirmed server-side creation, direct deletion, and direct password update", async () => {
+    authAdmin.createUser.mockResolvedValue({ data: { user: { id: createdUserId } }, error: null });
+    authAdmin.deleteUser.mockResolvedValue({ data: {}, error: null });
+    authAdmin.updateUserById.mockResolvedValue({
+      data: { user: { id: createdUserId } },
+      error: null,
+    });
+    const auth = createSupabaseParticipantAuthAdmin();
+
+    await auth.createUser({
+      email: " Participante@Example.com ",
+      password: "temporary-secret",
+      emailConfirm: true,
+    });
+    await auth.deleteUser(createdUserId);
+    await auth.updatePassword(createdUserId, "new-secret");
+
+    expect(authAdmin.createUser).toHaveBeenCalledWith({
+      email: "participante@example.com",
+      password: "temporary-secret",
+      email_confirm: true,
+    });
+    expect(authAdmin.deleteUser).toHaveBeenCalledExactlyOnceWith(createdUserId);
+    expect(authAdmin.updateUserById).toHaveBeenCalledExactlyOnceWith(createdUserId, {
+      password: "new-secret",
+    });
+  });
+
+  it.each(["activate", "fail"] as const)(
+    "%s filters by registration, account, and claim and rejects an unaffected row",
+    async (operation) => {
+      const response = { data: null, error: null };
+      const query = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn(async () => response),
+      };
+      from.mockReturnValue(query);
+      const repository = createSupabaseParticipantProvisioningRepository();
+
+      const result =
+        operation === "activate"
+          ? repository.activate({
+              accountId,
+              registrationId,
+              claimId,
+              userId: createdUserId,
+            })
+          : repository.fail({
+              accountId,
+              registrationId,
+              claimId,
+              status: "pending",
+              code: "AUTH_UNAVAILABLE",
+            });
+
+      if (operation === "activate") await expect(result).resolves.toBe(false);
+      else await expect(result).rejects.toThrow("Participant claim is no longer owned");
+      expect(query.eq.mock.calls).toEqual(
+        expect.arrayContaining([
+          ["id", accountId],
+          ["registration_id", registrationId],
+          ["provisioning_claim_id", claimId],
+        ]),
+      );
+    },
+  );
+
+  it("classifies a thrown activation transport error as unknown", async () => {
+    const query = {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => {
+        throw Object.assign(new Error("connection lost"), { code: "23505" });
+      }),
+    };
+    from.mockReturnValue(query);
+
+    await expect(
+      createSupabaseParticipantProvisioningRepository().activate({
+        accountId,
+        registrationId,
+        claimId,
+        userId: createdUserId,
+      }),
+    ).rejects.toMatchObject({ outcome: "unknown" });
+  });
+});
