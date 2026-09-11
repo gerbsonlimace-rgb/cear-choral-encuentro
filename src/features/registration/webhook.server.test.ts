@@ -41,9 +41,12 @@ describe("InfinitePay webhook", () => {
   });
 
   it("verifies a valid webhook before acknowledging it", async () => {
-    const reconcile = vi
-      .fn()
-      .mockResolvedValue({ status: "paid", paymentMethod: "credit_card", installments: 2 });
+    const reconcile = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "credit_card",
+      installments: 2,
+      participantAccessStatus: "active",
+    });
 
     const response = await handleInfinitePayWebhook(jsonRequest(validBody), reconcile);
 
@@ -53,6 +56,20 @@ describe("InfinitePay webhook", () => {
       slug: validBody.invoice_slug,
       receiptUrl: validBody.receipt_url,
     });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true, message: null });
+  });
+
+  it("acknowledges a confirmed payment while participant access is still pending", async () => {
+    const reconcile = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "credit_card",
+      installments: 2,
+      participantAccessStatus: "pending",
+    });
+
+    const response = await handleInfinitePayWebhook(jsonRequest(validBody), reconcile);
+
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ success: true, message: null });
   });

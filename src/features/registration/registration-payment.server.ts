@@ -3,6 +3,7 @@ import {
   getChoirPricingService,
   type ResolvedChoirSelection,
 } from "@/features/choirs/choir-pricing.server";
+import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
 import {
   createInfinitePayClient,
   sanitizeInfinitePayReceiptUrl,
@@ -40,6 +41,7 @@ export type PublicPaymentStatus =
       status: "paid";
       paymentMethod: "pix" | "credit_card";
       installments: number;
+      participantAccessStatus: ParticipantAccessStatus;
       receiptUrl?: string;
       orderNsu?: string;
       amountCents?: number;
@@ -52,6 +54,9 @@ export type PublicPaymentStatus =
 export type RegistrationIdentityRecord = {
   id: string;
 };
+
+export type RegistrationResumeResult =
+  { status: "pending"; checkoutUrl: string } | { status: "paid" };
 
 export type RegistrationRepository = {
   createPending(
@@ -94,7 +99,20 @@ export function createRegistrationPaymentService(deps: {
   randomUUID: () => string;
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
+  provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
 }) {
+  const toPaidPublicStatus = async (
+    registration: RegistrationPaymentRecord,
+  ): Promise<PublicPaymentStatus> => {
+    let participantAccessStatus: ParticipantAccessStatus = "pending";
+    try {
+      participantAccessStatus = (await deps.provisionParticipant(registration.id)).status;
+    } catch {
+      // Payment truth is durable and must remain independent from delayed access preparation.
+    }
+    return toPublicPaymentStatus(registration, participantAccessStatus);
+  };
+
   return {
     startCheckout: async (input: RegistrationInput) => {
       const existing = await deps.repository.findByCpf(input.cpf);
@@ -162,7 +180,7 @@ export function createRegistrationPaymentService(deps: {
         if (registration.transactionNsu !== lookup.transactionNsu) {
           throw new Error("Transação divergente para pedido já confirmado.");
         }
-        return toPublicPaymentStatus(registration);
+        return toPaidPublicStatus(registration);
       }
 
       const checked = await deps.infinitePay.checkPayment(lookup);
@@ -183,7 +201,7 @@ export function createRegistrationPaymentService(deps: {
         receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
         paidAt: deps.now(),
       });
-      return toPublicPaymentStatus(confirmed);
+      return toPaidPublicStatus(confirmed);
     },
 
     getPublicStatus: async (orderNsu: string): Promise<PublicPaymentStatus> => {
@@ -194,7 +212,12 @@ export function createRegistrationPaymentService(deps: {
   };
 }
 
-function toPublicPaymentStatus(record: RegistrationPaymentRecord): PublicPaymentStatus {
+export type RegistrationPaymentService = ReturnType<typeof createRegistrationPaymentService>;
+
+function toPublicPaymentStatus(
+  record: RegistrationPaymentRecord,
+  participantAccessStatus: ParticipantAccessStatus = "pending",
+): PublicPaymentStatus {
   if (record.paymentStatus !== "paid" || !record.paymentMethod || !record.installments) {
     return { status: "pending" };
   }
@@ -203,8 +226,7 @@ function toPublicPaymentStatus(record: RegistrationPaymentRecord): PublicPayment
     status: "paid",
     paymentMethod: record.paymentMethod,
     installments: record.installments,
-    orderNsu: record.orderNsu,
-    amountCents: record.amountCents,
+    participantAccessStatus,
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
     ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
     ...(record.paidAt ? { paidAt: record.paidAt } : {}),
@@ -416,6 +438,11 @@ export function getRegistrationPaymentService() {
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
+      provisionParticipant: async (registrationId) => {
+        const { getParticipantProvisioningService } =
+          await import("@/features/participant/participant-provisioning.server");
+        return getParticipantProvisioningService().provision(registrationId);
+      },
     });
   }
 

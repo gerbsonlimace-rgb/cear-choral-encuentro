@@ -255,6 +255,10 @@ function createFixture() {
     }),
   };
 
+  const provisionParticipant = vi.fn(
+    async (): Promise<{ status: "active" | "pending" | "conflict" }> => ({ status: "active" }),
+  );
+
   const service = createRegistrationPaymentService({
     repository,
     infinitePay,
@@ -262,12 +266,14 @@ function createFixture() {
     randomUUID: () => fixedOrderNsu,
     now: () => fixedPaidAt,
     resolveChoirSelection: vi.fn(async () => trustedSelection),
+    provisionParticipant,
   });
 
   return {
     calls,
     infinitePay,
     photoStorage,
+    provisionParticipant,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
@@ -419,6 +425,57 @@ describe("registration payment service", () => {
     });
   });
 
+  it("provisions participant access only after the newly confirmed payment is durable", async () => {
+    fixture.setRecord(pendingRecord());
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "active",
+    });
+    expect(vi.mocked(fixture.repository.markPaid).mock.invocationCallOrder[0]).toBeLessThan(
+      fixture.provisionParticipant.mock.invocationCallOrder[0],
+    );
+    expect(fixture.provisionParticipant).toHaveBeenCalledWith("registration-1");
+  });
+
+  it("retries participant provisioning for an already-paid idempotent replay", async () => {
+    fixture.setRecord({
+      ...pendingRecord(),
+      paymentStatus: "paid",
+      transactionNsu: lookup.transactionNsu,
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    fixture.provisionParticipant.mockResolvedValueOnce({ status: "conflict" });
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "conflict",
+    });
+    expect(fixture.repository.markPaid).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.checkPayment).not.toHaveBeenCalled();
+    expect(fixture.provisionParticipant).toHaveBeenCalledWith("registration-1");
+  });
+
+  it("keeps a newly confirmed payment paid when participant provisioning is delayed", async () => {
+    fixture.setRecord(pendingRecord());
+    fixture.provisionParticipant.mockRejectedValueOnce(new Error("auth unavailable"));
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "pending",
+    });
+    expect(fixture.repository.markPaid).toHaveBeenCalledOnce();
+  });
+
+  it("does not provision participant access when marking the payment fails", async () => {
+    fixture.setRecord(pendingRecord());
+    vi.mocked(fixture.repository.markPaid).mockRejectedValueOnce(new Error("database unavailable"));
+
+    await expect(fixture.service.reconcilePayment(lookup)).rejects.toThrow("database unavailable");
+    expect(fixture.provisionParticipant).not.toHaveBeenCalled();
+  });
+
   it("does not update twice when the same transaction is repeated", async () => {
     fixture.setRecord(pendingRecord());
 
@@ -465,6 +522,7 @@ describe("registration payment service", () => {
       status: "paid",
       paymentMethod: "credit_card",
       installments: 2,
+      participantAccessStatus: "active",
     });
   });
 
@@ -487,6 +545,7 @@ describe("registration payment service", () => {
       status: "paid",
       paymentMethod: "pix",
       installments: 1,
+      participantAccessStatus: "pending",
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
       participantName: "Maria da Silva",
       choirName: "Coro Diocesano de Quixadá",
