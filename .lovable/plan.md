@@ -1,24 +1,29 @@
-# Corrigir erro ao enviar a inscrição
+# Remover a camisa da inscrição
 
-## O que está acontecendo
+A camisa deixa de ser oferecida e cobrada. Isso também resolve o erro atual do formulário: hoje toda inscrição sem camisa é recusada na gravação, porque o tamanho vazio conflita com a regra do banco. Removendo a camisa, o conflito desaparece.
 
-A inscrição do site chega ao servidor, mas a gravação no banco é recusada e o participante vê a falha genérica. O registro do servidor mostra: `[Registration checkout] creation failed {"reason":"Não foi possível salvar a inscrição."}` e nenhuma inscrição foi criada.
+## O que muda para quem se inscreve
 
-Causa confirmada: quando a pessoa **não** marca a camisa, o formulário envia o tamanho como texto vazio em vez de "sem tamanho". A regra do banco exige que, sem camisa, o tamanho fique realmente vazio (nulo), então a gravação é rejeitada — ou seja, hoje **nenhuma inscrição sem camisa consegue ser concluída**.
+- O formulário não mostra mais a opção da camisa nem a escolha de tamanho.
+- O total passa a ser somente o valor da inscrição do coro (padrão ou promocional).
+- O checkout, a tela de confirmação, o comprovante em PDF e a área do participante deixam de exibir linha de camisa.
 
-## Correção
+## O que muda na administração
 
-1. Ao gravar a inscrição, converter tamanho de camisa vazio para "sem valor", garantindo coerência com a regra do banco (com e sem camisa).
-2. Registrar no log do servidor o código e a mensagem reais do banco quando a gravação falhar, mantendo a mensagem amigável na tela — hoje o motivo real fica invisível.
-3. Testes: cobrir inscrição sem camisa (tamanho vazio → nulo) e inscrição com camisa (tamanho preservado), no serviço de inscrição.
+- A configuração de preço da camisa sai da tela de coros/valores.
+- A lista e a exportação de inscrições deixam de mostrar as colunas de camisa e tamanho.
+- Inscrições antigas que já pagaram camisa continuam gravadas no banco e seguem exibidas com o valor efetivamente pago, sem oferecer camisa em novas inscrições.
 
 ## Detalhes técnicos
 
-- `src/features/registration/registration-payment.server.ts`: em `createPending`, normalizar `shirt_size` (`input.shirtSize?.trim() || null`) e garantir `shirt_price_cents` nulo quando não há camisa; incluir `error.code`/`error.message` no log antes de lançar a mensagem pública.
-- `src/features/registration/registration-payment.server.test.ts`: novos casos para os dois cenários de camisa.
-- Restrições envolvidas: `registrations_shirt_selection_check` e `registrations_shirt_price_snapshot_check`.
+- Formulário e domínio: remover `includeShirt`, `shirtSize`, `displayedShirtPriceCents` de `registration.domain.ts` (schema, itens de checkout, cálculo de valor) e de `RegistrationSection.tsx`; a imagem `camisa-polo-evento` deixa de ser usada.
+- Gravação: em `registration-payment.server.ts`, sempre inserir `include_shirt = false`, `shirt_size = null`, `shirt_price_cents = null`, satisfazendo `registrations_shirt_selection_check` e `registrations_shirt_price_snapshot_check`; incluir código/mensagem reais do erro do banco no log do servidor quando a gravação falhar.
+- Preços: retirar `shirtPriceCents` do fluxo de cotação (`choir-pricing.domain.ts`, `choir-pricing.server.ts`, `choir-pricing.functions.ts`) e do painel `AdminChoirsPage`.
+- Leituras: retirar camisa/tamanho de `admin.domain.ts`, `admin-registration.server.ts`, `AdminRegistrationsPage`, `participant.domain.ts`, `participant-auth.server.ts`, `ParticipantPortalPage`, recibos (`receipt.ts`, `participant-receipt.ts`) e `regent-payments.domain.ts`.
+- Banco: nenhuma migração; colunas e restrições permanecem para preservar o histórico.
+- Testes: atualizar as suítes afetadas e cobrir inscrição concluída sem camisa (gravando `shirt_size` nulo).
 
 ## Validação
 
-- Rodar as suítes de inscrição e a verificação de tipos.
-- Reproduzir no navegador uma inscrição sem camisa até o checkout ser criado, e conferir a linha gravada no banco (removendo o registro de teste depois).
+- Rodar as suítes de inscrição, coros, admin e participante, mais a verificação de tipos.
+- Reproduzir no navegador uma inscrição completa até o checkout ser criado, conferindo a linha no banco e removendo o registro de teste depois.
