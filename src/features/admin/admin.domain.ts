@@ -31,7 +31,6 @@ export type AdminRegistrationRow = {
   institution: string | null;
   role: string;
   paymentStatus: "legacy" | "pending" | "paid";
-  shirtLabel: string;
   amountCents: number | null;
   paidAmountCents: number | null;
   paymentMethod: "pix" | "credit_card" | null;
@@ -40,7 +39,6 @@ export type AdminRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
-  shirtPriceCents: number | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -106,12 +104,6 @@ export function mapAdminRegistrationRow(
     institution: row.institution,
     role: displayText(row.role),
     paymentStatus: status,
-    shirtLabel:
-      status === "legacy"
-        ? "Não informado"
-        : row.include_shirt
-          ? `Tamanho ${row.shirt_size}`
-          : "Sem camisa",
     amountCents: row.amount_cents,
     paidAmountCents: row.paid_amount_cents,
     paymentMethod: row.payment_method as AdminRegistrationRow["paymentMethod"],
@@ -120,7 +112,6 @@ export function mapAdminRegistrationRow(
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
-    shirtPriceCents: row.shirt_price_cents,
     ...(accountStatus === undefined
       ? {}
       : { participantAccess: resolveParticipantAccess(status, accountStatus) }),
@@ -210,11 +201,9 @@ const csvHeaders = [
   "Instituição",
   "Função",
   "Situação",
-  "Camisa",
   "Tipo do valor",
   "Valor normal",
   "Valor da inscrição",
-  "Valor da camisa",
   "Valor esperado",
   "Valor pago",
   "Forma de pagamento",
@@ -289,11 +278,9 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
       displayText(row.institution),
       row.role,
       displayStatus(row.paymentStatus),
-      row.shirtLabel,
       displayPricingType(row.pricingType),
       displayAmount(row.standardPriceCents),
       displayAmount(row.registrationPriceCents),
-      displayAmount(row.shirtPriceCents),
       displayAmount(row.amountCents),
       displayAmount(row.paidAmountCents),
       displayPaymentMethod(row.paymentMethod),
