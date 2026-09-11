@@ -66,17 +66,11 @@ describe("registration domain", () => {
     expect(
       registrationSchema.safeParse({
         ...baseInput,
-        includeShirt: true,
-        shirtSize: "M",
-        displayedShirtPriceCents: 5000,
       }).success,
     ).toBe(true);
     expect(
       registrationSchema.safeParse({
         ...baseInput,
-        includeShirt: true,
-        shirtSize: "",
-        displayedShirtPriceCents: 5000,
       }).success,
     ).toBe(false);
   });

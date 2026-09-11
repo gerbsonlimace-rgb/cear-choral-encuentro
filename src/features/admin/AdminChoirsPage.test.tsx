@@ -17,7 +17,6 @@ const emptyData: AdminChoirPricing = {
   settings: {
     standardPriceCents: null,
     promotionalPriceCents: null,
-    shirtPriceCents: null,
   },
   choirs: [],
 };
@@ -92,7 +91,6 @@ describe("AdminChoirsPage", () => {
         data: {
           standardPriceCents: 30000,
           promotionalPriceCents: 10000,
-          shirtPriceCents: 5000,
         },
       }),
     );
@@ -141,7 +139,6 @@ describe("AdminChoirsPage", () => {
         settings: {
           standardPriceCents: 30000,
           promotionalPriceCents: 10000,
-          shirtPriceCents: 5000,
         },
         choirs: [promotionalChoir],
       })),

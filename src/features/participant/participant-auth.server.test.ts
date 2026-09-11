@@ -46,7 +46,6 @@ const completeRegistration = {
   created_at: "2026-09-11T10:00:00Z",
   diocese: "Diocese de Quixadá",
   email: "maria@example.com",
-  include_shirt: true,
   infinitepay_invoice_slug: "private-slug",
   infinitepay_transaction_nsu: "private-transaction",
   installments: 2,
@@ -64,8 +63,6 @@ const completeRegistration = {
   receipt_url: "https://receipt.example/paid",
   registration_price_cents: 30000,
   role: "Regente",
-  shirt_price_cents: 5000,
-  shirt_size: "M",
   standard_price_cents: 40000,
   voice_part: "soprano",
 };
@@ -186,12 +183,9 @@ describe("participant registration loader", () => {
         institution: "Paróquia São José",
         role: "Regente",
         voicePart: "soprano",
-        includeShirt: true,
-        shirtSize: "M",
         pricingType: "promotional",
         standardPriceCents: 40000,
         registrationPriceCents: 30000,
-        shirtPriceCents: 5000,
       },
       payment: {
         status: "paid",
@@ -222,7 +216,6 @@ describe("participant registration loader", () => {
       pricing_type: null,
       receipt_url: null,
       role: null,
-      shirt_size: null,
       voice_part: null,
     };
     const data = repository(activePaidAccount, sparse);

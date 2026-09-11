@@ -39,21 +39,18 @@ describe("choir pricing domain", () => {
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: 5000,
       }).success,
     ).toBe(true);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 30000,
-        shirtPriceCents: 5000,
       }).success,
     ).toBe(false);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: null,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }).success,
     ).toBe(true);
   });
@@ -63,21 +60,18 @@ describe("choir pricing domain", () => {
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }).success,
     ).toBe(true);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: 5000,
       }).success,
     ).toBe(true);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: 0,
       }).success,
     ).toBe(false);
   });
@@ -101,7 +95,6 @@ describe("choir pricing domain", () => {
       resolveChoirPrice(baseChoir, {
         standardPriceCents: 30000,
         promotionalPriceCents: null,
-        shirtPriceCents: null,
       }),
     ).toEqual({
       pricingType: "standard",
@@ -140,7 +133,6 @@ describe("choir pricing domain", () => {
       resolveChoirPrice(baseChoir, {
         standardPriceCents: null,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }),
     ).toBeNull();
   });

@@ -22,7 +22,6 @@ const paidView: ParticipantRegistrationView = {
   registration: {
     choirName: "Coral Santa Cecília",
     diocese: "Diocese de Quixadá",
-    includeShirt: false,
   },
   payment: {
     status: "paid",

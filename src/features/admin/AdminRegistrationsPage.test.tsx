@@ -34,7 +34,6 @@ const legacy: AdminRegistrationRow = {
   institution: null,
   role: "Coralista",
   paymentStatus: "legacy",
-  shirtLabel: "Não informado",
   amountCents: null,
   paidAmountCents: null,
   paymentMethod: null,
@@ -43,14 +42,12 @@ const legacy: AdminRegistrationRow = {
   pricingType: null,
   standardPriceCents: null,
   registrationPriceCents: null,
-  shirtPriceCents: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
   id: "pending",
   name: "Bruno Pendente",
   paymentStatus: "pending",
-  shirtLabel: "Sem camisa",
   amountCents: 10000,
 };
 const paid: AdminRegistrationRow = {
@@ -58,7 +55,6 @@ const paid: AdminRegistrationRow = {
   id: "paid",
   name: "Clara Paga",
   paymentStatus: "paid",
-  shirtLabel: "Tamanho M",
   amountCents: 13990,
   paidAmountCents: 13990,
   paymentMethod: "credit_card",

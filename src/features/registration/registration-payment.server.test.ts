@@ -74,7 +74,6 @@ const trustedSelection = {
     standardPriceCents: 30000,
     registrationPriceCents: 10000,
   },
-  shirtPriceCents: 5000,
 };
 
 const baseInput: RegistrationInput = {
@@ -557,7 +556,6 @@ describe("registration payment service", () => {
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
       participantName: "Maria da Silva",
       choirName: "Coro Diocesano de Quixadá",
-      shirtSize: "M",
     } as RegistrationPaymentRecord);
 
     const status = await fixture.service.getPublicStatus(fixedOrderNsu);
@@ -655,12 +653,9 @@ describe("Supabase registration repository", () => {
           institution: null,
           role: null,
           observations: null,
-          include_shirt: false,
-          shirt_size: null,
           pricing_type: "promotional",
           standard_price_cents: 30000,
           registration_price_cents: 10000,
-          shirt_price_cents: null,
           amount_cents: 10000,
           payment_status: "pending",
           order_nsu: fixedOrderNsu,
@@ -736,7 +731,6 @@ describe("Supabase registration repository", () => {
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
-      shirtPriceCents: null,
     });
     await repository.markPaid(fixedOrderNsu, {
       transactionNsu: "transaction-1",

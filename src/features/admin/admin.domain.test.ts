@@ -38,12 +38,9 @@ const legacyRow: RegistrationDatabaseRow = {
   city: "Sobral",
   institution: null,
   role: "singer",
-  include_shirt: false,
-  shirt_size: null,
   pricing_type: null,
   standard_price_cents: null,
   registration_price_cents: null,
-  shirt_price_cents: null,
   amount_cents: null,
   paid_amount_cents: null,
   payment_status: "legacy",
@@ -66,8 +63,6 @@ const pendingRow: RegistrationDatabaseRow = {
   created_at: "2026-09-06T15:00:00.000Z",
   name: "Bia Pendente",
   payment_status: "pending",
-  include_shirt: false,
-  shirt_size: null,
   amount_cents: 10000,
   payment_method: "pix",
   choir_id: "11111111-1111-4111-8111-111111111111",
@@ -86,8 +81,6 @@ const paidRow: RegistrationDatabaseRow = {
   city: "Fortaleza; CE",
   institution: 'Coro "Vozes"\nUnidas',
   payment_status: "paid",
-  include_shirt: true,
-  shirt_size: "M",
   amount_cents: 13990,
   paid_amount_cents: 12990,
   payment_method: "credit_card",
@@ -96,7 +89,6 @@ const paidRow: RegistrationDatabaseRow = {
   pricing_type: "promotional",
   standard_price_cents: 30000,
   registration_price_cents: 10000,
-  shirt_price_cents: 3990,
   checkout_url: "https://checkout.example/checkout-secret",
   infinitepay_invoice_slug: "invoice-secret",
   infinitepay_transaction_nsu: "transaction-secret",
@@ -189,7 +181,6 @@ describe("admin registration history and CSV", () => {
   it("preserves unknown historical registration details", () => {
     expect(mapAdminRegistrationRow(legacyRow)).toMatchObject({
       paymentStatus: "legacy",
-      shirtLabel: "Não informado",
       amountCents: null,
       paidAmountCents: null,
       paymentMethod: null,
@@ -202,7 +193,6 @@ describe("admin registration history and CSV", () => {
   it("maps a pending registration without a shirt", () => {
     expect(mapAdminRegistrationRow(pendingRow)).toMatchObject({
       paymentStatus: "pending",
-      shirtLabel: "Sem camisa",
       amountCents: 10000,
       paymentMethod: "pix",
     });
@@ -250,11 +240,9 @@ describe("admin registration history and CSV", () => {
   it("maps a paid card registration faithfully", () => {
     expect(mapAdminRegistrationRow(paidRow)).toMatchObject({
       paymentStatus: "paid",
-      shirtLabel: "Tamanho M",
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
-      shirtPriceCents: 3990,
       amountCents: 13990,
       paidAmountCents: 12990,
       paymentMethod: "credit_card",
@@ -345,7 +333,6 @@ describe("admin registration summary", () => {
         choir_name: "Diocese de Quixadá",
         amount_cents: 10000,
         paid_amount_cents: 10000,
-        shirt_price_cents: null,
       }),
       mapAdminRegistrationRow({
         ...paidRow,
@@ -353,7 +340,6 @@ describe("admin registration summary", () => {
         choir_name: "Diocese de Quixadá",
         amount_cents: 10000,
         paid_amount_cents: 10000,
-        shirt_price_cents: null,
       }),
       mapAdminRegistrationRow({ ...pendingRow, choir_name: "Diocese de Quixadá" }),
       mapAdminRegistrationRow({ ...legacyRow, choir_name: "Diocese de Sobral" }),
@@ -366,7 +352,6 @@ describe("admin registration summary", () => {
         registration_price_cents: 30000,
         amount_cents: 30000,
         paid_amount_cents: 30000,
-        shirt_price_cents: null,
       }),
     ];
 
