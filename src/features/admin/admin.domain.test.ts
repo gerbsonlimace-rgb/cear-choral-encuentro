@@ -31,6 +31,7 @@ const legacyRow: RegistrationDatabaseRow = {
   amount_cents: null,
   paid_amount_cents: null,
   payment_status: "legacy",
+  photo_path: null,
   payment_method: null,
   installments: null,
   paid_at: null,
@@ -40,6 +41,7 @@ const legacyRow: RegistrationDatabaseRow = {
   observations: null,
   order_nsu: null,
   receipt_url: null,
+  voice_part: null,
 };
 
 const pendingRow: RegistrationDatabaseRow = {

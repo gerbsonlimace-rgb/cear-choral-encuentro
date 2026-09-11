@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarDays,
+  Camera,
   LockKeyhole,
   Mail,
   Music2,
@@ -11,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import eventLogo from "@/assets/logo-coros-preto.png";
 import pixLogo from "@/assets/logo-pix.svg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,8 +27,12 @@ import {
 import {
   getFortalezaCalendarDate,
   registrationSchema,
+  voicePartOptions,
   type RegistrationInput,
+  type RegistrationPhotoInput,
+  type VoicePart,
 } from "./registration.domain";
+import { prepareRegistrationPhoto } from "./registration-photo";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -34,9 +40,15 @@ type RegistrationSectionProps = {
   navigateToCheckout?: (url: string) => void;
 };
 
-type RegistrationForm = Omit<RegistrationInput, "choirId" | "displayedQuote"> & {
+type RegistrationForm = Omit<
+  RegistrationInput,
+  "choirId" | "displayedQuote" | "photo" | "voicePart"
+> & {
   choirId: string;
+  voicePart: VoicePart | "";
 };
+
+type RegistrationFormField = keyof RegistrationForm | "photo";
 
 const formatCurrency = (valueInCents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valueInCents / 100);
@@ -56,12 +68,81 @@ const initialForm: RegistrationForm = {
   phone: "",
   birthDate: "",
   choirId: "",
+  voicePart: "",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 
 const inputClassName =
   "min-h-14 rounded-xl border-border bg-background pl-12 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-teal/30";
+
+function RegistrationBadgePreview({
+  name,
+  choirName,
+  voicePartLabel,
+  photoPreviewUrl,
+}: {
+  name: string;
+  choirName: string;
+  voicePartLabel: string;
+  photoPreviewUrl: string;
+}) {
+  const participantName = name.trim() || "Seu nome";
+
+  return (
+    <aside
+      aria-label="Prévia do crachá"
+      className="relative mx-auto flex min-h-[23rem] w-full max-w-sm items-center justify-center overflow-hidden rounded-2xl bg-muted/35 px-5 pb-4 pt-14 lg:sticky lg:top-24"
+    >
+      <div
+        className="absolute left-1/2 top-0 h-24 w-28 -translate-x-1/2 rounded-b-full border-[0.65rem] border-t-0 border-foreground"
+        aria-hidden="true"
+      />
+      <div
+        className="absolute left-1/2 top-[4.55rem] z-10 h-7 w-7 -translate-x-1/2 rounded-md bg-amber shadow-inner ring-4 ring-background/70"
+        aria-hidden="true"
+      />
+      <div className="relative w-full max-w-[18.5rem] rounded-2xl border-2 border-foreground border-t-[0.65rem] border-t-amber bg-card px-5 pb-4 pt-3 shadow-[0.55rem_0.65rem_0_rgba(214,168,38,0.28)]">
+        <img
+          src={eventLogo}
+          alt="Logo do Encontro de Coros"
+          className="mx-auto h-10 w-auto object-contain"
+        />
+        <div className="mx-auto mt-2 h-32 w-32 overflow-hidden rounded-2xl border-4 border-amber bg-muted">
+          {photoPreviewUrl ? (
+            <img
+              src={photoPreviewUrl}
+              alt={`Foto de ${participantName} no crachá`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="grid h-full place-items-center px-6 text-center text-muted-foreground">
+              <span>
+                <Camera className="mx-auto mb-2 size-10" aria-hidden="true" />
+                <span className="text-xs">Sua foto aparece aqui</span>
+              </span>
+            </div>
+          )}
+        </div>
+        <p className="mt-3 text-center text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          Participante
+        </p>
+        <p className="truncate text-center font-display text-xl font-bold text-card-foreground">
+          {participantName}
+        </p>
+        <p className="mx-auto mt-1 line-clamp-2 min-h-9 max-w-[15rem] text-center text-sm font-semibold leading-snug text-card-foreground">
+          {choirName || "Seu coro/diocese"}
+        </p>
+        <p className="mt-1 text-center text-xs font-bold text-amber">
+          {voicePartLabel || "Perfil musical"}
+        </p>
+        <span className="mx-auto mt-3 block w-fit rounded-full bg-foreground px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber">
+          Quixadá • 2026
+        </span>
+      </div>
+    </aside>
+  );
+}
 
 export function RegistrationSection({
   loadConfiguration = defaultLoadConfiguration,
@@ -71,7 +152,10 @@ export function RegistrationSection({
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
   const [form, setForm] = useState<RegistrationForm>(initialForm);
-  const [errors, setErrors] = useState<Partial<Record<keyof RegistrationForm, string>>>({});
+  const [photo, setPhoto] = useState<RegistrationPhotoInput | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
+  const [photoFileName, setPhotoFileName] = useState("");
+  const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
@@ -117,10 +201,32 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
+  const selectedVoicePartLabel =
+    voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
 
   const handleChange = (field: keyof RegistrationForm, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const handlePhotoChange = async (file: File | undefined) => {
+    setPhoto(null);
+    setPhotoPreviewUrl("");
+    setPhotoFileName("");
+    if (!file) return;
+
+    try {
+      const prepared = await prepareRegistrationPhoto(file);
+      setPhoto(prepared.payload);
+      setPhotoPreviewUrl(prepared.previewUrl);
+      setPhotoFileName(file.name);
+      setErrors((previous) => ({ ...previous, photo: undefined }));
+    } catch (caught) {
+      setErrors((previous) => ({
+        ...previous,
+        photo: caught instanceof Error ? caught.message : "Não foi possível ler a foto.",
+      }));
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -130,9 +236,14 @@ export function RegistrationSection({
       setErrors((previous) => ({ ...previous, choirId: "Selecione um coro/diocese." }));
       return;
     }
+    if (!photo) {
+      setErrors((previous) => ({ ...previous, photo: "Envie uma foto do participante." }));
+      return;
+    }
 
     const parsedForm = registrationSchema.safeParse({
       ...form,
+      photo,
       displayedQuote: {
         pricingType: selectedChoir.pricingType,
         standardPriceCents: selectedChoir.standardPriceCents,
@@ -140,9 +251,9 @@ export function RegistrationSection({
       },
     });
     if (!parsedForm.success) {
-      const nextErrors: Partial<Record<keyof RegistrationForm, string>> = {};
+      const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
       for (const issue of parsedForm.error.issues) {
-        const field = issue.path[0] as keyof RegistrationForm | undefined;
+        const field = issue.path[0] as RegistrationFormField | undefined;
         if (field && !nextErrors[field]) nextErrors[field] = issue.message;
       }
       setErrors(nextErrors);
@@ -223,7 +334,7 @@ export function RegistrationSection({
 
         <Card className="relative mx-auto mt-9 max-w-5xl overflow-hidden rounded-3xl border-border bg-card shadow-xl shadow-teal/10 sm:mt-12">
           <div className="h-1.5 bg-teal" aria-hidden="true" />
-          <CardContent className="p-5 sm:p-8 lg:p-10">
+          <CardContent className="grid items-start gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.75fr)] lg:p-10">
             <form onSubmit={handleSubmit} className="space-y-9">
               <fieldset className="space-y-5">
                 <legend className="flex items-center gap-3">
@@ -425,6 +536,71 @@ export function RegistrationSection({
                   {errors.choirId && <p className="text-sm text-destructive">{errors.choirId}</p>}
                 </div>
 
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="voicePart" className="font-semibold">
+                      Perfil musical
+                    </Label>
+                    <div className="relative">
+                      <Music2
+                        className="pointer-events-none absolute left-4 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <select
+                        id="voicePart"
+                        required
+                        value={form.voicePart}
+                        onChange={(event) => handleChange("voicePart", event.target.value)}
+                        className="min-h-14 w-full rounded-xl border border-border bg-background pl-12 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-teal/30"
+                      >
+                        <option value="">Selecione seu perfil</option>
+                        {voicePartOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {errors.voicePart && (
+                      <p className="text-sm text-destructive">{errors.voicePart}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="photo" className="font-semibold">
+                      Foto do participante
+                    </Label>
+                    <label
+                      htmlFor="photo"
+                      className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-amber/60 bg-amber/5 px-4 transition-colors hover:bg-amber/10"
+                    >
+                      <Camera className="size-5 shrink-0 text-amber" aria-hidden="true" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-foreground">
+                          {photoFileName || "Escolher foto"}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          JPG, PNG ou WebP • até 5 MB
+                        </span>
+                      </span>
+                      <input
+                        id="photo"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        aria-invalid={Boolean(errors.photo)}
+                        aria-describedby={errors.photo ? "photo-error" : undefined}
+                        onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
+                      />
+                    </label>
+                    {errors.photo && (
+                      <p id="photo-error" role="alert" className="text-sm text-destructive">
+                        {errors.photo}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 {selectedChoir?.pricingType === "promotional" && (
                   <div
                     role="status"
@@ -480,6 +656,12 @@ export function RegistrationSection({
                 </p>
               </div>
             </form>
+            <RegistrationBadgePreview
+              name={form.name}
+              choirName={selectedChoir?.name ?? ""}
+              voicePartLabel={selectedVoicePartLabel}
+              photoPreviewUrl={photoPreviewUrl}
+            />
           </CardContent>
         </Card>
       </div>

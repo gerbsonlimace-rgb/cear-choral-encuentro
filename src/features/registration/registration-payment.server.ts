@@ -11,9 +11,13 @@ import {
 import {
   buildCheckoutItems,
   calculateOrderAmountCents,
+  MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
   type RegistrationInput,
+  type RegistrationPhotoInput,
 } from "./registration.domain";
+
+const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -45,19 +49,20 @@ export type PublicPaymentStatus =
       choirName?: string;
     };
 
-
 export type RegistrationRepository = {
   createPending(
-    input: RegistrationInput & {
+    input: Omit<RegistrationInput, "photo"> & {
       orderNsu: string;
       amountCents: number;
       choirName: string;
+      photoPath: string;
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
     },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
+  clearPendingPhoto(orderNsu: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
     orderNsu: string,
@@ -73,9 +78,15 @@ export type RegistrationRepository = {
   ): Promise<RegistrationPaymentRecord>;
 };
 
+export type RegistrationPhotoStorage = {
+  upload(orderNsu: string, photo: RegistrationPhotoInput): Promise<string>;
+  remove(photoPath: string): Promise<void>;
+};
+
 export function createRegistrationPaymentService(deps: {
   repository: RegistrationRepository;
   infinitePay: InfinitePayClient;
+  photoStorage: RegistrationPhotoStorage;
   randomUUID: () => string;
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
@@ -93,22 +104,40 @@ export function createRegistrationPaymentService(deps: {
 
       const orderNsu = deps.randomUUID();
       const amountCents = calculateOrderAmountCents(input, selection.quote);
+      const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
+      const { photo: _photo, ...registrationData } = input;
 
-      await deps.repository.createPending({
-        ...input,
-        orderNsu,
-        amountCents,
-        choirName: selection.choir.name,
-        pricingType: selection.quote.pricingType,
-        standardPriceCents: selection.quote.standardPriceCents,
-        registrationPriceCents: selection.quote.registrationPriceCents,
-      });
-      const checkout = await deps.infinitePay.createCheckout({
-        orderNsu,
-        items: buildCheckoutItems(input, selection.quote),
-        customer: { name: input.name, email: input.email, phoneNumber: input.phone },
-      });
-      await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+      try {
+        await deps.repository.createPending({
+          ...registrationData,
+          orderNsu,
+          amountCents,
+          choirName: selection.choir.name,
+          photoPath,
+          pricingType: selection.quote.pricingType,
+          standardPriceCents: selection.quote.standardPriceCents,
+          registrationPriceCents: selection.quote.registrationPriceCents,
+        });
+      } catch (caught) {
+        await deps.photoStorage.remove(photoPath).catch(() => undefined);
+        throw caught;
+      }
+
+      let checkout: { url: string };
+      try {
+        checkout = await deps.infinitePay.createCheckout({
+          orderNsu,
+          items: buildCheckoutItems(input, selection.quote),
+          customer: { name: input.name, email: input.email, phoneNumber: input.phone },
+        });
+        await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+      } catch (caught) {
+        await Promise.allSettled([
+          deps.repository.clearPendingPhoto(orderNsu),
+          deps.photoStorage.remove(photoPath),
+        ]);
+        throw caught;
+      }
 
       return { checkoutUrl: checkout.url, orderNsu };
     },
@@ -209,7 +238,6 @@ function mapPaymentRow(row: {
   };
 }
 
-
 export function createSupabaseRegistrationRepository(): RegistrationRepository {
   const findPayment = async (orderNsu: string) => {
     const { data, error } = await supabaseAdmin
@@ -227,6 +255,8 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
         cpf: input.cpf,
+        photo_path: input.photoPath,
+        voice_part: input.voicePart,
         phone: input.phone,
         birth_date: input.birthDate,
         choir_id: input.choirId,
@@ -259,6 +289,16 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         .eq("payment_status", "pending");
 
       if (error) throw new Error("Não foi possível salvar o checkout.");
+    },
+
+    clearPendingPhoto: async (orderNsu) => {
+      const { error } = await supabaseAdmin
+        .from("registrations")
+        .update({ photo_path: null })
+        .eq("order_nsu", orderNsu)
+        .eq("payment_status", "pending");
+
+      if (error) throw new Error("Não foi possível limpar a foto da inscrição.");
     },
 
     findPayment,
@@ -296,6 +336,41 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
   };
 }
 
+const photoExtensions: Record<RegistrationPhotoInput["contentType"], string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+export function createSupabaseRegistrationPhotoStorage(): RegistrationPhotoStorage {
+  return {
+    upload: async (orderNsu, photo) => {
+      const photoPath = `${orderNsu}/participant.${photoExtensions[photo.contentType]}`;
+      const bytes = Buffer.from(photo.dataBase64, "base64");
+      if (bytes.byteLength === 0 || bytes.byteLength > MAX_REGISTRATION_PHOTO_BYTES) {
+        throw new Error("A foto deve ter até 5 MB.");
+      }
+      const { data, error } = await supabaseAdmin.storage
+        .from(REGISTRATION_PHOTO_BUCKET)
+        .upload(photoPath, bytes, {
+          contentType: photo.contentType,
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) throw new Error("Não foi possível salvar a foto do participante.");
+      return data.path;
+    },
+
+    remove: async (photoPath) => {
+      const { error } = await supabaseAdmin.storage
+        .from(REGISTRATION_PHOTO_BUCKET)
+        .remove([photoPath]);
+      if (error) throw new Error("Não foi possível remover a foto do participante.");
+    },
+  };
+}
+
 let paymentService: ReturnType<typeof createRegistrationPaymentService> | undefined;
 
 export function getRegistrationPaymentService() {
@@ -304,9 +379,10 @@ export function getRegistrationPaymentService() {
       repository: createSupabaseRegistrationRepository(),
       infinitePay: createInfinitePayClient(fetch, {
         handle: process.env.INFINITEPAY_HANDLE?.trim() || "antonio-gerbson",
-        siteUrl: process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosdiocesanosce.lovable.app",
-
+        siteUrl:
+          process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosdiocesanosce.lovable.app",
       }),
+      photoStorage: createSupabaseRegistrationPhotoStorage(),
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),

@@ -1,10 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InfinitePayClient } from "./infinitepay.server";
-import type { PaymentLookup, RegistrationInput } from "./registration.domain";
+import {
+  MAX_REGISTRATION_PHOTO_BYTES,
+  type PaymentLookup,
+  type RegistrationInput,
+} from "./registration.domain";
 
-const { supabaseAdminMock } = vi.hoisted(() => ({
-  supabaseAdminMock: { from: vi.fn() },
-}));
+const { storageFromMock, storageRemoveMock, storageUploadMock, supabaseAdminMock } = vi.hoisted(
+  () => {
+    const storageUploadMock = vi.fn();
+    const storageRemoveMock = vi.fn();
+    const storageFromMock = vi.fn(() => ({
+      upload: storageUploadMock,
+      remove: storageRemoveMock,
+    }));
+    return {
+      storageFromMock,
+      storageRemoveMock,
+      storageUploadMock,
+      supabaseAdminMock: { from: vi.fn(), storage: { from: storageFromMock } },
+    };
+  },
+);
 
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: supabaseAdminMock,
@@ -12,6 +29,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 
 import {
   createRegistrationPaymentService,
+  createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
@@ -21,6 +39,8 @@ const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 const choirId = "22222222-2222-4222-8222-222222222222";
+const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
+const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
 
 const trustedSelection = {
   choir: {
@@ -46,6 +66,8 @@ const baseInput: RegistrationInput = {
   phone: "85999999999",
   birthDate: "1990-05-20",
   choirId,
+  voicePart: "soprano",
+  photo: registrationPhoto,
   displayedQuote: trustedSelection.quote,
 };
 
@@ -173,6 +195,9 @@ function createFixture() {
     saveCheckoutUrl: vi.fn(async () => {
       calls.push("saveCheckoutUrl");
     }),
+    clearPendingPhoto: vi.fn(async () => {
+      calls.push("clearPendingPhoto");
+    }),
     findPayment: vi.fn(async () => record),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
       calls.push("markPaid");
@@ -204,9 +229,20 @@ function createFixture() {
     })),
   };
 
+  const photoStorage = {
+    upload: vi.fn(async () => {
+      calls.push("uploadPhoto");
+      return registrationPhotoPath;
+    }),
+    remove: vi.fn(async () => {
+      calls.push("removePhoto");
+    }),
+  };
+
   const service = createRegistrationPaymentService({
     repository,
     infinitePay,
+    photoStorage,
     randomUUID: () => fixedOrderNsu,
     now: () => fixedPaidAt,
     resolveChoirSelection: vi.fn(async () => trustedSelection),
@@ -215,6 +251,7 @@ function createFixture() {
   return {
     calls,
     infinitePay,
+    photoStorage,
     repository,
     service,
     setRecord(next: RegistrationPaymentRecord | null) {
@@ -234,12 +271,19 @@ describe("registration payment service", () => {
   it("stores a pending registration before requesting checkout", async () => {
     const result = await fixture.service.startCheckout(baseInput);
 
-    expect(fixture.calls).toEqual(["createPending", "createCheckout", "saveCheckoutUrl"]);
+    expect(fixture.calls).toEqual([
+      "uploadPhoto",
+      "createPending",
+      "createCheckout",
+      "saveCheckoutUrl",
+    ]);
+    const { photo: _photo, ...registrationData } = baseInput;
     expect(fixture.repository.createPending).toHaveBeenCalledWith({
-      ...baseInput,
+      ...registrationData,
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
       choirName: "Coro Diocesano de Quixadá",
+      photoPath: registrationPhotoPath,
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
@@ -254,9 +298,10 @@ describe("registration payment service", () => {
       },
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
+    expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
   });
 
-  it("leaves the registration pending when checkout creation fails", async () => {
+  it("leaves the registration pending and removes its photo when checkout creation fails", async () => {
     vi.mocked(fixture.infinitePay.createCheckout).mockRejectedValueOnce(
       new Error("InfinitePay indisponível"),
     );
@@ -267,6 +312,8 @@ describe("registration payment service", () => {
       paymentStatus: "pending",
     });
     expect(fixture.repository.saveCheckoutUrl).not.toHaveBeenCalled();
+    expect(fixture.repository.clearPendingPhoto).toHaveBeenCalledWith(fixedOrderNsu);
+    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
   });
 
   it("rejects a stale displayed price before saving or opening checkout", async () => {
@@ -378,8 +425,6 @@ describe("registration payment service", () => {
       paymentMethod: "credit_card",
       installments: 2,
     });
-
-
   });
 
   it("returns only receipt data from the public status", async () => {
@@ -410,6 +455,44 @@ describe("registration payment service", () => {
   });
 });
 
+describe("Supabase registration photo storage", () => {
+  beforeEach(() => {
+    storageFromMock.mockClear();
+    storageUploadMock.mockReset();
+    storageRemoveMock.mockReset();
+  });
+
+  it("rejects decoded photos larger than the bucket limit before uploading", async () => {
+    const storage = createSupabaseRegistrationPhotoStorage();
+    const oversizedPhoto = {
+      contentType: "image/jpeg" as const,
+      dataBase64: Buffer.alloc(MAX_REGISTRATION_PHOTO_BYTES + 1).toString("base64"),
+    };
+
+    await expect(storage.upload(fixedOrderNsu, oversizedPhoto)).rejects.toThrow(
+      "A foto deve ter até 5 MB",
+    );
+    expect(storageFromMock).not.toHaveBeenCalled();
+  });
+
+  it("uploads a new object to the private registration bucket", async () => {
+    storageUploadMock.mockResolvedValueOnce({
+      data: { path: registrationPhotoPath },
+      error: null,
+    });
+    const storage = createSupabaseRegistrationPhotoStorage();
+
+    await expect(storage.upload(fixedOrderNsu, registrationPhoto)).resolves.toBe(
+      registrationPhotoPath,
+    );
+    expect(storageFromMock).toHaveBeenCalledWith("registration-photos");
+    expect(storageUploadMock).toHaveBeenCalledWith(registrationPhotoPath, expect.any(Buffer), {
+      contentType: "image/jpeg",
+      cacheControl: "3600",
+      upsert: false,
+    });
+  });
+});
 
 describe("Supabase registration repository", () => {
   beforeEach(() => {
@@ -419,12 +502,14 @@ describe("Supabase registration repository", () => {
   it("inserts the checkout contact data and clears unused historical fields", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
+    const { photo: _photo, ...registrationData } = baseInput;
 
     await repository.createPending({
-      ...baseInput,
+      ...registrationData,
       orderNsu: fixedOrderNsu,
       amountCents: 10000,
       choirName: "Coro Diocesano de Quixadá",
+      photoPath: registrationPhotoPath,
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
@@ -437,6 +522,8 @@ describe("Supabase registration repository", () => {
         {
           name: "Maria da Silva",
           cpf: "52998224725",
+          photo_path: registrationPhotoPath,
+          voice_part: "soprano",
           phone: "85999999999",
           birth_date: "1990-05-20",
           choir_id: choirId,
@@ -466,13 +553,15 @@ describe("Supabase registration repository", () => {
       insertResults: [{ data: null, error: { message: "insert failed" } }],
     });
     const repository = createSupabaseRegistrationRepository();
+    const { photo: _photo, ...registrationData } = baseInput;
 
     await expect(
       repository.createPending({
-        ...baseInput,
+        ...registrationData,
         orderNsu: fixedOrderNsu,
         amountCents: 10000,
         choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
         pricingType: "promotional",
         standardPriceCents: 30000,
         registrationPriceCents: 10000,

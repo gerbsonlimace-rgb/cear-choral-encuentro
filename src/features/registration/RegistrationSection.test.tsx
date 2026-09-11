@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -39,6 +39,12 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
   await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
+  await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+  await user.upload(
+    screen.getByLabelText("Foto do participante"),
+    new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
+  );
+  await screen.findByRole("img", { name: "Foto de Maria da Silva no crachá" });
 }
 
 describe("RegistrationSection", () => {
@@ -58,6 +64,27 @@ describe("RegistrationSection", () => {
     expect(screen.getByLabelText("Nome completo")).toHaveClass("min-h-14");
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Camisa oficial")).not.toBeInTheDocument();
+  });
+
+  it("shows the photo and musical profile controls and fills the badge live", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+
+    const badge = screen.getByLabelText("Prévia do crachá");
+    const profile = screen.getByLabelText("Perfil musical");
+    expect(screen.getByLabelText("Foto do participante")).toHaveAttribute("type", "file");
+    for (const label of ["Soprano", "Contralto", "Tenor", "Baixo", "Não sei informar"]) {
+      expect(within(profile).getByRole("option", { name: label })).toBeInTheDocument();
+    }
+
+    await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
+    await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
+    await user.selectOptions(profile, "contralto");
+
+    expect(within(badge).getByText("Maria da Silva")).toBeInTheDocument();
+    expect(within(badge).getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
+    expect(within(badge).getByText("Contralto")).toBeInTheDocument();
   });
 
   it("loads the administratively configured choirs without exposing the shirt offer", async () => {
@@ -188,6 +215,8 @@ describe("RegistrationSection", () => {
         expect.objectContaining({
           choirId: quixadaId,
           cpf: "52998224725",
+          voicePart: "soprano",
+          photo: { contentType: "image/jpeg", dataBase64: "cGhvdG8=" },
           displayedQuote: {
             pricingType: "promotional",
             standardPriceCents: 30000,

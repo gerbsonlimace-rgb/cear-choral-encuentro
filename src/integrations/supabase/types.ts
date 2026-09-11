@@ -151,6 +151,7 @@ export type Database = {
           payment_method: string | null
           payment_status: string
           phone: string
+          photo_path: string | null
           pricing_type: string | null
           receipt_url: string | null
           registration_price_cents: number | null
@@ -158,6 +159,7 @@ export type Database = {
           shirt_price_cents: number | null
           shirt_size: string | null
           standard_price_cents: number | null
+          voice_part: string | null
         }
         Insert: {
           amount_cents?: number | null
@@ -184,6 +186,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           phone: string
+          photo_path?: string | null
           pricing_type?: string | null
           receipt_url?: string | null
           registration_price_cents?: number | null
@@ -191,6 +194,7 @@ export type Database = {
           shirt_price_cents?: number | null
           shirt_size?: string | null
           standard_price_cents?: number | null
+          voice_part?: string | null
         }
         Update: {
           amount_cents?: number | null
@@ -217,6 +221,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           phone?: string
+          photo_path?: string | null
           pricing_type?: string | null
           receipt_url?: string | null
           registration_price_cents?: number | null
@@ -224,6 +229,7 @@ export type Database = {
           shirt_price_cents?: number | null
           shirt_size?: string | null
           standard_price_cents?: number | null
+          voice_part?: string | null
         }
         Relationships: [
           {

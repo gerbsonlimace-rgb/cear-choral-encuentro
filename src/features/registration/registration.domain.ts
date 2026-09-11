@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { displayedQuoteSchema, type DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
 
+const voicePartValues = ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"] as const;
+export const voicePartSchema = z.enum(voicePartValues);
+export type VoicePart = z.infer<typeof voicePartSchema>;
+export const voicePartOptions: ReadonlyArray<{ value: VoicePart; label: string }> = [
+  { value: "soprano", label: "Soprano" },
+  { value: "contralto", label: "Contralto" },
+  { value: "tenor", label: "Tenor" },
+  { value: "baixo", label: "Baixo" },
+  { value: "nao_sei_informar", label: "Não sei informar" },
+];
+
 function isValidCpf(value: string): boolean {
   if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
 
@@ -57,6 +68,22 @@ const birthDateSchema = z
     "A data de nascimento não pode estar no futuro.",
   );
 
+export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BYTES / 3) * 4;
+
+const registrationPhotoSchema = z
+  .object({
+    contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    dataBase64: z
+      .string()
+      .min(4, "Envie uma foto do participante.")
+      .max(MAX_REGISTRATION_PHOTO_BASE64_LENGTH, "A foto deve ter até 5 MB.")
+      .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, {
+        message: "A foto enviada é inválida.",
+      }),
+  })
+  .strict();
+
 export const registrationSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
@@ -65,6 +92,8 @@ export const registrationSchema = z
     phone: z.string().trim().min(8).max(30),
     birthDate: birthDateSchema,
     choirId: z.string().uuid("Selecione um coro válido."),
+    voicePart: voicePartSchema,
+    photo: registrationPhotoSchema,
     displayedQuote: displayedQuoteSchema,
   })
   .strict()
@@ -83,6 +112,7 @@ export const registrationSchema = z
   });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
+export type RegistrationPhotoInput = z.infer<typeof registrationPhotoSchema>;
 export type CheckoutItem = { quantity: 1; price: number; description: string };
 
 export function buildCheckoutItems(

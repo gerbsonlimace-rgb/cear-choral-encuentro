@@ -19,6 +19,8 @@ const baseInput = {
   phone: "85999999999",
   birthDate: "1990-05-20",
   choirId: "11111111-1111-4111-8111-111111111111",
+  voicePart: "soprano" as const,
+  photo: { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" },
   displayedQuote: standardQuote,
 };
 
@@ -81,6 +83,21 @@ describe("registration domain", () => {
       false,
     );
     expect(registrationSchema.safeParse(baseInput).success).toBe(true);
+  });
+
+  it("accepts only supported musical profiles and participant photos", () => {
+    const photo = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
+
+    for (const voicePart of ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"]) {
+      expect(registrationSchema.safeParse({ ...baseInput, voicePart, photo }).success).toBe(true);
+    }
+    expect(
+      registrationSchema.safeParse({ ...baseInput, voicePart: "baritono", photo }).success,
+    ).toBe(false);
+    expect(
+      registrationSchema.safeParse({ ...baseInput, voicePart: "soprano", photo: undefined })
+        .success,
+    ).toBe(false);
   });
 
   it("rejects an invalid payment return identifier", () => {
