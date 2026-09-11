@@ -19,11 +19,15 @@ type AuthResult = Promise<{ error: unknown }>;
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  email: string;
+  getSignedInEmail?: () => Promise<{ email: string | null; error: unknown }>;
   reauthenticate?: (credentials: { email: string; password: string }) => AuthResult;
   updatePassword?: (password: string) => AuthResult;
 };
 
+const defaultGetSignedInEmail: NonNullable<Props["getSignedInEmail"]> = async () => {
+  const { data, error } = await supabase.auth.getUser();
+  return { email: data.user?.email ?? null, error };
+};
 const defaultReauthenticate: NonNullable<Props["reauthenticate"]> = (credentials) =>
   supabase.auth.signInWithPassword(credentials);
 const defaultUpdatePassword: NonNullable<Props["updatePassword"]> = async (password) =>
@@ -41,7 +45,7 @@ function isInvalidCredentialsError(error: unknown) {
 export function ParticipantPasswordDialog({
   open,
   onOpenChange,
-  email,
+  getSignedInEmail = defaultGetSignedInEmail,
   reauthenticate = defaultReauthenticate,
   updatePassword = defaultUpdatePassword,
 }: Props) {
@@ -60,6 +64,7 @@ export function ParticipantPasswordDialog({
   }
 
   function changeOpen(nextOpen: boolean) {
+    if (!nextOpen && busy.current) return;
     if (!nextOpen) clearSensitiveState();
     onOpenChange(nextOpen);
   }
@@ -86,7 +91,16 @@ export function ParticipantPasswordDialog({
     setError("");
 
     try {
-      const reauthentication = await reauthenticate({ email, password: currentPassword });
+      const identity = await getSignedInEmail();
+      if (identity.error || !identity.email) {
+        setError("Não foi possível alterar a senha. Tente novamente.");
+        return;
+      }
+
+      const reauthentication = await reauthenticate({
+        email: identity.email,
+        password: currentPassword,
+      });
       if (reauthentication.error) {
         setError(
           isInvalidCredentialsError(reauthentication.error)
@@ -98,16 +112,17 @@ export function ParticipantPasswordDialog({
 
       const changed = await updatePassword(newPassword);
       if (changed.error) throw changed.error;
-
-      clearSensitiveState();
-      onOpenChange(false);
-      toast.success("Senha alterada com sucesso.");
     } catch {
       setError("Não foi possível alterar a senha. Tente novamente.");
+      return;
     } finally {
       busy.current = false;
       setPending(false);
     }
+
+    clearSensitiveState();
+    onOpenChange(false);
+    toast.success("Senha alterada com sucesso.");
   }
 
   return (

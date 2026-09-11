@@ -32,6 +32,7 @@ type Props = {
     password: string;
   }) => Promise<{ error: unknown }>;
   updatePassword?: (password: string) => Promise<{ error: unknown }>;
+  getSignedInEmail?: () => Promise<{ email: string | null; error: unknown }>;
 };
 
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
@@ -316,6 +317,7 @@ export function ParticipantPortalPage({
   signOut = defaultSignOut,
   reauthenticateForPasswordChange,
   updatePassword,
+  getSignedInEmail,
 }: Props) {
   const [gate, setGate] = useState<
     "checking" | "loading" | "ready" | "error" | "redirecting" | "leaving"
@@ -427,11 +429,9 @@ export function ParticipantPortalPage({
             <h1 className="mt-2 break-words font-display text-2xl">{view.identity.name}</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            {view.identity.email != null && (
-              <Button size="sm" variant="outline" onClick={() => setPasswordDialogOpen(true)}>
-                Alterar senha
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={() => setPasswordDialogOpen(true)}>
+              Alterar senha
+            </Button>
             <Button size="sm" variant="outline" onClick={() => void logout()}>
               Sair
             </Button>
@@ -455,15 +455,13 @@ export function ParticipantPortalPage({
           <PortalSection selected={selected} view={view} />
         </div>
       </div>
-      {view.identity.email != null && (
-        <ParticipantPasswordDialog
-          open={passwordDialogOpen}
-          onOpenChange={setPasswordDialogOpen}
-          email={view.identity.email}
-          reauthenticate={reauthenticateForPasswordChange}
-          updatePassword={updatePassword}
-        />
-      )}
+      <ParticipantPasswordDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+        getSignedInEmail={getSignedInEmail}
+        reauthenticate={reauthenticateForPasswordChange}
+        updatePassword={updatePassword}
+      />
     </main>
   );
 }

@@ -65,6 +65,7 @@ type PortalOverrides = Partial<{
     password: string;
   }) => Promise<{ error: unknown }>;
   updatePassword: (password: string) => Promise<{ error: unknown }>;
+  getSignedInEmail: () => Promise<{ email: string | null; error: unknown }>;
 }>;
 
 function setup(overrides: PortalOverrides = {}) {
@@ -76,6 +77,9 @@ function setup(overrides: PortalOverrides = {}) {
     onSignedOut: vi.fn(),
     reauthenticateForPasswordChange: vi.fn().mockResolvedValue({ error: null }),
     updatePassword: vi.fn().mockResolvedValue({ error: null }),
+    getSignedInEmail: vi
+      .fn()
+      .mockResolvedValue({ email: "sessao-verificada@example.com", error: null }),
     ...overrides,
   };
   render(<ParticipantPortalPage {...props} />);
@@ -341,7 +345,7 @@ describe("ParticipantPortalPage", () => {
   });
 
   it("opens a functional voluntary password-change dialog from the header", async () => {
-    const { user, reauthenticateForPasswordChange, updatePassword } = setup();
+    const { user, getSignedInEmail, reauthenticateForPasswordChange, updatePassword } = setup();
     await screen.findByRole("heading", { name: "Maria da Silva", level: 1 });
 
     expect(screen.queryByText(/obrigat[oó]ri[ao].*senha/i)).not.toBeInTheDocument();
@@ -357,8 +361,9 @@ describe("ParticipantPortalPage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Alterar senha" }));
 
     await waitFor(() => expect(updatePassword).toHaveBeenCalledOnce());
+    expect(getSignedInEmail).toHaveBeenCalledOnce();
     expect(reauthenticateForPasswordChange).toHaveBeenCalledExactlyOnceWith({
-      email: "maria@example.com",
+      email: "sessao-verificada@example.com",
       password: "senha-atual",
     });
     expect(updatePassword).toHaveBeenCalledExactlyOnceWith("nova-senha");

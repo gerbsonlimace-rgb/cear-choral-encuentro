@@ -10,6 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
 
 type DialogOverrides = Partial<{
+  getSignedInEmail: () => Promise<{ email: string | null; error: unknown }>;
   reauthenticate: (credentials: { email: string; password: string }) => Promise<{ error: unknown }>;
   updatePassword: (password: string) => Promise<{ error: unknown }>;
 }>;
@@ -24,7 +25,10 @@ function Host({ overrides = {} }: { overrides?: DialogOverrides }) {
       <ParticipantPasswordDialog
         open={open}
         onOpenChange={setOpen}
-        email="participante@example.com"
+        getSignedInEmail={
+          overrides.getSignedInEmail ??
+          vi.fn().mockResolvedValue({ email: "sessao@example.com", error: null })
+        }
         reauthenticate={overrides.reauthenticate ?? vi.fn().mockResolvedValue({ error: null })}
         updatePassword={overrides.updatePassword ?? vi.fn().mockResolvedValue({ error: null })}
       />
@@ -34,6 +38,7 @@ function Host({ overrides = {} }: { overrides?: DialogOverrides }) {
 
 function setup(overrides: DialogOverrides = {}) {
   const props = {
+    getSignedInEmail: vi.fn().mockResolvedValue({ email: "sessao@example.com", error: null }),
     reauthenticate: vi.fn().mockResolvedValue({ error: null }),
     updatePassword: vi.fn().mockResolvedValue({ error: null }),
     ...overrides,
@@ -82,6 +87,21 @@ describe("ParticipantPasswordDialog", () => {
     expect(updatePassword).not.toHaveBeenCalled();
   });
 
+  it("stops with a generic failure when the verified session has no email", async () => {
+    const getSignedInEmail = vi.fn().mockResolvedValue({ email: null, error: null });
+    const { user, reauthenticate, updatePassword } = setup({ getSignedInEmail });
+
+    await fillPasswords(user);
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível alterar a senha. Tente novamente.",
+    );
+    expect(getSignedInEmail).toHaveBeenCalledOnce();
+    expect(reauthenticate).not.toHaveBeenCalled();
+    expect(updatePassword).not.toHaveBeenCalled();
+  });
+
   it("requires a new password with at least eight characters", async () => {
     const { user, reauthenticate, updatePassword } = setup();
 
@@ -124,7 +144,7 @@ describe("ParticipantPasswordDialog", () => {
     await waitFor(() => expect(updatePassword).toHaveBeenCalledOnce());
     expect(calls).toEqual(["reauthenticate", "update"]);
     expect(reauthenticate).toHaveBeenCalledExactlyOnceWith({
-      email: "participante@example.com",
+      email: "sessao@example.com",
       password: "senha-atual",
     });
     expect(updatePassword).toHaveBeenCalledExactlyOnceWith("nova-senha");
@@ -155,7 +175,7 @@ describe("ParticipantPasswordDialog", () => {
           resolveReauthentication = resolve;
         }),
     );
-    const { user, updatePassword } = setup({ reauthenticate });
+    const { user, getSignedInEmail, updatePassword } = setup({ reauthenticate });
     await fillPasswords(user);
     const form = screen.getByRole("button", { name: "Alterar senha" }).closest("form");
     if (!form) throw new Error("Password form not found");
@@ -163,12 +183,41 @@ describe("ParticipantPasswordDialog", () => {
     fireEvent.submit(form);
     fireEvent.submit(form);
 
-    expect(reauthenticate).toHaveBeenCalledOnce();
+    expect(getSignedInEmail).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Alterando…" })).toBeDisabled();
+    expect(updatePassword).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(reauthenticate).toHaveBeenCalledOnce());
+
+    resolveReauthentication?.({ error: null });
+    await waitFor(() => expect(updatePassword).toHaveBeenCalledOnce());
+  });
+
+  it("blocks every dialog close request while reauthentication is pending", async () => {
+    let resolveReauthentication: ((result: { error: null }) => void) | undefined;
+    const reauthenticate = vi.fn(
+      () =>
+        new Promise<{ error: null }>((resolve) => {
+          resolveReauthentication = resolve;
+        }),
+    );
+    const { user, updatePassword } = setup({ reauthenticate });
+    await fillPasswords(user);
+
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
     expect(updatePassword).not.toHaveBeenCalled();
 
     resolveReauthentication?.({ error: null });
     await waitFor(() => expect(updatePassword).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(toast.success).toHaveBeenCalledExactlyOnceWith("Senha alterada com sucesso.");
   });
 
   it("clears every password field whenever the dialog closes", async () => {
