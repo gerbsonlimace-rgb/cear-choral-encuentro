@@ -35,7 +35,7 @@ export type RegistrationPaymentRecord = {
   choirName?: string | null;
   paidAmountCents?: number | null;
   paidAt?: string | null;
-  shirtSize?: string | null;
+  
 };
 
 export type PublicPaymentStatus =
@@ -156,7 +156,7 @@ export function createRegistrationPaymentService(deps: {
       try {
         checkout = await deps.infinitePay.createCheckout({
           orderNsu,
-          items: buildCheckoutItems(input, selection.quote, selection.shirtPriceCents),
+          items: buildCheckoutItems(input, selection.quote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
         await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
