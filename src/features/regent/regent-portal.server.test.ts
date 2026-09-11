@@ -69,7 +69,7 @@ const registration: PortalRegistrationRow = {
   name: "Ana Silva",
   cpf: "12345678901",
   phone: "(88) 99999-1234",
-  photoPath: "registrations/ana.webp",
+  photoPath: `${registrationId}/participant.webp`,
   paymentStatus: "paid",
   pricingType: "promotional",
   standardPriceCents: 30_000,
@@ -241,11 +241,23 @@ describe("Supabase regent portal repository", () => {
 
   it("signs a private registration photo for five minutes", async () => {
     await expect(
-      createSupabaseRegentPortalRepository().signPhoto("registrations/ana.webp"),
+      createSupabaseRegentPortalRepository().signPhoto(registrationId, `${registrationId}/participant.webp`),
     ).resolves.toBe("https://storage.example.test/signed-photo");
 
     expect(storageFrom).toHaveBeenCalledExactlyOnceWith("registration-photos");
-    expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith("registrations/ana.webp", 300);
+    expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith(`${registrationId}/participant.webp`, 300);
+  });
+
+  it.each([
+    "registrations/ana.webp",
+    `${otherChoirId}/participant.webp`,
+    `${registrationId}/participant.svg`,
+    `${registrationId}/../participant.webp`,
+  ])("rejects an unauthorized photo path before signing: %s", async (photoPath) => {
+    await expect(
+      createSupabaseRegentPortalRepository().signPhoto(registrationId, photoPath),
+    ).rejects.toThrow("Não foi possível carregar a foto.");
+    expect(createSignedUrl).not.toHaveBeenCalled();
   });
 });
 
@@ -313,8 +325,9 @@ describe("regent portal service", () => {
       pageSize: 2,
     });
 
-    expect(repository.signPhoto).toHaveBeenNthCalledWith(1, "registrations/ana.webp");
-    expect(repository.signPhoto).toHaveBeenNthCalledWith(2, "broken.webp");
+    expect(repository.signPhoto).toHaveBeenNthCalledWith(1, registrationId, `${registrationId}/participant.webp`);
+    expect(repository.signPhoto).not.toHaveBeenCalledWith(otherChoirId, "broken.webp");
+    expect(repository.signPhoto).not.toHaveBeenCalledWith(otherChoirId, "outside/page.webp");
     expect(repository.signPhoto).not.toHaveBeenCalledWith("outside/page.webp");
     expect(page.rows.map((row) => row.photoUrl)).toEqual([
       "https://storage.example.test/ana",

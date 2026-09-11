@@ -18,6 +18,8 @@ const summaryRegistrationColumns =
 const paymentColumns =
   "id,registration_id,amount_cents,status,checkout_url,created_at,paid_at,initiated_by_name,initiated_as" as const;
 const summaryPaymentColumns = "registration_id,amount_cents" as const;
+const PRIVATE_PHOTO_PATH_PATTERN =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/participant\.(jpg|png|webp)$/;
 
 export type PortalParticipantQuery = {
   search: string;
@@ -67,7 +69,7 @@ export type RegentPortalRepository = {
   ): Promise<PortalComplementLedgerRow[]>;
   listSummaryRegistrations(authorizedChoirId: string): Promise<PortalSummaryRegistrationRow[]>;
   listSummaryPaidComplements(authorizedChoirId: string): Promise<PortalPaidComplementPrincipal[]>;
-  signPhoto(photoPath: string): Promise<string>;
+  signPhoto(registrationId: string, photoPath: string): Promise<string>;
 };
 
 type RegistrationDatabaseRow = {
@@ -275,7 +277,11 @@ export function createSupabaseRegentPortalRepository(): RegentPortalRepository {
       });
     },
 
-    async signPhoto(photoPath) {
+    async signPhoto(registrationId, photoPath) {
+      const match = PRIVATE_PHOTO_PATH_PATTERN.exec(photoPath);
+      if (!match || match[1] !== registrationId) {
+        throw new Error("Não foi possível carregar a foto.");
+      }
       const { data, error } = await supabaseAdmin.storage
         .from(REGISTRATION_PHOTO_BUCKET)
         .createSignedUrl(photoPath, PHOTO_URL_EXPIRY_SECONDS);
@@ -312,11 +318,11 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
       );
       const paymentsByRegistration = groupPayments(payments);
       const signedPhotos = new Map<string, Promise<string | null>>();
-      const signPhoto = (photoPath: string) => {
-        const existing = signedPhotos.get(photoPath);
+      const signPhoto = (registrationId: string, photoPath: string) => {
+        const existing = signedPhotos.get(`${registrationId}:${photoPath}`);
         if (existing) return existing;
-        const signing = repository.signPhoto(photoPath).catch(() => null);
-        signedPhotos.set(photoPath, signing);
+        const signing = repository.signPhoto(registrationId, photoPath).catch(() => null);
+        signedPhotos.set(`${registrationId}:${photoPath}`, signing);
         return signing;
       };
       const rows = await Promise.all(
@@ -326,7 +332,11 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
             participantPayments.find(
               (payment) => payment.status === "creating" || payment.status === "pending",
             ) ?? null;
-          const photoUrl = row.photoPath ? await signPhoto(row.photoPath) : null;
+          const photoUrl =
+            row.photoPath &&
+            PRIVATE_PHOTO_PATH_PATTERN.exec(row.photoPath)?.[1] === row.id
+              ? await signPhoto(row.id, row.photoPath)
+              : null;
           return {
             id: row.id,
             name: row.name,
