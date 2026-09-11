@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PaymentLookup } from "@/features/registration/registration.domain";
@@ -125,12 +126,12 @@ function Message({ children, title }: { children?: ReactNode; title: string }) {
         <CardContent className="p-6 text-center sm:p-8">
           <h1 className="font-display text-3xl font-extrabold text-foreground">{title}</h1>
           {children}
-          <a
-            href="/regente"
+          <Link
+            to="/regente"
             className="mt-6 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
           >
             Voltar à área do regente
-          </a>
+          </Link>
         </CardContent>
       </Card>
     </main>

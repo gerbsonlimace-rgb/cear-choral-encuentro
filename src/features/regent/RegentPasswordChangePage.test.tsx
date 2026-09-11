@@ -63,11 +63,14 @@ describe("RegentPasswordChangePage access gate", () => {
   });
 
   it.each<RegentAccess>([
-    { status: "authorized", role: "admin" },
+    { status: "authorized", role: "admin", email: "admin@example.com" },
     {
       status: "authorized",
       role: "regent",
       choirId: "11111111-1111-4111-8111-111111111111",
+      choirName: "Coro Diocesano de Quixadá",
+      name: "Ana Regente",
+      email: "ana@example.com",
     },
   ])("redirects already-authorized portal users to the regent area", async (access) => {
     const { onAuthorized, onLoginRequired } = setup({
@@ -107,7 +110,9 @@ describe("RegentPasswordChangePage access gate", () => {
     const { unmount, onAuthorized, onLoginRequired } = setup({ checkAccess });
 
     unmount();
-    await act(async () => resolveAccess({ status: "authorized", role: "admin" }));
+    await act(async () =>
+      resolveAccess({ status: "authorized", role: "admin", email: "admin@example.com" }),
+    );
 
     expect(onAuthorized).not.toHaveBeenCalled();
     expect(onLoginRequired).not.toHaveBeenCalled();

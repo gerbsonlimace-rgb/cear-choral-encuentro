@@ -45,11 +45,14 @@ describe("RegentLoginPage", () => {
   });
 
   it.each<RegentAccess>([
-    { status: "authorized", role: "admin" },
+    { status: "authorized", role: "admin", email: "admin@example.com" },
     {
       status: "authorized",
       role: "regent",
       choirId: "11111111-1111-4111-8111-111111111111",
+      choirName: "Coro Diocesano de Quixadá",
+      name: "Ana Regente",
+      email: "ana@example.com",
     },
   ])("routes authorized portal access to the regent area", async (access) => {
     const { user, onPasswordChangeRequired, onAuthorized } = setup(access);
@@ -77,7 +80,11 @@ describe("RegentLoginPage", () => {
   );
 
   it("keeps invalid credentials generic and does not inspect portal access", async () => {
-    const access: RegentAccess = { status: "authorized", role: "admin" };
+    const access: RegentAccess = {
+      status: "authorized",
+      role: "admin",
+      email: "admin@example.com",
+    };
     const signIn = vi.fn().mockResolvedValue({ error: new Error("SECRET_AUTH_DETAIL") });
     const { user, checkAccess, signOut, onAuthorized } = setup(access, { signIn });
 
@@ -101,7 +108,7 @@ describe("RegentLoginPage", () => {
         }),
     );
     const { user, unmount, checkAccess, onPasswordChangeRequired, onAuthorized } = setup(
-      { status: "authorized", role: "admin" },
+      { status: "authorized", role: "admin", email: "admin@example.com" },
       { signIn },
     );
 

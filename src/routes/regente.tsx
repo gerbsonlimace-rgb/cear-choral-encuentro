@@ -1,17 +1,16 @@
-/* eslint-disable react-refresh/only-export-components */
 import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
 
 import { RegentPortalPage } from "@/features/regent/RegentPortalPage";
 import type { RegentAccess } from "@/features/regent/regent.domain";
 import { getRegentAccess } from "@/lib/regent.functions";
 
-export function getRegentPortalRedirect(access: RegentAccess) {
+function getRegentPortalRedirect(access: RegentAccess) {
   if (access.status === "password_change_required") return "/regente/alterar-senha" as const;
   if (access.status !== "authorized") return "/regente/login" as const;
   return null;
 }
 
-export function shouldCheckRegentPortalAccess(pathname: string) {
+function shouldCheckRegentPortalAccess(pathname: string) {
   return pathname === "/regente" || pathname === "/regente/";
 }
 

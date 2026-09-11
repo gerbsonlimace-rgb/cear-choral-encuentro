@@ -7,6 +7,7 @@ export type RegentMembership = {
   id: string;
   userId: string;
   choirId: string;
+  choirName: string;
   name: string;
   email: string;
   passwordChangeRequired: boolean;
@@ -19,8 +20,7 @@ export type PortalAccessRepository = {
 };
 
 export type PortalAccessProbe =
-  | { authenticated: false }
-  | { authenticated: true; access: PortalAccess | null };
+  { authenticated: false } | { authenticated: true; access: PortalAccess | null };
 
 export function createPortalAuthorizer(repository: PortalAccessRepository) {
   async function findActive(userId: string, email: string | null): Promise<PortalAccess | null> {
@@ -34,6 +34,7 @@ export function createPortalAuthorizer(repository: PortalAccessRepository) {
       userId,
       membershipId: regent.id,
       choirId: regent.choirId,
+      choirName: regent.choirName,
       name: regent.name,
       email: regent.email,
       passwordChangeRequired: regent.passwordChangeRequired,
@@ -59,17 +60,20 @@ export function getPortalAuthorizer() {
       async findActiveRegent(userId) {
         const { data, error } = await supabaseAdmin
           .from("choir_regents")
-          .select("id,user_id,choir_id,name,email,password_change_required,revoked_at")
+          .select("id,user_id,choir_id,name,email,password_change_required,revoked_at,choirs(name)")
           .eq("user_id", userId)
           .is("revoked_at", null)
           .maybeSingle();
 
         if (error) throw new Error("Não foi possível validar o acesso do regente.");
+        const choir = Array.isArray(data?.choirs) ? data.choirs[0] : data?.choirs;
+        if (data && !choir?.name) throw new Error("Não foi possível validar o coro do regente.");
         return data
           ? {
               id: data.id,
               userId: data.user_id,
               choirId: data.choir_id,
+              choirName: choir.name,
               name: data.name,
               email: data.email,
               passwordChangeRequired: data.password_change_required,

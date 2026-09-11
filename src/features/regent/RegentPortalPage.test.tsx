@@ -6,7 +6,6 @@ import type { AdminChoir } from "@/features/choirs/choir-pricing.domain";
 import type { PortalParticipantPage } from "./regent-portal.server";
 import type { PortalSummary } from "./regent-payments.domain";
 import { RegentPortalPage } from "./RegentPortalPage";
-import { getRegentPortalRedirect, shouldCheckRegentPortalAccess } from "@/routes/regente";
 
 beforeAll(() => {
   HTMLElement.prototype.scrollIntoView = () => {};
@@ -39,8 +38,15 @@ function setup(
   const props: React.ComponentProps<typeof RegentPortalPage> = {
     access:
       role === "admin"
-        ? { status: "authorized", role: "admin" }
-        : { status: "authorized", role: "regent", choirId: choir.id },
+        ? { status: "authorized", role: "admin", email: "admin@example.com" }
+        : {
+            status: "authorized",
+            role: "regent",
+            choirId: choir.id,
+            choirName: choir.name,
+            name: "Ana Regente",
+            email: "ana@example.com",
+          },
     loadParticipants: vi.fn().mockResolvedValue(emptyPage),
     loadSummary: vi.fn().mockResolvedValue(summary),
     loadAdminChoirs: vi.fn().mockResolvedValue([choir]),
@@ -63,6 +69,9 @@ describe("RegentPortalPage", () => {
     expect(screen.getByText("Saldo a receber")).toBeInTheDocument();
     expect(screen.getByText("R$ 310,00")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Coro" })).not.toBeInTheDocument();
+    expect(screen.getByText("Ana Regente")).toBeInTheDocument();
+    expect(screen.getByText("ana@example.com")).toBeInTheDocument();
+    expect(screen.getByText(`Coro ativo: ${choir.name}`)).toBeInTheDocument();
   });
 
   it("lets an administrator select a choir before loading server-authorized data", async () => {
@@ -70,6 +79,8 @@ describe("RegentPortalPage", () => {
 
     const selector = await screen.findByRole("combobox", { name: "Coro" });
     expect(selector).toHaveTextContent("Coro Diocesano de Quixadá");
+    expect(screen.getByText("Administrador · admin@example.com")).toBeInTheDocument();
+    expect(screen.getByText(`Coro ativo: ${choir.name}`)).toBeInTheDocument();
     await waitFor(() =>
       expect(props.loadParticipants).toHaveBeenCalledWith({
         data: { choirId: choir.id, search: "", page: 1, pageSize: 20 },
@@ -102,24 +113,23 @@ describe("RegentPortalPage", () => {
     expect(window.location.href).toBe(initialUrl);
   });
 
-  it("maps every non-ready access state to the protected route destination", () => {
-    expect(getRegentPortalRedirect({ status: "unauthenticated" })).toBe("/regente/login");
-    expect(getRegentPortalRedirect({ status: "forbidden" })).toBe("/regente/login");
-    expect(
-      getRegentPortalRedirect({
-        status: "password_change_required",
-        role: "regent",
-        choirId: choir.id,
-      }),
-    ).toBe("/regente/alterar-senha");
-    expect(getRegentPortalRedirect({ status: "authorized", role: "admin" })).toBeNull();
-  });
+  it("retries a failed first page with the same unchanged search", async () => {
+    const loadParticipants = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce(emptyPage);
+    const { user } = setup({ loadParticipants });
 
-  it("protects only the portal itself without intercepting its login and recovery children", () => {
-    expect(shouldCheckRegentPortalAccess("/regente")).toBe(true);
-    expect(shouldCheckRegentPortalAccess("/regente/")).toBe(true);
-    expect(shouldCheckRegentPortalAccess("/regente/login")).toBe(false);
-    expect(shouldCheckRegentPortalAccess("/regente/alterar-senha")).toBe(false);
-    expect(shouldCheckRegentPortalAccess("/regente/pagamento")).toBe(false);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar os participantes. Tente novamente.",
+    );
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await screen.findByText("Nenhum participante encontrado.")).toBeInTheDocument();
+    expect(loadParticipants).toHaveBeenCalledTimes(2);
+    expect(loadParticipants.mock.calls[0][0]).toEqual({
+      data: { search: "", page: 1, pageSize: 20 },
+    });
+    expect(loadParticipants.mock.calls[1][0]).toEqual(loadParticipants.mock.calls[0][0]);
   });
 });

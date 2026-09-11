@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -81,6 +81,20 @@ const participants: PortalParticipant[] = [
     },
     payments: [pendingInstallment, paidInstallment],
   },
+  {
+    id: "44444444-4444-4444-8444-444444444444",
+    name: "Davi Histórico",
+    cpf: "",
+    phone: "88977776666",
+    whatsappUrl: "https://wa.me/5588977776666",
+    photoUrl: null,
+    paymentStatus: "legacy",
+    pricingType: null,
+    standardPriceCents: null,
+    registrationPriceCents: null,
+    complement: { eligible: false, reason: "missing_snapshot" },
+    payments: [],
+  },
 ];
 
 describe("RegentParticipantList", () => {
@@ -99,6 +113,9 @@ describe("RegentParticipantList", () => {
         "href",
         "https://wa.me/5588999991234",
       );
+      expect(scope.getByRole("link", { name: /WhatsApp de Ana Regente/i })).toHaveTextContent(
+        "(88) 99999-1234",
+      );
       expect(
         scope.getByRole("img", { name: "Foto não disponível para Ana Regente" }),
       ).toHaveTextContent("AR");
@@ -114,6 +131,10 @@ describe("RegentParticipantList", () => {
         pendingInstallment.checkoutUrl,
       );
       expect(scope.getByRole("button", { name: "Pagar complemento de Ana Regente" })).toBeEnabled();
+      expect(scope.getAllByText("Valor normal: R$ 300,00")).toHaveLength(3);
+      expect(scope.getAllByText("Valor da inscrição: R$ 100,00")).toHaveLength(3);
+      expect(scope.getByText("Valor normal: Não disponível")).toBeInTheDocument();
+      expect(scope.getByText("Valor da inscrição: Não disponível")).toBeInTheDocument();
     }
   });
 
@@ -134,5 +155,17 @@ describe("RegentParticipantList", () => {
 
     await user.click(within(row).getByRole("button", { name: "Pagar complemento de Ana Regente" }));
     expect(onPay).toHaveBeenCalledExactlyOnceWith(participants[0]);
+  });
+
+  it("replaces a participant photo that fails to load with accessible initials", () => {
+    render(<RegentParticipantList participants={participants} onPay={vi.fn()} />);
+    const table = screen.getByRole("table", { name: "Participantes" });
+    const photo = within(table).getByRole("img", { name: "Foto de Bruno Pendente" });
+
+    fireEvent.error(photo);
+
+    expect(
+      within(table).getByRole("img", { name: "Foto não disponível para Bruno Pendente" }),
+    ).toHaveTextContent("BP");
   });
 });

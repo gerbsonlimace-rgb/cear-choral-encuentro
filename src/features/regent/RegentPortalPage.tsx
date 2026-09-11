@@ -69,6 +69,7 @@ export function RegentPortalPage({
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [result, setResult] = useState<PortalParticipantPage | null>(null);
   const [listError, setListError] = useState("");
+  const [listRetry, setListRetry] = useState(0);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [query, setQuery] = useState({ search: "", page: 1 });
@@ -141,7 +142,7 @@ export function RegentPortalPage({
     return () => {
       disposed = true;
     };
-  }, [access.role, loadParticipants, query.page, query.search, ready, selectedChoirId]);
+  }, [access.role, listRetry, loadParticipants, query.page, query.search, ready, selectedChoirId]);
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -149,6 +150,10 @@ export function RegentPortalPage({
   }
 
   const pages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
+  const activeChoirName =
+    access.role === "regent"
+      ? access.choirName
+      : choirs.find((choir) => choir.id === selectedChoirId)?.name;
 
   return (
     <main className="min-h-svh bg-muted/20 px-4 py-6 sm:px-6 lg:py-8">
@@ -161,6 +166,17 @@ export function RegentPortalPage({
           <p className="mt-1 text-sm text-muted-foreground">
             Acompanhe participantes e complementos da inscrição.
           </p>
+          <div className="mt-3 space-y-0.5 text-sm">
+            <p className="font-medium text-foreground">
+              {access.role === "regent"
+                ? access.name
+                : `Administrador · ${access.email ?? "e-mail não informado"}`}
+            </p>
+            {access.role === "regent" && <p className="text-muted-foreground">{access.email}</p>}
+            {activeChoirName && (
+              <p className="text-muted-foreground">Coro ativo: {activeChoirName}</p>
+            )}
+          </div>
         </header>
 
         {access.role === "admin" && (
@@ -246,9 +262,21 @@ export function RegentPortalPage({
         {loading ? (
           <Skeleton className="h-40 w-full" />
         ) : listError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {listError}
-          </p>
+          <Card>
+            <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p role="alert" className="text-sm text-destructive">
+                {listError}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setListRetry((value) => value + 1)}
+              >
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
         ) : result?.rows.length ? (
           <RegentParticipantList participants={result.rows} onPay={setPaymentParticipant} />
         ) : result ? (

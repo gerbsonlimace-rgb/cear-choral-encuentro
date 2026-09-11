@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,13 @@ function formatCpf(cpf: string) {
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }
 
+function formatPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  return phone || "Não informado";
+}
+
 function initials(name: string) {
   return name
     .trim()
@@ -61,13 +68,18 @@ function isSafeCheckoutUrl(value: string | null): value is string {
 }
 
 function ParticipantAvatar({ participant }: { participant: PortalParticipant }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => setImageFailed(false), [participant.photoUrl]);
+
   return (
     <Avatar className="h-11 w-11 border bg-muted">
-      {participant.photoUrl ? (
+      {participant.photoUrl && !imageFailed ? (
         <img
           src={participant.photoUrl}
           alt={`Foto de ${participant.name}`}
           className="aspect-square h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <AvatarFallback
@@ -156,7 +168,7 @@ function Contact({ participant }: { participant: PortalParticipant }) {
           className="font-medium text-primary underline-offset-4 hover:underline"
           aria-label={`WhatsApp de ${participant.name}`}
         >
-          WhatsApp
+          WhatsApp · {formatPhone(participant.phone)}
         </a>
       ) : (
         <p className="text-muted-foreground">{participant.phone}</p>
@@ -211,6 +223,24 @@ function ComplementAmounts({ participant }: { participant: PortalParticipant }) 
   );
 }
 
+function RegistrationPrices({ participant }: { participant: PortalParticipant }) {
+  const standard =
+    participant.standardPriceCents === null
+      ? "Não disponível"
+      : formatComplementCents(participant.standardPriceCents);
+  const registration =
+    participant.registrationPriceCents === null
+      ? "Não disponível"
+      : formatComplementCents(participant.registrationPriceCents);
+
+  return (
+    <div className="space-y-0.5 text-xs">
+      <p>Valor normal: {standard}</p>
+      <p>Valor da inscrição: {registration}</p>
+    </div>
+  );
+}
+
 export function RegentParticipantList({ participants, onPay }: Props) {
   return (
     <>
@@ -222,6 +252,7 @@ export function RegentParticipantList({ participants, onPay }: Props) {
                 <TableHead>Participante</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Inscrição</TableHead>
+                <TableHead>Valores da inscrição</TableHead>
                 <TableHead>Complemento</TableHead>
                 <TableHead>Parcelas</TableHead>
                 <TableHead className="text-right">Ação</TableHead>
@@ -241,6 +272,9 @@ export function RegentParticipantList({ participants, onPay }: Props) {
                   </TableCell>
                   <TableCell>
                     <RegistrationBadge status={participant.paymentStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <RegistrationPrices participant={participant} />
                   </TableCell>
                   <TableCell>
                     <ComplementAmounts participant={participant} />
@@ -275,6 +309,7 @@ export function RegentParticipantList({ participants, onPay }: Props) {
                 </div>
                 <RegistrationBadge status={participant.paymentStatus} />
               </div>
+              <RegistrationPrices participant={participant} />
               <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-3">
                 <div className="min-w-0 flex-1">
                   <ComplementAmounts participant={participant} />

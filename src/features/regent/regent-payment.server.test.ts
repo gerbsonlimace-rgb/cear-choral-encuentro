@@ -42,6 +42,7 @@ const regent: PortalAccess = {
   userId: "regent-user",
   membershipId: "regent-membership",
   choirId,
+  choirName: "Coro Diocesano de Quixadá",
   name: "Ana Regente",
   email: "ana@example.com",
   passwordChangeRequired: false,

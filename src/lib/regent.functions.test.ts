@@ -79,6 +79,7 @@ const regent: PortalAccess = {
   userId: "user-1",
   membershipId: "private-membership",
   choirId: "11111111-1111-4111-8111-111111111111",
+  choirName: "Coro Diocesano de Quixadá",
   name: "Private Name",
   email: "private@example.com",
   passwordChangeRequired: false,
@@ -156,11 +157,14 @@ describe("public regent access state", () => {
       status: "forbidden",
     });
   });
-  it("exposes only the role and allowed choir of an authorized regent", () => {
+  it("exposes the authoritative regent identity and allowed choir", () => {
     expect(toRegentAccessState({ authenticated: true, access: regent })).toEqual({
       status: "authorized",
       role: "regent",
       choirId: regent.choirId,
+      choirName: regent.choirName,
+      name: regent.name,
+      email: regent.email,
     });
   });
   it("reports the password gate before marking a regent authorized", () => {
@@ -171,13 +175,13 @@ describe("public regent access state", () => {
       }),
     ).toEqual({ status: "password_change_required", role: "regent", choirId: regent.choirId });
   });
-  it("reports administrator access without attaching a regent scope", () => {
+  it("reports administrator access with the verified email and without a regent scope", () => {
     expect(
       toRegentAccessState({
         authenticated: true,
         access: { role: "admin", userId: "admin", email: "private@example.com" },
       }),
-    ).toEqual({ status: "authorized", role: "admin" });
+    ).toEqual({ status: "authorized", role: "admin", email: "private@example.com" });
   });
 });
 

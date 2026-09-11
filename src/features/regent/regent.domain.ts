@@ -7,6 +7,7 @@ export type PortalAccess =
       userId: string;
       membershipId: string;
       choirId: string;
+      choirName: string;
       name: string;
       email: string;
       passwordChangeRequired: boolean;
@@ -16,8 +17,15 @@ export type RegentAccess =
   | { status: "unauthenticated" }
   | { status: "forbidden" }
   | { status: "password_change_required"; role: "regent"; choirId: string }
-  | { status: "authorized"; role: "admin" }
-  | { status: "authorized"; role: "regent"; choirId: string };
+  | { status: "authorized"; role: "admin"; email: string | null }
+  | {
+      status: "authorized";
+      role: "regent";
+      choirId: string;
+      choirName: string;
+      name: string;
+      email: string;
+    };
 
 const choirSelectionIdSchema = z
   .string({ required_error: "Selecione um coro válido." })
