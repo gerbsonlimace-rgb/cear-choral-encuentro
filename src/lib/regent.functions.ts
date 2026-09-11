@@ -123,6 +123,22 @@ export const startComplementCheckout = createServerFn({ method: "POST" })
       ),
   );
 
+export const verifyComplementPayment = createServerFn({ method: "POST" })
+  .middleware([requirePortalReadyAccess])
+  .validator(
+    z
+      .object({
+        orderNsu: z.string().uuid(),
+        transactionNsu: z.string().trim().min(1).max(200),
+        slug: z.string().trim().min(1).max(200),
+        receiptUrl: z.string().url().optional(),
+      })
+      .strict(),
+  )
+  .handler(({ data }) =>
+    loadRegentPaymentService().then((service) => service.reconcilePayment(data)),
+  );
+
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
 
 export type RegentPasswordChangeRepository = {
