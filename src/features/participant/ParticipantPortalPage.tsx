@@ -237,9 +237,6 @@ function Identification({
             {registration.voicePart != null && (
               <Detail label="Parte vocal">{voicePartLabels[registration.voicePart]}</Detail>
             )}
-            {registration.shirtSize != null && (
-              <Detail label="Tamanho da camisa">{registration.shirtSize}</Detail>
-            )}
             {registration.pricingType != null && (
               <Detail label="Tipo do valor">
                 {registration.pricingType === "promotional" ? "Promocional" : "Normal"}
@@ -252,9 +249,6 @@ function Identification({
               <Detail label="Valor da inscrição">
                 {formatMoney(registration.registrationPriceCents)}
               </Detail>
-            )}
-            {registration.shirtPriceCents != null && (
-              <Detail label="Valor da camisa">{formatMoney(registration.shirtPriceCents)}</Detail>
             )}
           </dl>
         </CardContent>
