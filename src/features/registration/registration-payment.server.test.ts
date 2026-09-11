@@ -29,6 +29,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
 
 import {
   DEFAULT_INFINITEPAY_HANDLE,
+  DEFAULT_INFINITEPAY_SITE_URL,
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
@@ -39,6 +40,10 @@ import {
 describe("InfinitePay configuration", () => {
   it("defaults new checkouts to the Lucas account", () => {
     expect(DEFAULT_INFINITEPAY_HANDLE).toBe("lucas-soares-xwv");
+  });
+
+  it("returns customers to the live confirmation page by default", () => {
+    expect(DEFAULT_INFINITEPAY_SITE_URL).toBe("https://encontrocorosce.lovable.app");
   });
 });
 
