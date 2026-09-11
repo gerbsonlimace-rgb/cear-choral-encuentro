@@ -65,7 +65,6 @@ type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
 type SettingsDraft = {
   standard: string;
   promotional: string;
-  shirt: string;
 };
 
 const emptyChoirDraft: ChoirMutation = {
@@ -81,7 +80,6 @@ function settingsDraft(settings: PricingSettings): SettingsDraft {
   return {
     standard: formatCentsForInput(settings.standardPriceCents),
     promotional: formatCentsForInput(settings.promotionalPriceCents),
-    shirt: formatCentsForInput(settings.shirtPriceCents),
   };
 }
 
@@ -115,7 +113,6 @@ export function AdminChoirsPage({
   const [settings, setSettings] = useState<SettingsDraft>({
     standard: "",
     promotional: "",
-    shirt: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -174,7 +171,6 @@ export function AdminChoirsPage({
       const parsed = pricingSettingsSchema.parse({
         standardPriceCents: parseCurrencyToCents(settings.standard),
         promotionalPriceCents: parseCurrencyToCents(settings.promotional),
-        shirtPriceCents: parseCurrencyToCents(settings.shirt),
       });
       const saved = await saveSettings({ data: parsed });
       setData((previous) => (previous ? { ...previous, settings: saved } : previous));
@@ -317,12 +313,11 @@ export function AdminChoirsPage({
                   </p>
                 </div>
                 <form onSubmit={submitSettings} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-2">
                     {(
                       [
                         ["standard", "Valor normal"],
                         ["promotional", "Valor promocional"],
-                        ["shirt", "Valor da camisa"],
                       ] as const
                     ).map(([field, label]) => (
                       <div className="space-y-2" key={field}>
