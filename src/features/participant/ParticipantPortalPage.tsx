@@ -32,6 +32,12 @@ const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOu
 const moneyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const paidDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Fortaleza",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
 });
 
 function formatBirthDate(value: string) {
@@ -44,7 +50,10 @@ function formatMoney(value: number) {
 }
 
 function formatPaidDate(value: string) {
-  return paidDateFormatter.format(new Date(value));
+  const parts = paidDateFormatter.formatToParts(new Date(value));
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value;
+  return `${read("day")}/${read("month")}/${read("year")} às ${read("hour")}:${read("minute")}`;
 }
 
 function getInitials(name: string) {
@@ -78,9 +87,15 @@ function SectionNavigation({
 }) {
   function moveFocus(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let nextIndex: number | undefined;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    if (
+      (orientation === "horizontal" && event.key === "ArrowRight") ||
+      (orientation === "vertical" && event.key === "ArrowDown")
+    ) {
       nextIndex = (index + 1) % sections.length;
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+    } else if (
+      (orientation === "horizontal" && event.key === "ArrowLeft") ||
+      (orientation === "vertical" && event.key === "ArrowUp")
+    ) {
       nextIndex = (index - 1 + sections.length) % sections.length;
     } else if (event.key === "Home") {
       nextIndex = 0;

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -177,7 +177,7 @@ describe("ParticipantPortalPage", () => {
       "Pago",
       "Cartão de crédito",
       "3x",
-      "10/09/2026",
+      "10/09/2026 às 12:30",
       "pedido-1234",
     ]) {
       expect(within(identification).getAllByText(value).length).toBeGreaterThan(0);
@@ -302,18 +302,35 @@ describe("ParticipantPortalPage", () => {
       "true",
     );
 
-    await user.keyboard("{ArrowRight}");
+    expect(fireEvent.keyDown(mobilePlaylist, { key: "ArrowRight" })).toBe(false);
     expect(screen.getByRole("tabpanel", { name: "Partituras e Manuais" })).toHaveTextContent(
       "As partituras e os materiais de orientação serão disponibilizados em breve.",
     );
-    expect(document.activeElement).toBe(
-      within(navigations[0]).getByRole("tab", { name: "Partituras e Manuais" }),
-    );
+    const mobileScores = within(navigations[0]).getByRole("tab", {
+      name: "Partituras e Manuais",
+    });
+    expect(document.activeElement).toBe(mobileScores);
 
-    await user.click(within(navigations[1]).getByRole("tab", { name: "Certificado" }));
+    expect(fireEvent.keyDown(mobileScores, { key: "ArrowDown" })).toBe(true);
+    expect(document.activeElement).toBe(mobileScores);
+    expect(screen.getByRole("tabpanel", { name: "Partituras e Manuais" })).toBeInTheDocument();
+
+    const desktopCertificate = within(navigations[1]).getByRole("tab", { name: "Certificado" });
+    await user.click(desktopCertificate);
     expect(screen.getByRole("tabpanel", { name: "Certificado" })).toHaveTextContent(
       "Seu certificado estará disponível após o evento.",
     );
+
+    expect(fireEvent.keyDown(desktopCertificate, { key: "ArrowDown" })).toBe(false);
+    const desktopIdentification = within(navigations[1]).getByRole("tab", {
+      name: "Identificação",
+    });
+    expect(document.activeElement).toBe(desktopIdentification);
+    expect(screen.getByRole("tabpanel", { name: "Identificação" })).toBeInTheDocument();
+
+    expect(fireEvent.keyDown(desktopIdentification, { key: "ArrowRight" })).toBe(true);
+    expect(document.activeElement).toBe(desktopIdentification);
+    expect(screen.getByRole("tabpanel", { name: "Identificação" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Alterar senha" })).not.toBeInTheDocument();
   });
 });
