@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import pixLogo from "@/assets/logo-pix.svg";
+import eventLogo from "@/assets/logo-coros-preto.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -171,6 +172,48 @@ function RegistrationPriceSummary({
           Pix sem taxa • cartão em até 12x
         </div>
       </div>
+    </aside>
+  );
+}
+
+function RegistrationBadgePreview({
+  name,
+  photo,
+}: {
+  name: string;
+  photo: RegistrationPhotoInput | null;
+}) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "?";
+  const photoSrc = photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
+
+  return (
+    <aside aria-label="Prévia do crachá" className="mx-auto w-full max-w-xs lg:sticky lg:top-24">
+      <p className="mb-2 text-center text-xs font-bold uppercase text-muted-foreground">Prévia do seu crachá</p>
+      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg">
+        <div className="h-3 bg-amber" aria-hidden="true" />
+        <div className="p-6 text-center">
+          <img src={eventLogo} alt="II Encontro de Coros" className="mx-auto h-16 w-auto object-contain" />
+          <div className="mx-auto mt-6 grid size-28 place-items-center overflow-hidden rounded-full border-4 border-amber bg-muted font-display text-3xl font-extrabold text-foreground">
+            {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
+          </div>
+          <p className="mt-5 break-words font-display text-xl font-extrabold text-foreground">
+            {name.trim() || "Seu nome"}
+          </p>
+          <p className="mt-1 text-xs font-bold uppercase text-muted-foreground">Participante</p>
+        </div>
+        <div className="bg-foreground px-4 py-3 text-center text-xs font-semibold text-background">
+          Quixadá • 20 a 22 de novembro de 2026
+        </div>
+      </div>
+      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+        Sua foto será adicionada na próxima etapa.
+      </p>
     </aside>
   );
 }
@@ -437,6 +480,7 @@ export function RegistrationSection({
 
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
+                <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
                 <fieldset className="space-y-6">
                   <legend className="flex items-center gap-3">
                     <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
@@ -562,10 +606,12 @@ export function RegistrationSection({
 
                   </div>
                 </fieldset>
+                <RegistrationBadgePreview name={form.name} photo={photo} />
+                </div>
               )}
 
               {currentStep === 2 && (
-                <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+                <div className="mx-auto max-w-2xl">
                   <fieldset className="space-y-6">
                     <legend className="flex items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
@@ -681,7 +727,6 @@ export function RegistrationSection({
                     </div>
                     </div>
                   </fieldset>
-                  <RegistrationPriceSummary selectedChoir={selectedChoir} />
                 </div>
               )}
 
