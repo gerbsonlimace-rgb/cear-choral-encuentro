@@ -100,6 +100,11 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.getByRole("link", { name: "Voltar ao evento" })).toHaveAttribute("href", "/");
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No primeiro acesso como participante, use os dígitos do CPF seguidos da data de nascimento em DDMMAAAA.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("keeps invalid credentials generic, clears the password, and stops before access checks", async () => {

@@ -37,6 +37,11 @@ import {
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
+import {
+  createParticipantProvisioningService,
+  createSupabaseParticipantProvisioningRepository,
+  type ParticipantAuthAdmin,
+} from "@/features/participant/participant-provisioning.server";
 
 describe("InfinitePay configuration", () => {
   it("defaults new checkouts to the Lucas account", () => {
@@ -637,6 +642,7 @@ describe("Supabase registration repository", () => {
         "insert",
         {
           name: "Maria da Silva",
+          cpf: "52998224725",
           photo_path: registrationPhotoPath,
           voice_part: "soprano",
           phone: "85999999999",
@@ -661,6 +667,102 @@ describe("Supabase registration repository", () => {
         },
       ],
     ]);
+  });
+
+  it("carries the persisted public-registration CPF through paid provisioning without returning it", async () => {
+    const registration = {
+      id: "registration-1",
+      order_nsu: fixedOrderNsu,
+      amount_cents: 10000,
+      payment_status: "pending",
+      infinitepay_transaction_nsu: null,
+      payment_method: null,
+      installments: null,
+      receipt_url: null,
+      email: "maria@example.com",
+      birth_date: "1990-05-20",
+      cpf: null as string | null,
+    };
+    const account = {
+      id: "22222222-2222-4222-8222-222222222222",
+      registration_id: registration.id,
+      user_id: null as string | null,
+      access_status: "pending" as "pending" | "active",
+      provisioning_claim_id: null as string | null,
+    };
+    const events: unknown[] = [];
+    supabaseAdminMock.rpc = vi.fn(async (_name: string, input: { p_claim_id: string }) => {
+      account.provisioning_claim_id = input.p_claim_id;
+      return { error: null };
+    });
+    supabaseAdminMock.from.mockImplementation((table: string) => {
+      const query = {
+        insert: vi.fn(async (values: Record<string, unknown>) => {
+          if (table === "registrations") Object.assign(registration, values);
+          else events.push(values);
+          return { data: null, error: null };
+        }),
+        update: vi.fn((values: Record<string, unknown>) => {
+          if (table === "registrations") Object.assign(registration, values);
+          if (table === "participant_accounts") {
+            Object.assign(account, values);
+            account.access_status = values.access_status as "active";
+            account.user_id = values.user_id as string;
+            account.provisioning_claim_id = null;
+          }
+          return query;
+        }),
+        select: vi.fn(() => query),
+        eq: vi.fn(() => query),
+        maybeSingle: vi.fn(async () => ({
+          data:
+            table === "registrations"
+              ? registration
+              : table === "participant_accounts"
+                ? account
+                : null,
+          error: null,
+        })),
+      };
+      return query;
+    });
+    const repository = createSupabaseRegistrationRepository();
+    await repository.createPending({
+      ...baseRegistrationInput,
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+      choirName: "Coro Diocesano de Quixadá",
+      photoPath: registrationPhotoPath,
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      shirtPriceCents: null,
+    });
+    await repository.markPaid(fixedOrderNsu, {
+      transactionNsu: "transaction-1",
+      invoiceSlug: "invoice-1",
+      paymentMethod: "pix",
+      installments: 1,
+      paidAmountCents: 10000,
+      paidAt: fixedPaidAt,
+    });
+    const auth: ParticipantAuthAdmin = {
+      findUserByEmail: async () => null,
+      createUser: async () => ({ id: "33333333-3333-4333-8333-333333333333" }),
+      deleteUser: async () => {},
+      updatePassword: async () => {},
+    };
+
+    await expect(
+      createParticipantProvisioningService({
+        repository: createSupabaseParticipantProvisioningRepository(),
+        auth,
+        createClaimId: () => "44444444-4444-4444-8444-444444444444",
+      }).provision(registration.id),
+    ).resolves.toEqual({ status: "active" });
+    expect(registration.cpf).toBe(cpf);
+    expect(account.access_status).toBe("active");
+    expect(events).not.toContainEqual(expect.objectContaining({ cpf }));
   });
 
   it("surfaces a pending-registration insert failure", async () => {

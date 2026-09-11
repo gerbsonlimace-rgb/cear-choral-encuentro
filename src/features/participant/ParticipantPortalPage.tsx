@@ -167,6 +167,7 @@ function Identification({
 }) {
   const { identity, registration, payment } = view;
   const [receiptState, setReceiptState] = useState<"idle" | "working" | "error">("idle");
+  const [photoFailed, setPhotoFailed] = useState(false);
   const canDownloadReceipt =
     Boolean(payment.orderNsu?.trim()) && payment.paidAmountCents != null && Boolean(payment.paidAt);
 
@@ -186,11 +187,12 @@ function Identification({
       <Card>
         <CardHeader className="flex flex-row items-center gap-4 space-y-0">
           <Avatar className="h-20 w-20 border bg-muted">
-            {identity.photoUrl ? (
+            {identity.photoUrl && !photoFailed ? (
               <img
                 src={identity.photoUrl}
                 alt={`Foto de ${identity.name}`}
                 className="aspect-square h-full w-full object-cover"
+                onError={() => setPhotoFailed(true)}
               />
             ) : (
               <AvatarFallback

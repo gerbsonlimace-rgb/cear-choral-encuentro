@@ -115,7 +115,48 @@ function PaymentConfirmationCycle({
   }
 
   if (state.kind === "paid") {
-    return <ConfirmedPayment payment={state.payment} />;
+    const method =
+      state.payment.paymentMethod === "pix"
+        ? "Pix"
+        : `Cartão em ${state.payment.installments} ${
+            state.payment.installments === 1 ? "parcela" : "parcelas"
+          }`;
+
+    return (
+      <PaymentMessage title="Inscrição confirmada">
+        <p className="mt-3 text-muted-foreground">
+          Pagamento por <span>{method}</span>.
+        </p>
+        {state.payment.participantAccessStatus === "active" && (
+          <a
+            href="/acessar"
+            className="mt-4 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
+          >
+            Acessar área do participante
+          </a>
+        )}
+        {state.payment.participantAccessStatus === "pending" && (
+          <p className="mt-3 text-muted-foreground">
+            Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.
+          </p>
+        )}
+        {state.payment.participantAccessStatus === "conflict" && (
+          <p className="mt-3 text-muted-foreground">
+            Seu acesso precisa de atendimento da organização.
+          </p>
+        )}
+        {state.payment.receiptUrl && (
+          <a
+            href={state.payment.receiptUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
+          >
+            Ver comprovante
+          </a>
+        )}
+      </PaymentMessage>
+    );
   }
 
 

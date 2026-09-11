@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAdminFunctionHandlers,
+  createParticipantRecoveryHandlers,
   getAdminRegistrationSummary,
   listAdminRegistrations,
   toAdminAccessState,
@@ -167,5 +168,49 @@ describe("admin registration handlers", () => {
 
     await expect(createAdminFunctionHandlers(service).summary()).resolves.toEqual(expected);
     expect(getAdminRegistrationSummary.method).toBe("GET");
+  });
+});
+
+describe("participant recovery handlers", () => {
+  it("validates a strict UUID before a reprocess can reach the authorized service", async () => {
+    const service = {
+      reprocess: async () => ({ status: "pending" as const }),
+      resetInitialPassword: async () => ({
+        status: "success" as const,
+        sessionsRevoked: false as const,
+      }),
+    };
+
+    expect(() =>
+      createParticipantRecoveryHandlers(service).reprocess(
+        { registrationId: "not-a-uuid", extra: "blocked" },
+        "admin-1",
+      ),
+    ).toThrow(/Invalid uuid/);
+  });
+
+  it("passes only the verified admin identity and the registration UUID to a reset", async () => {
+    const resetInitialPassword = async (registrationId: string, adminUserId: string) => ({
+      status: "success" as const,
+      sessionsRevoked: false as const,
+      registrationId,
+      adminUserId,
+    });
+    const service = {
+      reprocess: async () => ({ status: "pending" as const }),
+      resetInitialPassword,
+    };
+
+    await expect(
+      createParticipantRecoveryHandlers(service).reset(
+        { registrationId: "11111111-1111-4111-8111-111111111111" },
+        "verified-admin",
+      ),
+    ).resolves.toEqual({
+      status: "success",
+      sessionsRevoked: false,
+      registrationId: "11111111-1111-4111-8111-111111111111",
+      adminUserId: "verified-admin",
+    });
   });
 });

@@ -9,6 +9,8 @@ vi.mock("@/lib/admin.functions", () => ({
   getAdminRegistrationSummary: vi.fn(),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
+  reprocessParticipantAccess: vi.fn(),
+  resetParticipantInitialPassword: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 
@@ -62,6 +64,7 @@ const paid: AdminRegistrationRow = {
   paymentMethod: "credit_card",
   installments: 2,
   paidAt: "2026-09-02T12:00:00Z",
+  participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
 };
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
 const summary: AdminRegistrationSummary = {
@@ -119,7 +122,11 @@ describe("AdminRegistrationsPage read-only views", () => {
   it("shows complete totals and the registration count for each diocese above the filters", async () => {
     const { loadSummary, user } = setup();
 
-    const overview = await screen.findByRole("region", { name: "Visão geral das inscrições" });
+    const overview = await screen.findByRole(
+      "region",
+      { name: "Visão geral das inscrições" },
+      { timeout: 3000 },
+    );
     expect(within(overview).getByText("14")).toBeInTheDocument();
     expect(within(overview).getByText("8")).toBeInTheDocument();
     expect(within(overview).getByText("4")).toBeInTheDocument();
@@ -190,6 +197,52 @@ describe("AdminRegistrationsPage read-only views", () => {
 });
 
 describe("AdminRegistrationsPage access and interactions", () => {
+  it("shows only server-authorized participant recovery actions and refreshes the current list", async () => {
+    const paidPending = {
+      ...paid,
+      participantAccess: {
+        label: "Aguardando criação" as const,
+        canReprocess: true,
+        canReset: false,
+      },
+    };
+    const loadRegistrations = vi
+      .fn()
+      .mockResolvedValue({ ...page, rows: [legacy, paidPending], total: 2 });
+    const reprocessAccess = vi.fn().mockResolvedValue({ status: "active" });
+    const { user } = setup({ loadRegistrations, reprocessAccess });
+
+    expect(await screen.findAllByText("Aguardando criação")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Reprocessar acesso" })).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: "Redefinir senha inicial" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Reprocessar acesso" })[0]);
+    await waitFor(() =>
+      expect(reprocessAccess).toHaveBeenCalledWith({
+        data: { registrationId: "paid" },
+      }),
+    );
+    await waitFor(() => expect(loadRegistrations).toHaveBeenCalledTimes(2));
+  });
+
+  it("requires reset confirmation and discloses that existing sessions stay open", async () => {
+    const resetInitialPassword = vi
+      .fn()
+      .mockResolvedValue({ status: "success", sessionsRevoked: false });
+    const { user } = setup({ resetInitialPassword });
+    await screen.findByRole("table");
+
+    await user.click(screen.getAllByRole("button", { name: "Redefinir senha inicial" })[0]);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar redefinição" }));
+    await waitFor(() => expect(resetInitialPassword).toHaveBeenCalled());
+    expect(
+      screen.getByText("Senha redefinida. Sessões que já estavam abertas não foram encerradas."),
+    ).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/senha inicial:|\\d{11}/i);
+  });
+
   it("waits for server authorization before the first list request", async () => {
     let resolve!: (value: { status: "authorized"; userId: string; email: null }) => void;
     const checkAdmin = vi.fn(

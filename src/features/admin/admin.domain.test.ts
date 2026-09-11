@@ -5,8 +5,24 @@ import {
   adminRegistrationQuerySchema,
   buildRegistrationsCsv,
   mapAdminRegistrationRow,
+  resolveParticipantAccess,
   summarizeAdminRegistrations,
 } from "./admin.domain";
+
+describe("admin participant access state", () => {
+  it.each([
+    ["pending", null, null],
+    ["paid", null, { label: "Aguardando criação", canReprocess: true, canReset: false }],
+    ["paid", "pending", { label: "Aguardando criação", canReprocess: true, canReset: false }],
+    ["paid", "conflict", { label: "Conflito de e-mail", canReprocess: true, canReset: false }],
+    ["paid", "active", { label: "Ativo", canReprocess: false, canReset: true }],
+  ] as const)(
+    "maps payment %s and account %s to the approved recovery state",
+    (paymentStatus, accountStatus, expected) => {
+      expect(resolveParticipantAccess(paymentStatus, accountStatus)).toEqual(expected);
+    },
+  );
+});
 
 const legacyRow: RegistrationDatabaseRow = {
   id: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",

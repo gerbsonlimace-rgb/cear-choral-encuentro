@@ -17,7 +17,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,include_shirt,shirt_size,pricing_type,standard_price_cents,registration_price_cents,shirt_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at";
+  "id,created_at,name,choir_name,email,phone,city,institution,role,include_shirt,shirt_size,pricing_type,standard_price_cents,registration_price_cents,shirt_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -341,6 +341,11 @@ describe("registration repository list", () => {
           paymentMethod: "pix",
           installments: 1,
           paidAt: "2026-09-07T13:00:00Z",
+          participantAccess: {
+            label: "Aguardando criação",
+            canReprocess: true,
+            canReset: false,
+          },
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,

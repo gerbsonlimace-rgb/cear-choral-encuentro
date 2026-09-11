@@ -41,7 +41,28 @@ export type AdminRegistrationRow = {
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
   shirtPriceCents: number | null;
+  participantAccess?: AdminParticipantAccess | null;
 };
+
+export type AdminParticipantAccess = {
+  label: "Ativo" | "Aguardando criação" | "Conflito de e-mail";
+  canReprocess: boolean;
+  canReset: boolean;
+};
+
+export function resolveParticipantAccess(
+  paymentStatus: AdminRegistrationRow["paymentStatus"],
+  accountStatus: "active" | "pending" | "conflict" | null,
+): AdminParticipantAccess | null {
+  if (paymentStatus !== "paid") return null;
+  if (accountStatus === "active") {
+    return { label: "Ativo", canReprocess: false, canReset: true };
+  }
+  if (accountStatus === "conflict") {
+    return { label: "Conflito de e-mail", canReprocess: true, canReset: false };
+  }
+  return { label: "Aguardando criação", canReprocess: true, canReset: false };
+}
 
 export type AdminRegistrationPage = {
   rows: AdminRegistrationRow[];
@@ -67,7 +88,10 @@ export type AdminRegistrationSummary = {
 
 export type AdminExportFile = { fileName: string; content: string };
 
-export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegistrationRow {
+export function mapAdminRegistrationRow(
+  row: RegistrationDatabaseRow,
+  accountStatus?: "active" | "pending" | "conflict" | null,
+): AdminRegistrationRow {
   const status = row.payment_status as AdminRegistrationRow["paymentStatus"];
 
   return {
@@ -97,6 +121,9 @@ export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegi
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
     shirtPriceCents: row.shirt_price_cents,
+    ...(accountStatus === undefined
+      ? {}
+      : { participantAccess: resolveParticipantAccess(status, accountStatus) }),
   };
 }
 

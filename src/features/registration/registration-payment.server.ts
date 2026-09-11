@@ -302,6 +302,7 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
+        cpf: input.cpf,
         photo_path: input.photoPath,
         voice_part: input.voicePart,
         phone: input.phone,

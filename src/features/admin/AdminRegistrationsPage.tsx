@@ -11,6 +11,16 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -25,6 +35,8 @@ import {
   getAdminAccess,
   getAdminRegistrationSummary,
   listAdminRegistrations,
+  reprocessParticipantAccess,
+  resetParticipantInitialPassword,
   type AdminAccessState,
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +57,11 @@ type Props = {
   loadRegistrations?: (input: { data: AdminRegistrationQuery }) => Promise<AdminRegistrationPage>;
   loadSummary?: () => Promise<AdminRegistrationSummary>;
   exportRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminExportFile>;
+  reprocessAccess?: (input: { data: { registrationId: string } }) => Promise<unknown>;
+  resetInitialPassword?: (input: { data: { registrationId: string } }) => Promise<{
+    status: "success";
+    sessionsRevoked: false;
+  }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
 };
@@ -122,7 +139,69 @@ function Payment({ row }: { row: AdminRegistrationRow }) {
   );
 }
 
-function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
+function ParticipantAccessActions({
+  row,
+  busy,
+  onReprocess,
+  onReset,
+}: {
+  row: AdminRegistrationRow;
+  busy: boolean;
+  onReprocess: (row: AdminRegistrationRow) => void;
+  onReset: (row: AdminRegistrationRow) => Promise<void>;
+}) {
+  const [confirmReset, setConfirmReset] = useState(false);
+  const access = row.participantAccess;
+  if (!access) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <Badge variant={access.label === "Ativo" ? "default" : "secondary"}>{access.label}</Badge>
+      {access.canReprocess && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onReprocess(row)}>
+          Reprocessar acesso
+        </Button>
+      )}
+      {access.canReset && (
+        <>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirmReset(true)}>
+            Redefinir senha inicial
+          </Button>
+          <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Redefinir senha inicial?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A pessoa poderá usar novamente a senha inicial no próximo acesso.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={busy}
+                  onClick={() => void onReset(row).then(() => setConfirmReset(false))}
+                >
+                  Confirmar redefinição
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RegistrationViews({
+  rows,
+  participantActionBusy,
+  onReprocess,
+  onReset,
+}: {
+  rows: AdminRegistrationRow[];
+  participantActionBusy: boolean;
+  onReprocess: (row: AdminRegistrationRow) => void;
+  onReset: (row: AdminRegistrationRow) => Promise<void>;
+}) {
   return (
     <>
       <div className="hidden rounded-xl border bg-card md:block">
@@ -166,6 +245,12 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
                 <TableCell className="align-top text-xs">{row.shirtLabel}</TableCell>
                 <TableCell className="align-top">
                   <Status row={row} />
+                  <ParticipantAccessActions
+                    row={row}
+                    busy={participantActionBusy}
+                    onReprocess={onReprocess}
+                    onReset={onReset}
+                  />
                 </TableCell>
                 <TableCell className="align-top">
                   <Payment row={row} />
@@ -216,6 +301,12 @@ function RegistrationViews({ rows }: { rows: AdminRegistrationRow[] }) {
               </dl>
               <div className="border-t pt-3">
                 <Payment row={row} />
+                <ParticipantAccessActions
+                  row={row}
+                  busy={participantActionBusy}
+                  onReprocess={onReprocess}
+                  onReset={onReset}
+                />
               </div>
             </CardContent>
           </Card>
@@ -296,6 +387,8 @@ export function AdminRegistrationsPage({
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
+  reprocessAccess = reprocessParticipantAccess,
+  resetInitialPassword = resetParticipantInitialPassword,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
 }: Props) {
@@ -313,6 +406,7 @@ export function AdminRegistrationsPage({
   const [actionError, setActionError] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [participantActionBusy, setParticipantActionBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const actionBusy = useRef(false);
@@ -439,6 +533,33 @@ export function AdminRegistrationsPage({
     } finally {
       actionBusy.current = false;
       if (current === revision.current) setExporting(false);
+    }
+  }
+
+  async function runParticipantAction(
+    row: AdminRegistrationRow,
+    action: "reprocess" | "reset",
+  ): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      if (action === "reprocess") {
+        await reprocessAccess({ data: { registrationId: row.id } });
+        setAnnouncement("Acesso reprocessado.");
+      } else {
+        const result = await resetInitialPassword({ data: { registrationId: row.id } });
+        if (result.sessionsRevoked !== false) throw new Error("Unexpected reset result");
+        setAnnouncement("Senha redefinida. Sessões que já estavam abertas não foram encerradas.");
+      }
+      setRetry((value) => value + 1);
+    } catch {
+      setActionError("Não foi possível atualizar o acesso. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
     }
   }
 
@@ -624,7 +745,12 @@ export function AdminRegistrationsPage({
             ) : (
               result &&
               (result.rows.length ? (
-                <RegistrationViews rows={result.rows} />
+                <RegistrationViews
+                  rows={result.rows}
+                  participantActionBusy={participantActionBusy}
+                  onReprocess={(row) => void runParticipantAction(row, "reprocess")}
+                  onReset={(row) => runParticipantAction(row, "reset")}
+                />
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-sm">

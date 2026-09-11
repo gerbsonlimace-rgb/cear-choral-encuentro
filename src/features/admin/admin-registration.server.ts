@@ -35,6 +35,7 @@ export const adminRegistrationColumns = [
   "payment_method",
   "installments",
   "paid_at",
+  "participant_accounts(access_status)",
 ].join(",");
 
 function registrationSearchFilter(search: string): string {
@@ -80,9 +81,15 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       if (error) throw new Error("Não foi possível consultar as inscrições.");
       return {
         // The shared mapper reads only the selected administrative columns.
-        rows: (data ?? []).map((row) =>
-          mapAdminRegistrationRow(row as unknown as RegistrationDatabaseRow),
-        ),
+        rows: (data ?? []).map((row) => {
+          const record = row as unknown as RegistrationDatabaseRow & {
+            participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
+          };
+          return mapAdminRegistrationRow(
+            record,
+            record.participant_accounts?.[0]?.access_status ?? null,
+          );
+        }),
         total: count ?? 0,
         page: query.page,
         pageSize: query.pageSize,

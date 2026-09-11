@@ -279,6 +279,19 @@ describe("ParticipantPortalPage", () => {
     expect(within(identification).getByText("Não")).toBeInTheDocument();
   });
 
+  it("replaces a failed signed photo with the neutral avatar fallback", async () => {
+    setup();
+    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    fireEvent.error(within(identification).getByRole("img", { name: "Foto de Maria da Silva" }));
+
+    expect(
+      within(identification).getByRole("img", { name: "Foto não disponível" }),
+    ).toHaveTextContent("MD");
+    expect(
+      within(identification).queryByRole("img", { name: "Foto de Maria da Silva" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shares one semantic section state across responsive keyboard navigation", async () => {
     const { user } = setup();
     await screen.findByRole("heading", { name: "Maria da Silva", level: 1 });

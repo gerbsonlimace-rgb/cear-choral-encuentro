@@ -41,6 +41,47 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
   });
 
+  it("offers unified portal access only after participant access is active", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(
+      await screen.findByRole("link", { name: "Acessar área do participante" }),
+    ).toHaveAttribute("href", "/acessar");
+  });
+
+  it.each([
+    [
+      "pending",
+      "Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.",
+    ],
+    ["conflict", "Seu acesso precisa de atendimento da organização."],
+  ] as const)(
+    "keeps a paid %s participant access state honest",
+    async (participantAccessStatus, message) => {
+      const verifyPayment = vi.fn().mockResolvedValue({
+        status: "paid" as const,
+        paymentMethod: "pix" as const,
+        installments: 1,
+        participantAccessStatus,
+      });
+
+      render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(
+        screen.queryByRole("link", { name: "Acessar área do participante" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Não faça outro pagamento.")).not.toBeInTheDocument();
+    },
+  );
+
   it("retries a pending payment and then confirms it", async () => {
     vi.useFakeTimers();
     const verifyPayment = vi
