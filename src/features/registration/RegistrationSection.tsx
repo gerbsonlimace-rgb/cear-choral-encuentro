@@ -85,8 +85,8 @@ const inputClassName =
   "min-h-14 rounded-xl border-border bg-background pl-11 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
-  1: ["name", "cpf", "email", "phone", "birthDate"],
-  2: ["choirId", "voicePart", "photo"],
+  1: ["name", "cpf", "email", "phone", "birthDate", "photo"],
+  2: ["choirId", "voicePart"],
 };
 
 function RegistrationPriceSummary({
@@ -315,10 +315,10 @@ export function RegistrationSection({
       if (form.phone.trim().length < 8) nextErrors.phone = "Informe um WhatsApp válido.";
       const birthDateResult = birthDateSchema.safeParse(form.birthDate);
       if (!birthDateResult.success) nextErrors.birthDate = birthDateResult.error.issues[0]?.message;
+      if (!photo) nextErrors.photo = "Envie uma foto do participante.";
     } else {
       if (!selectedChoir) nextErrors.choirId = "Selecione um coro/diocese.";
       if (!form.voicePart) nextErrors.voicePart = "Selecione seu perfil musical.";
-      if (!photo) nextErrors.photo = "Envie uma foto do participante.";
     }
 
     setErrors((previous) => {
@@ -604,6 +604,19 @@ export function RegistrationSection({
                       )}
                     </div>
 
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="photo" className="font-semibold">Foto do participante</Label>
+                      <label htmlFor="photo" className="flex min-h-24 cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-border bg-muted/40 px-4 text-base transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30">
+                        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                          <Camera className="size-5 shrink-0 text-foreground" aria-hidden="true" />
+                          <span className="truncate">{photoFileName || "JPG, PNG ou WebP • até 5 MB"}</span>
+                        </span>
+                        <span className="shrink-0 rounded-lg bg-amber/20 px-3 py-1.5 text-xs font-bold text-foreground">Escolher</span>
+                        <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" required aria-invalid={Boolean(errors.photo)} aria-describedby={errors.photo ? "photo-error" : undefined} className="sr-only" onChange={(event) => void handlePhotoChange(event.target.files?.[0])} />
+                      </label>
+                      {errors.photo && <p id="photo-error" role="alert" className="text-sm text-destructive">{errors.photo}</p>}
+                    </div>
+
                   </div>
                 </fieldset>
                 <RegistrationBadgePreview name={form.name} photo={photo} />
@@ -619,7 +632,7 @@ export function RegistrationSection({
                       </span>
                       <span className="min-w-0">
                         <span role="heading" aria-level={3} className="block font-display text-xl font-extrabold text-foreground sm:text-2xl">Sua participação</span>
-                        <span className="block text-sm font-normal text-muted-foreground">Escolha seu coro, perfil e foto.</span>
+                        <span className="block text-sm font-normal text-muted-foreground">Escolha seu coro e perfil musical.</span>
                       </span>
                     </legend>
                     <div className="grid gap-5">
@@ -691,40 +704,6 @@ export function RegistrationSection({
                       )}
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label htmlFor="photo" className="font-semibold">
-                        Foto do participante
-                      </Label>
-                      <label
-                        htmlFor="photo"
-                         className="flex min-h-24 cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-border bg-muted/40 px-4 text-base transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30"
-                      >
-                        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
-                          <Camera className="size-4 shrink-0 text-foreground" aria-hidden="true" />
-                          <span className="truncate">
-                            {photoFileName || "JPG, PNG ou WebP • até 5 MB"}
-                          </span>
-                        </span>
-                        <span className="shrink-0 rounded-lg bg-amber/20 px-2.5 py-1 text-xs font-bold text-foreground">
-                          Escolher
-                        </span>
-                        <input
-                          id="photo"
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          required
-                          aria-invalid={Boolean(errors.photo)}
-                          aria-describedby={errors.photo ? "photo-error" : undefined}
-                          className="sr-only"
-                          onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
-                        />
-                      </label>
-                      {errors.photo && (
-                        <p id="photo-error" role="alert" className="text-sm text-destructive">
-                          {errors.photo}
-                        </p>
-                      )}
-                    </div>
                     </div>
                   </fieldset>
                 </div>
