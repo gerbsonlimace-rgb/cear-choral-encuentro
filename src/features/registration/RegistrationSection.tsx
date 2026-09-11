@@ -438,8 +438,8 @@ export function RegistrationSection({
 
         <Card className="relative mx-auto mt-32 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30 sm:mt-7">
           <div className="h-1.5 bg-amber" aria-hidden="true" />
-          <CardContent className="p-4 sm:p-7 lg:p-9">
-            <nav aria-label="Etapas da inscrição" className="mb-8">
+          <CardContent className="p-4 sm:p-6 lg:p-7">
+            <nav aria-label="Etapas da inscrição" className="mb-5">
               <ol className="grid grid-cols-3 gap-2 sm:gap-4">
                 {[
                   { number: 1, label: "Seus dados" },
@@ -456,7 +456,7 @@ export function RegistrationSection({
                     >
                       <div className="mb-2 flex items-center" aria-hidden="true">
                         <span className={`h-0.5 flex-1 ${step.number === 1 ? "bg-transparent" : complete || active ? "bg-amber" : "bg-border"}`} />
-                        <span className={`grid size-10 shrink-0 place-items-center rounded-full border-2 text-sm font-extrabold ${active ? "border-amber bg-amber text-amber-foreground shadow-md" : complete ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground"}`}>
+                        <span className={`grid size-8 shrink-0 place-items-center rounded-full border-2 text-xs font-extrabold ${active ? "border-amber bg-amber text-amber-foreground shadow-md" : complete ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground"}`}>
                           {complete ? <Check className="size-5" /> : step.number}
                         </span>
                         <span className={`h-0.5 flex-1 ${step.number === 3 ? "bg-transparent" : complete ? "bg-amber" : "bg-border"}`} />
@@ -472,21 +472,23 @@ export function RegistrationSection({
 
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
-                <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                <fieldset className="space-y-6">
+                <div className="mx-auto max-w-4xl">
+                <fieldset className="space-y-4">
                   <legend className="flex items-center gap-3">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-foreground text-background">
                       <UserRound className="size-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span role="heading" aria-level={3} className="block font-display text-xl font-extrabold text-foreground sm:text-2xl">
+                      <span role="heading" aria-level={3} className="block font-display text-lg font-extrabold text-foreground sm:text-xl">
                         Conte-nos quem é você
                       </span>
                       <span className="block text-sm font-normal text-muted-foreground">Seus dados pessoais e de contato.</span>
                     </span>
                   </legend>
 
-                  <div className="grid gap-5 md:grid-cols-2">
+                  <RegistrationBadgePreview name={form.name} photo={photo} />
+
+                  <div className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="name" className="font-semibold">
                         Nome completo
@@ -509,7 +511,7 @@ export function RegistrationSection({
                       {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
 
-                    <div className="space-y-1.5 md:col-span-2">
+                    <div className="space-y-1.5">
                       <Label htmlFor="email" className="font-semibold">
                         E-mail
                       </Label>
@@ -598,7 +600,7 @@ export function RegistrationSection({
 
                     <div className="space-y-1.5 md:col-span-2">
                       <Label htmlFor="photo" className="font-semibold">Foto do participante</Label>
-                      <label htmlFor="photo" className="flex min-h-24 cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-border bg-muted/40 px-4 text-base transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30">
+                      <label htmlFor="photo" className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 text-sm transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30">
                         <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
                           <Camera className="size-5 shrink-0 text-foreground" aria-hidden="true" />
                           <span className="truncate">{photoFileName || "JPG, PNG ou WebP • até 5 MB"}</span>
@@ -611,7 +613,6 @@ export function RegistrationSection({
 
                   </div>
                 </fieldset>
-                <RegistrationBadgePreview name={form.name} photo={photo} />
                 </div>
               )}
 
@@ -747,7 +748,7 @@ export function RegistrationSection({
                   </p>
                 )}
 
-                <div className="mt-8 space-y-3 border-t border-border pt-6">
+                <div className="mt-5 space-y-2 border-t border-border pt-4">
                   <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
                     {currentStep > 1 && (
                       <Button type="button" variant="outline" onClick={goToPreviousStep} className="min-h-14 rounded-xl px-7 text-base font-bold">
@@ -758,7 +759,7 @@ export function RegistrationSection({
                     type={currentStep === 3 ? "submit" : "button"}
                     onClick={currentStep === 3 ? undefined : goToNextStep}
                     disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
-                    className="min-h-14 w-full rounded-xl bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
+                    className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
                     {isSubmitting ? "Preparando pagamento…" : currentStep === 3 ? "Ir para pagamento" : "Continuar"}
                     {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
