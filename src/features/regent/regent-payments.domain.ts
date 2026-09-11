@@ -76,31 +76,34 @@ function isPositiveSafeInteger(value: number | null): value is number {
 export function calculateComplementState(
   input: CalculateComplementStateInput,
 ): ComplementEligibility {
-  if (input.pricingType === "standard") {
-    return { eligible: false, reason: "standard_price" };
-  }
-
-  if (input.pricingType !== "promotional") {
+  if (input.pricingType !== "standard" && input.pricingType !== "promotional") {
     return { eligible: false, reason: "missing_snapshot" };
   }
 
   if (
     !isPositiveSafeInteger(input.standardPriceCents) ||
     !isPositiveSafeInteger(input.registrationPriceCents) ||
-    input.standardPriceCents <= input.registrationPriceCents ||
     !Number.isSafeInteger(input.confirmedComplementCents) ||
     input.confirmedComplementCents < 0
   ) {
     return { eligible: false, reason: "missing_snapshot" };
   }
 
-  if (input.paymentStatus !== "paid") {
-    return { eligible: false, reason: "awaiting_participant_payment" };
+  const totalCents = input.standardPriceCents - input.registrationPriceCents;
+  if (
+    (input.pricingType === "standard" && totalCents !== 0) ||
+    (input.pricingType === "promotional" && totalCents <= 0) ||
+    input.confirmedComplementCents > totalCents
+  ) {
+    return { eligible: false, reason: "missing_snapshot" };
   }
 
-  const totalCents = input.standardPriceCents - input.registrationPriceCents;
-  if (input.confirmedComplementCents > totalCents) {
-    return { eligible: false, reason: "missing_snapshot" };
+  if (input.pricingType === "standard") {
+    return { eligible: false, reason: "standard_price" };
+  }
+
+  if (input.paymentStatus !== "paid") {
+    return { eligible: false, reason: "awaiting_participant_payment" };
   }
 
   if (input.confirmedComplementCents === totalCents) {
@@ -119,6 +122,7 @@ export function calculateComplementState(
 }
 
 export function buildBrazilWhatsAppUrl(phone: string): string | null {
+  if (!/^[\d ()-]+$/.test(phone)) return null;
   const digits = phone.replace(/\D/g, "");
   if (!/^[1-9]\d{9,10}$/.test(digits)) return null;
   return `https://wa.me/55${digits}`;

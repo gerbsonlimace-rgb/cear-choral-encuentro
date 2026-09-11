@@ -30,6 +30,8 @@ describe("complement balance", () => {
       calculateComplementState({
         ...paidPromotionalRegistration,
         pricingType: "standard",
+        registrationPriceCents: 30_000,
+        confirmedComplementCents: 0,
       }),
     ).toEqual({ eligible: false, reason: "standard_price" });
   });
@@ -43,6 +45,16 @@ describe("complement balance", () => {
     ).toEqual({ eligible: false, reason: "awaiting_participant_payment" });
   });
 
+  it("fails closed on overpayment even while the participant payment is still pending", () => {
+    expect(
+      calculateComplementState({
+        ...paidPromotionalRegistration,
+        paymentStatus: "pending",
+        confirmedComplementCents: 20_001,
+      }),
+    ).toEqual({ eligible: false, reason: "missing_snapshot" });
+  });
+
   it.each([
     { standardPriceCents: null },
     { registrationPriceCents: null },
@@ -50,8 +62,12 @@ describe("complement balance", () => {
     { registrationPriceCents: -10_000 },
     { standardPriceCents: 10_000, registrationPriceCents: 10_000 },
     { standardPriceCents: 9_999, registrationPriceCents: 10_000 },
+    { pricingType: "standard", confirmedComplementCents: 0 },
     { standardPriceCents: 30_000.5 },
+    { standardPriceCents: Number.MAX_SAFE_INTEGER + 1 },
+    { registrationPriceCents: Number.MAX_SAFE_INTEGER + 1 },
     { confirmedComplementCents: -1 },
+    { confirmedComplementCents: Number.MAX_SAFE_INTEGER + 1 },
     { confirmedComplementCents: 20_001 },
   ])("fails closed for an incomplete or inconsistent snapshot %#", (override) => {
     expect(
@@ -129,10 +145,14 @@ describe("Brazilian WhatsApp URL", () => {
     expect(buildBrazilWhatsAppUrl(phone)).toBe(expected);
   });
 
-  it.each(["", "9999-1234", "088 99999-1234", "+55 (88) 99999-1234", "123456789012"])(
-    "does not generate a link for invalid Brazilian number %s",
-    (phone) => {
-      expect(buildBrazilWhatsAppUrl(phone)).toBeNull();
-    },
-  );
+  it.each([
+    "",
+    "9999-1234",
+    "088 99999-1234",
+    "+55 (88) 99999-1234",
+    "123456789012",
+    "(88) 99999-1234 ramal A",
+  ])("does not generate a link for invalid Brazilian number %s", (phone) => {
+    expect(buildBrazilWhatsAppUrl(phone)).toBeNull();
+  });
 });
