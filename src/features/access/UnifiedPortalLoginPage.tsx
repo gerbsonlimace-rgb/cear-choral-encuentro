@@ -18,6 +18,15 @@ type Props = {
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
 };
 
+type CurrentOperation = {
+  cancelled: boolean;
+};
+
+type StartupGate = {
+  promise: Promise<boolean>;
+  resolve: (authorized: boolean) => void;
+};
+
 const defaultSignIn: NonNullable<Props["signIn"]> = (credentials) =>
   supabase.auth.signInWithPassword(credentials);
 const defaultCheckAccess = getUnifiedPortalAccess;
@@ -37,60 +46,88 @@ export function UnifiedPortalLoginPage({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const busy = useRef(false);
-  const mounted = useRef(true);
+  const currentSubmit = useRef<CurrentOperation | null>(null);
+  const onAuthorizedRef = useRef(onAuthorized);
+  const signOutRef = useRef(signOut);
+  const startupGetSession = useRef(getSession);
+  const startupCheckAccess = useRef(checkAccess);
+  const startupSession = useRef<ReturnType<NonNullable<Props["getSession"]>> | null>(null);
+  const startupGate = useRef<StartupGate | null>(null);
+
+  onAuthorizedRef.current = onAuthorized;
+  signOutRef.current = signOut;
+
+  if (!startupGate.current) {
+    let resolve!: (authorized: boolean) => void;
+    const promise = new Promise<boolean>((accept) => {
+      resolve = accept;
+    });
+    startupGate.current = { promise, resolve };
+  }
 
   const closeRejectedSession = useCallback(async () => {
     try {
-      await signOut();
+      await signOutRef.current();
     } catch {
       // The public response remains generic even if cleanup fails.
     }
-  }, [signOut]);
+  }, []);
 
   const routeAuthorizedAccess = useCallback(
-    async (access: UnifiedPortalAccess) => {
-      if (!mounted.current) return false;
+    async (access: UnifiedPortalAccess, isCurrent: () => boolean) => {
+      if (!isCurrent()) return false;
       if (access.status === "authorized") {
-        onAuthorized(access.destination);
+        onAuthorizedRef.current(access.destination);
         return true;
       }
       await closeRejectedSession();
-      if (mounted.current) setError("Não foi possível acessar o portal.");
+      if (isCurrent()) setError("Não foi possível acessar o portal.");
       return false;
     },
-    [closeRejectedSession, onAuthorized],
+    [closeRejectedSession],
   );
 
   useEffect(() => {
-    mounted.current = true;
+    let cancelled = false;
+    const isCurrent = () => !cancelled;
+    const gate = startupGate.current;
+    if (!gate) return;
 
-    async function resolveExistingSession() {
+    async function resolveExistingSession(activeGate: StartupGate) {
       let sessionResult: Awaited<ReturnType<NonNullable<Props["getSession"]>>>;
       try {
-        sessionResult = await getSession();
+        startupSession.current ??= Promise.resolve().then(() => startupGetSession.current());
+        sessionResult = await startupSession.current;
       } catch {
+        if (isCurrent()) activeGate.resolve(false);
         return;
       }
-      if (!mounted.current || sessionResult.error || !sessionResult.data.session) return;
+      if (!isCurrent()) return;
+      if (sessionResult.error || !sessionResult.data.session) {
+        activeGate.resolve(false);
+        return;
+      }
 
       try {
-        const access = await checkAccess();
-        if (!mounted.current) return;
-        await routeAuthorizedAccess(access);
+        const access = await startupCheckAccess.current();
+        if (!isCurrent()) return;
+        activeGate.resolve(await routeAuthorizedAccess(access, isCurrent));
       } catch {
-        if (!mounted.current) return;
+        if (!isCurrent()) return;
         await closeRejectedSession();
-        if (mounted.current) {
+        if (isCurrent()) {
           setError("Não foi possível verificar seu acesso. Tente novamente.");
+          activeGate.resolve(false);
         }
       }
     }
 
-    void resolveExistingSession();
+    void resolveExistingSession(gate);
     return () => {
-      mounted.current = false;
+      cancelled = true;
+      if (currentSubmit.current) currentSubmit.current.cancelled = true;
     };
-  }, [checkAccess, closeRejectedSession, getSession, routeAuthorizedAccess]);
+  }, [closeRejectedSession, routeAuthorizedAccess]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -99,31 +136,41 @@ export function UnifiedPortalLoginPage({
     busy.current = true;
     setPending(true);
     setError("");
+    const operation = { cancelled: false };
+    currentSubmit.current = operation;
+    const isCurrent = () => currentSubmit.current === operation && !operation.cancelled;
     let signedIn = false;
 
     try {
+      const existingSessionAuthorized = await startupGate.current?.promise;
+      if (!isCurrent() || existingSessionAuthorized) return;
+      setError("");
+
       const result = await signIn({ email: email.trim(), password });
-      if (!mounted.current) return;
+      if (!isCurrent()) return;
       setPassword("");
       if (result.error) throw result.error;
 
       signedIn = true;
       const access = await checkAccess();
-      if (!mounted.current) return;
-      await routeAuthorizedAccess(access);
+      if (!isCurrent()) return;
+      await routeAuthorizedAccess(access, isCurrent);
     } catch {
-      if (!mounted.current) return;
+      if (!isCurrent()) return;
       setPassword("");
       if (signedIn) {
         await closeRejectedSession();
-        if (!mounted.current) return;
+        if (!isCurrent()) return;
         setError("Não foi possível verificar seu acesso. Tente novamente.");
       } else {
         setError("Não foi possível entrar. Verifique seu e-mail e senha.");
       }
     } finally {
       busy.current = false;
-      if (mounted.current) setPending(false);
+      if (isCurrent()) {
+        currentSubmit.current = null;
+        setPending(false);
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
+import { StrictMode, type ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { UnifiedPortalAccess } from "./portal-access.domain";
@@ -53,6 +53,16 @@ async function enter(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("E-mail"), "  pessoa@example.com  ");
   await user.type(screen.getByLabelText("Senha"), "SenhaSegura123");
   await user.click(screen.getByRole("button", { name: "Entrar" }));
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((accept, decline) => {
+    resolve = accept;
+    reject = decline;
+  });
+  return { promise, resolve, reject };
 }
 
 describe("UnifiedPortalLoginPage", () => {
@@ -155,7 +165,7 @@ describe("UnifiedPortalLoginPage", () => {
     fireEvent.submit(form);
     fireEvent.submit(form);
 
-    expect(signIn).toHaveBeenCalledOnce();
+    await waitFor(() => expect(signIn).toHaveBeenCalledOnce());
     expect(screen.getByRole("button", { name: "Entrando…" })).toBeDisabled();
 
     await act(async () => resolveSignIn?.({ error: null }));
@@ -207,6 +217,165 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled();
     expect(screen.getByLabelText("E-mail")).toBeEnabled();
     expect(screen.getByLabelText("Senha")).toBeEnabled();
+  });
+
+  it("serializes credential submission behind a pending startup session check", async () => {
+    const session = deferred<{ data: { session: unknown | null }; error: unknown }>();
+    const { user, signIn, onAuthorized } = setup({ getSession: () => session.promise });
+
+    await user.type(screen.getByLabelText("E-mail"), "pessoa@example.com");
+    await user.type(screen.getByLabelText("Senha"), "SenhaSegura123");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+    expect(screen.getByRole("button", { name: "Entrando…" })).toBeDisabled();
+    expect(signIn).not.toHaveBeenCalled();
+
+    await act(async () => session.resolve({ data: { session: null }, error: null }));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledOnce());
+  });
+
+  it.each(["unavailable", "error"] as const)(
+    "finishes stale startup %s cleanup before authenticating with submitted credentials",
+    async (startupResult) => {
+      const startupAccess = deferred<UnifiedPortalAccess>();
+      const startupSignOut = deferred<{ error: null }>();
+      const checkAccess = vi
+        .fn()
+        .mockImplementationOnce(() => startupAccess.promise)
+        .mockResolvedValueOnce({ status: "authorized", destination: "/participante" });
+      const { user, signIn, signOut, onAuthorized } = setup({
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: { user: { id: "existing-user" } } },
+          error: null,
+        }),
+        checkAccess,
+        signOut: () => startupSignOut.promise,
+      });
+      await waitFor(() => expect(checkAccess).toHaveBeenCalledOnce());
+
+      await user.type(screen.getByLabelText("E-mail"), "pessoa@example.com");
+      await user.type(screen.getByLabelText("Senha"), "SenhaSegura123");
+      await user.click(screen.getByRole("button", { name: "Entrar" }));
+      expect(screen.getByRole("button", { name: "Entrando…" })).toBeDisabled();
+      expect(signIn).not.toHaveBeenCalled();
+
+      await act(async () => {
+        if (startupResult === "unavailable") {
+          startupAccess.resolve({ status: "unavailable" });
+        } else {
+          startupAccess.reject(new Error("PRIVATE_STARTUP_DETAIL"));
+        }
+      });
+      await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
+      expect(signIn).not.toHaveBeenCalled();
+
+      await act(async () => startupSignOut.resolve({ error: null }));
+
+      await waitFor(() => expect(signIn).toHaveBeenCalledOnce());
+      await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/participante"));
+      expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(signIn.mock.invocationCallOrder[0]);
+      expect(document.body).not.toHaveTextContent("PRIVATE_STARTUP_DETAIL");
+    },
+  );
+
+  it("uses the latest authorization callback when rerendered during startup", async () => {
+    const session = deferred<{ data: { session: unknown | null }; error: unknown }>();
+    const getSession = vi.fn(() => session.promise);
+    const checkAccess = vi.fn().mockResolvedValue({
+      status: "authorized",
+      destination: "/regente",
+    });
+    const firstAuthorized = vi.fn();
+    const latestAuthorized = vi.fn();
+    const props = {
+      signIn: vi.fn().mockResolvedValue({ error: null }),
+      checkAccess,
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+      getSession,
+    };
+    const { rerender } = render(
+      <UnifiedPortalLoginPage {...props} onAuthorized={firstAuthorized} />,
+    );
+
+    rerender(<UnifiedPortalLoginPage {...props} onAuthorized={latestAuthorized} />);
+    await act(async () =>
+      session.resolve({
+        data: { session: { user: { id: "existing-user" } } },
+        error: null,
+      }),
+    );
+
+    await waitFor(() => expect(latestAuthorized).toHaveBeenCalledExactlyOnceWith("/regente"));
+    expect(firstAuthorized).not.toHaveBeenCalled();
+    expect(getSession).toHaveBeenCalledOnce();
+    expect(checkAccess).toHaveBeenCalledOnce();
+  });
+
+  it("runs one authorized startup check under StrictMode effect replay", async () => {
+    const session = deferred<{ data: { session: unknown | null }; error: unknown }>();
+    const getSession = vi.fn(() => session.promise);
+    const checkAccess = vi.fn().mockResolvedValue({
+      status: "authorized",
+      destination: "/admin/inscricoes",
+    });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const onAuthorized = vi.fn();
+    render(
+      <StrictMode>
+        <UnifiedPortalLoginPage
+          signIn={vi.fn().mockResolvedValue({ error: null })}
+          checkAccess={checkAccess}
+          signOut={signOut}
+          getSession={getSession}
+          onAuthorized={onAuthorized}
+        />
+      </StrictMode>,
+    );
+
+    await act(async () =>
+      session.resolve({
+        data: { session: { user: { id: "existing-user" } } },
+        error: null,
+      }),
+    );
+
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/inscricoes"));
+    expect(getSession).toHaveBeenCalledOnce();
+    expect(checkAccess).toHaveBeenCalledOnce();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("runs one unavailable startup cleanup under StrictMode effect replay", async () => {
+    const session = deferred<{ data: { session: unknown | null }; error: unknown }>();
+    const getSession = vi.fn(() => session.promise);
+    const checkAccess = vi.fn().mockResolvedValue({ status: "unavailable" });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const onAuthorized = vi.fn();
+    render(
+      <StrictMode>
+        <UnifiedPortalLoginPage
+          signIn={vi.fn().mockResolvedValue({ error: null })}
+          checkAccess={checkAccess}
+          signOut={signOut}
+          getSession={getSession}
+          onAuthorized={onAuthorized}
+        />
+      </StrictMode>,
+    );
+
+    await act(async () =>
+      session.resolve({
+        data: { session: { user: { id: "existing-user" } } },
+        error: null,
+      }),
+    );
+
+    await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
+    expect(getSession).toHaveBeenCalledOnce();
+    expect(checkAccess).toHaveBeenCalledOnce();
+    expect(onAuthorized).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível acessar o portal.");
   });
 
   it("does not continue authentication or navigate after unmount", async () => {
