@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  birthDateSchema,
   buildCheckoutItems,
   calculateOrderAmountCents,
+  cpfSchema,
   paymentLookupSchema,
+  registrationResumeSchema,
   registrationSchema,
 } from "./registration.domain";
 
@@ -36,6 +39,18 @@ describe("registration domain", () => {
     expect(registrationSchema.safeParse({ ...baseInput, cpf: "111.111.111-11" }).success).toBe(
       false,
     );
+  });
+
+  it("normalizes the CPF and validates the birth date used to resume a registration", () => {
+    expect(
+      registrationResumeSchema.parse({ cpf: "529.982.247-25", birthDate: "1990-05-12" }),
+    ).toEqual({ cpf: "52998224725", birthDate: "1990-05-12" });
+    expect(() =>
+      registrationResumeSchema.parse({ cpf: "111.111.111-11", birthDate: "1990-05-12" }),
+    ).toThrow("Informe um CPF válido.");
+
+    expect(cpfSchema.parse("529.982.247-25")).toBe("52998224725");
+    expect(birthDateSchema.parse("1990-05-12")).toBe("1990-05-12");
   });
 
   it("builds checkout with the trusted registration price", () => {

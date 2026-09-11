@@ -27,7 +27,7 @@ function isValidCpf(value: string): boolean {
   return calculateDigit(9) === Number(value[9]) && calculateDigit(10) === Number(value[10]);
 }
 
-const cpfSchema = z
+export const cpfSchema = z
   .string()
   .trim()
   .transform((value) => value.replace(/\D/g, ""))
@@ -50,7 +50,7 @@ export function getFortalezaCalendarDate(instant = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-const birthDateSchema = z
+export const birthDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de nascimento válida.")
   .refine((value) => {
@@ -113,6 +113,15 @@ export const registrationSchema = z
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type RegistrationPhotoInput = z.infer<typeof registrationPhotoSchema>;
+
+export const registrationResumeSchema = z
+  .object({
+    cpf: cpfSchema,
+    birthDate: birthDateSchema,
+  })
+  .strict();
+
+export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 export type CheckoutItem = { quantity: 1; price: number; description: string };
 
 export function buildCheckoutItems(
