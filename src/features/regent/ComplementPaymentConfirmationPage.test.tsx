@@ -1,5 +1,14 @@
+import type { ReactNode } from "react";
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentLookup } from "@/features/registration/registration.domain";
 import { ComplementPaymentConfirmationPage } from "./ComplementPaymentConfirmationPage";
 
@@ -9,9 +18,33 @@ const lookup: PaymentLookup = {
   slug: "invoice-123",
 };
 
+beforeAll(() => {
+  window.scrollTo = vi.fn();
+});
+
+async function renderWithRouter(page: ReactNode) {
+  const rootRoute = createRootRoute({ component: Outlet });
+  const confirmationRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/confirmacao",
+    component: () => page,
+  });
+  const regentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/regente",
+    component: () => <h1>Área do regente</h1>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([confirmationRoute, regentRoute]),
+    history: createMemoryHistory({ initialEntries: ["/confirmacao"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
+
 describe("ComplementPaymentConfirmationPage", () => {
   it("shows a confirmed complement and a safe return to the regent portal", async () => {
-    render(
+    await renderWithRouter(
       <ComplementPaymentConfirmationPage
         lookup={lookup}
         verifyPayment={vi.fn().mockResolvedValue({
@@ -29,8 +62,8 @@ describe("ComplementPaymentConfirmationPage", () => {
     );
   });
 
-  it("shows processing while verification is in flight", () => {
-    render(
+  it("shows processing while verification is in flight", async () => {
+    await renderWithRouter(
       <ComplementPaymentConfirmationPage
         lookup={lookup}
         verifyPayment={async () => await new Promise<never>(() => undefined)}
@@ -54,7 +87,7 @@ describe("ComplementPaymentConfirmationPage", () => {
       });
 
     try {
-      render(
+      await renderWithRouter(
         <ComplementPaymentConfirmationPage
           lookup={lookup}
           verifyPayment={verifyPayment}
@@ -73,7 +106,7 @@ describe("ComplementPaymentConfirmationPage", () => {
   });
 
   it("shows a non-confirmed state when verification fails", async () => {
-    render(
+    await renderWithRouter(
       <ComplementPaymentConfirmationPage
         lookup={lookup}
         verifyPayment={vi.fn().mockRejectedValue(new Error("provider unavailable"))}
