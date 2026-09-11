@@ -142,7 +142,16 @@ describe("admin registration handlers", () => {
       paid: 3,
       pending: 2,
       legacy: 2,
-      byChoir: [{ choirName: "Diocese de Quixadá", total: 7 }],
+      receivedCents: 20000,
+      pendingRegentCents: 40000,
+      byChoir: [
+        {
+          choirName: "Diocese de Quixadá",
+          total: 7,
+          receivedCents: 20000,
+          pendingRegentCents: 40000,
+        },
+      ],
     };
     const service: AdminRegistrationServicePort = {
       async list() {

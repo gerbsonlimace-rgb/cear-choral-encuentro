@@ -69,10 +69,27 @@ const summary: AdminRegistrationSummary = {
   paid: 8,
   pending: 4,
   legacy: 2,
+  receivedCents: 20000,
+  pendingRegentCents: 40000,
   byChoir: [
-    { choirName: "Diocese de Quixadá", total: 7 },
-    { choirName: "Diocese de Sobral", total: 4 },
-    { choirName: "Arquidiocese de Fortaleza", total: 3 },
+    {
+      choirName: "Diocese de Quixadá",
+      total: 7,
+      receivedCents: 20000,
+      pendingRegentCents: 40000,
+    },
+    {
+      choirName: "Diocese de Sobral",
+      total: 4,
+      receivedCents: 0,
+      pendingRegentCents: 0,
+    },
+    {
+      choirName: "Arquidiocese de Fortaleza",
+      total: 3,
+      receivedCents: 0,
+      pendingRegentCents: 0,
+    },
   ],
 };
 
@@ -107,8 +124,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(overview).getByText("8")).toBeInTheDocument();
     expect(within(overview).getByText("4")).toBeInTheDocument();
     expect(within(overview).getByText("2")).toBeInTheDocument();
+    expect(within(overview).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(
+      "R$ 400,00",
+    );
     expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
+    const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
+    expect(quixada).not.toBeNull();
+    expect(within(quixada!).getByText(/Recebido:/)).toHaveTextContent("R$ 200,00");
+    expect(within(quixada!).getByText(/Pendente do regente:/)).toHaveTextContent("R$ 400,00");
     expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
     expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
     expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();

@@ -319,26 +319,67 @@ describe("admin registration history and CSV", () => {
 });
 
 describe("admin registration summary", () => {
-  // Detects a production mutation that counts only one status or loses the diocese distribution.
-  it("summarizes every payment status and orders choirs by registration count", () => {
+  // Detects a production mutation that includes unpaid registrations in revenue or loses the
+  // promotional balance owed by each choir/regent.
+  it("summarizes received and outstanding regent amounts from paid registrations", () => {
     const rows = [
-      mapAdminRegistrationRow({ ...paidRow, choir_name: "Diocese de Sobral" }),
+      mapAdminRegistrationRow({
+        ...paidRow,
+        id: "quixada-paid-1",
+        choir_name: "Diocese de Quixadá",
+        amount_cents: 10000,
+        paid_amount_cents: 10000,
+        shirt_price_cents: null,
+      }),
+      mapAdminRegistrationRow({
+        ...paidRow,
+        id: "quixada-paid-2",
+        choir_name: "Diocese de Quixadá",
+        amount_cents: 10000,
+        paid_amount_cents: 10000,
+        shirt_price_cents: null,
+      }),
       mapAdminRegistrationRow({ ...pendingRow, choir_name: "Diocese de Quixadá" }),
       mapAdminRegistrationRow({ ...legacyRow, choir_name: "Diocese de Sobral" }),
-      mapAdminRegistrationRow({ ...pendingRow, id: "pending-2", choir_name: "Diocese de Sobral" }),
-      mapAdminRegistrationRow({ ...paidRow, id: "paid-2", choir_name: "Diocese do Crato" }),
-      mapAdminRegistrationRow({ ...legacyRow, id: "legacy-2", choir_name: "Diocese do Crato" }),
+      mapAdminRegistrationRow({
+        ...paidRow,
+        id: "fortaleza-standard",
+        choir_name: "Arquidiocese de Fortaleza",
+        pricing_type: "standard",
+        standard_price_cents: 30000,
+        registration_price_cents: 30000,
+        amount_cents: 30000,
+        paid_amount_cents: 30000,
+        shirt_price_cents: null,
+      }),
     ];
 
     expect(summarizeAdminRegistrations(rows)).toEqual({
-      total: 6,
-      paid: 2,
-      pending: 2,
-      legacy: 2,
+      total: 5,
+      paid: 3,
+      pending: 1,
+      legacy: 1,
+      receivedCents: 50000,
+      pendingRegentCents: 40000,
       byChoir: [
-        { choirName: "Diocese de Sobral", total: 3 },
-        { choirName: "Diocese do Crato", total: 2 },
-        { choirName: "Diocese de Quixadá", total: 1 },
+        {
+          choirName: "Diocese de Quixadá",
+          total: 3,
+          receivedCents: 20000,
+          pendingRegentCents: 40000,
+        },
+        {
+          choirName: "Arquidiocese de Fortaleza",
+          total: 1,
+          receivedCents: 30000,
+          pendingRegentCents: 0,
+        },
+        {
+          choirName: "Diocese de Sobral",
+          total: 1,
+          receivedCents: 0,
+          pendingRegentCents: 0,
+        },
       ],
     });
   });

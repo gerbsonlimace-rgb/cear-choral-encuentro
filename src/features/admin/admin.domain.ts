@@ -55,7 +55,14 @@ export type AdminRegistrationSummary = {
   paid: number;
   pending: number;
   legacy: number;
-  byChoir: Array<{ choirName: string; total: number }>;
+  receivedCents: number;
+  pendingRegentCents: number;
+  byChoir: Array<{
+    choirName: string;
+    total: number;
+    receivedCents: number;
+    pendingRegentCents: number;
+  }>;
 };
 
 export type AdminExportFile = { fileName: string; content: string };
@@ -94,24 +101,61 @@ export function mapAdminRegistrationRow(row: RegistrationDatabaseRow): AdminRegi
 }
 
 export function summarizeAdminRegistrations(
-  rows: Array<Pick<AdminRegistrationRow, "choirName" | "paymentStatus">>,
+  rows: Array<
+    Pick<
+      AdminRegistrationRow,
+      | "choirName"
+      | "paymentStatus"
+      | "paidAmountCents"
+      | "pricingType"
+      | "standardPriceCents"
+      | "registrationPriceCents"
+    >
+  >,
 ): AdminRegistrationSummary {
   const summary: AdminRegistrationSummary = {
     total: rows.length,
     paid: 0,
     pending: 0,
     legacy: 0,
+    receivedCents: 0,
+    pendingRegentCents: 0,
     byChoir: [],
   };
-  const choirs = new Map<string, number>();
+  const choirs = new Map<
+    string,
+    { total: number; receivedCents: number; pendingRegentCents: number }
+  >();
 
   for (const row of rows) {
     summary[row.paymentStatus] += 1;
-    choirs.set(row.choirName, (choirs.get(row.choirName) ?? 0) + 1);
+    const choir = choirs.get(row.choirName) ?? {
+      total: 0,
+      receivedCents: 0,
+      pendingRegentCents: 0,
+    };
+    choir.total += 1;
+
+    if (row.paymentStatus === "paid") {
+      const receivedCents = row.paidAmountCents ?? 0;
+      const pendingRegentCents =
+        row.pricingType === "promotional" &&
+        row.standardPriceCents !== null &&
+        row.registrationPriceCents !== null
+          ? Math.max(0, row.standardPriceCents - row.registrationPriceCents)
+          : 0;
+
+      summary.receivedCents += receivedCents;
+      summary.pendingRegentCents += pendingRegentCents;
+      choir.receivedCents += receivedCents;
+      choir.pendingRegentCents += pendingRegentCents;
+    }
+
+    choirs.set(row.choirName, choir);
   }
 
   summary.byChoir = [...choirs.entries()]
-    .map(([choirName, total]) => ({ choirName, total }))
+    .map(([choirName, financials]) => ({ choirName, ...financials }))
     .sort(
       (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),
     );
