@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RegentAccess } from "./regent.domain";
@@ -16,8 +16,8 @@ function setup(access: RegentAccess, overrides = {}) {
     onAuthorized: vi.fn(),
     ...overrides,
   };
-  render(<RegentLoginPage {...props} />);
-  return { ...props, user: userEvent.setup() };
+  const view = render(<RegentLoginPage {...props} />);
+  return { ...props, ...view, user: userEvent.setup() };
 }
 
 async function enter(user: ReturnType<typeof userEvent.setup>) {
@@ -89,6 +89,29 @@ describe("RegentLoginPage", () => {
     expect(document.body).not.toHaveTextContent("SECRET_AUTH_DETAIL");
     expect(checkAccess).not.toHaveBeenCalled();
     expect(signOut).not.toHaveBeenCalled();
+    expect(onAuthorized).not.toHaveBeenCalled();
+  });
+
+  it("does not inspect access or route after sign-in resolves following unmount", async () => {
+    let resolveSignIn!: (result: { error: null }) => void;
+    const signIn = vi.fn(
+      () =>
+        new Promise<{ error: null }>((resolve) => {
+          resolveSignIn = resolve;
+        }),
+    );
+    const { user, unmount, checkAccess, onPasswordChangeRequired, onAuthorized } = setup(
+      { status: "authorized", role: "admin" },
+      { signIn },
+    );
+
+    void enter(user);
+    await vi.waitFor(() => expect(signIn).toHaveBeenCalledOnce());
+    unmount();
+    await act(async () => resolveSignIn({ error: null }));
+
+    expect(checkAccess).not.toHaveBeenCalled();
+    expect(onPasswordChangeRequired).not.toHaveBeenCalled();
     expect(onAuthorized).not.toHaveBeenCalled();
   });
 });

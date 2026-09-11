@@ -222,14 +222,36 @@ export function createRegentAdminService({
           const current = await repository.getPasswordOperation(id, regent.userId);
           if (!current || current.kind !== "admin") return failure();
           if (claimResponseUnknown && current.hash === hash) {
-            // This exact claim may have committed before its response was lost.
+            claimedByThisCall = true;
           } else {
             const authUser = await auth.inspectUser(regent.userId);
             const proof = adminOperationProof(id, current.hash);
             if (!hasAdminOperationProof(authUser.appMetadata, proof)) return failure();
-            return success(
-              await repository.finishPasswordOperation(id, regent.userId, "admin", current.hash),
-            );
+            try {
+              await repository.finishPasswordOperation(id, regent.userId, "admin", current.hash);
+            } catch {
+              const remaining = await repository.getPasswordOperation(id, regent.userId);
+              if (remaining?.kind === "admin" && remaining.hash === current.hash) return failure();
+            }
+
+            claimResponseUnknown = false;
+            try {
+              claimedByThisCall = await repository.claimPasswordOperation(
+                id,
+                regent.userId,
+                "admin",
+                hash,
+              );
+            } catch {
+              claimResponseUnknown = true;
+            }
+            if (!claimedByThisCall) {
+              const retried = await repository.getPasswordOperation(id, regent.userId);
+              if (!claimResponseUnknown || retried?.kind !== "admin" || retried.hash !== hash) {
+                return failure();
+              }
+              claimedByThisCall = true;
+            }
           }
         }
 

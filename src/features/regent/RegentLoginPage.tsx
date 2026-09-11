@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,14 @@ export function RegentLoginPage({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const busy = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   async function closeUnauthorizedSession() {
     try {
@@ -49,11 +57,13 @@ export function RegentLoginPage({
     let signedIn = false;
     try {
       const result = await signIn({ email: email.trim(), password });
+      if (!mounted.current) return;
       if (result.error) throw result.error;
       signedIn = true;
       setPassword("");
 
       const access = await checkAccess();
+      if (!mounted.current) return;
       if (access.status === "password_change_required") {
         onPasswordChangeRequired();
         return;
@@ -64,18 +74,21 @@ export function RegentLoginPage({
       }
 
       await closeUnauthorizedSession();
+      if (!mounted.current) return;
       setError("Acesso não autorizado.");
     } catch {
+      if (!mounted.current) return;
       if (signedIn) {
         setPassword("");
         await closeUnauthorizedSession();
+        if (!mounted.current) return;
         setError("Não foi possível verificar seu acesso. Tente novamente.");
       } else {
         setError("Não foi possível entrar. Verifique suas credenciais.");
       }
     } finally {
       busy.current = false;
-      setPending(false);
+      if (mounted.current) setPending(false);
     }
   }
 

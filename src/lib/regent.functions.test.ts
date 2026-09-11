@@ -211,30 +211,22 @@ describe("regent password server boundaries", () => {
     expect(fn.middlewares).toContain(requirePortalAccess);
   });
 
-  it("accepts a password only on change and a server proof only on completion", () => {
+  it("accepts only a password on change and no client data on completion", () => {
     const change = changeRegentPassword as unknown as { validate: (input: unknown) => unknown };
     const complete = completeRegentPasswordChange as unknown as {
       validate: (input: unknown) => unknown;
     };
-    const token = "a".repeat(64);
-
-    expect(change.validate({ password: "SenhaNova123", operationToken: token })).toEqual({
-      password: "SenhaNova123",
-      operationToken: token,
-    });
+    expect(change.validate({ password: "SenhaNova123" })).toEqual({ password: "SenhaNova123" });
     expect(() => change.validate({ password: "short" })).toThrow();
-    expect(() => change.validate({ password: "SenhaNova123" })).toThrow();
     expect(() =>
-      change.validate({ password: "SenhaNova123", operationToken: token, userId: "victim" }),
+      change.validate({ password: "SenhaNova123", operationToken: "a".repeat(64) }),
     ).toThrow();
-    expect(complete.validate({ retryToken: token })).toEqual({ retryToken: token });
-    expect(() => complete.validate({})).toThrow();
-    expect(() => complete.validate({ retryToken: token, password: "SenhaNova123" })).toThrow();
+    expect(complete.validate(undefined)).toBeUndefined();
+    expect(() => complete.validate({ retryToken: "a".repeat(64) })).toThrow();
   });
 });
 
 describe("regent password change service", () => {
-  const token = "a".repeat(64);
   const tokenHash = "b".repeat(64);
 
   function setupPasswordService() {
@@ -251,7 +243,7 @@ describe("regent password change service", () => {
       updateUserById: vi.fn(async (): Promise<"updated" | "rejected" | "unknown"> => "updated"),
     };
     const proofs = {
-      hash: vi.fn(async () => tokenHash),
+      createHash: vi.fn(async () => tokenHash),
     };
     return {
       repository,
@@ -264,12 +256,11 @@ describe("regent password change service", () => {
   it("arms a hashed proof before server-side Auth and clears with that proof afterward", async () => {
     const { service, repository, auth } = setupPasswordService();
 
-    await expect(service.change(regent, "SenhaNova123", token)).resolves.toEqual({
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
       status: "success",
     });
 
     expect(repository.armRetryProof).toHaveBeenCalledWith(regent, tokenHash);
-    expect(repository.armRetryProof).not.toHaveBeenCalledWith(regent, token);
     expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(regent.userId, {
       password: "SenhaNova123",
       appMetadata: {
@@ -289,34 +280,34 @@ describe("regent password change service", () => {
     );
   });
 
-  it("exposes the raw retry token only after Auth succeeds and completion remains pending", async () => {
+  it("returns password-changed recovery without exposing a raw operation secret", async () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(repository.completeWithProof).mockRejectedValue(new Error("database unavailable"));
 
-    await expect(service.change(regent, "SenhaNova123", token)).resolves.toEqual({
-      status: "completion_required",
-      retryToken: token,
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "recovery_required",
     });
 
     expect(auth.updateUserById).toHaveBeenCalledOnce();
     expect(repository.isCompleted).toHaveBeenCalledWith(regent);
   });
 
-  it("does not expose proof when Auth fails and clears only its own stale hash", async () => {
+  it("returns a typed rejection when Auth rejects and clears only its own stale hash", async () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(auth.updateUserById).mockResolvedValue("rejected");
 
-    await expect(service.change(regent, "SenhaNova123", token)).rejects.toThrow(
-      "Não foi possível alterar a senha.",
-    );
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
 
     expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
     expect(repository.completeWithProof).not.toHaveBeenCalled();
   });
 
   it("accepts completion only with a matching server proof for the active caller", async () => {
-    const { service, repository, proofs, auth } = setupPasswordService();
-    const suppliedToken = "c".repeat(64);
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: tokenHash,
+    });
     vi.mocked(auth.inspectUser).mockResolvedValue({
       email: regent.email,
       appMetadata: {
@@ -328,9 +319,8 @@ describe("regent password change service", () => {
       },
     });
 
-    await expect(service.complete(regent, suppliedToken)).resolves.toEqual({ status: "success" });
+    await expect(service.complete(regent)).resolves.toEqual({ status: "success" });
 
-    expect(proofs.hash).toHaveBeenCalledExactlyOnceWith(suppliedToken);
     expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
   });
 
@@ -340,12 +330,14 @@ describe("regent password change service", () => {
       email: regent.email,
       appMetadata: { regent_password_operation: { kind: "admin" } },
     });
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: tokenHash,
+    });
     vi.mocked(repository.completeWithProof).mockResolvedValue(false);
     vi.mocked(repository.isCompleted).mockResolvedValue(false);
 
-    await expect(service.complete(regent, "c".repeat(64))).rejects.toThrow(
-      "Não foi possível concluir a alteração de senha.",
-    );
+    await expect(service.complete(regent)).resolves.toEqual({ status: "not_ready" });
     expect(repository.completeWithProof).not.toHaveBeenCalled();
   });
 
@@ -354,7 +346,7 @@ describe("regent password change service", () => {
     vi.mocked(repository.completeWithProof).mockRejectedValue(new Error("response lost"));
     vi.mocked(repository.isCompleted).mockResolvedValue(true);
 
-    await expect(service.change(regent, "SenhaNova123", token)).resolves.toEqual({
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
       status: "success",
     });
   });
@@ -363,10 +355,10 @@ describe("regent password change service", () => {
     const { service, repository, auth } = setupPasswordService();
     const admin: PortalAccess = { role: "admin", userId: "admin", email: null };
 
-    await expect(service.change(admin, "SenhaNova123", token)).rejects.toThrow(
+    await expect(service.change(admin, "SenhaNova123")).rejects.toThrow(
       "Não foi possível alterar a senha.",
     );
-    await expect(service.complete(admin, token)).rejects.toThrow(
+    await expect(service.complete(admin)).rejects.toThrow(
       "Não foi possível concluir a alteração de senha.",
     );
     expect(repository.armRetryProof).not.toHaveBeenCalled();
@@ -382,9 +374,9 @@ describe("regent password change service", () => {
     };
     const service = createRegentPasswordChangeService({ repository, auth, proofs } as never);
 
-    await expect(service.change(regent, "SenhaTemp123", token)).rejects.toThrow(
-      "Não foi possível alterar a senha.",
-    );
+    await expect(service.change(regent, "SenhaTemp123")).resolves.toEqual({
+      status: "rejected",
+    });
 
     expect(auth.passwordMatches).toHaveBeenCalledExactlyOnceWith(regent.email, "SenhaTemp123");
     expect(auth.updateUserById).not.toHaveBeenCalled();
@@ -412,7 +404,7 @@ describe("regent password change service", () => {
     };
     const service = createRegentPasswordChangeService({ repository, auth, proofs } as never);
 
-    await expect(service.change(regent, "SenhaNova123", token)).resolves.toEqual({
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
       status: "success",
     });
 
@@ -430,12 +422,29 @@ describe("regent password change service", () => {
       hash: tokenHash,
     });
 
-    await expect(service.change(regent, "SenhaNova123", token)).resolves.toEqual({
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
       status: "success",
     });
 
     expect(auth.updateUserById).toHaveBeenCalledOnce();
     expect(repository.completeWithProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+  });
+
+  it("releases an exact read-back claim if pre-Auth inspection fails", async () => {
+    const { service, repository, auth } = setupPasswordService();
+    vi.mocked(repository.armRetryProof).mockRejectedValue(new TypeError("claim response lost"));
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "regent",
+      hash: tokenHash,
+    });
+    vi.mocked(auth.inspectUser).mockRejectedValue(new TypeError("Auth unavailable"));
+
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "rejected",
+    });
+
+    expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
+    expect(auth.updateUserById).not.toHaveBeenCalled();
   });
 
   it("never adopts an administrator password operation as the regent's own", async () => {
@@ -446,9 +455,7 @@ describe("regent password change service", () => {
       hash: tokenHash,
     });
 
-    await expect(service.change(regent, "SenhaNova123", token)).rejects.toThrow(
-      "Não foi possível alterar a senha.",
-    );
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
 
     expect(auth.inspectUser).not.toHaveBeenCalled();
     expect(auth.updateUserById).not.toHaveBeenCalled();
@@ -459,9 +466,9 @@ describe("regent password change service", () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(auth.updateUserById).mockResolvedValue("unknown");
 
-    await expect(service.change(regent, "SenhaNova123", token)).rejects.toThrow(
-      "Não foi possível alterar a senha.",
-    );
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({
+      status: "recovery_required",
+    });
 
     expect(auth.inspectUser).toHaveBeenCalledTimes(2);
     expect(repository.clearRetryProof).not.toHaveBeenCalled();
@@ -472,9 +479,7 @@ describe("regent password change service", () => {
     const { service, repository, auth } = setupPasswordService();
     vi.mocked(auth.passwordMatches).mockResolvedValue("unknown");
 
-    await expect(service.change(regent, "SenhaNova123", token)).rejects.toThrow(
-      "Não foi possível alterar a senha.",
-    );
+    await expect(service.change(regent, "SenhaNova123")).resolves.toEqual({ status: "rejected" });
 
     expect(auth.updateUserById).not.toHaveBeenCalled();
     expect(repository.clearRetryProof).toHaveBeenCalledExactlyOnceWith(regent, tokenHash);
@@ -535,5 +540,17 @@ describe("Supabase regent password Auth adapter", () => {
     ).resolves.toBe("matches");
 
     expect(probeAuth.signOut).toHaveBeenCalledExactlyOnceWith({ scope: "local" });
+  });
+
+  it("treats a returned probe sign-out error as an indeterminate verification", async () => {
+    probeAuth.signInWithPassword.mockResolvedValue({
+      data: { user: { id: regent.userId }, session: { access_token: "private" } },
+      error: null,
+    });
+    probeAuth.signOut.mockResolvedValue({ error: { code: "request_timeout" } });
+
+    await expect(
+      createSupabaseRegentPasswordAuth().passwordMatches(regent.email, "same"),
+    ).resolves.toBe("unknown");
   });
 });

@@ -8,6 +8,7 @@ import {
   changeRegentPassword,
   completeRegentPasswordChange,
   getRegentAccess,
+  type RegentPasswordCompletionResult,
   type RegentPasswordChangeResult,
 } from "@/lib/regent.functions";
 import type { RegentAccess } from "./regent.domain";
@@ -17,11 +18,8 @@ type Props = {
   onAuthorized: () => void;
   onLoginRequired: () => void;
   checkAccess?: () => Promise<RegentAccess>;
-  changePassword?: (
-    password: string,
-    operationToken: string,
-  ) => Promise<RegentPasswordChangeResult>;
-  completeChange?: (retryToken: string) => Promise<RegentPasswordChangeResult>;
+  changePassword?: (password: string) => Promise<RegentPasswordChangeResult>;
+  completeChange?: () => Promise<RegentPasswordCompletionResult>;
   getEmail?: () => Promise<string>;
   signIn?: (email: string, password: string) => Promise<{ error: unknown }>;
 };
@@ -29,14 +27,13 @@ type Props = {
 type SessionRecovery = {
   email: string;
   password: string;
-  operationToken: string;
   result?: RegentPasswordChangeResult;
 };
 
-const defaultChangePassword: NonNullable<Props["changePassword"]> = (password, operationToken) =>
-  changeRegentPassword({ data: { password, operationToken } });
-const defaultCompleteChange: NonNullable<Props["completeChange"]> = (retryToken) =>
-  completeRegentPasswordChange({ data: { retryToken } });
+const defaultChangePassword: NonNullable<Props["changePassword"]> = (password) =>
+  changeRegentPassword({ data: { password } });
+const defaultCompleteChange: NonNullable<Props["completeChange"]> = () =>
+  completeRegentPasswordChange({ data: undefined });
 const defaultGetEmail: NonNullable<Props["getEmail"]> = async () => {
   const { data } = await supabase.auth.getSession();
   const email = data.session?.user.email;
@@ -47,12 +44,6 @@ const defaultSignIn: NonNullable<Props["signIn"]> = async (email, password) => {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   return { error };
 };
-
-function createOperationToken() {
-  return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(32)), (value) =>
-    value.toString(16).padStart(2, "0"),
-  ).join("");
-}
 
 function isInvalidCredentials(error: unknown) {
   return (
@@ -77,22 +68,32 @@ export function RegentPasswordChangePage({
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
-  const [retryToken, setRetryToken] = useState("");
+  const [completionPending, setCompletionPending] = useState(false);
   const [sessionRecovery, setSessionRecovery] = useState(false);
   const [error, setError] = useState("");
   const busy = useRef(false);
   const mounted = useRef(true);
   const recovery = useRef<SessionRecovery | null>(null);
-  const callbacks = useRef({ onAuthorized, onLoginRequired });
-  callbacks.current = { onAuthorized, onLoginRequired };
+  const callbacks = useRef({ onCompleted, onAuthorized, onLoginRequired });
+  callbacks.current = { onCompleted, onAuthorized, onLoginRequired };
 
   useEffect(() => {
     let active = true;
     mounted.current = true;
     void checkAccess()
-      .then((access) => {
+      .then(async (access) => {
         if (!active) return;
         if (access.status === "password_change_required") {
+          try {
+            const completion = await completeChange();
+            if (!active) return;
+            if (completion.status === "success") {
+              callbacks.current.onCompleted();
+              return;
+            }
+          } catch {
+            // A missing or temporarily unavailable proof must not hide the form.
+          }
           setAccessReady(true);
         } else if (access.status === "authorized") {
           callbacks.current.onAuthorized();
@@ -108,24 +109,27 @@ export function RegentPasswordChangePage({
       mounted.current = false;
       recovery.current = null;
     };
-  }, [checkAccess]);
+  }, [checkAccess, completeChange]);
 
-  function requireCompletion(operationToken: string) {
+  function requireCompletion() {
     recovery.current = null;
     setSessionRecovery(false);
-    setRetryToken(operationToken);
+    setCompletionPending(true);
     setError("Sua senha foi alterada, mas não foi possível liberar o acesso.");
   }
 
-  async function completeRecoveredOperation(operationToken: string) {
+  async function completeRecoveredOperation() {
     try {
-      const result = await completeChange(operationToken);
+      const result = await completeChange();
       if (!mounted.current) return;
-      if (result.status !== "success") throw new Error("Password completion remained pending");
+      if (result.status !== "success") {
+        requireCompletion();
+        return;
+      }
       recovery.current = null;
       onCompleted();
     } catch {
-      if (mounted.current) requireCompletion(operationToken);
+      if (mounted.current) requireCompletion();
     }
   }
 
@@ -135,14 +139,10 @@ export function RegentPasswordChangePage({
       onCompleted();
       return;
     }
-    if (state.result?.status === "completion_required") {
-      requireCompletion(state.operationToken);
-      return;
-    }
-    await completeRecoveredOperation(state.operationToken);
+    await completeRecoveredOperation();
   }
 
-  async function restoreSession(state: SessionRecovery, allowReplay: boolean) {
+  async function restoreSession(state: SessionRecovery) {
     let restored: { error: unknown };
     try {
       restored = await signIn(state.email, state.password);
@@ -151,25 +151,19 @@ export function RegentPasswordChangePage({
     }
     if (!mounted.current) return;
 
-    if (restored.error && allowReplay && !state.result && isInvalidCredentials(restored.error)) {
-      try {
-        state.result = await changePassword(state.password, state.operationToken);
-      } catch {
-        state.result = undefined;
-      }
-      if (!mounted.current) return;
-      try {
-        restored = await signIn(state.email, state.password);
-      } catch (error) {
-        restored = { error };
-      }
-      if (!mounted.current) return;
-    }
-
     if (restored.error) {
+      if (isInvalidCredentials(restored.error)) {
+        recovery.current = null;
+        setSessionRecovery(false);
+        setCompletionPending(false);
+        setPassword(state.password);
+        setConfirmation(state.password);
+        setError("Não foi possível alterar a senha. Tente novamente.");
+        return;
+      }
       recovery.current = state;
       setSessionRecovery(true);
-      setRetryToken("");
+      setCompletionPending(false);
       setError("Não foi possível alterar a senha. Tente novamente.");
       return;
     }
@@ -193,23 +187,25 @@ export function RegentPasswordChangePage({
 
     busy.current = true;
     setPending(true);
-    const operationToken = createOperationToken();
     try {
       const email = await getEmail();
       if (!mounted.current) return;
-      const state: SessionRecovery = { email, password, operationToken };
+      const state: SessionRecovery = { email, password };
       try {
-        state.result = await changePassword(password, operationToken);
+        state.result = await changePassword(password);
       } catch {
-        // The browser cannot distinguish a rejected request from a response lost
-        // after Auth committed. Restore the session first, then use the exact
-        // operation token for idempotent recovery.
+        // A rejected server result is typed. Only a rejected promise means the
+        // browser transport lost the server response and requires reconciliation.
       }
       if (!mounted.current) return;
+      if (state.result?.status === "rejected") {
+        setError("Não foi possível alterar a senha. Tente novamente.");
+        return;
+      }
       setPassword("");
       setConfirmation("");
       recovery.current = state;
-      await restoreSession(state, false);
+      await restoreSession(state);
     } catch {
       if (mounted.current) setError("Não foi possível alterar a senha. Tente novamente.");
     } finally {
@@ -219,15 +215,15 @@ export function RegentPasswordChangePage({
   }
 
   async function retryCompletion() {
-    if (busy.current || !retryToken) return;
+    if (busy.current || !completionPending) return;
     busy.current = true;
     setPending(true);
     setError("");
     try {
-      const result = await completeChange(retryToken);
+      const result = await completeChange();
       if (!mounted.current) return;
       if (result.status !== "success") throw new Error("Password completion remained pending");
-      setRetryToken("");
+      setCompletionPending(false);
       onCompleted();
     } catch {
       if (mounted.current) {
@@ -245,7 +241,7 @@ export function RegentPasswordChangePage({
     setPending(true);
     setError("");
     try {
-      await restoreSession(recovery.current, true);
+      await restoreSession(recovery.current);
     } catch {
       if (mounted.current) {
         setSessionRecovery(true);
@@ -289,7 +285,7 @@ export function RegentPasswordChangePage({
             <Button className="w-full" disabled={pending} onClick={retrySessionRecovery}>
               {pending ? "Restaurando…" : "Tentar restaurar acesso"}
             </Button>
-          ) : retryToken ? (
+          ) : completionPending ? (
             <Button className="w-full" disabled={pending} onClick={retryCompletion}>
               {pending ? "Concluindo…" : "Tentar concluir novamente"}
             </Button>
