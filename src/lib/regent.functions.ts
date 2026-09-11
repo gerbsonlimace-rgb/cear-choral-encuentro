@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
+import { requirePortalAccess } from "@/features/regent/regent-auth.middleware";
 import { regentIdSchema, regentMutationSchema } from "@/features/regent/regent.domain";
 import {
   portalChoirSelectionSchema,
@@ -31,6 +32,28 @@ export const getRegentAccess = createServerFn({ method: "GET" }).handler(async (
   const { getPortalRequestAccess } = await import("@/features/regent/regent-auth.server");
   return toRegentAccessState(await getPortalRequestAccess());
 });
+
+const passwordCompletionError = "Não foi possível concluir a alteração de senha.";
+
+export const completeRegentPasswordChange = createServerFn({ method: "POST" })
+  .middleware([requirePortalAccess])
+  .handler(async ({ context }) => {
+    const access = context.portalAccess;
+    if (access.role !== "regent") throw new Error(passwordCompletionError);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("choir_regents")
+      .update({ password_change_required: false })
+      .eq("id", access.membershipId)
+      .eq("user_id", access.userId)
+      .is("revoked_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (error || !data) throw new Error(passwordCompletionError);
+    return { status: "success" as const };
+  });
 
 const temporaryPasswordSchema = z
   .string()

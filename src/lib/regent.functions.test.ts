@@ -1,12 +1,27 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
+import { requirePortalAccess } from "@/features/regent/regent-auth.middleware";
 import {
+  completeRegentPasswordChange,
   createAdminRegent,
   listAdminRegents,
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
 } from "./regent.functions";
+
+const { from, update, eq, is, select, maybeSingle } = vi.hoisted(() => ({
+  from: vi.fn(),
+  update: vi.fn(),
+  eq: vi.fn(),
+  is: vi.fn(),
+  select: vi.fn(),
+  maybeSingle: vi.fn(),
+}));
+
+vi.mock("@/integrations/supabase/client.server", () => ({
+  supabaseAdmin: { from },
+}));
 
 vi.mock("@tanstack/react-start", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-start")>();
@@ -48,6 +63,17 @@ const regent: PortalAccess = {
   email: "private@example.com",
   passwordChangeRequired: false,
 };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  const query = { update, eq, is, select, maybeSingle };
+  from.mockReturnValue(query);
+  update.mockReturnValue(query);
+  eq.mockReturnValue(query);
+  is.mockReturnValue(query);
+  select.mockReturnValue(query);
+  maybeSingle.mockResolvedValue({ data: { id: regent.membershipId }, error: null });
+});
 
 describe("admin regent server function boundaries", () => {
   it.each([
@@ -144,5 +170,55 @@ describe("portal handler choir selection", () => {
     ]) {
       expect(() => resolvePortalChoirSelection(admin, input)).toThrow();
     }
+  });
+});
+
+describe("regent password completion boundary", () => {
+  it("requires portal middleware and no caller-selected identifier", () => {
+    const fn = completeRegentPasswordChange as unknown as {
+      method: string;
+      middlewares: unknown[];
+      validate: (input: unknown) => unknown;
+    };
+
+    expect(fn.method).toBe("POST");
+    expect(fn.middlewares).toContain(requirePortalAccess);
+    expect(fn.validate({ userId: "victim", membershipId: "other" })).toBeUndefined();
+  });
+
+  it("clears only the authenticated regent's active membership", async () => {
+    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
+
+    await expect(fn({ context: { portalAccess: regent } })).resolves.toEqual({
+      status: "success",
+    });
+
+    expect(from).toHaveBeenCalledExactlyOnceWith("choir_regents");
+    expect(update).toHaveBeenCalledExactlyOnceWith({ password_change_required: false });
+    expect(eq).toHaveBeenCalledWith("id", regent.membershipId);
+    expect(eq).toHaveBeenCalledWith("user_id", regent.userId);
+    expect(is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
+    expect(select).toHaveBeenCalledExactlyOnceWith("id");
+  });
+
+  it("rejects administrators without touching a regent membership", async () => {
+    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
+
+    await expect(
+      fn({ context: { portalAccess: { role: "admin", userId: "admin", email: null } } }),
+    ).rejects.toThrow("Não foi possível concluir a alteração de senha.");
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("hides database details when no active caller membership is updated", async () => {
+    maybeSingle.mockResolvedValue({
+      data: null,
+      error: { message: "SECRET_DATABASE_DETAIL" },
+    });
+    const fn = completeRegentPasswordChange as unknown as (input: unknown) => Promise<unknown>;
+
+    await expect(fn({ context: { portalAccess: regent } })).rejects.toThrow(
+      "Não foi possível concluir a alteração de senha.",
+    );
   });
 });
