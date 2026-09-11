@@ -10,3 +10,4 @@
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
+- Transform the public registration form into a large-field, three-step wizard with review before payment.
