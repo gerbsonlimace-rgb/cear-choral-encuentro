@@ -133,13 +133,29 @@ export function RegentParticipantList({ rows, onPay }: RegentParticipantListProp
                 </TableCell>
                 <TableCell>
                   {row.complement.eligible ? (
-                    <>
-                      {formatComplementCents(row.complement.paidCents)} pagos
-                      <br />
-                      {formatComplementCents(row.complement.balanceCents)} saldo
-                    </>
+                    <div>
+                      <div>Normal: {formatComplementCents(row.standardPriceCents ?? 0)}</div>
+                      <div>
+                        Promocional: {formatComplementCents(row.registrationPriceCents ?? 0)}
+                      </div>
+                      <div>{formatComplementCents(row.complement.paidCents)} pagos</div>
+                      <div>{formatComplementCents(row.complement.balanceCents)} saldo</div>
+                    </div>
                   ) : (
-                    "—"
+                    <div>
+                      <div>
+                        Normal:{" "}
+                        {row.standardPriceCents
+                          ? formatComplementCents(row.standardPriceCents)
+                          : "—"}
+                      </div>
+                      <div>
+                        Promocional:{" "}
+                        {row.registrationPriceCents
+                          ? formatComplementCents(row.registrationPriceCents)
+                          : "—"}
+                      </div>
+                    </div>
                   )}
                 </TableCell>
                 <TableCell>
@@ -175,6 +191,14 @@ export function RegentParticipantList({ rows, onPay }: RegentParticipantListProp
               )}
             </div>
             <div className="mt-3">
+              <p className="text-sm text-muted-foreground">
+                Normal:{" "}
+                {row.standardPriceCents ? formatComplementCents(row.standardPriceCents) : "—"} ·
+                Promocional:{" "}
+                {row.registrationPriceCents
+                  ? formatComplementCents(row.registrationPriceCents)
+                  : "—"}
+              </p>
               <Action row={row} onPay={onPay} />
               <div className="mt-2">
                 <Details row={row} />

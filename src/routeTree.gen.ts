@@ -18,6 +18,7 @@ import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
+import { Route as RegenteIndexRouteImport } from './routes/regente.index'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
 import { Route as RegenteLoginRouteImport } from './routes/regente.login'
 import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento'
@@ -67,6 +68,11 @@ const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
   path: '/api/infinitepay-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegenteIndexRoute = RegenteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RegenteRoute,
+} as any)
 const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
   id: '/alterar-senha',
   path: '/alterar-senha',
@@ -96,12 +102,12 @@ export interface FileRoutesByFullPath {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/regente/': typeof RegenteIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRoute
-  '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByTo {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/regente': typeof RegenteIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +132,7 @@ export interface FileRoutesById {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/regente/': typeof RegenteIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,12 +149,12 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/regente/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/pagamento'
     | '/participante'
-    | '/regente'
     | '/sitemap.xml'
     | '/admin/coros'
     | '/admin/inscricoes'
@@ -155,6 +163,7 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/regente'
   id:
     | '__root__'
     | '/'
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/regente/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInfinitepayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/regente/': {
+      id: '/regente/'
+      path: '/'
+      fullPath: '/regente/'
+      preLoaderRoute: typeof RegenteIndexRouteImport
+      parentRoute: typeof RegenteRoute
+    }
     '/regente/alterar-senha': {
       id: '/regente/alterar-senha'
       path: '/alterar-senha'
@@ -276,12 +293,14 @@ interface RegenteRouteChildren {
   RegenteAlterarSenhaRoute: typeof RegenteAlterarSenhaRoute
   RegenteLoginRoute: typeof RegenteLoginRoute
   RegentePagamentoRoute: typeof RegentePagamentoRoute
+  RegenteIndexRoute: typeof RegenteIndexRoute
 }
 
 const RegenteRouteChildren: RegenteRouteChildren = {
   RegenteAlterarSenhaRoute: RegenteAlterarSenhaRoute,
   RegenteLoginRoute: RegenteLoginRoute,
   RegentePagamentoRoute: RegentePagamentoRoute,
+  RegenteIndexRoute: RegenteIndexRoute,
 }
 
 const RegenteRouteWithChildren =

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminChoirPricing } from "@/lib/choir-pricing.functions";
 import {
@@ -27,6 +28,8 @@ export function RegentPortalPage({
 }: Props) {
   const [choirs, setChoirs] = useState<Array<{ id: string; name: string }>>([]);
   const [choirId, setChoirId] = useState(access.role === "regent" ? access.choirId : "");
+  const [reload, setReload] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<PortalParticipant[]>([]);
   const [page, setPage] = useState(1);
@@ -50,6 +53,7 @@ export function RegentPortalPage({
   }, [access.role, choirId]);
   useEffect(() => {
     if (!choirId) return;
+    setLoading(true);
     setError("");
     void Promise.all([
       list({ data: { choirId, search: query.trim(), page, pageSize: 10 } }),
@@ -60,8 +64,9 @@ export function RegentPortalPage({
         setTotal(result.total);
         setSum(totals);
       })
-      .catch(() => setError("Não foi possível carregar os participantes."));
-  }, [choirId, query, page, list, summary]);
+      .catch(() => setError("Não foi possível carregar os participantes."))
+      .finally(() => setLoading(false));
+  }, [choirId, query, page, reload, list, summary]);
   const choirName =
     choirs.find((c) => c.id === choirId)?.name ??
     (access.role === "regent" ? "Seu coro" : "Selecione um coro");
@@ -122,11 +127,20 @@ export function RegentPortalPage({
         <span className="text-sm text-muted-foreground">{total} participante(s)</span>
       </div>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => setReload((value) => value + 1)}>
+            Tentar novamente
+          </Button>
+        </div>
       )}
-      {choirId && <RegentParticipantList rows={rows} onPay={setSelected} />}
+      {loading ? (
+        <p role="status">Carregando participantes…</p>
+      ) : rows.length === 0 && choirId ? (
+        <p className="text-sm text-muted-foreground">Nenhum participante encontrado.</p>
+      ) : (
+        choirId && <RegentParticipantList rows={rows} onPay={setSelected} />
+      )}
       <div className="flex justify-center gap-3">
         <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
           Anterior
