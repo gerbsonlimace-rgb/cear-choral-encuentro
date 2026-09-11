@@ -14,13 +14,16 @@ export interface ComplementPaymentRow {
 }
 
 export type ComplementIneligibilityReason =
-  | "standard_price"
-  | "awaiting_participant_payment"
-  | "missing_snapshot"
-  | "settled";
+  "standard_price" | "awaiting_participant_payment" | "missing_snapshot" | "settled";
 
 export type ComplementEligibility =
-  | { eligible: true; totalCents: number; paidCents: number; balanceCents: number; openPayment?: ComplementPaymentRow }
+  | {
+      eligible: true;
+      totalCents: number;
+      paidCents: number;
+      balanceCents: number;
+      openPayment?: ComplementPaymentRow;
+    }
   | { eligible: false; reason: ComplementIneligibilityReason };
 
 export interface PortalParticipant {
@@ -69,7 +72,9 @@ function isPositiveSafeInteger(value: number | null): value is number {
   return value !== null && Number.isSafeInteger(value) && value > 0;
 }
 
-export function calculateComplementState(input: CalculateComplementStateInput): ComplementEligibility {
+export function calculateComplementState(
+  input: CalculateComplementStateInput,
+): ComplementEligibility {
   if (input.pricingType !== "standard" && input.pricingType !== "promotional") {
     return { eligible: false, reason: "missing_snapshot" };
   }
