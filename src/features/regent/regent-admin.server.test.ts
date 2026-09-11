@@ -9,7 +9,7 @@ import {
   type RegentAuthAdminPort,
 } from "./regent-admin.server";
 
-const { from, rpc, authAdmin } = vi.hoisted(() => ({
+const { from, rpc, authAdmin, probeAuth, createSupabaseAdminClient } = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
   authAdmin: {
@@ -19,9 +19,15 @@ const { from, rpc, authAdmin } = vi.hoisted(() => ({
     deleteUser: vi.fn(),
     listUsers: vi.fn(),
   },
+  probeAuth: {
+    signInWithPassword: vi.fn(),
+    signOut: vi.fn(),
+  },
+  createSupabaseAdminClient: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from, rpc, auth: { admin: authAdmin } },
+  createSupabaseAdminClient,
 }));
 const choirId = "11111111-1111-4111-8111-111111111111";
 const input = {
@@ -39,6 +45,8 @@ const row: AdminRegentRow = {
   passwordChangeRequired: true,
   revokedAt: null,
 };
+const operationHash = "d".repeat(64);
+const candidateFingerprint = "e".repeat(64);
 function setup() {
   const repository: RegentAdminRepository = {
     list: vi.fn(async () => [row]),
@@ -49,19 +57,30 @@ function setup() {
     replace: vi.fn(async () => row),
     revoke: vi.fn(async () => ({ ...row, revokedAt: "2026-09-11T12:00:00Z" })),
     claimPasswordOperation: vi.fn(async () => true),
+    markPasswordOperationRetryable: vi.fn(async () => true),
     getPasswordOperation: vi.fn(async () => null),
     finishPasswordOperation: vi.fn(async () => row),
     finishRegentPasswordOperation: vi.fn(async () => {}),
-    releasePasswordOperation: vi.fn(async () => {}),
+    releasePasswordOperation: vi.fn(async () => true),
   };
   const auth: RegentAuthAdminPort = {
     findUserByEmail: vi.fn(async () => null),
     createUser: vi.fn(async () => ({ id: "created-user" })),
     deleteUser: vi.fn(async () => {}),
     inspectUser: vi.fn(async () => ({ appMetadata: {} })),
+    passwordMatches: vi.fn(async () => "different" as const),
     updateUserById: vi.fn(async (): Promise<"updated" | "rejected" | "unknown"> => "updated"),
+    updateAppMetadata: vi.fn(async () => "updated" as const),
   };
-  return { repository, auth, service: createRegentAdminService({ repository, auth }) };
+  const proofs = {
+    createOperation: vi.fn(async () => ({ operationHash, candidateFingerprint })),
+  };
+  return {
+    repository,
+    auth,
+    proofs,
+    service: createRegentAdminService({ repository, auth, proofs }),
+  };
 }
 describe("regent administrative lifecycle", () => {
   it("creates an already-confirmed Auth user and grants only password-free identity data", async () => {
@@ -243,8 +262,13 @@ describe("regent administrative lifecycle", () => {
     });
     const claim = vi.mocked(repository.claimPasswordOperation);
     const finish = vi.mocked(repository.finishPasswordOperation);
-    expect(claim).toHaveBeenCalledWith(row.id, row.userId, "admin", expect.any(String));
-    const operationHash = claim.mock.calls[0][3];
+    expect(claim).toHaveBeenCalledWith(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+      candidateFingerprint,
+    );
     expect(auth.updateUserById).toHaveBeenCalledWith("created-user", {
       password: "NewPassword123",
       appMetadata: {
@@ -292,7 +316,8 @@ describe("regent administrative lifecycle", () => {
       row.id,
       row.userId,
       "admin",
-      expect.any(String),
+      operationHash,
+      candidateFingerprint,
     );
     expect(auth.updateUserById).not.toHaveBeenCalled();
   });
@@ -304,6 +329,8 @@ describe("regent administrative lifecycle", () => {
       getPasswordOperation: vi.fn(async () => ({
         kind: "admin",
         hash: "b".repeat(64),
+        stage: "legacy" as const,
+        candidateFingerprint: null,
       })),
       finishPasswordOperation: vi.fn(async () => row),
     });
@@ -359,6 +386,8 @@ describe("regent administrative lifecycle", () => {
       getPasswordOperation: vi.fn(async () => ({
         kind: "regent" as const,
         hash: "b".repeat(64),
+        stage: "legacy" as const,
+        candidateFingerprint: null,
       })),
     });
     vi.mocked(auth.inspectUser).mockResolvedValue({
@@ -403,7 +432,12 @@ describe("regent administrative lifecycle", () => {
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(false);
     vi.mocked(repository.getPasswordOperation)
-      .mockResolvedValueOnce({ kind: "regent", hash: "b".repeat(64) })
+      .mockResolvedValueOnce({
+        kind: "regent",
+        hash: "b".repeat(64),
+        stage: "legacy",
+        candidateFingerprint: null,
+      })
       .mockResolvedValueOnce(null);
     vi.mocked(auth.inspectUser).mockResolvedValue({
       appMetadata: {
@@ -430,6 +464,8 @@ describe("regent administrative lifecycle", () => {
     vi.mocked(repository.getPasswordOperation).mockResolvedValue({
       kind: "regent",
       hash: "b".repeat(64),
+      stage: "legacy",
+      candidateFingerprint: null,
     });
 
     await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
@@ -448,6 +484,8 @@ describe("regent administrative lifecycle", () => {
     vi.mocked(repository.getPasswordOperation).mockImplementation(async () => ({
       kind: "admin",
       hash: vi.mocked(repository.claimPasswordOperation).mock.calls[0][3],
+      stage: "claimed" as const,
+      candidateFingerprint,
     }));
     vi.mocked(auth.inspectUser).mockRejectedValue(new TypeError("Auth unavailable"));
 
@@ -461,6 +499,8 @@ describe("regent administrative lifecycle", () => {
       row.userId,
       "admin",
       operationHash,
+      candidateFingerprint,
+      "claimed",
     );
     expect(auth.updateUserById).not.toHaveBeenCalled();
   });
@@ -497,6 +537,122 @@ describe("regent administrative lifecycle", () => {
     expect(auth.inspectUser).toHaveBeenCalledTimes(2);
     expect(repository.releasePasswordOperation).not.toHaveBeenCalled();
     expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
+    expect(repository.markPasswordOperationRetryable).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+      candidateFingerprint,
+    );
+  });
+
+  it("adopts the same admin candidate after an unknown unapplied reset and reissues the exact operation", async () => {
+    const { service, auth, repository } = setup();
+    const existingHash = "b".repeat(64);
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "admin",
+      hash: existingHash,
+      stage: "retryable",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("different");
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toEqual({
+      status: "success",
+      regent: row,
+    });
+
+    expect(auth.updateUserById).toHaveBeenCalledExactlyOnceWith(row.userId, {
+      password: "NewPassword123",
+      appMetadata: {
+        regent_password_operation: {
+          kind: "admin",
+          membership_id: row.id,
+          operation_hash: existingHash,
+        },
+      },
+    });
+    expect(repository.finishPasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      existingHash,
+    );
+  });
+
+  it("repairs exact metadata when the same admin candidate already became current", async () => {
+    const { service, auth, repository } = setup();
+    const existingHash = "b".repeat(64);
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "admin",
+      hash: existingHash,
+      stage: "retryable",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("matches");
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toEqual({
+      status: "success",
+      regent: row,
+    });
+
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(auth.updateAppMetadata).toHaveBeenCalledExactlyOnceWith(row.userId, {
+      regent_password_operation: {
+        kind: "admin",
+        membership_id: row.id,
+        operation_hash: existingHash,
+      },
+    });
+    expect(repository.finishPasswordOperation).toHaveBeenCalledExactlyOnceWith(
+      row.id,
+      row.userId,
+      "admin",
+      existingHash,
+    );
+  });
+
+  it("does not report success when same-candidate metadata repair remains unproven", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "admin",
+      hash: "b".repeat(64),
+      stage: "retryable",
+      candidateFingerprint,
+    });
+    vi.mocked(auth.passwordMatches).mockResolvedValue("matches");
+    vi.mocked(auth.updateAppMetadata).mockResolvedValue("unknown");
+
+    await expect(service.resetPassword(row.id, "NewPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("rejects a different unproven admin candidate without updating or releasing Auth state", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(repository.claimPasswordOperation).mockResolvedValue(false);
+    vi.mocked(repository.getPasswordOperation).mockResolvedValue({
+      kind: "admin",
+      hash: "b".repeat(64),
+      stage: "retryable",
+      candidateFingerprint: "f".repeat(64),
+    });
+
+    await expect(service.resetPassword(row.id, "DifferentPassword123")).resolves.toMatchObject({
+      status: "error",
+    });
+
+    expect(auth.inspectUser).toHaveBeenCalledExactlyOnceWith(row.userId);
+    expect(auth.passwordMatches).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(auth.updateAppMetadata).not.toHaveBeenCalled();
+    expect(repository.releasePasswordOperation).not.toHaveBeenCalled();
   });
 
   it("releases only its own claim after a confirmed Auth rejection", async () => {
@@ -513,6 +669,8 @@ describe("regent administrative lifecycle", () => {
       row.userId,
       "admin",
       operationHash,
+      candidateFingerprint,
+      "claimed",
     );
     expect(repository.finishPasswordOperation).not.toHaveBeenCalled();
   });
@@ -645,6 +803,8 @@ describe("Supabase administrative adapters", () => {
         data: {
           password_change_operation_kind: "admin",
           password_change_retry_token_hash: "b".repeat(64),
+          password_change_operation_stage: "retryable",
+          password_change_candidate_fingerprint: candidateFingerprint,
         },
         error: null,
       })),
@@ -653,13 +813,76 @@ describe("Supabase administrative adapters", () => {
 
     await expect(
       createSupabaseRegentAdminRepository().getPasswordOperation(row.id, row.userId),
-    ).resolves.toEqual({ kind: "admin", hash: "b".repeat(64) });
+    ).resolves.toEqual({
+      kind: "admin",
+      hash: "b".repeat(64),
+      stage: "retryable",
+      candidateFingerprint,
+    });
 
     expect(query.eq.mock.calls).toEqual([
       ["id", row.id],
       ["user_id", row.userId],
     ]);
     expect(query.is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
+  });
+  it("claims, promotes, and releases an exact administrator candidate through stage-CAS RPCs", async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+    const repository = createSupabaseRegentAdminRepository();
+
+    await repository.claimPasswordOperation(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+      candidateFingerprint,
+    );
+    await repository.markPasswordOperationRetryable(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+      candidateFingerprint,
+    );
+    await repository.releasePasswordOperation(
+      row.id,
+      row.userId,
+      "admin",
+      operationHash,
+      candidateFingerprint,
+      "claimed",
+    );
+
+    expect(rpc.mock.calls).toEqual([
+      [
+        "claim_choir_regent_admin_password_candidate_operation",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_membership_id: row.id,
+          p_operation_hash: operationHash,
+          p_user_id: row.userId,
+        },
+      ],
+      [
+        "mark_choir_regent_admin_password_operation_retryable",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_membership_id: row.id,
+          p_operation_hash: operationHash,
+          p_user_id: row.userId,
+        },
+      ],
+      [
+        "release_choir_regent_admin_password_candidate_operation",
+        {
+          p_candidate_fingerprint: candidateFingerprint,
+          p_expected_stage: "claimed",
+          p_membership_id: row.id,
+          p_operation_hash: operationHash,
+          p_user_id: row.userId,
+        },
+      ],
+    ]);
   });
   it("finishes an Auth-proven regent operation through the exact shared RPC", async () => {
     rpc.mockResolvedValue({ data: true, error: null });
@@ -736,5 +959,46 @@ describe("Supabase administrative adapters", () => {
     await expect(
       adapter.updateUserById("created-user", { password: "unknown", appMetadata: {} }),
     ).resolves.toBe("unknown");
+  });
+
+  it("probes the requested administrator candidate in an isolated non-persistent session", async () => {
+    createSupabaseAdminClient.mockReturnValue({ auth: probeAuth });
+    probeAuth.signInWithPassword.mockResolvedValue({
+      data: { session: { access_token: "private" } },
+      error: null,
+    });
+    probeAuth.signOut.mockResolvedValue({ error: null });
+
+    await expect(
+      createSupabaseRegentAuthAdmin().passwordMatches(row.email, "NewPassword123"),
+    ).resolves.toBe("matches");
+
+    expect(probeAuth.signInWithPassword).toHaveBeenCalledExactlyOnceWith({
+      email: row.email,
+      password: "NewPassword123",
+    });
+    expect(probeAuth.signOut).toHaveBeenCalledExactlyOnceWith({ scope: "local" });
+  });
+
+  it("updates only exact administrator proof metadata during same-candidate recovery", async () => {
+    authAdmin.updateUserById.mockResolvedValue({
+      data: { user: { id: row.userId } },
+      error: null,
+    });
+    const metadata = {
+      regent_password_operation: {
+        kind: "admin",
+        membership_id: row.id,
+        operation_hash: operationHash,
+      },
+    };
+
+    await expect(
+      createSupabaseRegentAuthAdmin().updateAppMetadata(row.userId, metadata),
+    ).resolves.toBe("updated");
+
+    expect(authAdmin.updateUserById).toHaveBeenCalledWith(row.userId, {
+      app_metadata: metadata,
+    });
   });
 });
