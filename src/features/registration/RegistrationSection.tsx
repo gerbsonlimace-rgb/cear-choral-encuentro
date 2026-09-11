@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import pixLogo from "@/assets/logo-pix.svg";
-import eventLogo from "@/assets/logo-coros-preto.png";
+import eventLogoOnLight from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -82,7 +82,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 
 const inputClassName =
-  "min-h-14 rounded-xl border-border bg-background pl-11 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
+  "min-h-11 rounded-lg border-border bg-background pl-10 text-sm shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
   1: ["name", "cpf", "email", "phone", "birthDate", "photo"],
@@ -193,27 +193,19 @@ function RegistrationBadgePreview({
   const photoSrc = photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
 
   return (
-    <aside aria-label="Prévia do crachá" className="mx-auto w-full max-w-xs lg:sticky lg:top-24">
-      <p className="mb-2 text-center text-xs font-bold uppercase text-muted-foreground">Prévia do seu crachá</p>
-      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg">
-        <div className="h-3 bg-amber" aria-hidden="true" />
-        <div className="p-6 text-center">
-          <img src={eventLogo} alt="II Encontro de Coros" className="mx-auto h-16 w-auto object-contain" />
-          <div className="mx-auto mt-6 grid size-28 place-items-center overflow-hidden rounded-full border-4 border-amber bg-muted font-display text-3xl font-extrabold text-foreground">
-            {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
-          </div>
-          <p className="mt-5 break-words font-display text-xl font-extrabold text-foreground">
-            {name.trim() || "Seu nome"}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase text-muted-foreground">Participante</p>
+    <aside aria-label="Prévia do crachá" className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+      <div className="h-1.5 bg-amber" aria-hidden="true" />
+      <div className="grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] items-center gap-3 p-3 sm:grid-cols-[5rem_minmax(0,1fr)_7rem] sm:px-4">
+        <div className="grid size-[4.5rem] place-items-center overflow-hidden rounded-full border-2 border-amber bg-muted font-display text-xl font-extrabold text-foreground sm:size-20">
+          {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
         </div>
-        <div className="bg-foreground px-4 py-3 text-center text-xs font-semibold text-background">
-          Quixadá • 20 a 22 de novembro de 2026
+        <div className="min-w-0">
+          <p className="text-[0.65rem] font-bold uppercase text-muted-foreground">Prévia do crachá</p>
+          <p className="mt-1 break-words font-display text-lg font-extrabold leading-tight text-foreground sm:text-xl">{name.trim() || "Seu nome"}</p>
+          <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">Participante • Quixadá 2026</p>
         </div>
+        <img src={eventLogoOnLight} alt="II Encontro de Coros" className="h-auto w-full object-contain" />
       </div>
-      <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-        A prévia é atualizada enquanto você preenche seus dados.
-      </p>
     </aside>
   );
 }

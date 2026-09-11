@@ -13,4 +13,5 @@
 - [x] Transform the public registration form into a large-field, three-step wizard with review before payment.
 - [x] Show a live badge preview during personal details and keep the full price calculation card in payment review.
 
-- [ ] Apply the uploaded dark-background logo on dark surfaces and the light-background logo on light surfaces.
+- [x] Apply the dark-background logo on dark surfaces and the light-background logo on light surfaces.
+- [x] Compact the personal-data step and place the participant photo and event logo beside the name.
