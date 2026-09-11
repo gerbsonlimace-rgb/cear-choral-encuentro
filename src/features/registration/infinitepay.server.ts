@@ -126,7 +126,7 @@ async function postJson(fetcher: typeof fetch, path: string, body: unknown) {
     });
 
     if (providerError?.error === "external_checkout_not_enabled") {
-      throw new Error(EXTERNAL_CHECKOUT_DISABLED_MESSAGE);
+      throw new InfinitePayProviderError("confirmed_rejection", EXTERNAL_CHECKOUT_DISABLED_MESSAGE);
     }
 
     const confirmedRejection = [400, 401, 403, 404, 422].includes(response.status);

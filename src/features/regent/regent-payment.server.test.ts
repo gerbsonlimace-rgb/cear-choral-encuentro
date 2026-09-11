@@ -230,6 +230,25 @@ describe("regent complement checkout service", () => {
     expect(repository.markPending).not.toHaveBeenCalled();
   });
 
+  it("releases the reservation when InfinitePay external checkout is disabled", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(infinitePay.createCheckout).mockRejectedValue(
+      new InfinitePayProviderError(
+        "confirmed_rejection",
+        "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.",
+      ),
+    );
+
+    await expect(
+      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
+    ).rejects.toThrow(
+      "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.",
+    );
+
+    expect(repository.markFailed).toHaveBeenCalledExactlyOnceWith(orderNsu);
+    expect(repository.markPending).not.toHaveBeenCalled();
+  });
+
   it("reports an unreconciled failed transition as pending without retrying the checkout", async () => {
     const { repository, infinitePay, service } = setup();
     vi.mocked(infinitePay.createCheckout).mockRejectedValue(

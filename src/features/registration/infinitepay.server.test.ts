@@ -258,7 +258,10 @@ describe("InfinitePay client", () => {
 
     await expect(
       createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
-    ).rejects.toThrow(EXTERNAL_CHECKOUT_DISABLED_MESSAGE);
+    ).rejects.toMatchObject({
+      message: EXTERNAL_CHECKOUT_DISABLED_MESSAGE,
+      outcome: "confirmed_rejection",
+    });
   });
 
   it("maps a minimal unpaid payment_check response", async () => {
