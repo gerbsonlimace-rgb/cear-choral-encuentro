@@ -205,14 +205,134 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount_cents?: number;
+          checkout_url?: string | null;
+          choir_id?: string;
+          created_at?: string;
+          id?: string;
+          infinitepay_invoice_slug?: string | null;
+          infinitepay_transaction_nsu?: string | null;
+          initiated_as?: string;
+          initiated_by?: string;
+          initiated_by_name?: string;
+          installments?: number | null;
+          order_nsu?: string;
+          paid_amount_cents?: number | null;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          receipt_url?: string | null;
+          registration_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "registration_complement_payments_choir_id_fkey";
+            columns: ["choir_id"];
+            isOneToOne: false;
+            referencedRelation: "choirs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "registration_complement_payments_registration_id_fkey";
+            columns: ["registration_id"];
+            isOneToOne: false;
+            referencedRelation: "registrations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      participant_access_events: {
+        Row: {
+          admin_user_id: string | null
+          created_at: string
+          error_code: string | null
+          event_type: string
+          id: string
+          participant_account_id: string | null
+          registration_id: string
+        }
+        Insert: {
+          admin_user_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_type: string
+          id?: string
+          participant_account_id?: string | null
+          registration_id: string
+        }
+        Update: {
+          admin_user_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_type?: string
+          id?: string
+          participant_account_id?: string | null
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_access_events_participant_account_id_fkey"
+            columns: ["participant_account_id"]
+            isOneToOne: false
+            referencedRelation: "participant_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_access_events_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_accounts: {
+        Row: {
+          access_status: string
+          created_at: string
+          id: string
+          last_error_code: string | null
+          provisioned_at: string | null
+          provisioning_claim_id: string | null
+          provisioning_started_at: string | null
+          registration_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          access_status?: string
           created_at?: string
           id?: string
-          is_active?: boolean
-          logo_path?: string
-          name?: string
+          last_error_code?: string | null
+          provisioned_at?: string | null
+          provisioning_claim_id?: string | null
+          provisioning_started_at?: string | null
+          registration_id: string
           updated_at?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Update: {
+          access_status?: string
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          provisioned_at?: string | null
+          provisioning_claim_id?: string | null
+          provisioning_started_at?: string | null
+          registration_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_accounts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       registrations: {
         Row: {
@@ -416,7 +536,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_choir_regent_admin_password_candidate_operation: {
+      claim_participant_provisioning: {
+        Args: { p_claim_id: string; p_registration_id: string }
+        Returns: boolean
+      }
+      replace_active_choir_regent: {
         Args: {
           p_candidate_fingerprint: string;
           p_membership_id: string;
