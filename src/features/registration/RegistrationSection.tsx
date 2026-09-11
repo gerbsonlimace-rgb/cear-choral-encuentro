@@ -460,7 +460,7 @@ export function RegistrationSection({
               )}
 
               {checkoutError && (
-                <p aria-live="polite" className="text-sm text-destructive">
+                <p role="alert" aria-live="polite" className="text-sm text-destructive">
                   {checkoutError}
                 </p>
               )}
