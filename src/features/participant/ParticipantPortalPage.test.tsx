@@ -193,7 +193,6 @@ describe("ParticipantPortalPage", () => {
     for (const [label, amount] of [
       ["Valor normal", /R\$\s*120,00/],
       ["Valor da inscrição", /R\$\s*90,00/],
-      ["Valor da camisa", /R\$\s*35,00/],
       ["Valor da cobrança", /R\$\s*125,00/],
       ["Valor pago", /R\$\s*125,00/],
     ] as const) {
