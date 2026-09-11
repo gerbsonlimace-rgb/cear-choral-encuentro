@@ -404,7 +404,7 @@ export function RegistrationSection({
   return (
     <section
       id="inscricao"
-      className="relative isolate overflow-hidden bg-foreground px-4 py-10 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-14"
+      className="relative isolate overflow-hidden bg-foreground px-4 py-6 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
     >
       <div className="container-event">
         <div className="mx-auto max-w-4xl text-center">
@@ -412,7 +412,7 @@ export function RegistrationSection({
             <BadgeCheck className="size-4" aria-hidden="true" />
             Inscrição
           </span>
-          <h2 className="mt-3 font-display text-[clamp(2rem,6vw,3.2rem)] font-bold leading-tight text-background">
+          <h2 className="mt-2 font-display text-[clamp(2rem,5vw,2.6rem)] font-bold leading-tight text-background">
             Realize sua inscrição
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
@@ -436,7 +436,7 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="relative mx-auto mt-32 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30 sm:mt-7">
+        <Card className="relative mx-auto mt-5 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
           <div className="h-1.5 bg-amber" aria-hidden="true" />
           <CardContent className="p-4 sm:p-6 lg:p-7">
             <nav aria-label="Etapas da inscrição" className="mb-5">
