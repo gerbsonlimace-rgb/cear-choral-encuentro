@@ -71,6 +71,53 @@ export type Database = {
         }
         Relationships: []
       }
+      choir_regents: {
+        Row: {
+          choir_id: string;
+          email: string;
+          granted_at: string;
+          granted_by: string;
+          id: string;
+          name: string;
+          password_change_required: boolean;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          user_id: string;
+        };
+        Insert: {
+          choir_id: string;
+          email: string;
+          granted_at?: string;
+          granted_by: string;
+          id?: string;
+          name: string;
+          password_change_required?: boolean;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          user_id: string;
+        };
+        Update: {
+          choir_id?: string;
+          email?: string;
+          granted_at?: string;
+          granted_by?: string;
+          id?: string;
+          name?: string;
+          password_change_required?: boolean;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "choir_regents_choir_id_fkey";
+            columns: ["choir_id"];
+            isOneToOne: false;
+            referencedRelation: "choirs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       choirs: {
         Row: {
           created_at: string
@@ -125,6 +172,87 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_complement_payments: {
+        Row: {
+          amount_cents: number;
+          checkout_url: string | null;
+          choir_id: string;
+          created_at: string;
+          id: string;
+          infinitepay_invoice_slug: string | null;
+          infinitepay_transaction_nsu: string | null;
+          initiated_as: string;
+          initiated_by: string;
+          initiated_by_name: string;
+          installments: number | null;
+          order_nsu: string;
+          paid_amount_cents: number | null;
+          paid_at: string | null;
+          payment_method: string | null;
+          receipt_url: string | null;
+          registration_id: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_cents: number;
+          checkout_url?: string | null;
+          choir_id: string;
+          created_at?: string;
+          id?: string;
+          infinitepay_invoice_slug?: string | null;
+          infinitepay_transaction_nsu?: string | null;
+          initiated_as: string;
+          initiated_by: string;
+          initiated_by_name: string;
+          installments?: number | null;
+          order_nsu: string;
+          paid_amount_cents?: number | null;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          receipt_url?: string | null;
+          registration_id: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          checkout_url?: string | null;
+          choir_id?: string;
+          created_at?: string;
+          id?: string;
+          infinitepay_invoice_slug?: string | null;
+          infinitepay_transaction_nsu?: string | null;
+          initiated_as?: string;
+          initiated_by?: string;
+          initiated_by_name?: string;
+          installments?: number | null;
+          order_nsu?: string;
+          paid_amount_cents?: number | null;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          receipt_url?: string | null;
+          registration_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "registration_complement_payments_choir_id_fkey";
+            columns: ["choir_id"];
+            isOneToOne: false;
+            referencedRelation: "choirs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "registration_complement_payments_registration_id_fkey";
+            columns: ["registration_id"];
+            isOneToOne: false;
+            referencedRelation: "registrations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       registrations: {
         Row: {
           amount_cents: number | null
@@ -237,7 +365,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_active_choir_regent: {
+        Args: {
+          p_choir_id: string;
+          p_email: string;
+          p_granted_by: string;
+          p_name: string;
+          p_user_id: string;
+        };
+        Returns: Database["public"]["Tables"]["choir_regents"]["Row"];
+      };
     }
     Enums: {
       [_ in never]: never
