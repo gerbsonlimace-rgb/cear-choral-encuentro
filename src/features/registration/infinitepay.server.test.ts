@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createInfinitePayClient, sanitizeInfinitePayReceiptUrl } from "./infinitepay.server";
+import {
+  createInfinitePayClient,
+  EXTERNAL_CHECKOUT_DISABLED_MESSAGE,
+  sanitizeInfinitePayReceiptUrl,
+} from "./infinitepay.server";
 
 const config = {
   handle: "antonio-gerbson",
@@ -182,6 +186,23 @@ describe("InfinitePay client", () => {
     await expect(
       createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
     ).rejects.toThrow("Não foi possível comunicar com a InfinitePay.");
+  });
+
+  it("identifies when external checkout is disabled", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: "external_checkout_not_enabled",
+          message: "External checkout is not enabled for this merchant.",
+        }),
+        { status: 404, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
+    ).rejects.toThrow(EXTERNAL_CHECKOUT_DISABLED_MESSAGE);
   });
 
   it("maps a minimal unpaid payment_check response", async () => {

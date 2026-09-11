@@ -18,7 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
-import { startRegistrationCheckout } from "@/lib/registration.functions";
+import {
+  startRegistrationCheckout,
+  type StartRegistrationCheckoutResult,
+} from "@/lib/registration.functions";
 import {
   getFortalezaCalendarDate,
   registrationSchema,
@@ -27,7 +30,7 @@ import {
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
-  startCheckout?: (input: RegistrationInput) => Promise<{ checkoutUrl: string; orderNsu: string }>;
+  startCheckout?: (input: RegistrationInput) => Promise<StartRegistrationCheckoutResult>;
   navigateToCheckout?: (url: string) => void;
 };
 
@@ -150,8 +153,17 @@ export function RegistrationSection({
     setCheckoutError("");
     setIsSubmitting(true);
     try {
-      const { checkoutUrl } = await startCheckout(parsedForm.data);
-      navigateToCheckout(checkoutUrl);
+      const result = await startCheckout(parsedForm.data);
+      if (!result.ok) {
+        const normalizedMessage = result.message.toLocaleLowerCase("pt-BR");
+        const shouldRefresh =
+          normalizedMessage.includes("configuração de preços mudou") ||
+          normalizedMessage.includes("coro selecionado não está disponível");
+        setCheckoutError(result.message);
+        if (shouldRefresh) await refreshConfiguration(true);
+        return;
+      }
+      navigateToCheckout(result.checkoutUrl);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");

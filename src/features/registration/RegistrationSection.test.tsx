@@ -104,7 +104,9 @@ describe("RegistrationSection", () => {
 
   it("keeps the entered form when checkout creation fails", async () => {
     const user = userEvent.setup();
-    const startCheckout = vi.fn().mockRejectedValue(new Error("A configuração de preços mudou."));
+    const startCheckout = vi
+      .fn()
+      .mockResolvedValue({ ok: false, message: "A configuração de preços mudou." });
     const reloadConfiguration = vi
       .fn()
       .mockResolvedValueOnce(configuration)
@@ -146,7 +148,7 @@ describe("RegistrationSection", () => {
     const user = userEvent.setup();
     const startCheckout = vi
       .fn()
-      .mockResolvedValue({ checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
+      .mockResolvedValue({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
     const navigateToCheckout = vi.fn();
     render(
       <RegistrationSection
