@@ -10,4 +10,5 @@
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
-- Transform the public registration form into a large-field, three-step wizard with review before payment.
+- [x] Transform the public registration form into a large-field, three-step wizard with review before payment.
+- [x] Show a live badge preview during personal details and keep the full price calculation card in payment review.
