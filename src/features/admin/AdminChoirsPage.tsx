@@ -28,6 +28,7 @@ import type { AdminAccessState } from "@/lib/admin.functions";
 import {
   createAdminChoir,
   getAdminChoirPricing,
+  type AdminChoirPricingBootstrap,
   saveAdminPricingSettings,
   setAdminChoirActive,
   updateAdminChoir,
@@ -52,6 +53,7 @@ export type AdminChoirsPageProps = {
   onSignedOut: () => void;
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
+  loadInitialData?: () => Promise<AdminChoirPricingBootstrap>;
   loadData?: () => Promise<AdminChoirPricing>;
   saveSettings?: ServerMutation<PricingSettings, PricingSettings>;
   createChoir?: ServerMutation<ChoirMutation, AdminChoir>;
@@ -59,6 +61,9 @@ export type AdminChoirsPageProps = {
   setChoirActive?: ServerMutation<{ id: string; isActive: boolean }, AdminChoir>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
+  navigateTo?: (
+    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
+  ) => void;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
@@ -100,6 +105,7 @@ export function AdminChoirsPage({
   onSignedOut,
   onMissingSession,
   checkAdmin = getAdminAccess,
+  loadInitialData,
   loadData = getAdminChoirPricing,
   saveSettings = saveAdminPricingSettings,
   createChoir = createAdminChoir,
@@ -107,6 +113,7 @@ export function AdminChoirsPage({
   setChoirActive = setAdminChoirActive,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
+  navigateTo,
 }: AdminChoirsPageProps) {
   const [gate, setGate] = useState<Gate>("checking");
   const [data, setData] = useState<AdminChoirPricing | null>(null);
@@ -122,6 +129,7 @@ export function AdminChoirsPage({
   const [editing, setEditing] = useState<AdminChoir | null>(null);
   const [pendingInactivation, setPendingInactivation] = useState<AdminChoir | null>(null);
   const [choirDraft, setChoirDraft] = useState<ChoirMutation>(emptyChoirDraft);
+  const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,6 +146,44 @@ export function AdminChoirsPage({
   }, [loadData]);
 
   useEffect(() => {
+    if (loadInitialData) {
+      let active = true;
+      setGate("checking");
+      setLoading(true);
+      setError("");
+      void loadInitialData()
+        .then((bootstrap) => {
+          if (!active) return;
+          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
+            setGate(bootstrap.access.status);
+            return;
+          }
+          setData(bootstrap.data);
+          setSettings(settingsDraft(bootstrap.data.settings));
+          setBootstrapDataReady(true);
+          setGate("authorized");
+        })
+        .catch(async () => {
+          if (!active) return;
+          try {
+            const session = await getSession();
+            if (!active) return;
+            if (!session.error && !session.data.session) {
+              onMissingSession();
+              return;
+            }
+          } catch {
+            /* An unavailable local session cannot authorize or prove expiry. */
+          }
+          setGate("error");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }
     let active = true;
     void (async () => {
       try {
@@ -156,11 +202,11 @@ export function AdminChoirsPage({
     return () => {
       active = false;
     };
-  }, [checkAdmin, getSession, onMissingSession]);
+  }, [checkAdmin, getSession, loadInitialData, onMissingSession]);
 
   useEffect(() => {
-    if (gate === "authorized") void load();
-  }, [gate, load]);
+    if (gate === "authorized" && !(loadInitialData && bootstrapDataReady)) void load();
+  }, [bootstrapDataReady, gate, load, loadInitialData]);
 
   const submitSettings = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -284,7 +330,7 @@ export function AdminChoirsPage({
             </Button>
           )}
         </header>
-        {gate === "authorized" && <AdminNavigation current="choirs" />}
+        {gate === "authorized" && <AdminNavigation current="choirs" navigateTo={navigateTo} />}
         <div aria-live="polite" className="text-sm text-muted-foreground">
           {message}
         </div>

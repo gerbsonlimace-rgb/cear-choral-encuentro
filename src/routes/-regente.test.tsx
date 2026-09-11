@@ -9,6 +9,7 @@ import { routeTree } from "@/routeTree.gen";
 
 const server = vi.hoisted(() => ({
   getRegentAccess: vi.fn(),
+  getRegentPortalBootstrap: vi.fn(),
   listParticipants: vi.fn(),
   loadSummary: vi.fn(),
   verifyPayment: vi.fn(),
@@ -17,6 +18,7 @@ const server = vi.hoisted(() => ({
 
 vi.mock("@/lib/regent.functions", () => ({
   getRegentAccess: server.getRegentAccess,
+  getRegentPortalBootstrap: server.getRegentPortalBootstrap,
   listRegentPortalParticipants: server.listParticipants,
   getRegentPortalSummary: server.loadSummary,
   startComplementCheckout: vi.fn(),
@@ -51,6 +53,23 @@ const authorized: RegentAccess = {
 
 async function renderRoute(path: string, access: RegentAccess = authorized) {
   server.getRegentAccess.mockResolvedValue(access);
+  server.getRegentPortalBootstrap.mockResolvedValue({
+    access,
+    choirs: [],
+    selectedChoirId:
+      access.status === "authorized" && access.role === "regent" ? access.choirId : "",
+    summary:
+      access.status === "authorized"
+        ? {
+            totalParticipants: 0,
+            eligibleComplementCents: 0,
+            confirmedComplementCents: 0,
+            outstandingComplementCents: 0,
+          }
+        : null,
+    participants:
+      access.status === "authorized" ? { rows: [], total: 0, page: 1, pageSize: 20 } : null,
+  });
   server.listParticipants.mockResolvedValue({ rows: [], total: 0, page: 1, pageSize: 20 });
   server.loadSummary.mockResolvedValue({
     totalParticipants: 0,
@@ -118,6 +137,6 @@ describe("/regente route behavior", () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/regente"));
     expect(screen.getByRole("heading", { name: "Área do regente" })).toBeInTheDocument();
-    expect(server.getRegentAccess.mock.calls.length).toBeLessThanOrEqual(3);
+    expect(server.getRegentPortalBootstrap.mock.calls.length).toBeLessThanOrEqual(3);
   });
 });

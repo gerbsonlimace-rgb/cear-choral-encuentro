@@ -38,6 +38,7 @@ import { getAdminAccess } from "@/lib/admin.functions";
 import {
   createAdminSponsor,
   getAdminSponsors,
+  type AdminSponsorsBootstrap,
   setAdminSponsorActive,
   updateAdminSponsor,
 } from "@/lib/sponsor.functions";
@@ -49,12 +50,16 @@ export type AdminSponsorsPageProps = {
   onSignedOut: () => void;
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
+  loadInitialData?: () => Promise<AdminSponsorsBootstrap>;
   loadSponsors?: () => Promise<AdminSponsor[]>;
   createSponsor?: ServerMutation<SponsorCreate>;
   updateSponsor?: ServerMutation<SponsorUpdate>;
   setSponsorActive?: ServerMutation<{ id: string; isActive: boolean }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
+  navigateTo?: (
+    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
+  ) => void;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
@@ -90,12 +95,14 @@ export function AdminSponsorsPage({
   onSignedOut,
   onMissingSession,
   checkAdmin = getAdminAccess,
+  loadInitialData,
   loadSponsors = getAdminSponsors,
   createSponsor = createAdminSponsor,
   updateSponsor = updateAdminSponsor,
   setSponsorActive = setAdminSponsorActive,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
+  navigateTo,
 }: AdminSponsorsPageProps) {
   const [gate, setGate] = useState<Gate>("checking");
   const [sponsors, setSponsors] = useState<AdminSponsor[] | null>(null);
@@ -109,6 +116,7 @@ export function AdminSponsorsPage({
   const [name, setName] = useState("");
   const [logo, setLogo] = useState<LogoDraft | null>(null);
   const [pendingInactivation, setPendingInactivation] = useState<AdminSponsor | null>(null);
+  const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,6 +131,43 @@ export function AdminSponsorsPage({
   }, [loadSponsors]);
 
   useEffect(() => {
+    if (loadInitialData) {
+      let active = true;
+      setGate("checking");
+      setLoading(true);
+      setError("");
+      void loadInitialData()
+        .then((bootstrap) => {
+          if (!active) return;
+          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
+            setGate(bootstrap.access.status);
+            return;
+          }
+          setSponsors(bootstrap.data);
+          setBootstrapDataReady(true);
+          setGate("authorized");
+        })
+        .catch(async () => {
+          if (!active) return;
+          try {
+            const session = await getSession();
+            if (!active) return;
+            if (!session.error && !session.data.session) {
+              onMissingSession();
+              return;
+            }
+          } catch {
+            /* An unavailable local session cannot authorize or prove expiry. */
+          }
+          setGate("error");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }
     let active = true;
     void (async () => {
       try {
@@ -140,11 +185,11 @@ export function AdminSponsorsPage({
     return () => {
       active = false;
     };
-  }, [checkAdmin, getSession, onMissingSession]);
+  }, [checkAdmin, getSession, loadInitialData, onMissingSession]);
 
   useEffect(() => {
-    if (gate === "authorized") void load();
-  }, [gate, load]);
+    if (gate === "authorized" && !(loadInitialData && bootstrapDataReady)) void load();
+  }, [bootstrapDataReady, gate, load, loadInitialData]);
 
   const openCreate = () => {
     setEditing(null);
@@ -272,7 +317,7 @@ export function AdminSponsorsPage({
           )}
         </header>
 
-        {gate === "authorized" && <AdminNavigation current="sponsors" />}
+        {gate === "authorized" && <AdminNavigation current="sponsors" navigateTo={navigateTo} />}
         <div aria-live="polite" className="text-sm text-muted-foreground">
           {message}
         </div>

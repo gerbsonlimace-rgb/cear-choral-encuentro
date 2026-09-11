@@ -4,6 +4,7 @@ import {
   createAdminChoir,
   createChoirPricingFunctionHandlers,
   getAdminChoirPricing,
+  getAdminChoirPricingBootstrap,
   getPublicRegistrationConfiguration,
   saveAdminPricingSettings,
   setAdminChoirActive,
@@ -48,6 +49,7 @@ describe("choir pricing server functions", () => {
   it("uses GET only for reads and POST for every mutation", () => {
     expect(getPublicRegistrationConfiguration.method).toBe("GET");
     expect(getAdminChoirPricing.method).toBe("GET");
+    expect(getAdminChoirPricingBootstrap.method).toBe("GET");
     expect(saveAdminPricingSettings.method).toBe("POST");
     expect(createAdminChoir.method).toBe("POST");
     expect(updateAdminChoir.method).toBe("POST");

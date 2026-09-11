@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
+import { createAdminBootstrap, type AdminPageBootstrap } from "@/lib/admin.functions";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   choirActiveSchema,
   choirMutationSchema,
@@ -12,6 +14,8 @@ import {
   type PublicRegistrationConfiguration,
 } from "@/features/choirs/choir-pricing.domain";
 import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
+
+export type AdminChoirPricingBootstrap = AdminPageBootstrap<AdminChoirPricing>;
 
 export type ChoirPricingServicePort = {
   getPublicConfiguration(): Promise<PublicRegistrationConfiguration>;
@@ -59,6 +63,21 @@ export const getPublicRegistrationConfiguration = createServerFn({ method: "GET"
 export const getAdminChoirPricing = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => (await loadHandlers()).getAdminData());
+
+export const getAdminChoirPricingBootstrap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminChoirPricingBootstrap> => {
+    const [{ getAdminAuthorizer }, { getChoirPricingService }] = await Promise.all([
+      import("@/features/admin/admin-auth.server"),
+      import("@/features/choirs/choir-pricing.server"),
+    ]);
+    return createAdminBootstrap<AdminChoirPricing>({
+      userId: context.userId,
+      email: typeof context.claims.email === "string" ? context.claims.email : null,
+      findActive: (userId) => getAdminAuthorizer().findActive(userId),
+      load: () => getChoirPricingService().getAdminData(),
+    });
+  });
 
 export const saveAdminPricingSettings = createServerFn({ method: "POST" })
   .middleware([requireAdmin])

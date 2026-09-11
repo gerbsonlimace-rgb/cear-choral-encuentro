@@ -115,6 +115,24 @@ function setup(overrides = {}) {
 }
 
 describe("AdminRegistrationsPage read-only views", () => {
+  it("renders the aggregated initial payload without repeating authorization or reads", async () => {
+    const checkAdmin = vi.fn();
+    const loadRegistrations = vi.fn();
+    const loadSummary = vi.fn();
+    const loadInitialData = vi.fn().mockResolvedValue({
+      access: { status: "authorized", userId: "admin", email: "admin@example.com" },
+      data: { registrations: page, summary },
+    });
+
+    setup({ checkAdmin, loadRegistrations, loadSummary, loadInitialData });
+
+    expect(await screen.findByText("3 inscrições encontradas")).toBeInTheDocument();
+    expect(loadInitialData).toHaveBeenCalledOnce();
+    expect(checkAdmin).not.toHaveBeenCalled();
+    expect(loadRegistrations).not.toHaveBeenCalled();
+    expect(loadSummary).not.toHaveBeenCalled();
+  });
+
   it("shows complete totals and the registration count for each diocese above the filters", async () => {
     const { loadSummary, user } = setup();
 

@@ -16,6 +16,7 @@ import {
   createSupabaseRegentPasswordChangeRepository,
   createAdminRegent,
   getRegentPortalSummary,
+  getRegentPortalBootstrap,
   listAdminRegents,
   listRegentPortalParticipants,
   replaceAdminRegent,
@@ -292,6 +293,12 @@ describe("regent portal handler factory", () => {
     expect(summary.middlewares).toContain(requirePortalReadyAccess);
     const verify = verifyComplementPayment as unknown as { middlewares: unknown[] };
     expect(verify.middlewares).toContain(requirePortalReadyAccess);
+  });
+});
+
+describe("regent portal bootstrap boundary", () => {
+  it("uses a single GET request for the initial portal payload", () => {
+    expect(getRegentPortalBootstrap.method).toBe("GET");
   });
 });
 

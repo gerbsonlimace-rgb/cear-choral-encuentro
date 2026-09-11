@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
+import { createAdminBootstrap, type AdminPageBootstrap } from "@/lib/admin.functions";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   sponsorActiveSchema,
   sponsorCreateSchema,
@@ -10,6 +12,8 @@ import {
   type SponsorCreate,
   type SponsorUpdate,
 } from "@/features/sponsors/sponsor.domain";
+
+export type AdminSponsorsBootstrap = AdminPageBootstrap<AdminSponsor[]>;
 
 export type SponsorServicePort = {
   listPublic(): Promise<PublicSponsor[]>;
@@ -52,6 +56,21 @@ export const getPublicSponsors = createServerFn({ method: "GET" }).handler(async
 export const getAdminSponsors = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => (await loadHandlers()).listAdmin());
+
+export const getAdminSponsorsBootstrap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminSponsorsBootstrap> => {
+    const [{ getAdminAuthorizer }, { getSponsorService }] = await Promise.all([
+      import("@/features/admin/admin-auth.server"),
+      import("@/features/sponsors/sponsor.service.server"),
+    ]);
+    return createAdminBootstrap<AdminSponsor[]>({
+      userId: context.userId,
+      email: typeof context.claims.email === "string" ? context.claims.email : null,
+      findActive: (userId) => getAdminAuthorizer().findActive(userId),
+      load: () => getSponsorService().listAdmin(),
+    });
+  });
 
 export const createAdminSponsor = createServerFn({ method: "POST" })
   .middleware([requireAdmin])

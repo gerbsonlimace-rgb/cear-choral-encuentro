@@ -57,6 +57,22 @@ function setup(overrides: Partial<React.ComponentProps<typeof AdminChoirsPage>> 
 }
 
 describe("AdminChoirsPage", () => {
+  it("renders an aggregated initial payload without repeating authorization or reads", async () => {
+    const checkAdmin = vi.fn();
+    const loadData = vi.fn();
+    const loadInitialData = vi.fn().mockResolvedValue({
+      access: { status: "authorized", userId: "admin-1", email: "admin@example.com" },
+      data: emptyData,
+    });
+
+    setup({ checkAdmin, loadData, loadInitialData });
+
+    expect(await screen.findByText("Nenhum coro cadastrado.")).toBeInTheDocument();
+    expect(loadInitialData).toHaveBeenCalledOnce();
+    expect(checkAdmin).not.toHaveBeenCalled();
+    expect(loadData).not.toHaveBeenCalled();
+  });
+
   it("includes regent management using loaded choir options and the public portal link", async () => {
     setup({ loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })) });
     expect(await screen.findByRole("heading", { name: "Regentes" })).toBeInTheDocument();

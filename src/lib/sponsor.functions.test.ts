@@ -5,6 +5,7 @@ import {
   createAdminSponsor,
   createSponsorFunctionHandlers,
   getAdminSponsors,
+  getAdminSponsorsBootstrap,
   getPublicSponsors,
   setAdminSponsorActive,
   updateAdminSponsor,
@@ -35,6 +36,7 @@ describe("sponsor server functions", () => {
   it("uses GET only for reads and POST for every mutation", () => {
     expect(getPublicSponsors.method).toBe("GET");
     expect(getAdminSponsors.method).toBe("GET");
+    expect(getAdminSponsorsBootstrap.method).toBe("GET");
     expect(createAdminSponsor.method).toBe("POST");
     expect(updateAdminSponsor.method).toBe("POST");
     expect(setAdminSponsorActive.method).toBe("POST");

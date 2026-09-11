@@ -38,6 +38,7 @@ import {
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   type AdminAccessState,
+  type AdminRegistrationsBootstrap,
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type {
@@ -54,6 +55,7 @@ type Props = {
   onSignedOut: () => void;
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
+  loadInitialData?: () => Promise<AdminRegistrationsBootstrap>;
   loadRegistrations?: (input: { data: AdminRegistrationQuery }) => Promise<AdminRegistrationPage>;
   loadSummary?: () => Promise<AdminRegistrationSummary>;
   exportRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminExportFile>;
@@ -64,6 +66,9 @@ type Props = {
   }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
+  navigateTo?: (
+    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
+  ) => void;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();
@@ -202,17 +207,13 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {[
-                "Inscrição",
-                "Contato",
-                "Coro/Diocese / origem",
-                "Situação",
-                "Pagamento",
-              ].map((label) => (
-                <TableHead key={label} scope="col">
-                  {label}
-                </TableHead>
-              ))}
+              {["Inscrição", "Contato", "Coro/Diocese / origem", "Situação", "Pagamento"].map(
+                (label) => (
+                  <TableHead key={label} scope="col">
+                    {label}
+                  </TableHead>
+                ),
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -372,6 +373,7 @@ export function AdminRegistrationsPage({
   onSignedOut,
   onMissingSession,
   checkAdmin = getAdminAccess,
+  loadInitialData,
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
@@ -379,6 +381,7 @@ export function AdminRegistrationsPage({
   resetInitialPassword = resetParticipantInitialPassword,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
+  navigateTo,
 }: Props) {
   const [gate, setGate] = useState<
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
@@ -397,6 +400,7 @@ export function AdminRegistrationsPage({
   const [participantActionBusy, setParticipantActionBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const [summaryRetry, setSummaryRetry] = useState(0);
+  const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
   const revision = useRef(0);
   const invalidateAccess = useCallback(() => {
@@ -428,12 +432,56 @@ export function AdminRegistrationsPage({
   }, [checkAdmin, getSession, onMissingSession]);
 
   useEffect(() => {
+    if (loadInitialData) {
+      let active = true;
+      setGate("checking");
+      setLoading(true);
+      setSummaryLoading(true);
+      setListError("");
+      setSummaryError("");
+      void loadInitialData()
+        .then((bootstrap) => {
+          if (!active) return;
+          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
+            setGate(bootstrap.access.status);
+            return;
+          }
+          setResult(bootstrap.data.registrations);
+          setSummary(bootstrap.data.summary);
+          setBootstrapDataReady(true);
+          setGate("authorized");
+        })
+        .catch(async () => {
+          if (!active) return;
+          try {
+            const session = await getSession();
+            if (!active) return;
+            if (!session.error && !session.data.session) {
+              setGate("expired");
+              onMissingSession();
+              return;
+            }
+          } catch {
+            /* An unavailable local session cannot authorize or prove expiry. */
+          }
+          setGate("error");
+        })
+        .finally(() => {
+          if (!active) return;
+          setLoading(false);
+          setSummaryLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }
     void verifyAccess();
     return invalidateAccess;
-  }, [verifyAccess, invalidateAccess]);
+  }, [getSession, invalidateAccess, loadInitialData, onMissingSession, verifyAccess]);
 
   useEffect(() => {
     if (gate !== "authorized") return;
+    if (loadInitialData && bootstrapDataReady && retry === 0 && query === initialQuery) return;
     let active = true;
     setLoading(true);
     setResult(null);
@@ -462,10 +510,20 @@ export function AdminRegistrationsPage({
     return () => {
       active = false;
     };
-  }, [gate, query, retry, loadRegistrations, getSession, onMissingSession]);
+  }, [
+    bootstrapDataReady,
+    gate,
+    getSession,
+    loadInitialData,
+    loadRegistrations,
+    onMissingSession,
+    query,
+    retry,
+  ]);
 
   useEffect(() => {
     if (gate !== "authorized") return;
+    if (loadInitialData && bootstrapDataReady && summaryRetry === 0) return;
     let active = true;
     setSummaryLoading(true);
     setSummaryError("");
@@ -482,7 +540,7 @@ export function AdminRegistrationsPage({
     return () => {
       active = false;
     };
-  }, [gate, summaryRetry, loadSummary]);
+  }, [bootstrapDataReady, gate, loadInitialData, loadSummary, summaryRetry]);
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -618,7 +676,9 @@ export function AdminRegistrationsPage({
             </div>
           )}
         </header>
-        {gate === "authorized" && <AdminNavigation current="registrations" />}
+        {gate === "authorized" && (
+          <AdminNavigation current="registrations" navigateTo={navigateTo} />
+        )}
         <div aria-live="polite" aria-atomic="true" className="text-sm text-muted-foreground">
           <p>{statusText}</p>
           {announcement && <p>{announcement}</p>}

@@ -45,6 +45,22 @@ function setup(overrides: Partial<React.ComponentProps<typeof AdminSponsorsPage>
 }
 
 describe("AdminSponsorsPage", () => {
+  it("renders an aggregated initial payload without repeating authorization or reads", async () => {
+    const checkAdmin = vi.fn();
+    const loadSponsors = vi.fn();
+    const loadInitialData = vi.fn().mockResolvedValue({
+      access: { status: "authorized", userId: "admin-1", email: "admin@example.com" },
+      data: [],
+    });
+
+    setup({ checkAdmin, loadSponsors, loadInitialData });
+
+    expect(await screen.findByText("Nenhum patrocinador cadastrado.")).toBeInTheDocument();
+    expect(loadInitialData).toHaveBeenCalledOnce();
+    expect(checkAdmin).not.toHaveBeenCalled();
+    expect(loadSponsors).not.toHaveBeenCalled();
+  });
+
   it("shows the empty administrative state and sponsor navigation", async () => {
     setup();
 

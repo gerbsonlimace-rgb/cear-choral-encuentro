@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AdminChoir } from "@/features/choirs/choir-pricing.domain";
 import { getAdminChoirPricing } from "@/lib/choir-pricing.functions";
-import { getRegentPortalSummary, listRegentPortalParticipants } from "@/lib/regent.functions";
+import {
+  getRegentPortalSummary,
+  listRegentPortalParticipants,
+  type RegentPortalBootstrap,
+} from "@/lib/regent.functions";
 
 import { ComplementPaymentDialog } from "./ComplementPaymentDialog";
 import {
@@ -37,6 +41,7 @@ type Props = {
   loadParticipants?: (input: PortalListInput) => Promise<PortalParticipantPage>;
   loadSummary?: (input: PortalSummaryInput) => Promise<PortalSummary>;
   loadAdminChoirs?: () => Promise<AdminChoir[]>;
+  initialData?: RegentPortalBootstrap;
 };
 
 const PAGE_SIZE = 20;
@@ -58,25 +63,30 @@ export function RegentPortalPage({
   loadParticipants = listRegentPortalParticipants,
   loadSummary = getRegentPortalSummary,
   loadAdminChoirs = defaultLoadAdminChoirs,
+  initialData,
 }: Props) {
-  const [choirs, setChoirs] = useState<AdminChoir[]>([]);
+  const [choirs, setChoirs] = useState<AdminChoir[]>(initialData?.choirs ?? []);
   const [selectedChoirId, setSelectedChoirId] = useState(
-    access.role === "regent" ? access.choirId : "",
+    initialData?.selectedChoirId ?? (access.role === "regent" ? access.choirId : ""),
   );
   const [choirError, setChoirError] = useState("");
-  const [summary, setSummary] = useState<PortalSummary | null>(null);
+  const [summary, setSummary] = useState<PortalSummary | null>(initialData?.summary ?? null);
   const [summaryError, setSummaryError] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [result, setResult] = useState<PortalParticipantPage | null>(null);
+  const [result, setResult] = useState<PortalParticipantPage | null>(
+    initialData?.participants ?? null,
+  );
   const [listError, setListError] = useState("");
   const [listRetry, setListRetry] = useState(0);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [query, setQuery] = useState({ search: "", page: 1 });
   const [paymentParticipant, setPaymentParticipant] = useState<PortalParticipant | null>(null);
+  const skipInitialSummary = useRef(Boolean(initialData));
+  const skipInitialList = useRef(Boolean(initialData));
 
   useEffect(() => {
-    if (access.role !== "admin") return;
+    if (access.role !== "admin" || initialData) return;
     let disposed = false;
     setChoirError("");
     loadAdminChoirs()
@@ -91,12 +101,16 @@ export function RegentPortalPage({
     return () => {
       disposed = true;
     };
-  }, [access.role, loadAdminChoirs]);
+  }, [access.role, initialData, loadAdminChoirs]);
 
   const ready = access.role === "regent" || Boolean(selectedChoirId);
 
   useEffect(() => {
     if (!ready) return;
+    if (skipInitialSummary.current) {
+      skipInitialSummary.current = false;
+      return;
+    }
     let disposed = false;
     setSummaryLoading(true);
     setSummaryError("");
@@ -118,6 +132,10 @@ export function RegentPortalPage({
 
   useEffect(() => {
     if (!ready) return;
+    if (skipInitialList.current) {
+      skipInitialList.current = false;
+      return;
+    }
     let disposed = false;
     setLoading(true);
     setListError("");

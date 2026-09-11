@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  createAdminBootstrap,
   createAdminFunctionHandlers,
   createParticipantRecoveryHandlers,
   getAdminRegistrationSummary,
@@ -7,6 +8,43 @@ import {
   toAdminAccessState,
   type AdminRegistrationServicePort,
 } from "./admin.functions";
+
+describe("admin bootstrap loading", () => {
+  it("authorizes once and loads the initial payload only for active administrators", async () => {
+    const findActive = vi.fn(async () => ({ id: "membership-1", userId: "admin-1" }));
+    const load = vi.fn(async () => ({ registrations: 25, summary: 3 }));
+
+    await expect(
+      createAdminBootstrap({
+        userId: "admin-1",
+        email: "admin@example.com",
+        findActive,
+        load,
+      }),
+    ).resolves.toEqual({
+      access: { status: "authorized", userId: "admin-1", email: "admin@example.com" },
+      data: { registrations: 25, summary: 3 },
+    });
+
+    expect(findActive).toHaveBeenCalledOnce();
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it("does not load protected page data for a nonmember", async () => {
+    const load = vi.fn();
+
+    await expect(
+      createAdminBootstrap({
+        userId: "member-1",
+        email: "member@example.com",
+        findActive: async () => null,
+        load,
+      }),
+    ).resolves.toEqual({ access: { status: "forbidden" } });
+
+    expect(load).not.toHaveBeenCalled();
+  });
+});
 
 describe("admin access state", () => {
   it("returns the minimum authorized identity and drops unrelated JWT claims", () => {
@@ -168,6 +206,55 @@ describe("admin registration handlers", () => {
 
     await expect(createAdminFunctionHandlers(service).summary()).resolves.toEqual(expected);
     expect(getAdminRegistrationSummary.method).toBe("GET");
+  });
+
+  it("loads the initial list and summary in parallel for the registrations page", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const calls: string[] = [];
+    const service: AdminRegistrationServicePort = {
+      async list() {
+        calls.push("list");
+        await gate;
+        return { rows: [], total: 0, page: 1, pageSize: 25 };
+      },
+      async export() {
+        throw new Error("Unexpected export");
+      },
+      async summary() {
+        calls.push("summary");
+        await gate;
+        return {
+          total: 0,
+          paid: 0,
+          pending: 0,
+          legacy: 0,
+          receivedCents: 0,
+          pendingRegentCents: 0,
+          byChoir: [],
+        };
+      },
+    };
+
+    const promise = createAdminBootstrap({
+      userId: "admin-1",
+      email: null,
+      findActive: async () => ({ id: "membership-1", userId: "admin-1" }),
+      load: async () => {
+        const handlers = createAdminFunctionHandlers(service);
+        const [registrations, summary] = await Promise.all([
+          handlers.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 }),
+          handlers.summary(),
+        ]);
+        return { registrations, summary };
+      },
+    });
+
+    await vi.waitFor(() => expect(calls).toEqual(["list", "summary"]));
+    release();
+    await expect(promise).resolves.toMatchObject({ access: { status: "authorized" } });
   });
 });
 

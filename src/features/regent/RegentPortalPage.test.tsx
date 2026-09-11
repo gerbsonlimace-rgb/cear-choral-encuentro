@@ -57,6 +57,36 @@ function setup(
 }
 
 describe("RegentPortalPage", () => {
+  it("renders the aggregated initial payload without repeating portal reads", async () => {
+    const loadParticipants = vi.fn();
+    const loadSummary = vi.fn();
+    const loadAdminChoirs = vi.fn();
+    setup({
+      loadParticipants,
+      loadSummary,
+      loadAdminChoirs,
+      initialData: {
+        access: {
+          status: "authorized",
+          role: "regent",
+          choirId: choir.id,
+          choirName: choir.name,
+          name: "Ana Regente",
+          email: "ana@example.com",
+        },
+        choirs: [],
+        selectedChoirId: choir.id,
+        summary,
+        participants: emptyPage,
+      },
+    });
+
+    expect(await screen.findByText("23")).toBeInTheDocument();
+    expect(loadParticipants).not.toHaveBeenCalled();
+    expect(loadSummary).not.toHaveBeenCalled();
+    expect(loadAdminChoirs).not.toHaveBeenCalled();
+  });
+
   it("shows four financial summary cards and keeps the choir fixed for a regent", async () => {
     setup();
 

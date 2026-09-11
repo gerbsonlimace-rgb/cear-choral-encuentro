@@ -13,6 +13,7 @@ import {
   type RegentAccess,
 } from "@/features/regent/regent.domain";
 import type { PortalAccessProbe } from "@/features/regent/regent-auth.server";
+import type { AdminChoir } from "@/features/choirs/choir-pricing.domain";
 import type { PortalSummary } from "@/features/regent/regent-payments.domain";
 import {
   complementCheckoutSchema,
@@ -57,6 +58,44 @@ export const getRegentAccess = createServerFn({ method: "GET" }).handler(async (
   const { getPortalRequestAccess } = await import("@/features/regent/regent-auth.server");
   return toRegentAccessState(await getPortalRequestAccess());
 });
+
+export type RegentPortalBootstrap = {
+  access: RegentAccess;
+  choirs: AdminChoir[];
+  selectedChoirId: string;
+  summary: PortalSummary | null;
+  participants: PortalParticipantPage | null;
+};
+
+export const getRegentPortalBootstrap = createServerFn({ method: "GET" }).handler(
+  async (): Promise<RegentPortalBootstrap> => {
+    const { getPortalRequestAccess } = await import("@/features/regent/regent-auth.server");
+    const probe = await getPortalRequestAccess();
+    const access = toRegentAccessState(probe);
+    if (!probe.authenticated || !probe.access || access.status !== "authorized") {
+      return { access, choirs: [], selectedChoirId: "", summary: null, participants: null };
+    }
+
+    let choirs: AdminChoir[] = [];
+    let selectedChoirId = access.role === "regent" ? access.choirId : "";
+    if (access.role === "admin") {
+      const { getChoirPricingService } = await import("@/features/choirs/choir-pricing.server");
+      choirs = (await getChoirPricingService().getAdminData()).choirs;
+      selectedChoirId = choirs[0]?.id ?? "";
+    }
+    if (!selectedChoirId) {
+      return { access, choirs, selectedChoirId, summary: null, participants: null };
+    }
+
+    const handlers = await loadRegentPortalHandlers();
+    const input = access.role === "admin" ? { choirId: selectedChoirId } : {};
+    const [summary, participants] = await Promise.all([
+      handlers.summary(probe.access, input),
+      handlers.list(probe.access, { ...input, search: "", page: 1, pageSize: 20 }),
+    ]);
+    return { access, choirs, selectedChoirId, summary, participants };
+  },
+);
 
 const portalQuerySchema = z
   .object({
@@ -215,7 +254,9 @@ type RegentPasswordProofs = {
 };
 
 export type RegentPasswordChangeResult =
-  { status: "success" } | { status: "rejected" } | { status: "recovery_required" };
+  | { status: "success" }
+  | { status: "rejected" }
+  | { status: "recovery_required" };
 
 export type RegentPasswordCompletionResult = { status: "success" } | { status: "not_ready" };
 

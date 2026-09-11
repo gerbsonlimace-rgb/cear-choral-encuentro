@@ -13,7 +13,18 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
 
 export type AdminAccessState =
-  { status: "authorized"; userId: string; email: string | null } | { status: "forbidden" };
+  | { status: "authorized"; userId: string; email: string | null }
+  | { status: "forbidden" };
+
+export type AdminPageBootstrap<T> = {
+  access: AdminAccessState;
+  data?: T;
+};
+
+export type AdminRegistrationsBootstrap = AdminPageBootstrap<{
+  registrations: AdminRegistrationPage;
+  summary: AdminRegistrationSummary;
+}>;
 
 type AdminAccessInput = {
   userId: string;
@@ -35,6 +46,23 @@ export function toAdminAccessState<T extends AdminAccessInput>(input: T): AdminA
     userId: input.userId,
     email: input.email,
   };
+}
+
+export async function createAdminBootstrap<T>({
+  userId,
+  email,
+  findActive,
+  load,
+}: {
+  userId: string;
+  email: string | null;
+  findActive: (userId: string) => Promise<{ id: string; userId: string } | null>;
+  load: () => Promise<T>;
+}): Promise<AdminPageBootstrap<T>> {
+  const membership = await findActive(userId);
+  const access = toAdminAccessState({ userId, email, authorized: membership !== null });
+  if (!membership) return { access };
+  return { access, data: await load() };
 }
 
 export function createAdminFunctionHandlers(service: AdminRegistrationServicePort) {
@@ -85,6 +113,29 @@ export const getAdminAccess = createServerFn({ method: "GET" })
       userId: context.userId,
       email: typeof context.claims.email === "string" ? context.claims.email : null,
       authorized: membership !== null,
+    });
+  });
+
+export const getAdminRegistrationsBootstrap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ getAdminAuthorizer }, { getAdminRegistrationService }] = await Promise.all([
+      import("@/features/admin/admin-auth.server"),
+      import("@/features/admin/admin-registration.server"),
+    ]);
+    return createAdminBootstrap<NonNullable<AdminRegistrationsBootstrap["data"]>>({
+      userId: context.userId,
+      email: typeof context.claims.email === "string" ? context.claims.email : null,
+      findActive: (userId) => getAdminAuthorizer().findActive(userId),
+      load: async () => {
+        const service = getAdminRegistrationService();
+        const handlers = createAdminFunctionHandlers(service);
+        const [registrations, summary] = await Promise.all([
+          handlers.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 }),
+          handlers.summary(),
+        ]);
+        return { registrations, summary };
+      },
     });
   });
 
