@@ -24,6 +24,10 @@ export type RegistrationPaymentRecord = {
   paymentMethod: "pix" | "credit_card" | null;
   installments: number | null;
   receiptUrl: string | null;
+  participantName?: string | null;
+  choirName?: string | null;
+  paidAmountCents?: number | null;
+  paidAt?: string | null;
 };
 
 export type PublicPaymentStatus =
@@ -33,7 +37,14 @@ export type PublicPaymentStatus =
       paymentMethod: "pix" | "credit_card";
       installments: number;
       receiptUrl?: string;
+      orderNsu?: string;
+      amountCents?: number;
+      paidAmountCents?: number;
+      paidAt?: string;
+      participantName?: string;
+      choirName?: string;
     };
+
 
 export type RegistrationRepository = {
   createPending(
@@ -151,12 +162,18 @@ function toPublicPaymentStatus(record: RegistrationPaymentRecord): PublicPayment
     status: "paid",
     paymentMethod: record.paymentMethod,
     installments: record.installments,
+    orderNsu: record.orderNsu,
+    amountCents: record.amountCents,
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
+    ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
+    ...(record.paidAt ? { paidAt: record.paidAt } : {}),
+    ...(record.participantName ? { participantName: record.participantName } : {}),
+    ...(record.choirName ? { choirName: record.choirName } : {}),
   };
 }
 
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url" as const;
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at" as const;
 
 function mapPaymentRow(row: {
   id: string;
@@ -167,6 +184,10 @@ function mapPaymentRow(row: {
   payment_method: string | null;
   installments: number | null;
   receipt_url: string | null;
+  name?: string | null;
+  choir_name?: string | null;
+  paid_amount_cents?: number | null;
+  paid_at?: string | null;
 }): RegistrationPaymentRecord {
   if (!row.order_nsu || !row.amount_cents || !["pending", "paid"].includes(row.payment_status)) {
     throw new Error("Registro de pagamento inválido.");
@@ -181,8 +202,13 @@ function mapPaymentRow(row: {
     paymentMethod: row.payment_method as "pix" | "credit_card" | null,
     installments: row.installments,
     receiptUrl: row.receipt_url,
+    participantName: row.name ?? null,
+    choirName: row.choir_name ?? null,
+    paidAmountCents: row.paid_amount_cents ?? null,
+    paidAt: row.paid_at ?? null,
   };
 }
+
 
 export function createSupabaseRegistrationRepository(): RegistrationRepository {
   const findPayment = async (orderNsu: string) => {

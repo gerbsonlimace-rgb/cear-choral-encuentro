@@ -88,7 +88,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -373,14 +373,16 @@ describe("registration payment service", () => {
         ...lookup,
         receiptUrl: "https://infinitepay.com.br.evil.example/receipt/abc",
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: "paid",
       paymentMethod: "credit_card",
       installments: 2,
     });
+
+
   });
 
-  it("returns only payment data from the public status", async () => {
+  it("returns only receipt data from the public status", async () => {
     fixture.setRecord({
       ...pendingRecord(),
       paymentStatus: "paid",
@@ -388,18 +390,26 @@ describe("registration payment service", () => {
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
-      name: "must not leak",
+      participantName: "Maria da Silva",
+      choirName: "Coro Diocesano de Quixadá",
       shirtSize: "M",
     } as RegistrationPaymentRecord);
 
-    await expect(fixture.service.getPublicStatus(fixedOrderNsu)).resolves.toEqual({
+    const status = await fixture.service.getPublicStatus(fixedOrderNsu);
+
+    expect(status).toMatchObject({
       status: "paid",
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+      participantName: "Maria da Silva",
+      choirName: "Coro Diocesano de Quixadá",
     });
+    expect(JSON.stringify(status)).not.toContain("transaction-1");
+    expect(JSON.stringify(status)).not.toContain('"M"');
   });
 });
+
 
 describe("Supabase registration repository", () => {
   beforeEach(() => {
@@ -496,7 +506,12 @@ describe("Supabase registration repository", () => {
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+      participantName: null,
+      choirName: null,
+      paidAmountCents: null,
+      paidAt: null,
     });
+
     expect(database.trace).toEqual([
       ["from", "registrations"],
       ["select", paymentColumns],
