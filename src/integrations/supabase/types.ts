@@ -187,61 +187,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sponsors: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          logo_path: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          logo_path: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          amount_cents?: number;
-          checkout_url?: string | null;
-          choir_id?: string;
-          created_at?: string;
-          id?: string;
-          infinitepay_invoice_slug?: string | null;
-          infinitepay_transaction_nsu?: string | null;
-          initiated_as?: string;
-          initiated_by?: string;
-          initiated_by_name?: string;
-          installments?: number | null;
-          order_nsu?: string;
-          paid_amount_cents?: number | null;
-          paid_at?: string | null;
-          payment_method?: string | null;
-          receipt_url?: string | null;
-          registration_id?: string;
-          status?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "registration_complement_payments_choir_id_fkey";
-            columns: ["choir_id"];
-            isOneToOne: false;
-            referencedRelation: "choirs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "registration_complement_payments_registration_id_fkey";
-            columns: ["registration_id"];
-            isOneToOne: false;
-            referencedRelation: "registrations";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       participant_access_events: {
         Row: {
           admin_user_id: string | null
@@ -327,6 +272,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "participant_accounts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registration_complement_payments: {
+        Row: {
+          amount_cents: number
+          checkout_url: string | null
+          choir_id: string
+          created_at: string
+          id: string
+          infinitepay_invoice_slug: string | null
+          infinitepay_transaction_nsu: string | null
+          initiated_as: string
+          initiated_by: string
+          initiated_by_name: string
+          installments: number | null
+          order_nsu: string
+          paid_amount_cents: number | null
+          paid_at: string | null
+          payment_method: string | null
+          receipt_url: string | null
+          registration_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          checkout_url?: string | null
+          choir_id: string
+          created_at?: string
+          id?: string
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          initiated_as: string
+          initiated_by: string
+          initiated_by_name: string
+          installments?: number | null
+          order_nsu: string
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          registration_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          checkout_url?: string | null
+          choir_id?: string
+          created_at?: string
+          id?: string
+          infinitepay_invoice_slug?: string | null
+          infinitepay_transaction_nsu?: string | null
+          initiated_as?: string
+          initiated_by?: string
+          initiated_by_name?: string
+          installments?: number | null
+          order_nsu?: string
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          registration_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_complement_payments_choir_id_fkey"
+            columns: ["choir_id"]
+            isOneToOne: false
+            referencedRelation: "choirs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_complement_payments_registration_id_fkey"
             columns: ["registration_id"]
             isOneToOne: false
             referencedRelation: "registrations"
@@ -450,187 +476,124 @@ export type Database = {
           },
         ]
       }
-      registration_complement_payments: {
+      sponsors: {
         Row: {
-          amount_cents: number
-          checkout_url: string | null
-          choir_id: string
           created_at: string
           id: string
-          infinitepay_invoice_slug: string | null
-          infinitepay_transaction_nsu: string | null
-          initiated_as: string
-          initiated_by: string
-          initiated_by_name: string
-          installments: number | null
-          order_nsu: string
-          paid_amount_cents: number | null
-          paid_at: string | null
-          payment_method: string | null
-          receipt_url: string | null
-          registration_id: string
-          status: string
+          is_active: boolean
+          logo_path: string
+          name: string
           updated_at: string
         }
         Insert: {
-          amount_cents: number
-          checkout_url?: string | null
-          choir_id: string
           created_at?: string
           id?: string
-          infinitepay_invoice_slug?: string | null
-          infinitepay_transaction_nsu?: string | null
-          initiated_as: string
-          initiated_by: string
-          initiated_by_name: string
-          installments?: number | null
-          order_nsu: string
-          paid_amount_cents?: number | null
-          paid_at?: string | null
-          payment_method?: string | null
-          receipt_url?: string | null
-          registration_id: string
-          status?: string
+          is_active?: boolean
+          logo_path: string
+          name: string
           updated_at?: string
         }
         Update: {
-          amount_cents?: number
-          checkout_url?: string | null
-          choir_id?: string
           created_at?: string
           id?: string
-          infinitepay_invoice_slug?: string | null
-          infinitepay_transaction_nsu?: string | null
-          initiated_as?: string
-          initiated_by?: string
-          initiated_by_name?: string
-          installments?: number | null
-          order_nsu?: string
-          paid_amount_cents?: number | null
-          paid_at?: string | null
-          payment_method?: string | null
-          receipt_url?: string | null
-          registration_id?: string
-          status?: string
+          is_active?: boolean
+          logo_path?: string
+          name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "registration_complement_payments_choir_id_fkey"
-            columns: ["choir_id"]
-            isOneToOne: false
-            referencedRelation: "choirs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "registration_complement_payments_registration_id_fkey"
-            columns: ["registration_id"]
-            isOneToOne: false
-            referencedRelation: "registrations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      claim_choir_regent_admin_password_candidate_operation: {
+        Args: {
+          p_candidate_fingerprint: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      claim_choir_regent_password_candidate_operation: {
+        Args: {
+          p_candidate_fingerprint: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      claim_choir_regent_password_operation: {
+        Args: {
+          p_membership_id: string
+          p_operation_hash: string
+          p_operation_kind: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       claim_participant_provisioning: {
         Args: { p_claim_id: string; p_registration_id: string }
         Returns: boolean
       }
-      replace_active_choir_regent: {
-        Args: {
-          p_candidate_fingerprint: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
-      claim_choir_regent_password_candidate_operation: {
-        Args: {
-          p_candidate_fingerprint: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
-      claim_choir_regent_password_operation: {
-        Args: {
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_operation_kind: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
       finish_choir_regent_password_operation: {
         Args: {
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_operation_kind: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_membership_id: string
+          p_operation_hash: string
+          p_operation_kind: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       mark_choir_regent_admin_password_operation_retryable: {
         Args: {
-          p_candidate_fingerprint: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_candidate_fingerprint: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       mark_choir_regent_password_operation_retryable: {
         Args: {
-          p_candidate_fingerprint: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_candidate_fingerprint: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       release_choir_regent_admin_password_candidate_operation: {
         Args: {
-          p_candidate_fingerprint: string;
-          p_expected_stage: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_candidate_fingerprint: string
+          p_expected_stage: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       release_choir_regent_password_candidate_operation: {
         Args: {
-          p_expected_stage: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_expected_stage: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       release_choir_regent_password_operation: {
         Args: {
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_operation_kind: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
-      verify_choir_regent_password_operation_candidate: {
-        Args: {
-          p_candidate_fingerprint: string;
-          p_membership_id: string;
-          p_operation_hash: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
+          p_membership_id: string
+          p_operation_hash: string
+          p_operation_kind: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       replace_active_choir_regent: {
         Args: {
           p_choir_id: string
@@ -639,7 +602,38 @@ export type Database = {
           p_name: string
           p_user_id: string
         }
-        Returns: Database["public"]["Tables"]["choir_regents"]["Row"]
+        Returns: {
+          choir_id: string
+          email: string
+          granted_at: string
+          granted_by: string
+          id: string
+          name: string
+          password_change_candidate_fingerprint: string | null
+          password_change_operation_kind: string | null
+          password_change_operation_previous_required: boolean | null
+          password_change_operation_stage: string | null
+          password_change_required: boolean
+          password_change_retry_token_hash: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "choir_regents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      verify_choir_regent_password_operation_candidate: {
+        Args: {
+          p_candidate_fingerprint: string
+          p_membership_id: string
+          p_operation_hash: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
