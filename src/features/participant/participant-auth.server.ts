@@ -145,7 +145,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
             ...(row.voice_part === null
               ? {}
               : { voicePart: voicePartSchema.parse(row.voice_part) }),
-            includeShirt: row.
+            
             ...(row.pricing_type === null
               ? {}
               : { pricingType: requirePricingType(row.pricing_type) }),
