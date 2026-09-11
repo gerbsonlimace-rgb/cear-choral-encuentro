@@ -7,7 +7,6 @@ import {
   paymentLookupSchema,
   registrationResumeSchema,
   registrationSchema,
-  shirtSizeSchema,
 } from "./registration.domain";
 
 const standardQuote = {

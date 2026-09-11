@@ -107,7 +107,7 @@ describe("choir pricing domain", () => {
     expect(
       resolveChoirPrice(
         { ...baseChoir, usesPromotionalPrice: true },
-        { standardPriceCents: 30000, promotionalPriceCents: 10000, shirtPriceCents: 5000 },
+        { standardPriceCents: 30000, promotionalPriceCents: 10000 },
       ),
     ).toEqual({
       pricingType: "promotional",
@@ -120,13 +120,13 @@ describe("choir pricing domain", () => {
     expect(
       resolveChoirPrice(
         { ...baseChoir, isActive: false },
-        { standardPriceCents: 30000, promotionalPriceCents: 10000, shirtPriceCents: 5000 },
+        { standardPriceCents: 30000, promotionalPriceCents: 10000 },
       ),
     ).toBeNull();
     expect(
       resolveChoirPrice(
         { ...baseChoir, usesPromotionalPrice: true },
-        { standardPriceCents: 30000, promotionalPriceCents: null, shirtPriceCents: null },
+        { standardPriceCents: 30000, promotionalPriceCents: null },
       ),
     ).toBeNull();
     expect(
