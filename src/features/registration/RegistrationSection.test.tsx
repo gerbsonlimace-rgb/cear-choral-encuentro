@@ -176,6 +176,30 @@ describe("RegistrationSection", () => {
     expect(navigateToCheckout).not.toHaveBeenCalled();
   });
 
+  it("keeps the form and points a duplicate CPF to Retomar pagamento", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({
+      ok: false,
+      message: "Já existe uma inscrição para este CPF. Use Retomar pagamento.",
+    });
+    render(
+      <RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} />,
+    );
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+    await fillRequiredFields(user);
+
+    await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
+
+    const resumeLink = await screen.findByRole("link", { name: "Retomar pagamento" });
+    expect(resumeLink).toHaveAttribute("href", "#retomar-pagamento");
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
+    expect(screen.getByLabelText("Coro/Diocese")).toHaveValue(quixadaId);
+    const photoInput = screen.getByLabelText("Foto do participante") as HTMLInputElement;
+    expect(photoInput.files).toHaveLength(1);
+    expect(photoInput.files?.[0]?.name).toBe("maria.jpg");
+  }, 10_000);
+
   it("offers a retry when the initial configuration request fails", async () => {
     const user = userEvent.setup();
     const retryConfiguration = vi

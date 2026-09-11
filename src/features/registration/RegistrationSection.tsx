@@ -33,6 +33,7 @@ import {
   type VoicePart,
 } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
+import { RegistrationResumeCard } from "./RegistrationResumeCard";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -157,6 +158,7 @@ export function RegistrationSection({
   const [photoFileName, setPhotoFileName] = useState("");
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
+  const [hasCpfConflict, setHasCpfConflict] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const mounted = useRef(false);
@@ -262,6 +264,7 @@ export function RegistrationSection({
 
     setErrors({});
     setCheckoutError("");
+    setHasCpfConflict(false);
     setIsSubmitting(true);
     try {
       const result = await startCheckout(parsedForm.data);
@@ -270,7 +273,9 @@ export function RegistrationSection({
         const shouldRefresh =
           normalizedMessage.includes("configuração de preços mudou") ||
           normalizedMessage.includes("coro selecionado não está disponível");
-        setCheckoutError(result.message);
+        const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
+        setCheckoutError(cpfConflict ? "Já existe uma inscrição para este CPF." : result.message);
+        setHasCpfConflict(cpfConflict);
         if (shouldRefresh) await refreshConfiguration(true);
         return;
       }
@@ -281,11 +286,15 @@ export function RegistrationSection({
       const shouldRefresh =
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
+      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
       setCheckoutError(
-        shouldRefresh
-          ? "A configuração de preços mudou. Confira o valor e tente novamente."
-          : "Não foi possível preparar o pagamento. Tente novamente.",
+        cpfConflict
+          ? "Já existe uma inscrição para este CPF."
+          : shouldRefresh
+            ? "A configuração de preços mudou. Confira o valor e tente novamente."
+            : "Não foi possível preparar o pagamento. Tente novamente.",
       );
+      setHasCpfConflict(cpfConflict);
       if (shouldRefresh) await refreshConfiguration(true);
     } finally {
       setIsSubmitting(false);
@@ -638,6 +647,14 @@ export function RegistrationSection({
               {checkoutError && (
                 <p role="alert" aria-live="polite" className="text-sm text-destructive">
                   {checkoutError}
+                  {hasCpfConflict && (
+                    <>
+                      {" "}
+                      <a href="#retomar-pagamento" className="font-bold underline">
+                        Retomar pagamento
+                      </a>
+                    </>
+                  )}
                 </p>
               )}
 
@@ -664,6 +681,7 @@ export function RegistrationSection({
             />
           </CardContent>
         </Card>
+        <RegistrationResumeCard />
       </div>
     </section>
   );
