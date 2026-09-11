@@ -18,7 +18,7 @@ export const Route = createFileRoute("/regente/pagamento")({
     if (access.status === "password_change_required") {
       throw redirect({ to: "/regente/alterar-senha" });
     }
-    if (access.status !== "authorized") throw redirect({ to: "/regente/login" });
+    if (access.status !== "authorized") throw redirect({ to: "/acessar" });
   },
   component: RegentPaymentReturnRoute,
 });

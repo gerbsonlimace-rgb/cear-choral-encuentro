@@ -16,8 +16,8 @@ function ParticipantPortalRoute() {
   const navigate = useNavigate();
   return (
     <ParticipantPortalPage
-      onMissingAccess={() => navigate({ to: "/participante/login" })}
-      onSignedOut={() => navigate({ to: "/participante/login" })}
+      onMissingAccess={() => navigate({ to: "/acessar" })}
+      onSignedOut={() => navigate({ to: "/acessar" })}
     />
   );
 }

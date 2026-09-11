@@ -1,8 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AdminLoginPage } from "@/features/admin/AdminLoginPage";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/login")({
-  component: AdminLoginRoute,
+  component: () => <Navigate to="/acessar" replace />,
   head: () => ({
     meta: [
       { title: "Acesso administrativo | Encontro de Coros" },
@@ -10,8 +9,3 @@ export const Route = createFileRoute("/admin/login")({
     ],
   }),
 });
-
-function AdminLoginRoute() {
-  const navigate = useNavigate();
-  return <AdminLoginPage onAuthorized={() => navigate({ to: "/admin/inscricoes" })} />;
-}

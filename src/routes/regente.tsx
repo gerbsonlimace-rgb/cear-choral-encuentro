@@ -6,7 +6,7 @@ import { getRegentAccess } from "@/lib/regent.functions";
 
 function getRegentPortalRedirect(access: RegentAccess) {
   if (access.status === "password_change_required") return "/regente/alterar-senha" as const;
-  if (access.status !== "authorized") return "/regente/login" as const;
+  if (access.status !== "authorized") return "/acessar" as const;
   return null;
 }
 
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/regente")({
     const access = await getRegentAccess();
     const destination = getRegentPortalRedirect(access);
     if (destination) throw redirect({ to: destination });
-    if (access.status !== "authorized") throw redirect({ to: "/regente/login" });
+    if (access.status !== "authorized") throw redirect({ to: "/acessar" });
     return { regentAccess: access };
   },
   component: RegentPortalRoute,

@@ -1,8 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { RegentLoginPage } from "@/features/regent/RegentLoginPage";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/regente/login")({
-  component: RegentLoginRoute,
+  component: () => <Navigate to="/acessar" replace />,
   head: () => ({
     meta: [
       { title: "Acesso do regente | Encontro de Coros" },
@@ -10,13 +9,3 @@ export const Route = createFileRoute("/regente/login")({
     ],
   }),
 });
-
-function RegentLoginRoute() {
-  const navigate = useNavigate();
-  return (
-    <RegentLoginPage
-      onPasswordChangeRequired={() => navigate({ to: "/regente/alterar-senha" })}
-      onAuthorized={() => navigate({ href: "/regente" })}
-    />
-  );
-}

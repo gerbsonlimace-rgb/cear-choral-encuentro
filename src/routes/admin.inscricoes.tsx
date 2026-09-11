@@ -15,8 +15,8 @@ function AdminRegistrationsRoute() {
   const navigate = useNavigate();
   return (
     <AdminRegistrationsPage
-      onSignedOut={() => navigate({ to: "/admin/login" })}
-      onMissingSession={() => navigate({ to: "/admin/login" })}
+      onSignedOut={() => navigate({ to: "/acessar" })}
+      onMissingSession={() => navigate({ to: "/acessar" })}
     />
   );
 }

@@ -15,8 +15,8 @@ function AdminChoirsRoute() {
   const navigate = useNavigate();
   return (
     <AdminChoirsPage
-      onSignedOut={() => navigate({ to: "/admin/login" })}
-      onMissingSession={() => navigate({ to: "/admin/login" })}
+      onSignedOut={() => navigate({ to: "/acessar" })}
+      onMissingSession={() => navigate({ to: "/acessar" })}
     />
   );
 }

@@ -78,11 +78,11 @@ afterEach(() => vi.clearAllMocks());
 
 describe("/regente route behavior", () => {
   it.each<RegentAccess>([{ status: "unauthenticated" }, { status: "forbidden" }])(
-    "redirects $status access to the regent login",
+    "redirects $status access to unified access",
     async (access) => {
       const { router } = await renderRoute("/regente", access);
-      await waitFor(() => expect(router.state.location.pathname).toBe("/regente/login"));
-      expect(screen.getByRole("heading", { name: "Área do regente" })).toBeInTheDocument();
+      await waitFor(() => expect(router.state.location.pathname).toBe("/acessar"));
+      expect(screen.getByRole("heading", { name: "Acessar portal" })).toBeInTheDocument();
       expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     },
   );

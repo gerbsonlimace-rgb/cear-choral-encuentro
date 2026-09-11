@@ -17,7 +17,7 @@ function RegentPasswordChangeRoute() {
     <RegentPasswordChangePage
       onCompleted={() => navigate({ href: "/regente" })}
       onAuthorized={() => navigate({ href: "/regente" })}
-      onLoginRequired={() => navigate({ to: "/regente/login" })}
+      onLoginRequired={() => navigate({ to: "/acessar" })}
     />
   );
 }

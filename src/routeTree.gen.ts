@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -28,14 +29,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RegenteRoute = RegenteRouteImport.update({
-  id: '/regente',
-  path: '/regente',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParticipanteRoute = ParticipanteRouteImport.update({
-  id: '/participante',
-  path: '/participante',
+const AcessarRoute = AcessarRouteImport.update({
+  id: '/acessar',
+  path: '/acessar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PagamentoRoute = PagamentoRouteImport.update({
@@ -101,6 +97,7 @@ const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acessar': typeof AcessarRoute
   '/pagamento': typeof PagamentoRoute
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -117,6 +114,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acessar': typeof AcessarRoute
   '/pagamento': typeof PagamentoRoute
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -134,6 +132,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acessar': typeof AcessarRoute
   '/pagamento': typeof PagamentoRoute
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -152,6 +151,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acessar'
     | '/pagamento'
     | '/regente'
     | '/sitemap.xml'
@@ -168,6 +168,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acessar'
     | '/pagamento'
     | '/regente'
     | '/sitemap.xml'
@@ -184,6 +185,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/acessar'
     | '/pagamento'
     | '/regente'
     | '/sitemap.xml'
@@ -201,6 +203,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcessarRoute: typeof AcessarRoute
   PagamentoRoute: typeof PagamentoRoute
   RegenteRoute: typeof RegenteRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -222,18 +225,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/regente': {
-      id: '/regente'
-      path: '/regente'
-      fullPath: '/regente'
-      preLoaderRoute: typeof RegenteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/participante': {
-      id: '/participante'
-      path: '/participante'
-      fullPath: '/participante'
-      preLoaderRoute: typeof ParticipanteRouteImport
+    '/acessar': {
+      id: '/acessar'
+      path: '/acessar'
+      fullPath: '/acessar'
+      preLoaderRoute: typeof AcessarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pagamento': {
@@ -340,6 +336,7 @@ const RegenteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcessarRoute: AcessarRoute,
   PagamentoRoute: PagamentoRoute,
   RegenteRoute: RegenteRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

@@ -1,9 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-
-import { ParticipantLoginPage } from "@/features/participant/ParticipantLoginPage";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/participante/login")({
-  component: ParticipantLoginRoute,
+  component: () => <Navigate to="/acessar" replace />,
   head: () => ({
     meta: [
       { title: "Área do participante | Encontro de Coros" },
@@ -11,8 +9,3 @@ export const Route = createFileRoute("/participante/login")({
     ],
   }),
 });
-
-function ParticipantLoginRoute() {
-  const navigate = useNavigate();
-  return <ParticipantLoginPage onAuthorized={() => navigate({ href: "/participante" })} />;
-}
