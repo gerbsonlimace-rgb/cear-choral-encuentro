@@ -159,9 +159,79 @@ function PaymentMessage({ children, title }: { children?: ReactNode; title: stri
   );
 }
 
+function ConfirmedPayment({
+  payment,
+}: {
+  payment: Extract<PublicPaymentStatus, { status: "paid" }>;
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const rows = buildReceiptRows(payment);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadReceiptPdf(payment);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <Card className="w-full max-w-xl overflow-hidden border-border bg-card p-0 shadow-lg shadow-teal/10">
+        <div className="bg-teal px-6 py-8 text-center text-teal-foreground sm:px-8">
+          <CheckCircle2 className="mx-auto size-12" aria-hidden="true" />
+          <h1 className="mt-3 font-display text-3xl font-extrabold">Inscrição confirmada</h1>
+          <p className="mt-2 text-sm opacity-90">
+            Sua vaga no II Encontro de Coros Diocesanos e Litúrgicos está garantida.
+          </p>
+        </div>
+        <CardContent className="p-6 sm:p-8">
+          <dl className="divide-y divide-border">
+            {rows.map((row) => (
+              <div
+                key={row.label}
+                className="flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
+              >
+                <dt className="text-sm text-muted-foreground">{row.label}</dt>
+                <dd className="font-semibold text-foreground sm:text-right">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <Button
+              className="w-full rounded-full bg-teal font-bold text-teal-foreground hover:bg-teal/90"
+              disabled={downloading}
+              onClick={() => void handleDownload()}
+            >
+              <Download aria-hidden="true" />
+              {downloading ? "Gerando PDF…" : "Baixar comprovante em PDF"}
+            </Button>
+            {payment.receiptUrl && (
+              <a
+                href={payment.receiptUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-teal underline-offset-4 hover:underline"
+              >
+                Ver comprovante
+              </a>
+            )}
+            <a href="/" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+              Voltar ao início
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
 function DuplicatePaymentWarning() {
   return <p className="mt-3 text-muted-foreground">Não faça outro pagamento.</p>;
 }
+
 
 function RetryButton({ onClick }: { onClick: () => void }) {
   return (
