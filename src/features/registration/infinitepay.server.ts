@@ -34,11 +34,22 @@ export type CheckedPayment =
       paymentMethod: PaymentMethod;
     };
 
+export class InfinitePayProviderError extends Error {
+  constructor(
+    readonly outcome: "confirmed_rejection" | "unknown",
+    message = PROVIDER_ERROR_MESSAGE,
+  ) {
+    super(message);
+    this.name = "InfinitePayProviderError";
+  }
+}
+
 export type InfinitePayClient = {
   createCheckout(input: {
     orderNsu: string;
     items: CheckoutItem[];
-    customer: { name: string; email: string; phoneNumber: string };
+    customer?: { name: string; email: string; phoneNumber?: string };
+    redirectPath?: "/pagamento" | "/regente/pagamento";
   }): Promise<{ url: string }>;
   checkPayment(input: PaymentLookup): Promise<CheckedPayment>;
 };
@@ -47,7 +58,7 @@ function isAllowedInfinitePayHost(hostname: string, roots: readonly string[]) {
   return roots.some((root) => hostname === root || hostname.endsWith(`.${root}`));
 }
 
-function isSafeCheckoutUrl(value: string) {
+export function isSafeInfinitePayCheckoutUrl(value: string) {
   try {
     const url = new URL(value);
     return (
@@ -87,17 +98,18 @@ async function postJson(fetcher: typeof fetch, path: string, body: unknown) {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new Error(PROVIDER_ERROR_MESSAGE);
+    throw new InfinitePayProviderError("unknown");
   }
 
   if (!response.ok) {
-    throw new Error(PROVIDER_ERROR_MESSAGE);
+    const confirmedRejection = [400, 401, 403, 404, 422].includes(response.status);
+    throw new InfinitePayProviderError(confirmedRejection ? "confirmed_rejection" : "unknown");
   }
 
   try {
     return await response.json();
   } catch {
-    throw new Error(PROVIDER_ERROR_MESSAGE);
+    throw new InfinitePayProviderError("unknown");
   }
 }
 
@@ -107,24 +119,36 @@ export function createInfinitePayClient(
 ): InfinitePayClient {
   return {
     async createCheckout(input) {
-      const response = checkoutResponseSchema.parse(
-        await postJson(fetcher, "/links", {
-          handle: config.handle,
-          items: input.items,
-          order_nsu: input.orderNsu,
-          redirect_url: withSitePath(config.siteUrl, "/pagamento"),
-          webhook_url: withSitePath(config.siteUrl, "/api/infinitepay-webhook"),
-          customer: {
-            name: input.customer.name,
-            email: input.customer.email,
-            phone_number: input.customer.phoneNumber,
-          },
-        }),
-      );
+      let response: z.infer<typeof checkoutResponseSchema>;
+      try {
+        response = checkoutResponseSchema.parse(
+          await postJson(fetcher, "/links", {
+            handle: config.handle,
+            items: input.items,
+            order_nsu: input.orderNsu,
+            redirect_url: withSitePath(config.siteUrl, input.redirectPath ?? "/pagamento"),
+            webhook_url: withSitePath(config.siteUrl, "/api/infinitepay-webhook"),
+            ...(input.customer
+              ? {
+                  customer: {
+                    name: input.customer.name,
+                    email: input.customer.email,
+                    ...(input.customer.phoneNumber
+                      ? { phone_number: input.customer.phoneNumber }
+                      : {}),
+                  },
+                }
+              : {}),
+          }),
+        );
+      } catch (caught) {
+        if (caught instanceof InfinitePayProviderError) throw caught;
+        throw new InfinitePayProviderError("unknown");
+      }
       const url = response.url ?? response.checkout_url;
 
-      if (!url || !isSafeCheckoutUrl(url)) {
-        throw new Error("Endereço de checkout inválido");
+      if (!url || !isSafeInfinitePayCheckoutUrl(url)) {
+        throw new InfinitePayProviderError("unknown", "Endereço de checkout inválido");
       }
 
       return { url };

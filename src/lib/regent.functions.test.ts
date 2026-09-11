@@ -20,6 +20,7 @@ import {
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
+  startComplementCheckout,
   type RegentPasswordChangeRepository,
 } from "./regent.functions";
 
@@ -283,6 +284,29 @@ describe("regent portal handler factory", () => {
     const summary = getRegentPortalSummary as unknown as { middlewares: unknown[] };
     expect(list.middlewares).toContain(requirePortalReadyAccess);
     expect(summary.middlewares).toContain(requirePortalReadyAccess);
+  });
+});
+
+describe("complement checkout server boundary", () => {
+  it("requires ready portal access and validates only the registration and integer-cent amount", () => {
+    const fn = startComplementCheckout as unknown as {
+      method: string;
+      middlewares: unknown[];
+      validate: (input: unknown) => unknown;
+    };
+    const input = { registrationId: regent.choirId, amountCents: 5_000 };
+
+    expect(fn.method).toBe("POST");
+    expect(fn.middlewares).toContain(requirePortalReadyAccess);
+    expect(fn.validate(input)).toEqual(input);
+    for (const invalid of [
+      { ...input, amountCents: 0 },
+      { ...input, amountCents: 1.5 },
+      { ...input, choirId: regent.choirId },
+      { ...input, initiatedBy: "spoofed-user" },
+    ]) {
+      expect(() => fn.validate(invalid)).toThrow();
+    }
   });
 });
 

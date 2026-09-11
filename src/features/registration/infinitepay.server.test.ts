@@ -46,6 +46,49 @@ describe("InfinitePay client", () => {
     });
   });
 
+  it("creates a complement checkout without customer data and with the regent return path", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ url: "https://checkout.infinitepay.com.br/antonio-gerbson/complement" }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+    const client = createInfinitePayClient(fetcher, config);
+
+    await expect(
+      client.createCheckout({
+        orderNsu: "22222222-2222-4222-8222-222222222222",
+        items: [
+          {
+            quantity: 1,
+            price: 5_000,
+            description: "Complemento de inscrição — II Encontro de Coros",
+          },
+        ],
+        redirectPath: "/regente/pagamento",
+      }),
+    ).resolves.toEqual({
+      url: "https://checkout.infinitepay.com.br/antonio-gerbson/complement",
+    });
+
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
+      handle: "antonio-gerbson",
+      items: [
+        {
+          quantity: 1,
+          price: 5_000,
+          description: "Complemento de inscrição — II Encontro de Coros",
+        },
+      ],
+      order_nsu: "22222222-2222-4222-8222-222222222222",
+      redirect_url: "https://encontrocorosce.lovable.app/regente/pagamento",
+      webhook_url: "https://encontrocorosce.lovable.app/api/infinitepay-webhook",
+    });
+  });
+
   it("rejects a checkout URL outside InfinitePay", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ url: "https://malicious.example/steal" }), {
@@ -181,7 +224,21 @@ describe("InfinitePay client", () => {
 
     await expect(
       createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
-    ).rejects.toThrow("Não foi possível comunicar com a InfinitePay.");
+    ).rejects.toMatchObject({
+      message: "Não foi possível comunicar com a InfinitePay.",
+      outcome: "unknown",
+    });
+  });
+
+  it("classifies a validated provider rejection so its reservation can be released", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("invalid checkout", { status: 422 }));
+
+    await expect(
+      createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
+    ).rejects.toMatchObject({
+      message: "Não foi possível comunicar com a InfinitePay.",
+      outcome: "confirmed_rejection",
+    });
   });
 
   it("maps a minimal unpaid payment_check response", async () => {

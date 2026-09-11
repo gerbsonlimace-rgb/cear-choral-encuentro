@@ -14,6 +14,10 @@ import {
 } from "@/features/regent/regent.domain";
 import type { PortalAccessProbe } from "@/features/regent/regent-auth.server";
 import type { PortalSummary } from "@/features/regent/regent-payments.domain";
+import {
+  complementCheckoutSchema,
+  type ComplementCheckoutInput,
+} from "@/features/regent/regent-payments.domain";
 import type { PortalParticipantPage } from "@/features/regent/regent-portal.server";
 
 export function toRegentAccessState(probe: PortalAccessProbe): RegentAccess {
@@ -96,6 +100,27 @@ export const getRegentPortalSummary = createServerFn({ method: "POST" })
   .handler(
     ({ data, context }: { data: PortalSummaryInput; context: { portalAccess: PortalAccess } }) =>
       loadRegentPortalHandlers().then((handlers) => handlers.summary(context.portalAccess, data)),
+  );
+
+async function loadRegentPaymentService() {
+  const { getRegentPaymentService } = await import("@/features/regent/regent-payment.server");
+  return getRegentPaymentService();
+}
+
+export const startComplementCheckout = createServerFn({ method: "POST" })
+  .middleware([requirePortalReadyAccess])
+  .validator(complementCheckoutSchema)
+  .handler(
+    ({
+      data,
+      context,
+    }: {
+      data: ComplementCheckoutInput;
+      context: { portalAccess: PortalAccess };
+    }) =>
+      loadRegentPaymentService().then((service) =>
+        service.startCheckout(data, context.portalAccess),
+      ),
   );
 
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
