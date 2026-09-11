@@ -21,6 +21,7 @@ export type RegentAdminRepository = {
   list(): Promise<AdminRegentRow[]>;
   findById(id: string): Promise<AdminRegentRow | null>;
   findActiveByChoir(choirId: string): Promise<AdminRegentRow | null>;
+  findByUserAndChoir(userId: string, choirId: string): Promise<AdminRegentRow | null>;
   grant(input: RegentGrant): Promise<AdminRegentRow>;
   replace(input: RegentGrant): Promise<AdminRegentRow>;
   revoke(id: string, actorId: string): Promise<AdminRegentRow>;
@@ -42,6 +43,11 @@ const failure = (): RegentAdminResult => ({
   message: "Não foi possível concluir a operação. Tente novamente.",
 });
 const success = (regent: AdminRegentRow): RegentAdminResult => ({ status: "success", regent });
+const reviewRequired = (): RegentAdminResult => ({
+  status: "error",
+  message:
+    "A conta criada foi mantida e precisa de revisão por um administrador. Atualize a lista e não repita o cadastro com outro e-mail.",
+});
 class RegentConflict extends Error {}
 
 export function createRegentAdminService({
@@ -88,13 +94,19 @@ export function createRegentAdminService({
     } catch (error) {
       if (createdUserId) {
         try {
+          // A transport error may follow a committed grant/replacement. Reconcile
+          // against the database before considering deletion of its Auth identity.
+          const membership = await repository.findByUserAndChoir(createdUserId, input.choirId);
+          if (membership) {
+            return membership.revokedAt === null &&
+              membership.userId === createdUserId &&
+              membership.choirId === input.choirId
+              ? success(membership)
+              : reviewRequired();
+          }
           await auth.deleteUser(createdUserId);
         } catch {
-          return {
-            status: "error",
-            message:
-              "O vínculo não foi concluído e a conta criada precisa de revisão por um administrador. Não repita o cadastro com outro e-mail.",
-          };
+          return reviewRequired();
         }
       }
       return error instanceof RegentConflict
@@ -195,6 +207,18 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
         .select(columns)
         .eq("choir_id", choirId)
         .is("revoked_at", null)
+        .maybeSingle();
+      checkError(error);
+      return data ? mapRow(data) : null;
+    },
+    async findByUserAndChoir(userId, choirId) {
+      // Include revoked history: an existing association must never be mistaken
+      // for a failed grant just because another operation revoked it meanwhile.
+      const { data, error } = await supabaseAdmin
+        .from("choir_regents")
+        .select(columns)
+        .eq("user_id", userId)
+        .eq("choir_id", choirId)
         .maybeSingle();
       checkError(error);
       return data ? mapRow(data) : null;
