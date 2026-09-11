@@ -1,4 +1,4 @@
-import { render, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
@@ -87,6 +87,23 @@ describe("landing page program", () => {
     expect(content.getAllByText("Visita ao Santuário")).toHaveLength(2);
     expect(content.getAllByText("Jantar", { selector: "h4" })).toHaveLength(4);
     expect(content.getAllByText("Na sequência")).toHaveLength(6);
+  });
+});
+
+describe("landing page access", () => {
+  it("offers one unified portal access without displacing registration", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    expect(screen.getByRole("link", { name: "Acessar portal" })).toHaveAttribute(
+      "href",
+      "/acessar",
+    );
+    expect(screen.getAllByRole("link", { name: "Acessar portal" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Inscrever" })).toHaveAttribute(
+      "href",
+      "#inscricao",
+    );
   });
 });
 

@@ -185,13 +185,23 @@ function Header() {
             Inscrição
           </a>
         </nav>
-        <Button
-          asChild
-          size="sm"
-          className="h-10 min-h-10 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
-        >
-          <a href="#inscricao">Inscrever</a>
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-10 min-h-10 rounded-full px-3 text-xs font-bold sm:h-11 sm:px-4 sm:text-sm lg:h-10"
+          >
+            <Link to="/acessar">Acessar portal</Link>
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            className="h-10 min-h-10 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
+          >
+            <a href="#inscricao">Inscrever</a>
+          </Button>
+        </div>
       </div>
       <nav
         aria-label="Atalhos mobile"
