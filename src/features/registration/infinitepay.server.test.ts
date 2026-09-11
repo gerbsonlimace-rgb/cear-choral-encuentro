@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createInfinitePayClient,
   EXTERNAL_CHECKOUT_DISABLED_MESSAGE,
+  InfinitePayProviderError,
   sanitizeInfinitePayReceiptUrl,
 } from "./infinitepay.server";
 
@@ -21,6 +22,50 @@ const checkoutInput = {
 };
 
 describe("InfinitePay client", () => {
+  it("creates a complement checkout without customer data and with the regent return path", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ url: "https://checkout.infinitepay.com.br/lucas-soares-xwv/complement" }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+    const client = createInfinitePayClient(fetcher, {
+      handle: "lucas-soares-xwv",
+      siteUrl: "https://encontrocorosdiocesanosce.lovable.app",
+    });
+
+    await expect(
+      client.createCheckout({
+        orderNsu: "22222222-2222-4222-8222-222222222222",
+        items: [
+          {
+            quantity: 1,
+            price: 5_000,
+            description: "Complemento de inscrição — II Encontro de Coros",
+          },
+        ],
+        redirectPath: "/regente/pagamento",
+      }),
+    ).resolves.toMatchObject({ url: expect.stringContaining("checkout.infinitepay.com.br") });
+
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
+      handle: "lucas-soares-xwv",
+      items: [
+        {
+          quantity: 1,
+          price: 5_000,
+          description: "Complemento de inscrição — II Encontro de Coros",
+        },
+      ],
+      order_nsu: "22222222-2222-4222-8222-222222222222",
+      redirect_url: "https://encontrocorosdiocesanosce.lovable.app/regente/pagamento",
+      webhook_url: "https://encontrocorosdiocesanosce.lovable.app/api/infinitepay-webhook",
+    });
+  });
+
   it("creates a checkout with server-owned identifiers and URLs", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
@@ -186,6 +231,17 @@ describe("InfinitePay client", () => {
     await expect(
       createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
     ).rejects.toThrow("Não foi possível comunicar com a InfinitePay.");
+  });
+
+  it("classifies a validated provider rejection so its reservation can be released", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("invalid checkout", { status: 422 }));
+
+    await expect(
+      createInfinitePayClient(fetcher, config).createCheckout(checkoutInput),
+    ).rejects.toSatisfy(
+      (error) =>
+        error instanceof InfinitePayProviderError && error.outcome === "confirmed_rejection",
+    );
   });
 
   it("identifies when external checkout is disabled", async () => {

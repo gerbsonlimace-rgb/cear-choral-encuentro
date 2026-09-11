@@ -14,6 +14,10 @@ import {
 } from "@/features/regent/regent.domain";
 import type { PortalAccessProbe } from "@/features/regent/regent-auth.server";
 import type { PortalSummary } from "@/features/regent/regent-payments.domain";
+import {
+  complementCheckoutSchema,
+  type ComplementCheckoutInput,
+} from "@/features/regent/regent-payments.domain";
 import type { PortalParticipantPage } from "@/features/regent/regent-portal.server";
 
 export function toRegentAccessState(probe: PortalAccessProbe): RegentAccess {
@@ -98,6 +102,27 @@ export const getRegentPortalSummary = createServerFn({ method: "POST" })
       loadRegentPortalHandlers().then((handlers) => handlers.summary(context.portalAccess, data)),
   );
 
+async function loadRegentPaymentService() {
+  const { getRegentPaymentService } = await import("@/features/regent/regent-payment.server");
+  return getRegentPaymentService();
+}
+
+export const startComplementCheckout = createServerFn({ method: "POST" })
+  .middleware([requirePortalReadyAccess])
+  .validator(complementCheckoutSchema)
+  .handler(
+    ({
+      data,
+      context,
+    }: {
+      data: ComplementCheckoutInput;
+      context: { portalAccess: PortalAccess };
+    }) =>
+      loadRegentPaymentService().then((service) =>
+        service.startCheckout(data, context.portalAccess),
+      ),
+  );
+
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;
 
 export type RegentPasswordChangeRepository = {
@@ -158,9 +183,7 @@ type RegentPasswordProofs = {
 };
 
 export type RegentPasswordChangeResult =
-  | { status: "success" }
-  | { status: "rejected" }
-  | { status: "recovery_required" };
+  { status: "success" } | { status: "rejected" } | { status: "recovery_required" };
 
 export type RegentPasswordCompletionResult = { status: "success" } | { status: "not_ready" };
 
