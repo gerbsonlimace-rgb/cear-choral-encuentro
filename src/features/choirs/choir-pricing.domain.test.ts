@@ -55,7 +55,7 @@ describe("choir pricing domain", () => {
     ).toBe(true);
   });
 
-  it("accepts an optional positive shirt price", () => {
+  it("accepts optional positive prices", () => {
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
