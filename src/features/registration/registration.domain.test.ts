@@ -3,6 +3,7 @@ import {
   buildCheckoutItems,
   calculateOrderAmountCents,
   paymentLookupSchema,
+  registrationResumeSchema,
   registrationSchema,
 } from "./registration.domain";
 
@@ -14,6 +15,7 @@ const standardQuote = {
 
 const baseInput = {
   name: "Maria da Silva",
+  cpf: "52998224725",
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
@@ -62,6 +64,26 @@ describe("registration domain", () => {
     expect(
       registrationSchema.safeParse({ ...baseInput, includeShirt: true, shirtSize: "XXL" }).success,
     ).toBe(false);
+  });
+
+  it("requires a valid CPF and normalizes its punctuation", () => {
+    const parsed = registrationSchema.safeParse({ ...baseInput, cpf: "529.982.247-25" });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.cpf).toBe("52998224725");
+    expect(registrationSchema.safeParse({ ...baseInput, cpf: "" }).success).toBe(false);
+    expect(registrationSchema.safeParse({ ...baseInput, cpf: "111.111.111-11" }).success).toBe(
+      false,
+    );
+  });
+
+  it("validates and normalizes the identity used to resume a registration", () => {
+    expect(
+      registrationResumeSchema.parse({ cpf: "529.982.247-25", birthDate: "1990-05-12" }),
+    ).toEqual({ cpf: "52998224725", birthDate: "1990-05-12" });
+    expect(() =>
+      registrationResumeSchema.parse({ cpf: "111.111.111-11", birthDate: "1990-05-12" }),
+    ).toThrow("Informe um CPF válido.");
   });
 
   it("requires a valid choir id and a coherent displayed quote", () => {

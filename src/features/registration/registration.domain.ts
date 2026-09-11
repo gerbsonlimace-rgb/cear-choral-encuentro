@@ -3,6 +3,27 @@ import { displayedQuoteSchema, type DisplayedQuote } from "@/features/choirs/cho
 
 export const shirtSizeSchema = z.enum(["P", "M", "G", "GG", "XG"]);
 
+function isValidCpf(value: string): boolean {
+  if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
+
+  const calculateDigit = (length: number) => {
+    const sum = value
+      .slice(0, length)
+      .split("")
+      .reduce((total, digit, index) => total + Number(digit) * (length + 1 - index), 0);
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calculateDigit(9) === Number(value[9]) && calculateDigit(10) === Number(value[10]);
+}
+
+export const cpfSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.replace(/\D/g, ""))
+  .refine(isValidCpf, "Informe um CPF válido.");
+
 const fortalezaDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Fortaleza",
   year: "numeric",
@@ -20,7 +41,7 @@ export function getFortalezaCalendarDate(instant = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-const birthDateSchema = z
+export const birthDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data de nascimento válida.")
   .refine((value) => {
@@ -38,9 +59,19 @@ const birthDateSchema = z
     "A data de nascimento não pode estar no futuro.",
   );
 
+export const registrationResumeSchema = z
+  .object({
+    cpf: cpfSchema,
+    birthDate: birthDateSchema,
+  })
+  .strict();
+
+export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
+
 export const registrationSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
+    cpf: cpfSchema,
     email: z.string().trim().email("Informe um e-mail válido.").max(254),
     phone: z.string().trim().min(8).max(30),
     birthDate: birthDateSchema,
