@@ -82,6 +82,12 @@ export class ParticipantLinkFailure extends Error {
   }
 }
 
+export class ParticipantAuthFailure extends Error {
+  constructor(readonly outcome: "email_conflict" | "unknown") {
+    super("Participant Auth operation failed");
+  }
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -164,7 +170,16 @@ export function createParticipantProvisioningService({
       } else if (outcome === "confirmed_rejection") {
         // The completed rejection plus an authoritative link to another user
         // proves this attempt's newly created identity is not referenced.
-        await auth.deleteUser(createdUserId).catch(() => undefined);
+        try {
+          await auth.deleteUser(createdUserId);
+        } catch {
+          await appendOutcomeEvent({
+            registrationId: account.registrationId,
+            participantAccountId: reconciled.id,
+            eventType: "provisioning_pending",
+            errorCode: "AUTH_CLEANUP_FAILED",
+          });
+        }
       }
       return { status: "active" };
     }
@@ -213,7 +228,10 @@ export function createParticipantProvisioningService({
       const password = buildInitialParticipantPassword(registration.cpf, registration.birthDate);
       const created = await auth.createUser({ email, password, emailConfirm: true });
       createdUserId = created.id;
-    } catch {
+    } catch (error) {
+      if (error instanceof ParticipantAuthFailure && error.outcome === "email_conflict") {
+        return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+      }
       return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
     }
 
@@ -311,6 +329,7 @@ const confirmedDatabaseRejections = new Set([
   "40P01",
   "57014",
 ]);
+const duplicateEmailAuthCodes = new Set(["email_exists", "user_already_exists"]);
 
 export function createSupabaseParticipantProvisioningRepository(): ParticipantProvisioningRepository {
   async function findAccountByRegistration(id: string): Promise<ParticipantAccountRow | null> {
@@ -444,7 +463,11 @@ export function createSupabaseParticipantAuthAdmin(): ParticipantAuthAdmin {
         password,
         email_confirm: emailConfirm,
       });
-      checkError(error);
+      if (error) {
+        throw new ParticipantAuthFailure(
+          duplicateEmailAuthCodes.has(error.code ?? "") ? "email_conflict" : "unknown",
+        );
+      }
       if (!data.user) throw new Error("Participant Auth user was not created");
       return { id: data.user.id };
     },

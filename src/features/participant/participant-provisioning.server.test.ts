@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ParticipantAuthFailure,
   ParticipantLinkFailure,
   createParticipantProvisioningService,
   createSupabaseParticipantAuthAdmin,
@@ -147,6 +148,32 @@ describe("participant provisioning service", () => {
     expect(auth.deleteUser).not.toHaveBeenCalled();
   });
 
+  it("treats a duplicate-email create race as conflict without touching the occupied user", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(auth.createUser).mockRejectedValue(new ParticipantAuthFailure("email_conflict"));
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "conflict" });
+
+    expect(auth.findUserByEmail).toHaveBeenCalledWith("participante@example.com");
+    expect(auth.createUser).toHaveBeenCalledOnce();
+    expect(auth.updatePassword).not.toHaveBeenCalled();
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+    expect(repository.activate).not.toHaveBeenCalled();
+    expect(repository.fail).toHaveBeenCalledWith({
+      accountId,
+      registrationId,
+      claimId,
+      status: "conflict",
+      code: "EMAIL_CONFLICT",
+    });
+    expect(repository.appendEvent).toHaveBeenCalledWith({
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "email_conflict",
+      errorCode: "EMAIL_CONFLICT",
+    });
+  });
+
   it("creates a confirmed Auth user, activates the exact claim, and audits no secrets", async () => {
     const { repository, auth, service } = setup();
 
@@ -235,6 +262,44 @@ describe("participant provisioning service", () => {
 
     expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith(createdUserId);
     expect(repository.fail).not.toHaveBeenCalled();
+  });
+
+  it("audits a failed orphan cleanup without changing the reconciled active account", async () => {
+    const { repository, auth, service } = setup();
+    const otherLinkedUserId = "77777777-7777-4777-8777-777777777777";
+    vi.mocked(repository.activate).mockRejectedValue(
+      new ParticipantLinkFailure("confirmed_rejection"),
+    );
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: otherLinkedUserId,
+      provisioningClaimId: null,
+    });
+    vi.mocked(auth.deleteUser).mockRejectedValue(
+      Object.assign(new Error("cleanup exposed 52998224725 and password"), {
+        token: "SECRET",
+        claimId,
+      }),
+    );
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith(createdUserId);
+    expect(auth.deleteUser).not.toHaveBeenCalledWith(otherLinkedUserId);
+    expect(auth.updatePassword).not.toHaveBeenCalled();
+    expect(repository.fail).not.toHaveBeenCalled();
+    expect(repository.appendEvent).toHaveBeenCalledWith({
+      registrationId,
+      participantAccountId: accountId,
+      eventType: "provisioning_pending",
+      errorCode: "AUTH_CLEANUP_FAILED",
+    });
+    const auditPayload = JSON.stringify(vi.mocked(repository.appendEvent).mock.calls);
+    expect(auditPayload).not.toContain("52998224725");
+    expect(auditPayload).not.toContain("password");
+    expect(auditPayload).not.toContain("SECRET");
+    expect(auditPayload).not.toContain(claimId);
   });
 
   it("never deletes the new user when an unknown link outcome is still invisible", async () => {
@@ -400,6 +465,39 @@ describe("Supabase participant adapters", () => {
     expect(authAdmin.updateUserById).toHaveBeenCalledExactlyOnceWith(createdUserId, {
       password: "new-secret",
     });
+  });
+
+  it.each(["email_exists", "user_already_exists"])(
+    "preserves duplicate-email Auth code %s as a typed conflict outcome",
+    async (code) => {
+      authAdmin.createUser.mockResolvedValue({
+        data: { user: null },
+        error: { code, message: "private provider details" },
+      });
+
+      await expect(
+        createSupabaseParticipantAuthAdmin().createUser({
+          email: "participante@example.com",
+          password: "temporary-secret",
+          emailConfirm: true,
+        }),
+      ).rejects.toMatchObject({ outcome: "email_conflict" });
+    },
+  );
+
+  it("keeps an unknown Auth create failure distinct from an email conflict", async () => {
+    authAdmin.createUser.mockResolvedValue({
+      data: { user: null },
+      error: { code: "over_request_rate_limit", message: "private provider details" },
+    });
+
+    await expect(
+      createSupabaseParticipantAuthAdmin().createUser({
+        email: "participante@example.com",
+        password: "temporary-secret",
+        emailConfirm: true,
+      }),
+    ).rejects.toMatchObject({ outcome: "unknown" });
   });
 
   it.each(["activate", "fail"] as const)(
