@@ -132,11 +132,7 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const orderNsu = deps.randomUUID();
-      const amountCents = calculateOrderAmountCents(
-        input,
-        selection.quote,
-        selection.shirtPriceCents,
-      );
+      const amountCents = calculateOrderAmountCents(input, selection.quote);
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
       const { photo: _photo, ...registrationData } = input;
 
@@ -150,7 +146,6 @@ export function createRegistrationPaymentService(deps: {
           pricingType: selection.quote.pricingType,
           standardPriceCents: selection.quote.standardPriceCents,
           registrationPriceCents: selection.quote.registrationPriceCents,
-          ...(input.includeShirt ? { shirtPriceCents: selection.shirtPriceCents } : {}),
         });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
