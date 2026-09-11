@@ -382,7 +382,7 @@ describe("registration payment service", () => {
 
   });
 
-  it("returns only payment data from the public status", async () => {
+  it("returns only receipt data from the public status", async () => {
     fixture.setRecord({
       ...pendingRecord(),
       paymentStatus: "paid",
@@ -390,18 +390,26 @@ describe("registration payment service", () => {
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
-      name: "must not leak",
+      participantName: "Maria da Silva",
+      choirName: "Coro Diocesano de Quixadá",
       shirtSize: "M",
     } as RegistrationPaymentRecord);
 
-    await expect(fixture.service.getPublicStatus(fixedOrderNsu)).resolves.toEqual({
+    const status = await fixture.service.getPublicStatus(fixedOrderNsu);
+
+    expect(status).toMatchObject({
       status: "paid",
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+      participantName: "Maria da Silva",
+      choirName: "Coro Diocesano de Quixadá",
     });
+    expect(JSON.stringify(status)).not.toContain("transaction-1");
+    expect(JSON.stringify(status)).not.toContain('"M"');
   });
 });
+
 
 describe("Supabase registration repository", () => {
   beforeEach(() => {
