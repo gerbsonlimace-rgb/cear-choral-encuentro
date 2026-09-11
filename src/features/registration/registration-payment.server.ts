@@ -278,7 +278,11 @@ function mapPaymentRow(row: {
   };
 }
 
-export function createSupabaseRegistrationRepository(): RegistrationRepository {
+export type SupabaseRegistrationRepository = RegistrationRepository & {
+  findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
+};
+
+export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
   const findByCpf = async (cpf: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
@@ -304,6 +308,7 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
   };
 
   return {
+    findByCpf,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,

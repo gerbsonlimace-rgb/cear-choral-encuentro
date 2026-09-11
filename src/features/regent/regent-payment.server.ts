@@ -379,13 +379,6 @@ type PaymentDatabaseRow = {
   initiated_by: string;
   initiated_by_name: string;
   initiated_as: string;
-  infinitepay_invoice_slug?: string | null;
-  infinitepay_transaction_nsu?: string | null;
-  payment_method?: string | null;
-  installments?: number | null;
-  paid_amount_cents?: number | null;
-  receipt_url?: string | null;
-  paid_at?: string | null;
 };
 
 function isPaymentStatus(value: string): value is ComplementPaymentStatus {
