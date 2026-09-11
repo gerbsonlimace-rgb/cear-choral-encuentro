@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
 import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
-import heroBackgroundImage from "../assets/hero-encontro-background.png";
 import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
@@ -182,9 +181,6 @@ function Header() {
           <a href="#quixada" className="text-muted-foreground transition-colors hover:text-teal">
             Quixadá
           </a>
-          <a href="#camisa" className="text-muted-foreground transition-colors hover:text-teal">
-            Camisa
-          </a>
           <a href="#inscricao" className="text-muted-foreground transition-colors hover:text-teal">
             Inscrição
           </a>
@@ -192,30 +188,33 @@ function Header() {
         <Button
           asChild
           size="sm"
-          className="h-9 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-10 sm:px-5"
+          className="h-10 min-h-10 shrink-0 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
         >
           <a href="#inscricao">Inscrever</a>
         </Button>
       </div>
-      <nav className="scrollbar-none hidden gap-2 overflow-x-auto border-t border-teal/10 px-4 py-2 text-sm font-bold text-muted-foreground sm:flex lg:hidden">
-        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+      <nav
+        aria-label="Atalhos mobile"
+        className="scrollbar-none flex gap-1.5 overflow-x-auto border-t border-teal/10 px-4 py-2 text-xs font-bold text-muted-foreground sm:gap-2 lg:hidden"
+      >
+        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10">
           Sobre
         </a>
-        <a href="#quixada" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
+        <a
+          href="#quixada"
+          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
+        >
           Quixadá
         </a>
         <a
           href="#programacao"
-          className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10"
+          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
         >
           Programação
         </a>
-        <a href="#camisa" className="shrink-0 rounded-full bg-white px-4 py-2 active:bg-teal/10">
-          Camisa
-        </a>
         <a
           href="#inscricao"
-          className="shrink-0 rounded-full bg-amber px-4 py-2 text-amber-foreground active:bg-amber/80"
+          className="shrink-0 rounded-full bg-amber px-4 py-2.5 text-amber-foreground active:bg-amber/80"
         >
           Inscrição
         </a>
@@ -224,43 +223,16 @@ function Header() {
   );
 }
 
-type HeroPrototype = "fundo" | "total" | "colunas";
-
-function useHeroPrototype(): HeroPrototype {
-  const [prototype, setPrototype] = useState<HeroPrototype>("fundo");
-
-  useEffect(() => {
-    const requestedPrototype = new URLSearchParams(window.location.search).get("hero");
-    setPrototype(
-      requestedPrototype === "total" || requestedPrototype === "colunas"
-        ? requestedPrototype
-        : "fundo",
-    );
-  }, []);
-
-  return prototype;
-}
-
 function HeroSection() {
-  const prototype = useHeroPrototype();
-  const hasBackgroundPhoto = prototype === "fundo";
-  const hasCenteredLayout = prototype === "total";
-  const hasTwoColumnLayout = prototype === "colunas";
   const heroActions = (
     <div
       data-hero-actions
-      className={`mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${
-        hasCenteredLayout
-          ? "sm:justify-center"
-          : hasTwoColumnLayout
-            ? "order-3 w-full sm:justify-center lg:order-none lg:mt-8"
-            : ""
-      }`}
+      className="order-3 mt-6 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:order-none lg:mt-8"
     >
       <Button
         asChild
         size="lg"
-        className="h-12 rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:px-8"
+        className="h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
       >
         <a href="#inscricao" className="justify-center">
           Faça sua inscrição
@@ -271,7 +243,7 @@ function HeroSection() {
         asChild
         variant="outline"
         size="lg"
-        className="h-12 rounded-full border-2 border-white bg-white px-7 text-base font-bold text-teal hover:bg-white/90 sm:h-14 sm:px-8"
+        className="h-12 w-full rounded-full border-2 border-white bg-white px-7 text-base font-bold text-teal hover:bg-white/90 sm:h-14 sm:w-auto sm:px-8"
       >
         <a href="#programacao" className="justify-center">
           Programação
@@ -282,66 +254,36 @@ function HeroSection() {
 
   return (
     <section
-      data-hero-prototype={prototype}
-      data-hero-layout={hasTwoColumnLayout ? "two-columns" : undefined}
+      data-hero-prototype="colunas"
+      data-hero-layout="two-columns"
       className="relative isolate overflow-hidden bg-[#070a08] text-white"
     >
-      <div
-        data-hero-photo-position={hasBackgroundPhoto ? "background" : "full-background"}
-        className="absolute inset-0"
-      >
+      <div data-hero-photo-position="full-background" className="absolute inset-0">
         <img
-          src={hasBackgroundPhoto ? heroBackgroundImage : heroChoirFocusImage}
+          src={heroChoirFocusImage}
           alt="Participantes do Encontro de Coros reunidos diante da igreja"
           width={2304}
-          height={hasBackgroundPhoto ? 1024 : 864}
-          className={
-            hasBackgroundPhoto
-              ? "h-full w-full object-cover object-[66%_top] sm:object-[70%_top] lg:object-[68%_center]"
-              : "h-full w-full object-cover object-center"
-          }
+          height={864}
+          className="h-full w-full object-cover object-center"
           fetchPriority="high"
         />
       </div>
 
-      {hasBackgroundPhoto ? (
-        <>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,5,0.3)_0%,rgba(4,7,5,0.62)_52%,rgba(4,7,5,0.94)_100%)] lg:bg-[linear-gradient(90deg,rgba(4,7,5,0.98)_0%,rgba(4,7,5,0.94)_32%,rgba(4,7,5,0.65)_55%,rgba(4,7,5,0.18)_78%,rgba(4,7,5,0.08)_100%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,5,0.08)_46%,rgba(4,7,5,0.92)_100%)]" />
-        </>
-      ) : (
-        <>
-          <div className="absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
-        </>
-      )}
+      <div className="absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
 
       <div
         data-hero-frame
-        className={`relative z-10 mx-auto grid w-full max-w-[90rem] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16 ${
-          hasBackgroundPhoto
-            ? "min-h-[calc(100svh-3.5rem)] items-center lg:min-h-[46rem] lg:grid-cols-[minmax(0,44rem)_1fr]"
-            : hasTwoColumnLayout
-              ? "min-h-[calc(100svh-3.5rem)] gap-7 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10"
-              : "min-h-[calc(100svh-3.5rem)] content-center gap-5 lg:min-h-[48rem] lg:gap-6"
-        }`}
+        className="relative z-10 mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-[90rem] gap-7 px-5 py-10 sm:min-h-[calc(100svh-3.5rem)] sm:px-8 sm:py-14 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10 lg:px-12 lg:py-16"
       >
         <div
           data-hero-copy
-          className={`flex min-w-0 flex-col ${
-            hasBackgroundPhoto
-              ? "max-w-[44rem] justify-center"
-              : hasTwoColumnLayout
-                ? "order-2 justify-center lg:order-1 lg:max-w-[48rem] lg:items-start lg:text-left"
-                : "order-2 mx-auto w-full max-w-[62rem] items-center text-center"
-          }`}
+          className="order-2 flex min-w-0 flex-col justify-center lg:order-1 lg:max-w-[48rem] lg:items-start lg:text-left"
         >
           <div>
             <div
               aria-label="Informações principais do evento"
-              className={`grid border-y border-white/20 sm:grid-cols-2 ${
-                hasCenteredLayout ? "mx-auto w-full max-w-[46rem]" : ""
-              }`}
+              className="grid border-y border-white/20 sm:grid-cols-2"
             >
               <div className="flex items-center gap-3 py-3 pr-4 sm:py-4 sm:pr-6">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-amber-foreground">
@@ -371,24 +313,12 @@ function HeroSection() {
               </div>
             </div>
 
-            <h1
-              className={`mt-7 font-display font-extrabold leading-[1.04] tracking-[-0.025em] text-white sm:mt-8 ${
-                hasBackgroundPhoto
-                  ? "max-w-[20ch] text-[clamp(2.2rem,6vw,3.5rem)] lg:text-[clamp(3.1rem,3.6vw,4rem)]"
-                  : hasTwoColumnLayout
-                    ? "max-w-[17ch] text-[clamp(2.15rem,7.8vw,3.5rem)] lg:text-[clamp(2.9rem,3.35vw,4rem)]"
-                    : "mx-auto max-w-[22ch] text-[clamp(2.15rem,7.8vw,3.5rem)] lg:text-[clamp(3rem,3.65vw,4.4rem)]"
-              }`}
-            >
+            <h1 className="mt-7 max-w-[17ch] font-display text-[clamp(2.15rem,7.8vw,3.5rem)] font-extrabold leading-[1.04] tracking-[-0.025em] text-white sm:mt-8 lg:text-[clamp(2.9rem,3.35vw,4rem)]">
               II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB
             </h1>
           </div>
 
-          <blockquote
-            className={`relative mt-7 w-fit max-w-[40rem] border-t border-amber/55 pt-5 sm:mt-8 sm:pt-6 ${
-              hasCenteredLayout ? "mx-auto" : ""
-            }`}
-          >
+          <blockquote className="relative mt-7 w-fit max-w-[40rem] border-t border-amber/55 pt-5 sm:mt-8 sm:pt-6">
             <span
               aria-hidden="true"
               className="absolute -top-3 left-0 bg-[#070a08] pr-3 font-display text-4xl leading-none text-amber"
@@ -410,57 +340,32 @@ function HeroSection() {
             </span>
           </blockquote>
 
-          <div className={`mt-7 sm:mt-8 ${hasCenteredLayout ? "text-center" : ""}`}>
-            <div
-              className={`flex items-center gap-2 text-sm font-semibold text-white/90 sm:text-base ${
-                hasCenteredLayout ? "justify-center" : ""
-              }`}
-            >
+          <div className="mt-7 sm:mt-8">
+            <div className="flex items-center gap-2 text-sm font-semibold text-white/90 sm:text-base">
               <Users aria-hidden="true" className="h-5 w-5 shrink-0 text-amber" />
               <span>Coralistas, Instrumentistas e Regentes</span>
             </div>
-            {!hasTwoColumnLayout && heroActions}
           </div>
         </div>
 
         <div
           data-hero-visuals
-          className={`min-w-0 ${
-            hasBackgroundPhoto
-              ? "order-first mb-7 flex items-center justify-center lg:absolute lg:bottom-12 lg:right-12 lg:mb-0 lg:w-[min(33vw,31rem)]"
-              : hasTwoColumnLayout
-                ? "contents lg:order-2 lg:flex lg:min-h-full lg:flex-col lg:items-center lg:justify-center lg:pl-10"
-                : "order-1 flex items-center justify-center"
-          }`}
+          className="contents min-w-0 lg:order-2 lg:flex lg:min-h-full lg:flex-col lg:items-center lg:justify-center lg:pl-10"
         >
           <div
-            data-hero-logo-position={
-              hasBackgroundPhoto
-                ? "over-background"
-                : hasTwoColumnLayout
-                  ? "column-right"
-                  : "centered-overlay"
-            }
-            className={`flex min-h-0 items-center justify-center ${
-              hasTwoColumnLayout ? "order-1 lg:order-none" : ""
-            }`}
+            data-hero-logo-position="column-right"
+            className="order-1 flex min-h-0 items-center justify-center lg:order-none"
           >
             <img
               src={logoImage}
               alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
               width={605}
               height={342}
-              className={`h-auto w-full object-contain ${
-                hasBackgroundPhoto
-                  ? "max-w-[18rem] drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[21rem] lg:max-w-[24rem]"
-                  : hasTwoColumnLayout
-                    ? "max-w-[18rem] drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[22rem] lg:max-w-[31rem]"
-                    : "max-w-[12rem] drop-shadow-[0_6px_12px_rgba(0,0,0,0.45)] sm:max-w-[14rem] lg:max-w-[16rem]"
-              }`}
+              className="h-auto w-full max-w-[18rem] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[22rem] lg:max-w-[31rem]"
               fetchPriority="high"
             />
           </div>
-          {hasTwoColumnLayout && heroActions}
+          {heroActions}
         </div>
       </div>
 
@@ -498,7 +403,7 @@ function AboutSection() {
           </div>
         </div>
 
-        <div className="mt-9 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">
+        <div className="mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
             <CardContent className="p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
@@ -929,7 +834,7 @@ function ProgramSection() {
         >
           <CarouselContent className="items-start">
             {schedule.map((day, index) => (
-              <CarouselItem key={index} className="basis-[88%]">
+              <CarouselItem key={index} className="basis-[92%] sm:basis-[88%]">
                 <ProgramDayCard day={day} />
               </CarouselItem>
             ))}
@@ -964,7 +869,7 @@ function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
             return (
               <div
                 key={itemIndex}
-                className="grid grid-cols-[4.5rem_1.75rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
+                className="grid grid-cols-[3.75rem_1.55rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
               >
                 <span className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">
                   {item.time ?? "Na sequência"}
