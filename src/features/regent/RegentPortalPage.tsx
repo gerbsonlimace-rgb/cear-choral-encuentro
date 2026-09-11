@@ -1,159 +1,302 @@
-import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAdminChoirPricing } from "@/lib/choir-pricing.functions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  getRegentPortalSummary,
-  listRegentPortalParticipants,
-  startComplementCheckout,
-} from "@/lib/regent.functions";
-import type { RegentAccess } from "./regent.domain";
-import type { PortalParticipant } from "./regent-payments.domain";
-import { formatComplementCents } from "./regent-payments.domain";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { AdminChoir } from "@/features/choirs/choir-pricing.domain";
+import { getAdminChoirPricing } from "@/lib/choir-pricing.functions";
+import { getRegentPortalSummary, listRegentPortalParticipants } from "@/lib/regent.functions";
+
 import { ComplementPaymentDialog } from "./ComplementPaymentDialog";
+import {
+  formatComplementCents,
+  type PortalParticipant,
+  type PortalSummary,
+} from "./regent-payments.domain";
+import type { RegentAccess } from "./regent.domain";
+import type { PortalParticipantPage } from "./regent-portal.server";
 import { RegentParticipantList } from "./RegentParticipantList";
 
-type Props = {
-  access: Extract<RegentAccess, { status: "authorized" }>;
-  list?: typeof listRegentPortalParticipants;
-  summary?: typeof getRegentPortalSummary;
-  checkout?: typeof startComplementCheckout;
+type AuthorizedAccess = Extract<RegentAccess, { status: "authorized" }>;
+type PortalListInput = {
+  data: { choirId?: string; search: string; page: number; pageSize: number };
 };
+type PortalSummaryInput = { data: { choirId?: string } };
+
+type Props = {
+  access: AuthorizedAccess;
+  loadParticipants?: (input: PortalListInput) => Promise<PortalParticipantPage>;
+  loadSummary?: (input: PortalSummaryInput) => Promise<PortalSummary>;
+  loadAdminChoirs?: () => Promise<AdminChoir[]>;
+};
+
+const PAGE_SIZE = 20;
+const defaultLoadAdminChoirs = async () => (await getAdminChoirPricing()).choirs;
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <Card className="shadow-sm">
+      <CardContent className="p-4 sm:p-5">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function RegentPortalPage({
   access,
-  list = listRegentPortalParticipants,
-  summary = getRegentPortalSummary,
-  checkout = startComplementCheckout,
+  loadParticipants = listRegentPortalParticipants,
+  loadSummary = getRegentPortalSummary,
+  loadAdminChoirs = defaultLoadAdminChoirs,
 }: Props) {
-  const [choirs, setChoirs] = useState<Array<{ id: string; name: string }>>([]);
-  const [choirId, setChoirId] = useState(access.role === "regent" ? access.choirId : "");
-  const [reload, setReload] = useState(0);
+  const [choirs, setChoirs] = useState<AdminChoir[]>([]);
+  const [selectedChoirId, setSelectedChoirId] = useState(
+    access.role === "regent" ? access.choirId : "",
+  );
+  const [choirError, setChoirError] = useState("");
+  const [summary, setSummary] = useState<PortalSummary | null>(null);
+  const [summaryError, setSummaryError] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [result, setResult] = useState<PortalParticipantPage | null>(null);
+  const [listError, setListError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState("");
-  const [rows, setRows] = useState<PortalParticipant[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [sum, setSum] = useState({
-    totalParticipants: 0,
-    eligibleComplementCents: 0,
-    confirmedComplementCents: 0,
-    outstandingComplementCents: 0,
-  });
-  const [selected, setSelected] = useState<PortalParticipant | null>(null);
-  const [error, setError] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [query, setQuery] = useState({ search: "", page: 1 });
+  const [paymentParticipant, setPaymentParticipant] = useState<PortalParticipant | null>(null);
+
   useEffect(() => {
-    if (access.role === "admin")
-      void getAdminChoirPricing()
-        .then((data) => {
-          setChoirs(data.choirs.map((c) => ({ id: c.id, name: c.name })));
-          if (!choirId && data.choirs[0]) setChoirId(data.choirs[0].id);
-        })
-        .catch(() => setError("Não foi possível carregar os coros."));
-  }, [access.role, choirId]);
-  useEffect(() => {
-    if (!choirId) return;
-    setLoading(true);
-    setError("");
-    void Promise.all([
-      list({ data: { choirId, search: query.trim(), page, pageSize: 10 } }),
-      summary({ data: { choirId } }),
-    ])
-      .then(([result, totals]) => {
-        setRows(result.rows);
-        setTotal(result.total);
-        setSum(totals);
+    if (access.role !== "admin") return;
+    let disposed = false;
+    setChoirError("");
+    loadAdminChoirs()
+      .then((loadedChoirs) => {
+        if (disposed) return;
+        setChoirs(loadedChoirs);
+        setSelectedChoirId((current) => current || loadedChoirs[0]?.id || "");
       })
-      .catch(() => setError("Não foi possível carregar os participantes."))
-      .finally(() => setLoading(false));
-  }, [choirId, query, page, reload, list, summary]);
-  const choirName =
-    choirs.find((c) => c.id === choirId)?.name ??
-    (access.role === "regent" ? "Seu coro" : "Selecione um coro");
+      .catch(() => {
+        if (!disposed) setChoirError("Não foi possível carregar os coros. Tente novamente.");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [access.role, loadAdminChoirs]);
+
+  const ready = access.role === "regent" || Boolean(selectedChoirId);
+
+  useEffect(() => {
+    if (!ready) return;
+    let disposed = false;
+    setSummaryLoading(true);
+    setSummaryError("");
+    setSummary(null);
+    loadSummary({ data: access.role === "admin" ? { choirId: selectedChoirId } : {} })
+      .then((loadedSummary) => {
+        if (!disposed) setSummary(loadedSummary);
+      })
+      .catch(() => {
+        if (!disposed) setSummaryError("Não foi possível carregar o resumo. Tente novamente.");
+      })
+      .finally(() => {
+        if (!disposed) setSummaryLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [access.role, loadSummary, ready, selectedChoirId]);
+
+  useEffect(() => {
+    if (!ready) return;
+    let disposed = false;
+    setLoading(true);
+    setListError("");
+    setResult(null);
+    loadParticipants({
+      data: {
+        ...(access.role === "admin" ? { choirId: selectedChoirId } : {}),
+        search: query.search,
+        page: query.page,
+        pageSize: PAGE_SIZE,
+      },
+    })
+      .then((page) => {
+        if (!disposed) setResult(page);
+      })
+      .catch(() => {
+        if (!disposed) setListError("Não foi possível carregar os participantes. Tente novamente.");
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [access.role, loadParticipants, query.page, query.search, ready, selectedChoirId]);
+
+  function search(event: FormEvent) {
+    event.preventDefault();
+    setQuery({ search: searchDraft.trim(), page: 1 });
+  }
+
+  const pages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
+
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Área do regente</p>
-          <h1 className="font-display text-3xl">{choirName}</h1>
-        </div>
+    <main className="min-h-svh bg-muted/20 px-4 py-6 sm:px-6 lg:py-8">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Encontro de Coros Diocesanos
+          </p>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Área do regente</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Acompanhe participantes e complementos da inscrição.
+          </p>
+        </header>
+
         {access.role === "admin" && (
-          <label className="text-sm">
-            Coro
-            <select
-              aria-label="Coro"
-              className="mt-1 block h-9 rounded-md border bg-background px-3"
-              value={choirId}
-              onChange={(e) => {
-                setChoirId(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Selecione</option>
-              {choirs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </header>
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Total de participantes", sum.totalParticipants],
-          ["Complemento total", formatComplementCents(sum.eligibleComplementCents)],
-          ["Complemento confirmado", formatComplementCents(sum.confirmedComplementCents)],
-          ["Saldo complementar", formatComplementCents(sum.outstandingComplementCents)],
-        ].map(([label, value]) => (
-          <Card key={String(label)}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-2xl font-semibold">{value}</CardContent>
+          <Card>
+            <CardContent className="space-y-2 p-4 sm:max-w-md">
+              <Label htmlFor="regent-choir">Coro</Label>
+              <Select
+                value={selectedChoirId}
+                onValueChange={(choirId) => {
+                  setSelectedChoirId(choirId);
+                  setSearchDraft("");
+                  setQuery({ search: "", page: 1 });
+                }}
+              >
+                <SelectTrigger id="regent-choir" aria-label="Coro">
+                  <SelectValue placeholder="Selecione um coro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {choirs.map((choir) => (
+                    <SelectItem key={choir.id} value={choir.id}>
+                      {choir.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {choirError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {choirError}
+                </p>
+              )}
+            </CardContent>
           </Card>
-        ))}
-      </section>
-      <div className="flex items-center gap-3">
-        <Input
-          aria-label="Buscar participante"
-          placeholder="Buscar por nome ou CPF"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(1);
-          }}
-        />{" "}
-        <span className="text-sm text-muted-foreground">{total} participante(s)</span>
-      </div>
-      {error && (
-        <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{error}</span>
-          <Button variant="outline" size="sm" onClick={() => setReload((value) => value + 1)}>
-            Tentar novamente
+        )}
+
+        {summaryLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : summaryError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {summaryError}
+          </p>
+        ) : summary ? (
+          <section
+            aria-label="Resumo dos complementos"
+            className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+          >
+            <SummaryCard label="Total de participantes" value={String(summary.totalParticipants)} />
+            <SummaryCard
+              label="Complemento total"
+              value={formatComplementCents(summary.eligibleComplementCents)}
+            />
+            <SummaryCard
+              label="Complemento confirmado"
+              value={formatComplementCents(summary.confirmedComplementCents)}
+            />
+            <SummaryCard
+              label="Saldo a receber"
+              value={formatComplementCents(summary.outstandingComplementCents)}
+            />
+          </section>
+        ) : null}
+
+        <form
+          onSubmit={search}
+          className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="participant-search">Pesquisar participantes</Label>
+            <Input
+              id="participant-search"
+              type="search"
+              maxLength={100}
+              placeholder="Nome ou CPF"
+              value={searchDraft}
+              disabled={!ready || loading}
+              onChange={(event) => setSearchDraft(event.target.value)}
+            />
+          </div>
+          <Button type="submit" disabled={!ready || loading}>
+            Pesquisar
           </Button>
-        </div>
-      )}
-      {loading ? (
-        <p role="status">Carregando participantes…</p>
-      ) : rows.length === 0 && choirId ? (
-        <p className="text-sm text-muted-foreground">Nenhum participante encontrado.</p>
-      ) : (
-        choirId && <RegentParticipantList rows={rows} onPay={setSelected} />
-      )}
-      <div className="flex justify-center gap-3">
-        <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          Anterior
-        </button>
-        <span className="text-sm">Página {page}</span>
-        <button type="button" disabled={page * 10 >= total} onClick={() => setPage((p) => p + 1)}>
-          Próxima
-        </button>
+        </form>
+
+        {loading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : listError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {listError}
+          </p>
+        ) : result?.rows.length ? (
+          <RegentParticipantList participants={result.rows} onPay={setPaymentParticipant} />
+        ) : result ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm">
+              Nenhum participante encontrado.
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {result && (
+          <nav
+            aria-label="Paginação de participantes"
+            className="flex items-center justify-between gap-3"
+          >
+            <p className="text-xs text-muted-foreground">
+              Página {result.page} de {pages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={loading || result.page <= 1}
+                onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
+              >
+                Anterior
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={loading || result.page >= pages}
+                onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
+              >
+                Próxima
+              </Button>
+            </div>
+          </nav>
+        )}
       </div>
+
       <ComplementPaymentDialog
-        participant={selected}
-        onClose={() => setSelected(null)}
-        startCheckout={(input) => checkout({ data: input })}
+        participant={paymentParticipant}
+        open={paymentParticipant !== null}
+        onOpenChange={(open) => {
+          if (!open) setPaymentParticipant(null);
+        }}
       />
     </main>
   );
