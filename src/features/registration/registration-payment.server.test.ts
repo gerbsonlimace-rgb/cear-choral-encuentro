@@ -615,6 +615,7 @@ describe("Supabase registration repository", () => {
       [
         "insert",
         {
+          id: fixedOrderNsu,
           name: "Maria da Silva",
           cpf: "52998224725",
           photo_path: registrationPhotoPath,

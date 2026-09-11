@@ -241,11 +241,17 @@ describe("Supabase regent portal repository", () => {
 
   it("signs a private registration photo for five minutes", async () => {
     await expect(
-      createSupabaseRegentPortalRepository().signPhoto(registrationId, `${registrationId}/participant.webp`),
+      createSupabaseRegentPortalRepository().signPhoto(
+        registrationId,
+        `${registrationId}/participant.webp`,
+      ),
     ).resolves.toBe("https://storage.example.test/signed-photo");
 
     expect(storageFrom).toHaveBeenCalledExactlyOnceWith("registration-photos");
-    expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith(`${registrationId}/participant.webp`, 300);
+    expect(createSignedUrl).toHaveBeenCalledExactlyOnceWith(
+      `${registrationId}/participant.webp`,
+      300,
+    );
   });
 
   it.each([
@@ -325,7 +331,11 @@ describe("regent portal service", () => {
       pageSize: 2,
     });
 
-    expect(repository.signPhoto).toHaveBeenNthCalledWith(1, registrationId, `${registrationId}/participant.webp`);
+    expect(repository.signPhoto).toHaveBeenNthCalledWith(
+      1,
+      registrationId,
+      `${registrationId}/participant.webp`,
+    );
     expect(repository.signPhoto).not.toHaveBeenCalledWith(otherChoirId, "broken.webp");
     expect(repository.signPhoto).not.toHaveBeenCalledWith(otherChoirId, "outside/page.webp");
     expect(repository.signPhoto).not.toHaveBeenCalledWith("outside/page.webp");

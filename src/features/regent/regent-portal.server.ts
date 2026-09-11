@@ -333,8 +333,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
               (payment) => payment.status === "creating" || payment.status === "pending",
             ) ?? null;
           const photoUrl =
-            row.photoPath &&
-            PRIVATE_PHOTO_PATH_PATTERN.exec(row.photoPath)?.[1] === row.id
+            row.photoPath && PRIVATE_PHOTO_PATH_PATTERN.exec(row.photoPath)?.[1] === row.id
               ? await signPhoto(row.id, row.photoPath)
               : null;
           return {
