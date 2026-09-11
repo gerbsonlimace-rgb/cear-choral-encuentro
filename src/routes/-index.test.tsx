@@ -30,10 +30,6 @@ vi.mock("@/components/ui/carousel", () => ({
   CarouselPrevious: () => null,
 }));
 
-vi.mock("@/lib/sponsor.functions", () => ({
-  getPublicSponsors: vi.fn(async () => []),
-}));
-
 import { Route } from "./index";
 
 beforeAll(() => {
@@ -168,7 +164,7 @@ describe("Quixadá city spots", () => {
 });
 
 describe("landing page sponsors", () => {
-  it("keeps institutional partners while configured sponsors are empty", async () => {
+  it("renders the institutional partners and the published sponsor", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -179,8 +175,6 @@ describe("landing page sponsors", () => {
     expect(
       content.getByRole("heading", { name: "Instituições que conduzem o encontro" }),
     ).toBeInTheDocument();
-    await vi.waitFor(() =>
-      expect(content.queryByRole("img", { name: "Unicatolica" })).not.toBeInTheDocument(),
-    );
+    expect(content.getByRole("img", { name: "Unicatolica" })).toBeInTheDocument();
   });
 });

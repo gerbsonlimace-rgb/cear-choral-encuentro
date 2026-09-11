@@ -39,12 +39,13 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
   await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
-  await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
   await user.upload(
     screen.getByLabelText("Foto do participante"),
     new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
   );
-  await screen.findByRole("img", { name: "Foto de Maria da Silva no crachá" });
+  expect(
+    await screen.findAllByRole("img", { name: "Foto de Maria da Silva no crachá" }),
+  ).toHaveLength(2);
 }
 
 describe("RegistrationSection", () => {
@@ -53,38 +54,40 @@ describe("RegistrationSection", () => {
     vi.clearAllMocks();
   });
 
-  it("shows the larger grouped form with required CPF and no shirt offer", async () => {
+  it("shows the compact registration form with a required participant photo", async () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
 
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
     expect(screen.getByRole("heading", { name: "Dados pessoais" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Participação" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Participação" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
-    expect(screen.getByLabelText("CPF")).toHaveClass("min-h-14");
-    expect(screen.getByLabelText("Nome completo")).toHaveClass("min-h-14");
+    expect(screen.getByLabelText("CPF")).toHaveClass("min-h-11");
+    expect(screen.getByLabelText("Nome completo")).toHaveClass("min-h-11");
+    expect(screen.getByLabelText("Foto do participante")).toBeRequired();
+    expect(screen.getAllByLabelText("Prévia do crachá")).toHaveLength(2);
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Camisa oficial")).not.toBeInTheDocument();
   });
 
-  it("shows the photo and musical profile controls and fills the badge live", async () => {
+  it("fills the badge preview with the participant name, choir and selected photo", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
 
-    const badge = screen.getByLabelText("Prévia do crachá");
-    const profile = screen.getByLabelText("Perfil musical");
-    expect(screen.getByLabelText("Foto do participante")).toHaveAttribute("type", "file");
-    for (const label of ["Soprano", "Contralto", "Tenor", "Baixo", "Não sei informar"]) {
-      expect(within(profile).getByRole("option", { name: label })).toBeInTheDocument();
-    }
-
+    const [badge] = screen.getAllByLabelText("Prévia do crachá");
     await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
-    await user.selectOptions(profile, "contralto");
+    await user.upload(
+      screen.getByLabelText("Foto do participante"),
+      new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
+    );
 
     expect(within(badge).getByText("Maria da Silva")).toBeInTheDocument();
     expect(within(badge).getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
-    expect(within(badge).getByText("Contralto")).toBeInTheDocument();
+    const photo = await within(badge).findByRole("img", {
+      name: "Foto de Maria da Silva no crachá",
+    });
+    expect(photo).toHaveAttribute("src", expect.stringMatching(/^data:image\/jpeg;base64,/));
   });
 
   it("loads the administratively configured choirs without exposing the shirt offer", async () => {
@@ -215,7 +218,7 @@ describe("RegistrationSection", () => {
         expect.objectContaining({
           choirId: quixadaId,
           cpf: "52998224725",
-          voicePart: "soprano",
+          voicePart: "nao_sei_informar",
           photo: { contentType: "image/jpeg", dataBase64: "cGhvdG8=" },
           displayedQuote: {
             pricingType: "promotional",
@@ -226,5 +229,27 @@ describe("RegistrationSection", () => {
       ),
     );
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
+  });
+
+  it("keeps the form and points a known CPF conflict to Retomar pagamento", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({
+      ok: false,
+      message: "Já existe uma inscrição para este CPF. Use Retomar pagamento.",
+    });
+    render(
+      <RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} />,
+    );
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+    await fillRequiredFields(user);
+
+    await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
+
+    expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute(
+      "href",
+      "#retomar-pagamento",
+    );
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
   });
 });

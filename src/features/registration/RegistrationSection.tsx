@@ -20,7 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
-import { startRegistrationCheckout } from "@/lib/registration.functions";
+import {
+  startRegistrationCheckout,
+  type StartRegistrationCheckoutResult,
+} from "@/lib/registration.functions";
 import {
   getFortalezaCalendarDate,
   registrationSchema,
@@ -32,7 +35,7 @@ import { RegistrationResumeCard } from "./RegistrationResumeCard";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
-  startCheckout?: (input: RegistrationInput) => Promise<{ checkoutUrl: string; orderNsu: string }>;
+  startCheckout?: (input: RegistrationInput) => Promise<StartRegistrationCheckoutResult>;
   navigateToCheckout?: (url: string) => void;
 };
 
@@ -60,6 +63,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   phone: "",
   birthDate: "",
   choirId: "",
+  voicePart: "nao_sei_informar",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
@@ -250,21 +254,27 @@ export function RegistrationSection({
     setHasCpfConflict(false);
     setIsSubmitting(true);
     try {
-      const { checkoutUrl } = await startCheckout(parsedForm.data);
-      navigateToCheckout(checkoutUrl);
+      const checkout = await startCheckout(parsedForm.data);
+      if (!checkout.ok) throw new Error(checkout.message);
+      navigateToCheckout(checkout.checkoutUrl);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");
       const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
+      const externalCheckoutDisabled = normalizedMessage.includes(
+        "checkout externo da infinitepay ainda não foi ativado",
+      );
       const shouldRefresh =
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
       setCheckoutError(
-        cpfConflict
-          ? "Já existe uma inscrição para este CPF."
-          : shouldRefresh
-            ? "A configuração de preços mudou. Confira o valor e tente novamente."
-            : "Não foi possível preparar o pagamento. Tente novamente.",
+        externalCheckoutDisabled
+          ? message
+          : cpfConflict
+            ? "Já existe uma inscrição para este CPF."
+            : shouldRefresh
+              ? "A configuração de preços mudou. Confira o valor e tente novamente."
+              : "Não foi possível preparar o pagamento. Tente novamente.",
       );
       setHasCpfConflict(cpfConflict);
       if (shouldRefresh) await refreshConfiguration(true);
@@ -582,7 +592,7 @@ export function RegistrationSection({
                 )}
 
                 {checkoutError && (
-                  <p aria-live="polite" className="text-sm text-destructive">
+                  <p role="alert" aria-live="polite" className="text-sm text-destructive">
                     {checkoutError}
                     {hasCpfConflict && (
                       <>

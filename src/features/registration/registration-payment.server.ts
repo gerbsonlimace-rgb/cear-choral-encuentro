@@ -15,9 +15,12 @@ import {
   type PaymentLookup,
   type RegistrationInput,
   type RegistrationPhotoInput,
+  type RegistrationResumeInput,
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
+const REGISTRATION_CPF_CONFLICT_MESSAGE =
+  "Já existe uma inscrição para este CPF. Use Retomar pagamento.";
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -49,6 +52,15 @@ export type PublicPaymentStatus =
       choirName?: string;
     };
 
+export type RegistrationIdentityRecord = {
+  birthDate: string;
+  paymentStatus: "pending" | "paid" | "legacy";
+  checkoutUrl: string | null;
+};
+
+export type RegistrationResumeResult =
+  { status: "pending"; checkoutUrl: string } | { status: "paid" };
+
 export type RegistrationRepository = {
   createPending(
     input: Omit<RegistrationInput, "photo"> & {
@@ -63,6 +75,7 @@ export type RegistrationRepository = {
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
   clearPendingPhoto(orderNsu: string): Promise<void>;
+  findByCpf(cpf: string): Promise<RegistrationIdentityRecord | null>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
     orderNsu: string,
@@ -93,6 +106,9 @@ export function createRegistrationPaymentService(deps: {
 }) {
   return {
     startCheckout: async (input: RegistrationInput) => {
+      const existing = await deps.repository.findByCpf(input.cpf);
+      if (existing) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+
       const selection = await deps.resolveChoirSelection(input.choirId);
       const quoteChanged =
         input.displayedQuote.pricingType !== selection.quote.pricingType ||
@@ -142,6 +158,20 @@ export function createRegistrationPaymentService(deps: {
       return { checkoutUrl: checkout.url, orderNsu };
     },
 
+    resumeCheckout: async (input: RegistrationResumeInput): Promise<RegistrationResumeResult> => {
+      const registration = await deps.repository.findByCpf(input.cpf);
+      if (!registration || registration.birthDate !== input.birthDate) {
+        throw new Error("Não foi possível localizar uma inscrição com os dados informados.");
+      }
+
+      if (registration.paymentStatus === "paid") return { status: "paid" };
+      if (registration.paymentStatus === "pending" && registration.checkoutUrl) {
+        return { status: "pending", checkoutUrl: registration.checkoutUrl };
+      }
+
+      throw new Error("Procure a organização para continuar o pagamento.");
+    },
+
     reconcilePayment: async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
       const registration = await deps.repository.findPayment(lookup.orderNsu);
       if (!registration) throw new Error("Pedido não encontrado.");
@@ -182,6 +212,8 @@ export function createRegistrationPaymentService(deps: {
   };
 }
 
+export type RegistrationPaymentService = ReturnType<typeof createRegistrationPaymentService>;
+
 function toPublicPaymentStatus(record: RegistrationPaymentRecord): PublicPaymentStatus {
   if (record.paymentStatus !== "paid" || !record.paymentMethod || !record.installments) {
     return { status: "pending" };
@@ -203,6 +235,7 @@ function toPublicPaymentStatus(record: RegistrationPaymentRecord): PublicPayment
 
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at" as const;
+const identityColumns = "birth_date,payment_status,checkout_url" as const;
 
 function mapPaymentRow(row: {
   id: string;
@@ -239,6 +272,29 @@ function mapPaymentRow(row: {
 }
 
 export function createSupabaseRegistrationRepository(): RegistrationRepository {
+  const findByCpf = async (cpf: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(identityColumns)
+      .eq("cpf", cpf)
+      .maybeSingle();
+
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    if (
+      typeof data.birth_date !== "string" ||
+      !["pending", "paid", "legacy"].includes(data.payment_status)
+    ) {
+      throw new Error("Registro de inscrição inválido.");
+    }
+
+    return {
+      birthDate: data.birth_date,
+      paymentStatus: data.payment_status as RegistrationIdentityRecord["paymentStatus"],
+      checkoutUrl: data.checkout_url,
+    };
+  };
+
   const findPayment = async (orderNsu: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
@@ -278,6 +334,9 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
         order_nsu: input.orderNsu,
       });
 
+      if (error?.code === "23505" && error.message.includes("registrations_cpf_uidx")) {
+        throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+      }
       if (error) throw new Error("Não foi possível salvar a inscrição.");
     },
 
@@ -300,6 +359,8 @@ export function createSupabaseRegistrationRepository(): RegistrationRepository {
 
       if (error) throw new Error("Não foi possível limpar a foto da inscrição.");
     },
+
+    findByCpf,
 
     findPayment,
 
