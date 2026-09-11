@@ -79,8 +79,10 @@ export type Database = {
           granted_by: string
           id: string
           name: string
+          password_change_candidate_fingerprint: string | null
           password_change_operation_kind: string | null
           password_change_operation_previous_required: boolean | null
+          password_change_operation_stage: string | null
           password_change_required: boolean
           password_change_retry_token_hash: string | null
           revoked_at: string | null
@@ -94,8 +96,10 @@ export type Database = {
           granted_by: string
           id?: string
           name: string
+          password_change_candidate_fingerprint?: string | null
           password_change_operation_kind?: string | null
           password_change_operation_previous_required?: boolean | null
+          password_change_operation_stage?: string | null
           password_change_required?: boolean
           password_change_retry_token_hash?: string | null
           revoked_at?: string | null
@@ -109,8 +113,10 @@ export type Database = {
           granted_by?: string
           id?: string
           name?: string
+          password_change_candidate_fingerprint?: string | null
           password_change_operation_kind?: string | null
           password_change_operation_previous_required?: boolean | null
+          password_change_operation_stage?: string | null
           password_change_required?: boolean
           password_change_retry_token_hash?: string | null
           revoked_at?: string | null
@@ -383,6 +389,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_choir_regent_password_candidate_operation: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_choir_regent_password_operation: {
         Args: {
           p_membership_id: string;
@@ -401,11 +416,38 @@ export type Database = {
         };
         Returns: boolean;
       };
+      mark_choir_regent_password_operation_retryable: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      release_choir_regent_password_candidate_operation: {
+        Args: {
+          p_expected_stage: string;
+          p_membership_id: string;
+          p_operation_hash: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       release_choir_regent_password_operation: {
         Args: {
           p_membership_id: string;
           p_operation_hash: string;
           p_operation_kind: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      verify_choir_regent_password_operation_candidate: {
+        Args: {
+          p_candidate_fingerprint: string;
+          p_membership_id: string;
+          p_operation_hash: string;
           p_user_id: string;
         };
         Returns: boolean;

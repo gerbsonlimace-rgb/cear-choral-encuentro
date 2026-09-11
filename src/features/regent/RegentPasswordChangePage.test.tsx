@@ -289,4 +289,26 @@ describe("RegentPasswordChangePage password flow", () => {
     ).not.toBeInTheDocument();
     expect(onCompleted).not.toHaveBeenCalled();
   });
+
+  it("retries the same server-bound candidate without re-entry after an unapplied unknown result", async () => {
+    const changePassword = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "recovery_required" })
+      .mockResolvedValueOnce({ status: "success" });
+    const signIn = vi
+      .fn()
+      .mockResolvedValueOnce({ error: { code: "invalid_credentials" } })
+      .mockResolvedValueOnce({ error: null });
+    const { user, onCompleted } = setup({ changePassword, signIn });
+
+    await submitPasswords(user, "SenhaNova123");
+
+    expect(screen.getByLabelText("Nova senha")).toHaveValue("SenhaNova123");
+    expect(screen.getByLabelText("Confirmar nova senha")).toHaveValue("SenhaNova123");
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+
+    expect(changePassword.mock.calls).toEqual([["SenhaNova123"], ["SenhaNova123"]]);
+    expect(signIn).toHaveBeenCalledTimes(2);
+    expect(onCompleted).toHaveBeenCalledOnce();
+  });
 });
