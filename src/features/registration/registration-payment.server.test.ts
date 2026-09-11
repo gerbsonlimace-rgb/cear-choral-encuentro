@@ -506,7 +506,12 @@ describe("Supabase registration repository", () => {
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+      participantName: null,
+      choirName: null,
+      paidAmountCents: null,
+      paidAt: null,
     });
+
     expect(database.trace).toEqual([
       ["from", "registrations"],
       ["select", paymentColumns],
