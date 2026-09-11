@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2, Download } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, LogIn } from "lucide-react";
 
+import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
@@ -8,16 +9,19 @@ import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 import type { PaymentLookup } from "./registration.domain";
 
+type PaidPayment = Extract<PublicPaymentStatus, { status: "paid" }>;
 
 type PaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment?: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
+  downloadReceipt?: (payment: PaidPayment) => Promise<void>;
   retryDelayMs?: number;
 };
 
 type ResolvedPaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
+  downloadReceipt: (payment: PaidPayment) => Promise<void>;
   retryDelayMs: number;
 };
 
@@ -30,10 +34,12 @@ type ConfirmationState =
 const MAX_VERIFICATION_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 2000;
 const defaultVerifyPayment = (lookup: PaymentLookup) => verifyRegistrationPayment({ data: lookup });
+const defaultDownloadReceipt = (payment: PaidPayment) => downloadReceiptPdf(payment);
 
 export function PaymentConfirmationPage({
   lookup,
   verifyPayment = defaultVerifyPayment,
+  downloadReceipt = defaultDownloadReceipt,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 }: PaymentConfirmationPageProps) {
   const lookupKey = JSON.stringify(
@@ -47,6 +53,7 @@ export function PaymentConfirmationPage({
       key={lookupKey}
       lookup={lookup}
       verifyPayment={verifyPayment}
+      downloadReceipt={downloadReceipt}
       retryDelayMs={retryDelayMs}
     />
   );
@@ -55,6 +62,7 @@ export function PaymentConfirmationPage({
 function PaymentConfirmationCycle({
   lookup,
   verifyPayment,
+  downloadReceipt,
   retryDelayMs,
 }: ResolvedPaymentConfirmationPageProps) {
   const [cycle, setCycle] = useState(0);
@@ -115,50 +123,8 @@ function PaymentConfirmationCycle({
   }
 
   if (state.kind === "paid") {
-    const method =
-      state.payment.paymentMethod === "pix"
-        ? "Pix"
-        : `Cartão em ${state.payment.installments} ${
-            state.payment.installments === 1 ? "parcela" : "parcelas"
-          }`;
-
-    return (
-      <PaymentMessage title="Inscrição confirmada">
-        <p className="mt-3 text-muted-foreground">
-          Pagamento por <span>{method}</span>.
-        </p>
-        {state.payment.participantAccessStatus === "active" && (
-          <a
-            href="/acessar"
-            className="mt-4 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
-          >
-            Acessar área do participante
-          </a>
-        )}
-        {state.payment.participantAccessStatus === "pending" && (
-          <p className="mt-3 text-muted-foreground">
-            Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.
-          </p>
-        )}
-        {state.payment.participantAccessStatus === "conflict" && (
-          <p className="mt-3 text-muted-foreground">
-            Seu acesso precisa de atendimento da organização.
-          </p>
-        )}
-        {state.payment.receiptUrl && (
-          <a
-            href={state.payment.receiptUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-6 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
-          >
-            Ver comprovante
-          </a>
-        )}
-      </PaymentMessage>
-    );
+    return <ConfirmedPayment payment={state.payment} downloadReceipt={downloadReceipt} />;
   }
-
 
   if (state.kind === "pending") {
     return (
@@ -202,8 +168,10 @@ function PaymentMessage({ children, title }: { children?: ReactNode; title: stri
 
 function ConfirmedPayment({
   payment,
+  downloadReceipt,
 }: {
-  payment: Extract<PublicPaymentStatus, { status: "paid" }>;
+  payment: PaidPayment;
+  downloadReceipt: (payment: PaidPayment) => Promise<void>;
 }) {
   const [downloading, setDownloading] = useState(false);
   const rows = buildReceiptRows(payment);
@@ -211,66 +179,165 @@ function ConfirmedPayment({
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await downloadReceiptPdf(payment);
+      await downloadReceipt(payment);
     } finally {
       setDownloading(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-xl overflow-hidden border-border bg-card p-0 shadow-lg shadow-teal/10">
-        <div className="bg-teal px-6 py-8 text-center text-teal-foreground sm:px-8">
-          <CheckCircle2 className="mx-auto size-12" aria-hidden="true" />
-          <h1 className="mt-3 font-display text-3xl font-extrabold">Inscrição confirmada</h1>
-          <p className="mt-2 text-sm opacity-90">
-            Sua vaga no II Encontro de Coros Diocesanos e Litúrgicos está garantida.
-          </p>
-        </div>
-        <CardContent className="p-6 sm:p-8">
-          <dl className="divide-y divide-border">
-            {rows.map((row) => (
-              <div
-                key={row.label}
-                className="flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
-              >
-                <dt className="text-sm text-muted-foreground">{row.label}</dt>
-                <dd className="font-semibold text-foreground sm:text-right">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <Button
-              className="w-full rounded-full bg-teal font-bold text-teal-foreground hover:bg-teal/90"
-              disabled={downloading}
-              onClick={() => void handleDownload()}
-            >
-              <Download aria-hidden="true" />
-              {downloading ? "Gerando PDF…" : "Baixar comprovante em PDF"}
-            </Button>
-            {payment.receiptUrl && (
-              <a
-                href={payment.receiptUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-teal underline-offset-4 hover:underline"
-              >
-                Ver comprovante
-              </a>
-            )}
-            <a
-              href="/participante"
-              className="font-semibold text-teal underline-offset-4 hover:underline"
-            >
-              Acessar área do participante
-            </a>
-            <a href="/" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-              Voltar ao início
-            </a>
+    <main className="relative min-h-svh overflow-hidden bg-background px-4 py-8 sm:px-6 sm:py-12">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(210,166,52,0.18),transparent_65%)]"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-4xl">
+        <header className="overflow-hidden rounded-[2rem] bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15 sm:px-8 sm:py-7">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <img
+              src={eventLogo}
+              alt="Logo do Encontro de Coros"
+              className="h-16 w-auto shrink-0 object-contain sm:h-20"
+            />
+            <div className="min-w-0 border-l border-primary-foreground/25 pl-4 sm:pl-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber">
+                II Encontro de Coros
+              </p>
+              <p className="mt-2 max-w-md font-display text-lg font-bold leading-tight sm:text-2xl">
+                Diocesanos e Litúrgicos do Ceará
+              </p>
+              <p className="mt-2 text-sm text-primary-foreground/70">
+                20 a 22 de novembro de 2026 · Quixadá (CE)
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </header>
+
+        <Card className="relative -mt-3 overflow-hidden rounded-[2rem] border-border bg-card shadow-2xl shadow-primary/10 sm:-mt-5">
+          <div className="border-b border-border bg-card px-5 py-7 sm:px-10 sm:py-9">
+            <div className="flex items-start gap-4">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald/20 text-emerald-foreground sm:size-16">
+                <CheckCircle2 className="size-8 sm:size-9" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-foreground">
+                  Pagamento aprovado pela InfinitePay
+                </p>
+                <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                  Inscrição confirmada
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Sua vaga está garantida. Confira abaixo os dados da sua inscrição e guarde este
+                  comprovante.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <CardContent className="space-y-7 px-5 py-7 sm:px-10 sm:py-9">
+            <section aria-labelledby="registration-details-title">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-foreground">
+                    Resumo
+                  </p>
+                  <h2
+                    id="registration-details-title"
+                    className="mt-1 font-display text-2xl font-bold"
+                  >
+                    Dados da inscrição
+                  </h2>
+                </div>
+                <span className="rounded-full bg-emerald/15 px-3 py-1 text-xs font-bold text-emerald-foreground">
+                  Confirmada
+                </span>
+              </div>
+              <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                {rows.map((row) => (
+                  <div key={row.label} className="rounded-2xl border border-border bg-muted/30 p-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {row.label}
+                    </dt>
+                    <dd className="mt-2 break-words text-sm font-bold leading-5 text-foreground">
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+
+            {payment.participantAccessStatus === "active" && (
+              <section
+                className="rounded-3xl border border-amber/40 bg-amber/10 p-5 sm:p-6"
+                aria-labelledby="material-title"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber text-amber-foreground">
+                    <LogIn className="size-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2
+                      id="material-title"
+                      className="font-display text-xl font-bold text-foreground"
+                    >
+                      Seu material estará no app do Coralista
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      É necessário acessar o app do Coralista para consultar as partituras, manuais
+                      e demais materiais do evento.
+                    </p>
+                    <a
+                      href="/acessar"
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Acessar o app do Coralista
+                      <LogIn className="size-4" aria-hidden="true" />
+                    </a>
+                  </div>
+                </div>
+              </section>
+            )}
+            {payment.participantAccessStatus === "pending" && (
+              <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
+                Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.
+              </p>
+            )}
+            {payment.participantAccessStatus === "conflict" && (
+              <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
+                Seu acesso precisa de atendimento da organização.
+              </p>
+            )}
+
+            <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:flex-wrap sm:items-center">
+              <Button
+                className="w-full rounded-full bg-primary px-6 py-6 font-bold text-primary-foreground shadow-lg shadow-primary/15 hover:bg-primary/90 sm:w-auto"
+                disabled={downloading}
+                onClick={() => void handleDownload()}
+              >
+                <Download aria-hidden="true" />
+                {downloading ? "Gerando PDF…" : "Baixar comprovante em PDF"}
+              </Button>
+              {payment.receiptUrl && (
+                <a
+                  href={payment.receiptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+                >
+                  Ver comprovante
+                  <ExternalLink className="size-4" aria-hidden="true" />
+                </a>
+              )}
+              <a
+                href="/"
+                className="text-center text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline sm:ml-auto"
+              >
+                Voltar ao início
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
@@ -278,7 +345,6 @@ function ConfirmedPayment({
 function DuplicatePaymentWarning() {
   return <p className="mt-3 text-muted-foreground">Não faça outro pagamento.</p>;
 }
-
 
 function RetryButton({ onClick }: { onClick: () => void }) {
   return (

@@ -41,6 +41,41 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
   });
 
+  it("shows a branded confirmation with registration details, export, and Coralista access", async () => {
+    const downloadReceipt = vi.fn().mockResolvedValue(undefined);
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      participantName: "Maria de Lourdes",
+      choirName: "Coro Diocesano de Quixadá",
+      amountCents: 12000,
+      paidAmountCents: 12000,
+      paidAt: "2026-09-11T18:30:00.000Z",
+      orderNsu: lookup.orderNsu,
+    });
+
+    render(
+      <PaymentConfirmationPage
+        lookup={lookup}
+        verifyPayment={verifyPayment}
+        downloadReceipt={downloadReceipt}
+      />,
+    );
+
+    expect(await screen.findByText("Maria de Lourdes")).toBeVisible();
+    expect(screen.getByText("Coro Diocesano de Quixadá")).toBeVisible();
+    expect(screen.getByText("R$ 120,00")).toBeVisible();
+    expect(screen.getByText(/material estará no app do Coralista/i)).toBeVisible();
+
+    const accessLink = screen.getByRole("link", { name: "Acessar o app do Coralista" });
+    expect(accessLink).toHaveAttribute("href", "/acessar");
+
+    fireEvent.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
+    await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(1));
+  });
+
   it("offers unified portal access only after participant access is active", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
@@ -51,9 +86,10 @@ describe("PaymentConfirmationPage", () => {
 
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
-    expect(
-      await screen.findByRole("link", { name: "Acessar área do participante" }),
-    ).toHaveAttribute("href", "/acessar");
+    expect(await screen.findByRole("link", { name: "Acessar o app do Coralista" })).toHaveAttribute(
+      "href",
+      "/acessar",
+    );
   });
 
   it.each([
@@ -76,7 +112,7 @@ describe("PaymentConfirmationPage", () => {
 
       expect(await screen.findByText(message)).toBeVisible();
       expect(
-        screen.queryByRole("link", { name: "Acessar área do participante" }),
+        screen.queryByRole("link", { name: "Acessar o app do Coralista" }),
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Não faça outro pagamento.")).not.toBeInTheDocument();
     },
