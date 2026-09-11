@@ -127,6 +127,28 @@ describe("RegistrationSection", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the InfinitePay activation notice without leaving the page", async () => {
+    const user = userEvent.setup();
+    const activationMessage =
+      "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.";
+    const startCheckout = vi.fn().mockResolvedValue({ ok: false, message: activationMessage });
+    const navigateToCheckout = vi.fn();
+    render(
+      <RegistrationSection
+        loadConfiguration={loadConfiguration}
+        startCheckout={startCheckout}
+        navigateToCheckout={navigateToCheckout}
+      />,
+    );
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(activationMessage);
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(navigateToCheckout).not.toHaveBeenCalled();
+  });
+
   it("offers a retry when the initial configuration request fails", async () => {
     const user = userEvent.setup();
     const retryConfiguration = vi
