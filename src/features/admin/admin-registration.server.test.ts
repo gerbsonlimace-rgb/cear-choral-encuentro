@@ -119,7 +119,7 @@ describe("registration export", () => {
       "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
     expect(lines[1]).toBe(
-      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;Não informado;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");
