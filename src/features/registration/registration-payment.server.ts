@@ -308,6 +308,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
   };
 
   return {
+    findByCpf,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
