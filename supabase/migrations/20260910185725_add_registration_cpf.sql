@@ -1,5 +1,3 @@
-delete from public.registrations;
-
 alter table public.registrations
   add column cpf text,
   add constraint registrations_cpf_digits_check

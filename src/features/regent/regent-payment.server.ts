@@ -251,9 +251,13 @@ export function createRegentPaymentService({
 
     async reconcilePayment(
       lookup: import("@/features/registration/registration.domain").PaymentLookup,
+      access: PortalAccess,
     ) {
       const current = await repository.findByOrderNsu(lookup.orderNsu);
       if (!current) throw new Error("Pedido complementar não encontrado.");
+      if (access.role === "regent" && current.choirId !== access.choirId) {
+        throw new Error(CHOIR_MESSAGE);
+      }
       if (current.status === "paid") {
         if (current.transactionNsu !== lookup.transactionNsu) {
           throw new Error("Transação divergente para pagamento complementar já confirmado.");

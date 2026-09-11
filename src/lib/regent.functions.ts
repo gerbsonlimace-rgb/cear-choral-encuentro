@@ -135,8 +135,10 @@ export const verifyComplementPayment = createServerFn({ method: "POST" })
       })
       .strict(),
   )
-  .handler(({ data }) =>
-    loadRegentPaymentService().then((service) => service.reconcilePayment(data)),
+  .handler(({ data, context }) =>
+    loadRegentPaymentService().then((service) =>
+      service.reconcilePayment(data, context.portalAccess),
+    ),
   );
 
 type RegentPortalAccess = Extract<PortalAccess, { role: "regent" }>;

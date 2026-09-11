@@ -17,7 +17,10 @@ describe("payment reconciliation dispatcher", () => {
     await expect(
       createPaymentReconciliationDispatcher({ complement, registration })(lookup),
     ).resolves.toEqual({ status: "paid" });
-    expect(complement.reconcilePayment).toHaveBeenCalledWith(lookup);
+    expect(complement.reconcilePayment).toHaveBeenCalledWith(
+      lookup,
+      expect.objectContaining({ role: "admin" }),
+    );
     expect(registration.reconcilePayment).not.toHaveBeenCalled();
   });
 

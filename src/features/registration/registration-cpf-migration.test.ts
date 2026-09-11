@@ -25,4 +25,17 @@ describe("registration CPF migration", () => {
     expect(migration).not.toMatch(/delete\s+from\s+public\.registrations/);
     expect(migration).not.toMatch(/update\s+public\.registrations/);
   });
+
+  it("never removes registrations in the CPF migration chain", () => {
+    const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
+    const cpfMigrations = readdirSync(migrationsDirectory).filter((name) =>
+      /registration.*cpf|cpf.*registration/i.test(name),
+    );
+
+    expect(cpfMigrations.length).toBeGreaterThan(0);
+    for (const fileName of cpfMigrations) {
+      const migration = readFileSync(resolve(migrationsDirectory, fileName), "utf8").toLowerCase();
+      expect(migration, fileName).not.toMatch(/delete\s+from\s+public\.registrations/);
+    }
+  });
 });

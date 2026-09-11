@@ -369,7 +369,7 @@ describe("regent complement checkout service", () => {
     vi.mocked(repository.markPaid).mockResolvedValue(paid);
 
     await expect(
-      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }),
+      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }, regent),
     ).resolves.toMatchObject({ status: "paid", paidAmountCents: 5_000 });
     expect(infinitePay.checkPayment).toHaveBeenCalledOnce();
     expect(repository.markPaid).toHaveBeenCalledWith(
@@ -381,6 +381,74 @@ describe("regent complement checkout service", () => {
         receiptUrl: undefined,
       }),
     );
+  });
+
+  it("rejects a regent from another choir before checking or marking a payment", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue({
+      id: "payment-1",
+      registrationId,
+      choirId,
+      amountCents: 5_000,
+      status: "pending",
+      orderNsu,
+      checkoutUrl,
+      initiatedBy: regent.userId,
+      initiatedByName: regent.name,
+      initiatedAs: "regent",
+    });
+    const otherRegent: PortalAccess = { ...regent, choirId: "99999999-9999-4999-8999-999999999999" };
+
+    await expect(
+      service.reconcilePayment(
+        { orderNsu, transactionNsu: "tx-1", slug: "invoice-1" },
+        otherRegent,
+      ),
+    ).rejects.toThrow("A inscrição não pertence ao coro autorizado.");
+    expect(infinitePay.checkPayment).not.toHaveBeenCalled();
+    expect(repository.markPaid).not.toHaveBeenCalled();
+  });
+
+  it("allows an administrator to reconcile a payment from any choir", async () => {
+    const { repository, infinitePay, service } = setup();
+    const paid = {
+      id: "payment-1",
+      registrationId,
+      choirId,
+      amountCents: 5_000,
+      status: "paid" as const,
+      orderNsu,
+      checkoutUrl,
+      initiatedBy: regent.userId,
+      initiatedByName: regent.name,
+      initiatedAs: "regent" as const,
+      transactionNsu: "tx-admin",
+      invoiceSlug: "invoice-1",
+      paymentMethod: "pix" as const,
+      installments: 1,
+      paidAmountCents: 5_000,
+      receiptUrl: null,
+      paidAt: "2026-09-11T12:00:00.000Z",
+    };
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue({ ...paid, status: "pending" });
+    vi.mocked(infinitePay.checkPayment).mockResolvedValue({
+      paid: true,
+      amountCents: 5_000,
+      paidAmountCents: 5_000,
+      installments: 1,
+      paymentMethod: "pix",
+    });
+    vi.mocked(repository.markPaid).mockResolvedValue(paid);
+    const admin: PortalAccess = { role: "admin", userId: "admin", email: null };
+
+    await expect(
+      service.reconcilePayment(
+        { orderNsu, transactionNsu: "tx-admin", slug: "invoice-1" },
+        admin,
+      ),
+    ).resolves.toMatchObject({ status: "paid" });
+    expect(infinitePay.checkPayment).toHaveBeenCalledOnce();
+    expect(repository.markPaid).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -409,7 +477,7 @@ describe("regent complement checkout service", () => {
       ...checked,
     });
     await expect(
-      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }),
+      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }, regent),
     ).rejects.toThrow(message);
     expect(repository.markPaid).not.toHaveBeenCalled();
   });
@@ -437,10 +505,10 @@ describe("regent complement checkout service", () => {
     };
     vi.mocked(repository.findByOrderNsu).mockResolvedValue(paid);
     await expect(
-      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }),
+      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }, regent),
     ).resolves.toMatchObject({ status: "paid" });
     await expect(
-      service.reconcilePayment({ orderNsu, transactionNsu: "tx-2", slug: "invoice-1" }),
+      service.reconcilePayment({ orderNsu, transactionNsu: "tx-2", slug: "invoice-1" }, regent),
     ).rejects.toThrow("Transação divergente para pagamento complementar já confirmado.");
     expect(infinitePay.checkPayment).not.toHaveBeenCalled();
   });
@@ -488,7 +556,7 @@ describe("regent complement checkout service", () => {
     });
     vi.mocked(repository.markPaid).mockRejectedValue(new Error("response lost"));
     await expect(
-      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }),
+      service.reconcilePayment({ orderNsu, transactionNsu: "tx-1", slug: "invoice-1" }, regent),
     ).resolves.toMatchObject({ status: "paid" });
   });
 });
