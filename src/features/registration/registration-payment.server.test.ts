@@ -377,8 +377,8 @@ describe("registration payment service", () => {
       status: "paid",
       paymentMethod: "credit_card",
       installments: 2,
-      receiptUrl: undefined,
     });
+
 
   });
 
