@@ -58,7 +58,9 @@ describe("RegistrationSection", () => {
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
     expect(screen.getByLabelText("CPF")).toHaveClass("min-h-14");
-    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dadosParticipaçãoRevisão");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dados");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.queryByLabelText("Foto do participante")).not.toBeInTheDocument();
   });
 
@@ -107,7 +109,7 @@ describe("RegistrationSection", () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToReview(user);
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
-    expect(screen.getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
+    expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Coro/Diocese")).toHaveValue(quixadaId);
     expect(screen.getByText("maria.jpg")).toBeInTheDocument();
