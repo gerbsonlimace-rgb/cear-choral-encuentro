@@ -24,6 +24,8 @@ async function fillPersonalData(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
+  await user.upload(screen.getByLabelText("Foto do participante"), new File(["photo"], "maria.jpg", { type: "image/jpeg" }));
+  await screen.findByText("maria.jpg");
 }
 
 async function goToParticipation(user: ReturnType<typeof userEvent.setup>) {
@@ -35,8 +37,6 @@ async function goToParticipation(user: ReturnType<typeof userEvent.setup>) {
 async function fillParticipation(user: ReturnType<typeof userEvent.setup>, choirId = quixadaId) {
   await user.selectOptions(screen.getByLabelText("Coro/Diocese"), choirId);
   await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
-  await user.upload(screen.getByLabelText("Foto do participante"), new File(["photo"], "maria.jpg", { type: "image/jpeg" }));
-  await screen.findByText("maria.jpg");
 }
 
 async function goToReview(user: ReturnType<typeof userEvent.setup>) {
@@ -61,7 +61,8 @@ describe("RegistrationSection", () => {
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
-    expect(screen.queryByLabelText("Foto do participante")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Foto do participante")).toBeRequired();
+    expect(screen.getByLabelText("Prévia do crachá")).toBeInTheDocument();
   });
 
   it("validates the current step before advancing", async () => {
@@ -88,6 +89,8 @@ describe("RegistrationSection", () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     const summary = screen.getByLabelText("Resumo do valor da inscrição");
     expect(summary).toHaveTextContent("Valor normalR$ 300,00");
     expect(summary).toHaveTextContent("Desconto das rifas− R$ 200,00");
@@ -100,6 +103,8 @@ describe("RegistrationSection", () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), sobralId);
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent("Valor da inscriçãoR$ 300,00");
     expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
   });
@@ -112,9 +117,9 @@ describe("RegistrationSection", () => {
     expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Coro/Diocese")).toHaveValue(quixadaId);
-    expect(screen.getByText("maria.jpg")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByText("maria.jpg")).toBeInTheDocument();
   });
 
   it("limits birth dates to the current day in Fortaleza", () => {
