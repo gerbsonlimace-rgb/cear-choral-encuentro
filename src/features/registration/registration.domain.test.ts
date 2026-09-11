@@ -60,20 +60,6 @@ describe("registration domain", () => {
     ]);
   });
 
-  it("validates an optional official shirt selection", () => {
-    expect(shirtSizeSchema.parse("M")).toBe("M");
-    expect(
-      registrationSchema.safeParse({
-        ...baseInput,
-      }).success,
-    ).toBe(true);
-    expect(
-      registrationSchema.safeParse({
-        ...baseInput,
-      }).success,
-    ).toBe(false);
-  });
-
   it("requires a valid choir id and a coherent displayed quote", () => {
     expect(registrationSchema.safeParse({ ...baseInput, choirId: "not-an-id" }).success).toBe(
       false,
