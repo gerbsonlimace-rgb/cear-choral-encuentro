@@ -16,6 +16,7 @@ import { getParticipantAccess, getParticipantRegistration } from "@/lib/particip
 
 import type { ParticipantAccess } from "./participant-auth.server";
 import type { ParticipantRegistrationView } from "./participant.domain";
+import { ParticipantPasswordDialog } from "./ParticipantPasswordDialog";
 
 const sections = ["Identificação", "Playlist", "Partituras e Manuais", "Certificado"] as const;
 type Section = (typeof sections)[number];
@@ -26,6 +27,11 @@ type Props = {
   checkAccess?: () => Promise<ParticipantAccess>;
   loadRegistration?: () => Promise<ParticipantRegistrationView>;
   signOut?: () => Promise<{ error: unknown }>;
+  reauthenticateForPasswordChange?: (credentials: {
+    email: string;
+    password: string;
+  }) => Promise<{ error: unknown }>;
+  updatePassword?: (password: string) => Promise<{ error: unknown }>;
 };
 
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
@@ -308,12 +314,15 @@ export function ParticipantPortalPage({
   checkAccess = getParticipantAccess,
   loadRegistration = getParticipantRegistration,
   signOut = defaultSignOut,
+  reauthenticateForPasswordChange,
+  updatePassword,
 }: Props) {
   const [gate, setGate] = useState<
     "checking" | "loading" | "ready" | "error" | "redirecting" | "leaving"
   >("checking");
   const [view, setView] = useState<ParticipantRegistrationView | null>(null);
   const [selected, setSelected] = useState<Section>("Identificação");
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const revision = useRef(0);
   const mounted = useRef(true);
   const signingOut = useRef(false);
@@ -417,9 +426,16 @@ export function ParticipantPortalPage({
             </p>
             <h1 className="mt-2 break-words font-display text-2xl">{view.identity.name}</h1>
           </div>
-          <Button size="sm" variant="outline" onClick={() => void logout()}>
-            Sair
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {view.identity.email != null && (
+              <Button size="sm" variant="outline" onClick={() => setPasswordDialogOpen(true)}>
+                Alterar senha
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => void logout()}>
+              Sair
+            </Button>
+          </div>
         </header>
 
         <SectionNavigation
@@ -439,6 +455,15 @@ export function ParticipantPortalPage({
           <PortalSection selected={selected} view={view} />
         </div>
       </div>
+      {view.identity.email != null && (
+        <ParticipantPasswordDialog
+          open={passwordDialogOpen}
+          onOpenChange={setPasswordDialogOpen}
+          email={view.identity.email}
+          reauthenticate={reauthenticateForPasswordChange}
+          updatePassword={updatePassword}
+        />
+      )}
     </main>
   );
 }

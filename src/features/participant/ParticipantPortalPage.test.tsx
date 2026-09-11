@@ -60,6 +60,11 @@ type PortalOverrides = Partial<{
   signOut: () => Promise<{ error: unknown }>;
   onMissingAccess: () => void;
   onSignedOut: () => void;
+  reauthenticateForPasswordChange: (credentials: {
+    email: string;
+    password: string;
+  }) => Promise<{ error: unknown }>;
+  updatePassword: (password: string) => Promise<{ error: unknown }>;
 }>;
 
 function setup(overrides: PortalOverrides = {}) {
@@ -69,6 +74,8 @@ function setup(overrides: PortalOverrides = {}) {
     signOut: vi.fn().mockResolvedValue({ error: null }),
     onMissingAccess: vi.fn(),
     onSignedOut: vi.fn(),
+    reauthenticateForPasswordChange: vi.fn().mockResolvedValue({ error: null }),
+    updatePassword: vi.fn().mockResolvedValue({ error: null }),
     ...overrides,
   };
   render(<ParticipantPortalPage {...props} />);
@@ -331,6 +338,29 @@ describe("ParticipantPortalPage", () => {
     expect(fireEvent.keyDown(desktopIdentification, { key: "ArrowRight" })).toBe(true);
     expect(document.activeElement).toBe(desktopIdentification);
     expect(screen.getByRole("tabpanel", { name: "Identificação" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Alterar senha" })).not.toBeInTheDocument();
+  });
+
+  it("opens a functional voluntary password-change dialog from the header", async () => {
+    const { user, reauthenticateForPasswordChange, updatePassword } = setup();
+    await screen.findByRole("heading", { name: "Maria da Silva", level: 1 });
+
+    expect(screen.queryByText(/obrigat[oó]ri[ao].*senha/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /recuperar|esqueci/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+    expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Senha atual"), "senha-atual");
+    await user.type(screen.getByLabelText("Nova senha"), "nova-senha");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "nova-senha");
+    const dialog = screen.getByRole("dialog", { name: "Alterar senha" });
+    await user.click(within(dialog).getByRole("button", { name: "Alterar senha" }));
+
+    await waitFor(() => expect(updatePassword).toHaveBeenCalledOnce());
+    expect(reauthenticateForPasswordChange).toHaveBeenCalledExactlyOnceWith({
+      email: "maria@example.com",
+      password: "senha-atual",
+    });
+    expect(updatePassword).toHaveBeenCalledExactlyOnceWith("nova-senha");
   });
 });
