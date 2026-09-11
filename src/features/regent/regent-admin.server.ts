@@ -11,8 +11,7 @@ export type AdminRegentRow = RegentMutation & {
 };
 export type RegentCreation = RegentMutation & { password: string };
 export type RegentAdminResult =
-  | { status: "success"; regent: AdminRegentRow }
-  | { status: "conflict" | "error"; message: string };
+  { status: "success"; regent: AdminRegentRow } | { status: "conflict" | "error"; message: string };
 type RegentGrant = RegentMutation & {
   userId: string;
   grantedBy: string;
