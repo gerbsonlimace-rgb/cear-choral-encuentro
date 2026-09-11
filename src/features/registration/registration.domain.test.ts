@@ -7,7 +7,6 @@ import {
   paymentLookupSchema,
   registrationResumeSchema,
   registrationSchema,
-  shirtSizeSchema,
 } from "./registration.domain";
 
 const standardQuote = {
@@ -59,26 +58,6 @@ describe("registration domain", () => {
     expect(buildCheckoutItems(baseInput, standardQuote)).toEqual([
       { quantity: 1, price: 30000, description: "Inscrição — II Encontro de Coros" },
     ]);
-  });
-
-  it("validates an optional official shirt selection", () => {
-    expect(shirtSizeSchema.parse("M")).toBe("M");
-    expect(
-      registrationSchema.safeParse({
-        ...baseInput,
-        includeShirt: true,
-        shirtSize: "M",
-        displayedShirtPriceCents: 5000,
-      }).success,
-    ).toBe(true);
-    expect(
-      registrationSchema.safeParse({
-        ...baseInput,
-        includeShirt: true,
-        shirtSize: "",
-        displayedShirtPriceCents: 5000,
-      }).success,
-    ).toBe(false);
   });
 
   it("requires a valid choir id and a coherent displayed quote", () => {

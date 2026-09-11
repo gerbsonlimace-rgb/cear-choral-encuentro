@@ -34,7 +34,6 @@ const legacy: AdminRegistrationRow = {
   institution: null,
   role: "Coralista",
   paymentStatus: "legacy",
-  shirtLabel: "Não informado",
   amountCents: null,
   paidAmountCents: null,
   paymentMethod: null,
@@ -43,14 +42,12 @@ const legacy: AdminRegistrationRow = {
   pricingType: null,
   standardPriceCents: null,
   registrationPriceCents: null,
-  shirtPriceCents: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
   id: "pending",
   name: "Bruno Pendente",
   paymentStatus: "pending",
-  shirtLabel: "Sem camisa",
   amountCents: 10000,
 };
 const paid: AdminRegistrationRow = {
@@ -58,7 +55,6 @@ const paid: AdminRegistrationRow = {
   id: "paid",
   name: "Clara Paga",
   paymentStatus: "paid",
-  shirtLabel: "Tamanho M",
   amountCents: 13990,
   paidAmountCents: 13990,
   paymentMethod: "credit_card",
@@ -175,7 +171,6 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Pendente")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
-      expect(scope.getByText("Tamanho M")).toBeInTheDocument();
       expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
       expect(scope.getAllByText("R$ 139,90").length).toBe(2);
@@ -183,7 +178,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");
     const historical = within(table).getByRole("row", { name: /Ana Histórica/ });
-    expect(historical).not.toHaveTextContent(/R\$|Sem camisa|Pix|Cartão/);
+    expect(historical).not.toHaveTextContent(/R\$|Pix|Cartão/);
     expect(
       screen.getByText("3 inscrições encontradas").closest('[aria-live="polite"]'),
     ).toBeInTheDocument();

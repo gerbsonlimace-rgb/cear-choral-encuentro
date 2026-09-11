@@ -20,7 +20,6 @@ describe("participant domain", () => {
       registration: {
         choirName: "Coro Diocesano de Quixadá",
         diocese: "Diocese de Quixadá",
-        includeShirt: false,
       },
       payment: {
         status: "paid",
@@ -74,8 +73,6 @@ describe("participant domain", () => {
         diocese: "Diocese de Quixadá",
         voicePart: null,
         role: null,
-        includeShirt: false,
-        shirtSize: null,
       },
       payment: {
         status: "paid",

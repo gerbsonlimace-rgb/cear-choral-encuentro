@@ -35,12 +35,9 @@ const fullView: ParticipantRegistrationView = {
     institution: "Paróquia Catedral",
     role: "Regente",
     voicePart: "soprano",
-    includeShirt: true,
-    shirtSize: "M",
     pricingType: "promotional",
     standardPriceCents: 12000,
     registrationPriceCents: 9000,
-    shirtPriceCents: 3500,
   },
   payment: {
     status: "paid",
@@ -184,8 +181,6 @@ describe("ParticipantPortalPage", () => {
       "Paróquia Catedral",
       "Regente",
       "Soprano",
-      "Sim",
-      "M",
       "Promocional",
       "Pago",
       "Cartão de crédito",
@@ -198,7 +193,6 @@ describe("ParticipantPortalPage", () => {
     for (const [label, amount] of [
       ["Valor normal", /R\$\s*120,00/],
       ["Valor da inscrição", /R\$\s*90,00/],
-      ["Valor da camisa", /R\$\s*35,00/],
       ["Valor da cobrança", /R\$\s*125,00/],
       ["Valor pago", /R\$\s*125,00/],
     ] as const) {
@@ -229,12 +223,9 @@ describe("ParticipantPortalPage", () => {
         institution: null,
         role: null,
         voicePart: null,
-        includeShirt: false,
-        shirtSize: null,
         pricingType: null,
         standardPriceCents: null,
         registrationPriceCents: null,
-        shirtPriceCents: null,
       },
       payment: {
         status: "paid",
@@ -276,7 +267,6 @@ describe("ParticipantPortalPage", () => {
       expect(within(identification).queryByText(absentLabel)).not.toBeInTheDocument();
     }
     expect(identification).not.toHaveTextContent(/null|undefined/i);
-    expect(within(identification).getByText("Não")).toBeInTheDocument();
   });
 
   it("replaces a failed signed photo with the neutral avatar fallback", async () => {

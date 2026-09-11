@@ -35,12 +35,9 @@ export type ParticipantRegistrationView = {
     institution?: string | null;
     role?: string | null;
     voicePart?: VoicePart | null;
-    includeShirt: boolean;
-    shirtSize?: string | null;
     pricingType?: "standard" | "promotional" | null;
     standardPriceCents?: number | null;
     registrationPriceCents?: number | null;
-    shirtPriceCents?: number | null;
   };
   payment: {
     status: "paid";

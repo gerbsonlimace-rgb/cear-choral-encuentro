@@ -12,7 +12,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 const registrationPhotoBucket = "registration-photos";
 const participantRegistrationColumns =
-  "id,amount_cents,birth_date,choir_name,city,cpf,diocese,email,include_shirt,installments,institution,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,role,shirt_price_cents,shirt_size,standard_price_cents,voice_part" as const;
+  "id,amount_cents,birth_date,choir_name,city,cpf,diocese,email,installments,institution,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,role,standard_price_cents,voice_part" as const;
 
 type RegistrationRow = Database["public"]["Tables"]["registrations"]["Row"];
 type ParticipantRegistrationSource = Pick<
@@ -25,7 +25,6 @@ type ParticipantRegistrationSource = Pick<
   | "cpf"
   | "diocese"
   | "email"
-  | "include_shirt"
   | "installments"
   | "institution"
   | "name"
@@ -40,8 +39,6 @@ type ParticipantRegistrationSource = Pick<
   | "receipt_url"
   | "registration_price_cents"
   | "role"
-  | "shirt_price_cents"
-  | "shirt_size"
   | "standard_price_cents"
   | "voice_part"
 >;
@@ -148,8 +145,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
             ...(row.voice_part === null
               ? {}
               : { voicePart: voicePartSchema.parse(row.voice_part) }),
-            includeShirt: row.include_shirt,
-            ...(row.shirt_size === null ? {} : { shirtSize: row.shirt_size }),
+            
             ...(row.pricing_type === null
               ? {}
               : { pricingType: requirePricingType(row.pricing_type) }),
@@ -159,7 +155,6 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
             ...(row.registration_price_cents === null
               ? {}
               : { registrationPriceCents: row.registration_price_cents }),
-            ...(row.shirt_price_cents === null ? {} : { shirtPriceCents: row.shirt_price_cents }),
           },
           payment: {
             status: "paid",

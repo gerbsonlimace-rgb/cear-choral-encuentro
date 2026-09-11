@@ -39,45 +39,33 @@ describe("choir pricing domain", () => {
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: 5000,
       }).success,
     ).toBe(true);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 30000,
-        shirtPriceCents: 5000,
       }).success,
     ).toBe(false);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: null,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }).success,
     ).toBe(true);
   });
 
-  it("accepts an optional positive shirt price", () => {
+  it("accepts optional positive prices", () => {
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }).success,
     ).toBe(true);
     expect(
       pricingSettingsSchema.safeParse({
         standardPriceCents: 30000,
-        promotionalPriceCents: 10000,
-        shirtPriceCents: 5000,
-      }).success,
-    ).toBe(true);
-    expect(
-      pricingSettingsSchema.safeParse({
-        standardPriceCents: 30000,
-        promotionalPriceCents: 10000,
-        shirtPriceCents: 0,
+        promotionalPriceCents: 0,
       }).success,
     ).toBe(false);
   });
@@ -101,7 +89,6 @@ describe("choir pricing domain", () => {
       resolveChoirPrice(baseChoir, {
         standardPriceCents: 30000,
         promotionalPriceCents: null,
-        shirtPriceCents: null,
       }),
     ).toEqual({
       pricingType: "standard",
@@ -114,7 +101,7 @@ describe("choir pricing domain", () => {
     expect(
       resolveChoirPrice(
         { ...baseChoir, usesPromotionalPrice: true },
-        { standardPriceCents: 30000, promotionalPriceCents: 10000, shirtPriceCents: 5000 },
+        { standardPriceCents: 30000, promotionalPriceCents: 10000 },
       ),
     ).toEqual({
       pricingType: "promotional",
@@ -127,20 +114,19 @@ describe("choir pricing domain", () => {
     expect(
       resolveChoirPrice(
         { ...baseChoir, isActive: false },
-        { standardPriceCents: 30000, promotionalPriceCents: 10000, shirtPriceCents: 5000 },
+        { standardPriceCents: 30000, promotionalPriceCents: 10000 },
       ),
     ).toBeNull();
     expect(
       resolveChoirPrice(
         { ...baseChoir, usesPromotionalPrice: true },
-        { standardPriceCents: 30000, promotionalPriceCents: null, shirtPriceCents: null },
+        { standardPriceCents: 30000, promotionalPriceCents: null },
       ),
     ).toBeNull();
     expect(
       resolveChoirPrice(baseChoir, {
         standardPriceCents: null,
         promotionalPriceCents: 10000,
-        shirtPriceCents: null,
       }),
     ).toBeNull();
   });

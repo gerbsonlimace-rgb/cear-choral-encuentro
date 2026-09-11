@@ -14,7 +14,6 @@ import {
 const settings = {
   standardPriceCents: 30000,
   promotionalPriceCents: 10000,
-  shirtPriceCents: 5000,
 };
 
 function service(): ChoirPricingServicePort {
@@ -62,7 +61,6 @@ describe("choir pricing server functions", () => {
       createChoirPricingFunctionHandlers(port).saveSettings({
         standardPriceCents: 30000,
         promotionalPriceCents: 30000,
-        shirtPriceCents: 5000,
       }),
     ).rejects.toMatchObject({ name: "ZodError" });
     expect(port.saveSettings).not.toHaveBeenCalled();

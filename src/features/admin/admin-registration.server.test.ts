@@ -17,7 +17,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,choir_name,email,phone,city,institution,role,include_shirt,shirt_size,pricing_type,standard_price_cents,registration_price_cents,shirt_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -29,12 +29,9 @@ const selectedRow = {
   city: "Fortaleza",
   institution: null,
   role: "Corista",
-  include_shirt: false,
-  shirt_size: null,
   pricing_type: "standard",
   standard_price_cents: 3000,
   registration_price_cents: 3000,
-  shirt_price_cents: null,
   amount_cents: 3000,
   paid_amount_cents: 3000,
   payment_status: "paid",
@@ -119,10 +116,10 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Camisa;Tipo do valor;Valor normal;Valor da inscrição;Valor da camisa;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
     expect(lines[1]).toBe(
-      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Sem camisa;Normal;R$ 30,00;R$ 30,00;Não informado;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");
@@ -214,7 +211,6 @@ describe("registration summary", () => {
             email: selectedRow.email,
             city: selectedRow.city,
             paymentStatus: "paid" as const,
-            shirtLabel: "Sem camisa",
             amountCents: selectedRow.amount_cents,
             paidAmountCents: selectedRow.paid_amount_cents,
             paymentMethod: "pix" as const,
@@ -224,7 +220,6 @@ describe("registration summary", () => {
             pricingType: "standard" as const,
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
-            shirtPriceCents: null,
           },
         ];
       },
@@ -335,7 +330,6 @@ describe("registration repository list", () => {
           institution: null,
           role: "Corista",
           paymentStatus: "paid",
-          shirtLabel: "Sem camisa",
           amountCents: 3000,
           paidAmountCents: 3000,
           paymentMethod: "pix",
@@ -349,7 +343,6 @@ describe("registration repository list", () => {
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
-          shirtPriceCents: null,
         },
       ],
       total: 51,

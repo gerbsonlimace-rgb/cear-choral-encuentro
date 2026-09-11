@@ -11,7 +11,6 @@ const quixadaId = "11111111-1111-4111-8111-111111111111";
 const sobralId = "22222222-2222-4222-8222-222222222222";
 
 const configuration: PublicRegistrationConfiguration = {
-  shirtPriceCents: 5000,
   choirs: [
     {
       id: quixadaId,
@@ -34,6 +33,7 @@ const loadConfiguration = vi.fn(async () => configuration);
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
+  await user.type(screen.getByLabelText("CPF"), "52998224725");
   await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
   await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
@@ -62,7 +62,7 @@ describe("RegistrationSection", () => {
     expect(screen.getByLabelText("CPF")).toHaveClass("min-h-11");
     expect(screen.getByLabelText("Nome completo")).toHaveClass("min-h-11");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
-    expect(screen.getAllByLabelText("Prévia do crachá")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Prévia do crachá")).toHaveLength(1);
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Camisa oficial")).not.toBeInTheDocument();
   });
@@ -88,16 +88,14 @@ describe("RegistrationSection", () => {
     expect(photo).toHaveAttribute("src", expect.stringMatching(/^data:image\/jpeg;base64,/));
   });
 
-  it("loads the administratively configured choirs without exposing the shirt offer", async () => {
+  it("loads the administratively configured choirs", async () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
 
     expect(
       await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Coro Diocesano de Sobral" })).toBeInTheDocument();
-    const shirtCheckbox = screen.getByRole("checkbox", { name: /Incluir camisa oficial/ });
-    expect(shirtCheckbox).toBeInTheDocument();
-    expect(shirtCheckbox.closest("label")).toHaveTextContent("R$ 50,00");
+    expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
   });
 
   it("offers the five musical profiles and fills the badge live", async () => {
@@ -155,7 +153,7 @@ describe("RegistrationSection", () => {
     const reloadConfiguration = vi
       .fn()
       .mockResolvedValueOnce(configuration)
-      .mockResolvedValueOnce({ ...configuration, shirtPriceCents: null });
+      .mockResolvedValueOnce({ ...configuration });
     render(
       <RegistrationSection loadConfiguration={reloadConfiguration} startCheckout={startCheckout} />,
     );
@@ -167,9 +165,6 @@ describe("RegistrationSection", () => {
     await waitFor(() => expect(reloadConfiguration).toHaveBeenCalledTimes(2));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
     expect(screen.getByLabelText("Coro/Diocese")).toHaveValue("");
-    expect(
-      screen.queryByRole("checkbox", { name: /Incluir camisa oficial/ }),
-    ).not.toBeInTheDocument();
   });
 
   it("shows the InfinitePay activation notice without leaving the page", async () => {

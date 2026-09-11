@@ -34,7 +34,6 @@ import {
 import {
   getFortalezaCalendarDate,
   registrationSchema,
-  shirtSizeSchema,
   voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
@@ -50,7 +49,7 @@ type RegistrationSectionProps = {
 
 type RegistrationForm = Omit<
   RegistrationInput,
-  "choirId" | "displayedQuote" | "displayedShirtPriceCents" | "photo" | "voicePart"
+  "choirId" | "displayedQuote" | "photo" | "voicePart"
 > & { choirId: string; voicePart: VoicePart | "" };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
@@ -74,8 +73,6 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   birthDate: "",
   choirId: "",
   voicePart: "",
-  includeShirt: false,
-  shirtSize: "",
 };
 
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
@@ -209,14 +206,9 @@ export function RegistrationSection({
     [configuration, form.choirId],
   );
   const registrationPriceCents = selectedChoir?.registrationPriceCents ?? null;
-  const shirtPriceCents = configuration?.shirtPriceCents ?? null;
   const selectedVoicePartLabel =
     voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? "";
-  const totalAmount =
-    registrationPriceCents === null
-      ? null
-      : registrationPriceCents +
-        (form.includeShirt && shirtPriceCents !== null ? shirtPriceCents : 0);
+  const totalAmount = registrationPriceCents;
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
@@ -263,7 +255,6 @@ export function RegistrationSection({
         standardPriceCents: selectedChoir.standardPriceCents,
         registrationPriceCents: selectedChoir.registrationPriceCents,
       },
-      displayedShirtPriceCents: shirtPriceCents,
     });
     if (!parsedForm.success) {
       const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
@@ -598,77 +589,6 @@ export function RegistrationSection({
                       )}
                     </div>
 
-                    {shirtPriceCents !== null && (
-                      <div id="camisa" className="space-y-1.5">
-                        <span className="block text-sm font-semibold text-foreground">
-                          Camisa oficial
-                        </span>
-                        <div className="flex min-h-11 items-center gap-2 rounded-xl border border-amber/35 bg-amber/10 px-3">
-                          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                            <input
-                              type="checkbox"
-                              aria-label="Incluir camisa oficial"
-                              checked={form.includeShirt}
-                              onChange={(event) => {
-                                setForm((previous) => ({
-                                  ...previous,
-                                  includeShirt: event.target.checked,
-                                  shirtSize: event.target.checked ? previous.shirtSize : "",
-                                }));
-                                setErrors((previous) => ({
-                                  ...previous,
-                                  shirtSize: undefined,
-                                }));
-                              }}
-                              className="size-4 shrink-0 rounded border-border accent-foreground"
-                            />
-                            <span className="truncate text-xs text-foreground">
-                              <strong>Incluir</strong> por {formatCurrency(shirtPriceCents)}
-                            </span>
-                          </label>
-                          {form.includeShirt && (
-                            <div className="w-24 shrink-0">
-                              <Label htmlFor="shirtSize" className="sr-only">
-                                Tamanho da camisa
-                              </Label>
-                              <Select
-                                value={form.shirtSize}
-                                onValueChange={(value) => {
-                                  const parsed = shirtSizeSchema.safeParse(value);
-                                  if (parsed.success) {
-                                    setForm((previous) => ({
-                                      ...previous,
-                                      shirtSize: parsed.data,
-                                    }));
-                                    setErrors((previous) => ({
-                                      ...previous,
-                                      shirtSize: undefined,
-                                    }));
-                                  }
-                                }}
-                              >
-                                <SelectTrigger
-                                  id="shirtSize"
-                                  className="min-h-8 rounded-lg border-border bg-background text-xs"
-                                >
-                                  <SelectValue placeholder="Tamanho" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {["P", "M", "G", "GG", "XG"].map((size) => (
-                                    <SelectItem key={size} value={size}>
-                                      {size}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
-                        {errors.shirtSize && (
-                          <p className="text-xs text-destructive">{errors.shirtSize}</p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </fieldset>
 
@@ -695,7 +615,7 @@ export function RegistrationSection({
                       <div>
                         <p className="font-bold text-foreground">Total da inscrição</p>
                         <p className="text-xs text-muted-foreground">
-                          {form.includeShirt ? "Inscrição + camisa oficial" : "Pagamento seguro"}
+                          Pagamento seguro
                         </p>
                       </div>
                     </div>

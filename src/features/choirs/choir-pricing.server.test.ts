@@ -6,7 +6,6 @@ import { createChoirPricingService, type ChoirPricingRepository } from "./choir-
 const settings: PricingSettings = {
   standardPriceCents: 30000,
   promotionalPriceCents: 10000,
-  shirtPriceCents: 5000,
 };
 
 const normalChoir: AdminChoir = {
@@ -56,7 +55,6 @@ describe("choir pricing service", () => {
     );
 
     await expect(service.getPublicConfiguration()).resolves.toEqual({
-      shirtPriceCents: 5000,
       choirs: [
         {
           id: promotionalChoir.id,
@@ -97,7 +95,6 @@ describe("choir pricing service", () => {
         standardPriceCents: 30000,
         registrationPriceCents: 10000,
       },
-      shirtPriceCents: 5000,
     });
   });
 

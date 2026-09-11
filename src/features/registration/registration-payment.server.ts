@@ -35,7 +35,7 @@ export type RegistrationPaymentRecord = {
   choirName?: string | null;
   paidAmountCents?: number | null;
   paidAt?: string | null;
-  shirtSize?: string | null;
+  
 };
 
 export type PublicPaymentStatus =
@@ -72,7 +72,6 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
-      shirtPriceCents?: number | null;
     },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
@@ -133,11 +132,7 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const orderNsu = deps.randomUUID();
-      const amountCents = calculateOrderAmountCents(
-        input,
-        selection.quote,
-        selection.shirtPriceCents,
-      );
+      const amountCents = calculateOrderAmountCents(input, selection.quote);
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
       const { photo: _photo, ...registrationData } = input;
 
@@ -151,7 +146,6 @@ export function createRegistrationPaymentService(deps: {
           pricingType: selection.quote.pricingType,
           standardPriceCents: selection.quote.standardPriceCents,
           registrationPriceCents: selection.quote.registrationPriceCents,
-          ...(input.includeShirt ? { shirtPriceCents: selection.shirtPriceCents } : {}),
         });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
@@ -162,7 +156,7 @@ export function createRegistrationPaymentService(deps: {
       try {
         checkout = await deps.infinitePay.createCheckout({
           orderNsu,
-          items: buildCheckoutItems(input, selection.quote, selection.shirtPriceCents),
+          items: buildCheckoutItems(input, selection.quote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
         await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
@@ -325,12 +319,12 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         institution: null,
         role: null,
         observations: null,
-        include_shirt: input.includeShirt ?? false,
-        shirt_size: input.shirtSize ?? null,
+        include_shirt: false,
+        shirt_size: null,
         pricing_type: input.pricingType,
         standard_price_cents: input.standardPriceCents,
         registration_price_cents: input.registrationPriceCents,
-        shirt_price_cents: input.shirtPriceCents ?? null,
+        shirt_price_cents: null,
         amount_cents: input.amountCents,
         payment_status: "pending",
         order_nsu: input.orderNsu,
@@ -339,7 +333,14 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       if (error?.code === "23505" && error.message.includes("registrations_cpf_uidx")) {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
       }
-      if (error) throw new Error("Não foi possível salvar a inscrição.");
+      if (error) {
+        console.error("[Registration] insert failed", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        });
+        throw new Error("Não foi possível salvar a inscrição.");
+      }
     },
 
     saveCheckoutUrl: async (orderNsu, checkoutUrl) => {
