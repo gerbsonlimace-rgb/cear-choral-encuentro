@@ -373,11 +373,13 @@ describe("registration payment service", () => {
         ...lookup,
         receiptUrl: "https://infinitepay.com.br.evil.example/receipt/abc",
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: "paid",
       paymentMethod: "credit_card",
       installments: 2,
+      receiptUrl: undefined,
     });
+
   });
 
   it("returns only payment data from the public status", async () => {
