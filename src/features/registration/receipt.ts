@@ -54,22 +54,52 @@ export function buildReceiptRows(receipt: ReceiptData) {
   ].filter((row): row is { label: string; value: string } => Boolean(row.value));
 }
 
-export async function downloadReceiptPdf(receipt: ReceiptData) {
+export const PARTICIPANT_AREA_PATH = "/participante";
+
+async function loadEventLogoDataUrl(): Promise<string | undefined> {
+  try {
+    const logoUrl = (await import("@/assets/logo-coros-branco.png")).default as unknown as string;
+    const response = await fetch(logoUrl);
+    if (!response.ok) return undefined;
+    const blob = await response.blob();
+
+    return await new Promise<string | undefined>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteUrl?: string }) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginX = 56;
 
   doc.setFillColor(15, 76, 74);
-  doc.rect(0, 0, pageWidth, 110, "F");
+  doc.rect(0, 0, pageWidth, 132, "F");
+
+  const logoDataUrl = await loadEventLogoDataUrl();
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, "PNG", pageWidth - marginX - 78, 26, 78, 78);
+    } catch {
+      /* logo is decorative */
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(17);
-  doc.text("Comprovante de inscrição", marginX, 50);
+  doc.text("Comprovante de inscrição", marginX, 56);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", marginX, 72);
-  doc.text("20 a 22 de novembro de 2026 — Quixadá (CE)", marginX, 90);
+  doc.text("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", marginX, 80);
+  doc.text("20 a 22 de novembro de 2026 — Quixadá (CE)", marginX, 98);
 
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
