@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildParticipantRegistrationView,
   buildInitialParticipantPassword,
   maskCpf,
   participantAccessStatusSchema,
@@ -9,6 +10,27 @@ import {
 } from "./participant.domain";
 
 describe("participant domain", () => {
+  it("builds a view that masks persisted CPF before serialization", () => {
+    const view = buildParticipantRegistrationView({
+      identity: {
+        name: "Maria da Silva",
+        cpf: "529.982.247-25",
+        birthDate: "1990-01-15",
+      },
+      registration: {
+        choirName: "Coro Diocesano de Quixadá",
+        diocese: "Diocese de Quixadá",
+        includeShirt: false,
+      },
+      payment: {
+        status: "paid",
+      },
+    });
+
+    expect(view.identity.cpf).toBe("***.***.***-25");
+    expect(JSON.stringify(view)).not.toContain("52998224725");
+  });
+
   it("normalizes CPF and formats the initial password as DDMMAAAA", () => {
     expect(buildInitialParticipantPassword("529.982.247-25", "1990-01-15")).toBe(
       "5299822472515011990",
@@ -44,7 +66,7 @@ describe("participant domain", () => {
     const view: ParticipantRegistrationView = {
       identity: {
         name: "Maria da Silva",
-        cpf: "***.***.***-25",
+        cpf: maskCpf("52998224725"),
         birthDate: "1990-01-15",
       },
       registration: {

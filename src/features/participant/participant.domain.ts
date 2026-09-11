@@ -17,10 +17,12 @@ export const participantRegistrationIdSchema = z
 
 export type ParticipantRegistrationId = z.infer<typeof participantRegistrationIdSchema>;
 
+export type MaskedCpf = string & { readonly __maskedCpf: unique symbol };
+
 export type ParticipantRegistrationView = {
   identity: {
     name: string;
-    cpf: string;
+    cpf: MaskedCpf;
     birthDate: string;
     email?: string | null;
     phone?: string | null;
@@ -52,6 +54,10 @@ export type ParticipantRegistrationView = {
   };
 };
 
+export type ParticipantRegistrationViewInput = Omit<ParticipantRegistrationView, "identity"> & {
+  identity: Omit<ParticipantRegistrationView["identity"], "cpf"> & { cpf: string };
+};
+
 export function buildInitialParticipantPassword(cpf: string, birthDate: string): string {
   const digits = cpfSchema.parse(cpf);
   const normalizedDate = birthDateSchema.parse(birthDate);
@@ -59,7 +65,19 @@ export function buildInitialParticipantPassword(cpf: string, birthDate: string):
   return `${digits}${day}${month}${year}`;
 }
 
-export function maskCpf(cpf: string): string {
+export function maskCpf(cpf: string): MaskedCpf {
   const digits = cpfSchema.parse(cpf);
-  return `***.***.***-${digits.slice(-2)}`;
+  return `***.***.***-${digits.slice(-2)}` as MaskedCpf;
+}
+
+export function buildParticipantRegistrationView(
+  input: ParticipantRegistrationViewInput,
+): ParticipantRegistrationView {
+  return {
+    ...input,
+    identity: {
+      ...input.identity,
+      cpf: maskCpf(input.identity.cpf),
+    },
+  };
 }
