@@ -212,7 +212,7 @@ function RegistrationBadgePreview({
         </div>
       </div>
       <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-        Sua foto será adicionada na próxima etapa.
+        A prévia é atualizada enquanto você preenche seus dados.
       </p>
     </aside>
   );
@@ -444,7 +444,7 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="relative mx-auto mt-7 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
+        <Card className="relative mx-auto mt-32 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30 sm:mt-7">
           <div className="h-1.5 bg-amber" aria-hidden="true" />
           <CardContent className="p-4 sm:p-7 lg:p-9">
             <nav aria-label="Etapas da inscrição" className="mb-8">
