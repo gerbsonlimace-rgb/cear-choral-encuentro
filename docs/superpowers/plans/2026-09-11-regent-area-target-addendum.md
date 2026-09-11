@@ -21,3 +21,10 @@ não apagará, atualizará nem reconciliará inscrições automaticamente.
 As Tasks 2 e 9 exigem merge manual para preservar, respectivamente, o fluxo atual de
 participante com foto/classificação vocal e o comportamento atual da integração
 InfinitePay. Não devem ser portadas por aplicação cega de patches de outro repositório.
+
+## Dependência planejada da Task 10
+
+A rota `/regente/pagamento` exige `requirePortalReadyAccess` no servidor e, após
+confirmação, redireciona para `/regente`. A rota `/regente` será criada pela Task 11;
+essa ausência é uma dependência planejada e não deve ser resolvida com um placeholder
+na Task 10.
