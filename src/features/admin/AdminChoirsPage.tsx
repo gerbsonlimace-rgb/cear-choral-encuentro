@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AdminAccessState } from "@/lib/admin.functions";
 import {
   createAdminChoir,
@@ -61,9 +62,7 @@ export type AdminChoirsPageProps = {
   setChoirActive?: ServerMutation<{ id: string; isActive: boolean }, AdminChoir>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
-  navigateTo?: (
-    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
-  ) => void;
+  navigateTo?: (to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores") => void;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
@@ -349,107 +348,120 @@ export function AdminChoirsPage({
         {gate === "error" && <p role="alert">Não foi possível verificar seu acesso.</p>}
         {gate === "authorized" && loading && <Skeleton className="h-64 w-full" />}
         {gate === "authorized" && !loading && data && (
-          <>
-            <Card>
-              <CardContent className="p-5 sm:p-6">
-                <div className="mb-5">
-                  <h2 className="font-display text-xl">Valores do evento</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Deixe vazio para manter uma opção indisponível ao público.
-                  </p>
+          <Tabs defaultValue="choirs" className="space-y-4">
+            <TabsList className="grid h-auto w-full grid-cols-1 sm:grid-cols-3">
+              <TabsTrigger value="choirs">Coros</TabsTrigger>
+              <TabsTrigger value="regents">Regentes</TabsTrigger>
+              <TabsTrigger value="pricing">Valores do evento</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="choirs" className="space-y-4">
+              <section className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-xl">Coros/Dioceses</h2>
+                    <p className="text-sm text-muted-foreground">
+                      A promoção é aplicada automaticamente no formulário público.
+                    </p>
+                  </div>
+                  <Button onClick={openCreate}>Cadastrar coro</Button>
                 </div>
-                <form onSubmit={submitSettings} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {(
-                      [
-                        ["standard", "Valor normal"],
-                        ["promotional", "Valor promocional"],
-                      ] as const
-                    ).map(([field, label]) => (
-                      <div className="space-y-2" key={field}>
-                        <Label htmlFor={`price-${field}`}>{label}</Label>
-                        <Input
-                          id={`price-${field}`}
-                          inputMode="decimal"
-                          placeholder="Não configurado"
-                          value={settings[field]}
-                          onChange={(event) =>
-                            setSettings((previous) => ({
-                              ...previous,
-                              [field]: event.target.value,
-                            }))
-                          }
-                          disabled={saving}
-                        />
-                      </div>
+                {data.choirs.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-center text-sm">
+                      Nenhum coro cadastrado.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {data.choirs.map((choir) => (
+                      <Card key={choir.id}>
+                        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold">{choir.name}</h3>
+                              <Badge variant={choir.isActive ? "default" : "secondary"}>
+                                {choir.isActive ? "Ativo" : "Inativo"}
+                              </Badge>
+                              {choir.usesPromotionalPrice && (
+                                <Badge variant="outline">Promocional</Badge>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {choirAvailability(choir, data.settings)}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={saving}
+                              onClick={() => {
+                                if (choir.isActive) setPendingInactivation(choir);
+                                else void changeActive(choir, true);
+                              }}
+                            >
+                              {choir.isActive ? "Inativar" : "Reativar"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? "Salvando…" : "Salvar valores"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                )}
+              </section>
+            </TabsContent>
 
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-display text-xl">Coros/Dioceses</h2>
-                  <p className="text-sm text-muted-foreground">
-                    A promoção é aplicada automaticamente no formulário público.
-                  </p>
-                </div>
-                <Button onClick={openCreate}>Cadastrar coro</Button>
-              </div>
-              {data.choirs.length === 0 ? (
-                <Card>
-                  <CardContent className="p-6 text-center text-sm">
-                    Nenhum coro cadastrado.
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-3">
-                  {data.choirs.map((choir) => (
-                    <Card key={choir.id}>
-                      <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold">{choir.name}</h3>
-                            <Badge variant={choir.isActive ? "default" : "secondary"}>
-                              {choir.isActive ? "Ativo" : "Inativo"}
-                            </Badge>
-                            {choir.usesPromotionalPrice && (
-                              <Badge variant="outline">Promocional</Badge>
-                            )}
-                          </div>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {choirAvailability(choir, data.settings)}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
+            <TabsContent value="regents">
+              <AdminRegentsPanel choirs={data.choirs} />
+            </TabsContent>
+
+            <TabsContent value="pricing">
+              <Card>
+                <CardContent className="p-5 sm:p-6">
+                  <div className="mb-5">
+                    <h2 className="font-display text-xl">Valores do evento</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Deixe vazio para manter uma opção indisponível ao público.
+                    </p>
+                  </div>
+                  <form onSubmit={submitSettings} className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {(
+                        [
+                          ["standard", "Valor normal"],
+                          ["promotional", "Valor promocional"],
+                        ] as const
+                      ).map(([field, label]) => (
+                        <div className="space-y-2" key={field}>
+                          <Label htmlFor={`price-${field}`}>{label}</Label>
+                          <Input
+                            id={`price-${field}`}
+                            inputMode="decimal"
+                            placeholder="Não configurado"
+                            value={settings[field]}
+                            onChange={(event) =>
+                              setSettings((previous) => ({
+                                ...previous,
+                                [field]: event.target.value,
+                              }))
+                            }
                             disabled={saving}
-                            onClick={() => {
-                              if (choir.isActive) setPendingInactivation(choir);
-                              else void changeActive(choir, true);
-                            }}
-                          >
-                            {choir.isActive ? "Inativar" : "Reativar"}
-                          </Button>
+                          />
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </section>
-            <AdminRegentsPanel choirs={data.choirs} />
-          </>
+                      ))}
+                    </div>
+                    <Button type="submit" disabled={saving}>
+                      {saving ? "Salvando…" : "Salvar valores"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
 

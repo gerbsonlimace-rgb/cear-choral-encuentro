@@ -176,13 +176,13 @@ describe("public regent access state", () => {
       }),
     ).toEqual({ status: "password_change_required", role: "regent", choirId: regent.choirId });
   });
-  it("reports administrator access with the verified email and without a regent scope", () => {
+  it("does not expose the regent portal to administrators", () => {
     expect(
       toRegentAccessState({
         authenticated: true,
         access: { role: "admin", userId: "admin", email: "private@example.com" },
       }),
-    ).toEqual({ status: "authorized", role: "admin", email: "private@example.com" });
+    ).toEqual({ status: "forbidden" });
   });
 });
 

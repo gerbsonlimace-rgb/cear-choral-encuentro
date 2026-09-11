@@ -32,9 +32,7 @@ import type { PortalParticipantPage } from "@/features/regent/regent-portal.serv
 export function toRegentAccessState(probe: PortalAccessProbe): RegentAccess {
   if (!probe.authenticated) return { status: "unauthenticated" };
   if (!probe.access) return { status: "forbidden" };
-  if (probe.access.role === "admin") {
-    return { status: "authorized", role: "admin", email: probe.access.email };
-  }
+  if (probe.access.role === "admin") return { status: "forbidden" };
   if (probe.access.passwordChangeRequired) {
     return { status: "password_change_required", role: "regent", choirId: probe.access.choirId };
   }

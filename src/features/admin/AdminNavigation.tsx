@@ -3,11 +3,7 @@ type AdminNavigationProps = {
   navigateTo?: (to: AdminNavigationPath) => void;
 };
 
-export type AdminNavigationPath =
-  | "/admin/inscricoes"
-  | "/admin/coros"
-  | "/admin/patrocinadores"
-  | "/regente";
+export type AdminNavigationPath = "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores";
 
 export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
   const linkClass = (active: boolean) =>
@@ -55,18 +51,6 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
         }}
       >
         Patrocinadores
-      </a>
-      <a
-        href="/regente"
-        className={linkClass(false)}
-        onClick={(event) => {
-          if (navigateTo) {
-            event.preventDefault();
-            navigateTo("/regente");
-          }
-        }}
-      >
-        Área dos regentes
       </a>
     </nav>
   );

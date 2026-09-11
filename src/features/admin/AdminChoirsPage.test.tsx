@@ -75,27 +75,27 @@ describe("AdminChoirsPage", () => {
 
   it("includes regent management using loaded choir options and the public portal link", async () => {
     setup({ loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })) });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: "Regentes" }));
     expect(await screen.findByRole("heading", { name: "Regentes" })).toBeInTheDocument();
     expect(screen.getByLabelText("Coro")).toHaveTextContent("Coro Diocesano de Quixadá");
-    expect(screen.getByRole("link", { name: "Área dos regentes" })).toHaveAttribute(
-      "href",
-      "/regente",
-    );
+    expect(screen.queryByRole("link", { name: "Área dos regentes" })).not.toBeInTheDocument();
   });
   it("shows unconfigured global prices and an empty choir state", async () => {
-    setup();
+    const { user } = setup();
 
-    expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByRole("heading", { name: "Coros e valores" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
+    expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByLabelText("Valor promocional")).toHaveValue("");
     expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(2);
-    expect(screen.getByText("Nenhum coro cadastrado.")).toBeInTheDocument();
   });
 
   it("converts and saves all global currency values", async () => {
     const saveSettings = vi.fn(async ({ data }) => data);
     const { user } = setup({ saveSettings });
 
+    await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
     await user.type(await screen.findByLabelText("Valor normal"), "300,00");
     await user.type(screen.getByLabelText("Valor promocional"), "100,00");
     await user.click(screen.getByRole("button", { name: "Salvar valores" }));

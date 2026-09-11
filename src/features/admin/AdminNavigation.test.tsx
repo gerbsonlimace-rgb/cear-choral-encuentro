@@ -15,5 +15,6 @@ describe("AdminNavigation", () => {
     await user.click(link);
 
     expect(navigateTo).toHaveBeenCalledExactlyOnceWith("/admin/coros");
+    expect(screen.queryByRole("link", { name: "Área dos regentes" })).not.toBeInTheDocument();
   });
 });
