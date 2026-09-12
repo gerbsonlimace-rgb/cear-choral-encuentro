@@ -31,7 +31,9 @@ import {
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
+  checkRegistrationAvailability,
   startRegistrationCheckout,
+  type RegistrationAvailabilityResult,
   type StartRegistrationCheckoutResult,
 } from "@/lib/registration.functions";
 import {
@@ -50,6 +52,10 @@ type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
   startCheckout?: (input: RegistrationInput) => Promise<StartRegistrationCheckoutResult>;
   navigateToCheckout?: (url: string) => void;
+  checkAvailability?: (input: {
+    cpf: string;
+    email: string;
+  }) => Promise<RegistrationAvailabilityResult>;
 };
 
 type RegistrationForm = Omit<
