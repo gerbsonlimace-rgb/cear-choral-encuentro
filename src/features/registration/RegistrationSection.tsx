@@ -194,20 +194,19 @@ function RegistrationBadgePreview({
 
   return (
     <aside aria-label="Prévia do crachá" className="mx-auto w-full max-w-[15rem] lg:sticky lg:top-24">
-      <p className="mb-1 text-center text-[0.65rem] font-bold uppercase text-muted-foreground">Prévia do seu crachá</p>
       <div className="relative mx-auto h-12 w-28" aria-hidden="true">
         <span className="absolute left-4 top-0 h-12 w-1 origin-top rotate-12 rounded-full bg-amber" />
         <span className="absolute right-4 top-0 h-12 w-1 origin-top -rotate-12 rounded-full bg-amber" />
         <span className="absolute bottom-0 left-1/2 h-3 w-8 -translate-x-1/2 rounded-md border-2 border-amber bg-muted" />
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg">
+      <div className="flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg">
         <div className="h-2 bg-amber" aria-hidden="true" />
-        <div className="px-4 py-4 text-center">
-          <img src={eventLogoOnLight} alt="II Encontro de Coros" className="mx-auto h-12 w-auto object-contain" />
-          <div className="mx-auto mt-3 grid size-20 place-items-center overflow-hidden rounded-full border-[3px] border-amber bg-muted font-display text-2xl font-extrabold text-foreground">
+        <div className="flex flex-1 flex-col items-center px-4 py-5 text-center">
+          <img src={eventLogoOnLight} alt="II Encontro de Coros" className="mx-auto h-14 w-auto object-contain" />
+          <div className="mx-auto mt-5 grid size-24 place-items-center overflow-hidden rounded-full border-[3px] border-amber bg-muted font-display text-2xl font-extrabold text-foreground">
             {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
           </div>
-          <p className="mt-3 break-words font-display text-lg font-extrabold leading-tight text-foreground">{name.trim() || "Seu nome"}</p>
+          <p className="mt-5 break-words font-display text-lg font-extrabold leading-tight text-foreground">{name.trim() || "Seu nome"}</p>
           <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">Participante</p>
         </div>
         <div className="bg-foreground px-3 py-2 text-center text-[0.65rem] font-semibold text-background">
