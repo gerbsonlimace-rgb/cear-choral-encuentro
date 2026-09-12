@@ -347,8 +347,37 @@ export function RegistrationSection({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const goToNextStep = () => {
-    if (currentStep === 1 && validateStep(1)) setCurrentStep(2);
+  const goToNextStep = async () => {
+    if (currentStep === 1) {
+      if (!validateStep(1)) return;
+      setIsCheckingAvailability(true);
+      setIdentityConflict(false);
+      try {
+        const availability = await checkAvailability({
+          cpf: form.cpf.replace(/\D/g, ""),
+          email: form.email.trim(),
+        });
+        const conflictErrors: Partial<Record<RegistrationFormField, string>> = {};
+        if (availability.cpfTaken) {
+          conflictErrors.cpf = "Já existe uma inscrição para este CPF.";
+        }
+        if (availability.emailTaken) {
+          conflictErrors.email = "Já existe uma inscrição para este e-mail.";
+        }
+        if (Object.keys(conflictErrors).length > 0) {
+          setErrors((previous) => ({ ...previous, ...conflictErrors }));
+          setIdentityConflict(true);
+          focusFirstError(conflictErrors);
+          return;
+        }
+        setCurrentStep(2);
+      } catch {
+        setCheckoutError("Não foi possível verificar seus dados. Tente novamente.");
+      } finally {
+        setIsCheckingAvailability(false);
+      }
+      return;
+    }
     if (currentStep === 2 && validateStep(2)) setCurrentStep(3);
   };
 
