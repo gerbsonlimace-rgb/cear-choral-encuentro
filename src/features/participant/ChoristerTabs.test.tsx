@@ -231,7 +231,7 @@ describe("ChoristerScoresTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("never opens an expired PDF in a new tab after its one renewal attempt fails", async () => {
+  it("treats a blocked handle as a neutral error without exposing an expired PDF", async () => {
     const expiredEvent = {
       ...scoreFeed.event,
       songs: scoreFeed.event.songs.map((song) => ({
@@ -255,6 +255,27 @@ describe("ChoristerScoresTab", () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+  });
+
+  it("uses an isolated popup handle for a non-expired PDF", async () => {
+    const popup = { close: vi.fn(), location: { href: "" }, opener: window };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={scoreFeed.event} onOpen={vi.fn()} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    await user.click(within(view.container).getByRole("button", { name: "Abrir em nova guia" }));
+
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.opener).toBeNull();
+    expect(popup.location.href).toBe("https://assets.example.test/score.pdf");
+    expect(openWindow).not.toHaveBeenCalledWith(
+      "https://assets.example.test/score.pdf",
+      "_blank",
+      expect.anything(),
+    );
   });
 
   it("uses one refreshed signed URL after expiry and stops renewing when its iframe fails", async () => {
