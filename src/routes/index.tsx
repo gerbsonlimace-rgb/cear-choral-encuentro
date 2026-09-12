@@ -911,33 +911,39 @@ function SponsorsSection() {
           </div>
 
           <div className="mt-9 space-y-9 sm:mt-11 sm:space-y-11">
-            {institutionalPartners.map((partner) => (
-              <div key={partner.name}>
-                <div className="flex items-center gap-4">
-                  <h3 className="shrink-0 font-body text-xs font-extrabold uppercase text-muted-foreground">
-                    {partner.role}
-                  </h3>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
-                <article
-                    className="group flex aspect-square flex-col items-center justify-between rounded-xl border border-border bg-background p-4 text-center text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
-                >
-                    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden py-1 sm:py-2">
-                    <img
-                      src={partner.logo}
-                      alt={partner.name}
-                        className="h-full max-h-20 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-28"
-                      loading="lazy"
-                    />
-                  </div>
-                    <h4 className="mt-1 flex min-h-9 items-center justify-center font-display text-xs font-extrabold leading-tight sm:mt-2 sm:min-h-10 sm:text-base">
-                    {partner.name}
-                    </h4>
-                </article>
-                </div>
+            <div>
+              <div className="flex items-center gap-4">
+                <h3 className="shrink-0 font-body text-xs font-extrabold uppercase text-muted-foreground">
+                  Organização e apoio institucional
+                </h3>
+                <div className="h-px flex-1 bg-border" />
               </div>
-            ))}
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
+                {institutionalPartners.map((partner) => (
+                  <article
+                    key={partner.name}
+                    className="group flex aspect-square flex-col items-center justify-between rounded-xl border border-border bg-background p-4 text-center text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
+                  >
+                    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden py-1 sm:py-2">
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="h-full max-h-20 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-28"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                        {partner.role}
+                      </p>
+                      <h4 className="mt-1 flex min-h-9 items-center justify-center font-display text-xs font-extrabold leading-tight sm:mt-2 sm:text-base">
+                        {partner.name}
+                      </h4>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
 
             <PublicSponsorsSection />
           </div>
