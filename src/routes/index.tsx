@@ -7,11 +7,7 @@ import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
-import ampliartLogo from "../assets/patrocinador-ampliart.png";
-import culturaLogo from "../assets/patrocinador-cultura-quixada.png";
-import nossoLogo from "../assets/patrocinador-nosso-atacarejo.png";
-import pinheiroLogo from "../assets/patrocinador-pinheiro.png";
-import unicatolicaLogo from "../assets/patrocinador-unicatolica.png";
+import { PublicSponsorsSection } from "@/features/sponsors/PublicSponsorsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
