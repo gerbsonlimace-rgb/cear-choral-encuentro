@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 
@@ -13,6 +13,8 @@ Object.defineProperties(HTMLElement.prototype, {
   hasPointerCapture: { configurable: true, value: () => false },
   scrollIntoView: { configurable: true, value: () => undefined },
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 const future = "2099-11-20T12:00:00.000Z";
 const feed: ChoristerPortalFeed = {
@@ -253,7 +255,7 @@ describe("ChoristerScoresTab", () => {
     await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
 
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
     await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
     expect(popup.location.href).toBe("");
   });
@@ -369,7 +371,7 @@ describe("ChoristerScoresTab", () => {
     await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
     await user.click(within(view.container).getByRole("button", { name: "Abrir em nova guia" }));
 
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
     expect(popup.location.href).toBe("");
     expect(onOpen).toHaveBeenCalledTimes(1);
 
@@ -381,6 +383,69 @@ describe("ChoristerScoresTab", () => {
     await waitFor(() => expect(popup.location.href).toBe(renewed.signedUrl));
     expect(openWindow).not.toHaveBeenCalledWith(renewed.signedUrl, "_blank", expect.anything());
     expect(popup.close).not.toHaveBeenCalled();
+  });
+
+  it("does not renew the same viewer asset again after an iframe failure", async () => {
+    const asset = { ...scoreFeed.event.songs[1].sheetMusic[0] };
+    const lifecycleEvent = {
+      ...scoreFeed.event,
+      songs: scoreFeed.event.songs.map((song) =>
+        song.id === scoreFeed.event.songs[1].id ? { ...song, sheetMusic: [asset] } : song,
+      ),
+    };
+    const onOpen = vi.fn().mockResolvedValue(undefined);
+    const onDownload = vi.fn();
+    const popup = { close: vi.fn(), location: { href: "" } };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={lifecycleEvent} onOpen={onOpen} onDownload={onDownload} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    const viewer = await within(view.container).findByTitle("PDF Partitura");
+    fireEvent(viewer, new Event("error", { bubbles: true }));
+    expect(await within(view.container).findByRole("alert")).toBeInTheDocument();
+
+    asset.expiresAt = "2020-01-01T00:00:00.000Z";
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    await user.click(within(view.container).getByRole("button", { name: "Abrir em nova guia" }));
+    await user.click(within(view.container).getByRole("button", { name: "Baixar PDF" }));
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onDownload).not.toHaveBeenCalled();
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
+    await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
+  });
+
+  it("does not click a download anchor after the score tab unmounts", async () => {
+    const renewed = {
+      ...scoreFeed.event.songs[1].sheetMusic[0],
+      signedUrl: "https://assets.example.test/unmounted-download.pdf",
+    };
+    let resolveDownload: (asset: typeof renewed) => void = () => undefined;
+    const pendingDownload = new Promise<typeof renewed>((resolve) => {
+      resolveDownload = resolve;
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab
+        event={scoreFeed.event}
+        onOpen={vi.fn()}
+        onDownload={vi.fn().mockReturnValue(pendingDownload)}
+      />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Baixar" })[0]);
+    view.unmount();
+
+    await act(async () => {
+      resolveDownload(renewed);
+      await Promise.resolve();
+    });
+
+    expect(click).not.toHaveBeenCalled();
   });
 
   it("downloads the renewed signed PDF returned by the shell callback", async () => {
@@ -439,6 +504,11 @@ describe("ChoristerProfileTab", () => {
 
     expect(screen.getByText("***.***.***-25")).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("529.982.247-25");
+    expect(screen.getByText("10/09/2026 às 12:30")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir comprovante" })).toHaveAttribute(
+      "href",
+      participant.payment.receiptUrl,
+    );
 
     await user.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
     await user.click(screen.getByRole("button", { name: "Alterar senha" }));

@@ -223,6 +223,51 @@ describe("ChoristerAppShell", () => {
     expect(document.body).not.toHaveTextContent("Manual do encontro");
   });
 
+  it("closes a pending score popup when changing tabs and logging out", async () => {
+    const expiredFeed: ChoristerPortalFeed = {
+      ...feed,
+      event: {
+        ...feed.event,
+        songs: feed.event.songs.map((song) => ({
+          ...song,
+          sheetMusic: song.sheetMusic.map((asset) => ({
+            ...asset,
+            expiresAt: "2020-01-01T00:00:00.000Z",
+          })),
+        })),
+      },
+    };
+    const renewed = {
+      ...feed.event.songs[0].sheetMusic[0],
+      signedUrl: "https://assets.example.test/late-logout-score.pdf",
+    };
+    let resolveRenewal: (asset: typeof renewed) => void = () => undefined;
+    const pendingRenewal = new Promise<typeof renewed>((resolve) => {
+      resolveRenewal = resolve;
+    });
+    const onOpenScore = vi.fn().mockReturnValue(pendingRenewal);
+    const popup = { close: vi.fn(), location: { href: "" } };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const { user } = setup({ feed: expiredFeed, onOpenScore });
+
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
+
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+
+    await act(async () => {
+      resolveRenewal(renewed);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
+    expect(popup.location.href).toBe("");
+    expect(document.body).not.toHaveTextContent(renewed.signedUrl);
+  });
+
   it("handles ended and failed playback without leaving the player in a playing state", async () => {
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
