@@ -42,6 +42,7 @@ const legacy: AdminRegistrationRow = {
   pricingType: null,
   standardPriceCents: null,
   registrationPriceCents: null,
+  photoUrl: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -60,6 +61,7 @@ const paid: AdminRegistrationRow = {
   paymentMethod: "credit_card",
   installments: 2,
   paidAt: "2026-09-02T12:00:00Z",
+  photoUrl: "https://example.com/foto-clara.jpg",
   participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
 };
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
@@ -69,25 +71,33 @@ const summary: AdminRegistrationSummary = {
   pending: 4,
   legacy: 2,
   receivedCents: 20000,
+  pendingCents: 50000,
   pendingRegentCents: 40000,
+  expectedCents: 110000,
   byChoir: [
     {
       choirName: "Diocese de Quixadá",
       total: 7,
       receivedCents: 20000,
+      pendingCents: 50000,
       pendingRegentCents: 40000,
+      expectedCents: 110000,
     },
     {
       choirName: "Diocese de Sobral",
       total: 4,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
     {
       choirName: "Arquidiocese de Fortaleza",
       total: 3,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
   ],
 };
