@@ -525,7 +525,11 @@ describe("ChoristerScoresTab", () => {
     expect(onDownload).toHaveBeenCalledWith(
       expect.objectContaining({ id: renewed.id, signedUrl: expect.stringContaining("score.pdf") }),
     );
-    expect(click.mock.instances[0]).toHaveAttribute("href", renewed.signedUrl);
+    const downloadHref = click.mock.instances[0].getAttribute("href");
+    expect(downloadHref).toBeTruthy();
+    expect(new URL(downloadHref!).origin).toBe(new URL(renewed.signedUrl).origin);
+    expect(new URL(downloadHref!).pathname).toBe(new URL(renewed.signedUrl).pathname);
+    expect(new URL(downloadHref!).searchParams.get("download")).toBe(renewed.title);
   });
 });
 

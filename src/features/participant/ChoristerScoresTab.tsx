@@ -164,7 +164,12 @@ export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: 
   function triggerDownload(asset: PdfAsset, generation: number) {
     if (!isCurrentGeneration(generation)) return;
     const anchor = document.createElement("a");
-    anchor.href = asset.signedUrl;
+    // Supabase Storage honors the `download` query parameter with a
+    // Content-Disposition attachment while preserving the canonical signed
+    // URL for the inline iframe viewer.
+    const downloadUrl = new URL(asset.signedUrl);
+    downloadUrl.searchParams.set("download", asset.title);
+    anchor.href = downloadUrl.toString();
     anchor.download = asset.title;
     anchor.hidden = true;
     document.body.append(anchor);
