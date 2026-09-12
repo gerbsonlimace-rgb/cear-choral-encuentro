@@ -16,3 +16,4 @@
 - [x] Apply the dark-background logo on dark surfaces and the light-background logo on light surfaces.
 - [x] Compact the personal-data step and place the participant photo and event logo beside the name.
 - [x] Restore the full vertical badge with a lanyard on the right while keeping fields compact.
+- [ ] Rebalance the sponsor area with square, left-aligned cards, larger logos, and hover effects.
