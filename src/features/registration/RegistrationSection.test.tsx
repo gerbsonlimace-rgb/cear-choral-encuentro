@@ -77,6 +77,18 @@ describe("RegistrationSection", () => {
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
   });
 
+  it("blocks advancing when CPF or e-mail is already registered", async () => {
+    const user = userEvent.setup();
+    const taken = vi.fn(async () => ({ cpfTaken: true, emailTaken: true }));
+    render(<RegistrationSection checkAvailability={taken} loadConfiguration={loadConfiguration} />);
+    await fillPersonalData(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(taken).toHaveBeenCalledWith({ cpf: "52998224725", email: "maria@example.com" });
+    expect(await screen.findAllByText(/Já existe uma inscrição para este/)).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Retomar pagamento" })[0]).toHaveAttribute("href", "#retomar-pagamento");
+    expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
+  });
+
   it("loads configured choirs and all musical profiles in participation", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
