@@ -295,6 +295,7 @@ export function RegistrationSection({
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+    if (field === "cpf" || field === "email") setIdentityConflict(false);
   };
 
   const handlePhotoChange = async (file: File | undefined) => {
@@ -390,7 +391,7 @@ export function RegistrationSection({
     event.preventDefault();
     if (isSubmitting) return;
     if (currentStep < 3) {
-      goToNextStep();
+      void goToNextStep();
       return;
     }
     if (!selectedChoir) {
