@@ -193,4 +193,25 @@ describe("landing page sponsors", () => {
     expect(content.getByRole("img", { name: "Diocese de Quixadá" })).toBeInTheDocument();
     expect(content.queryByRole("img", { name: "Unicatolica" })).not.toBeInTheDocument();
   });
+
+  it("shows organisation and institutional support side by side", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const row = document.querySelector<HTMLElement>(
+      "#patrocinadores [aria-hidden] , #patrocinadores .grid-cols-2",
+    );
+    expect(row).not.toBeNull();
+
+    const organisation = screen
+      .getByRole("img", { name: "Coro Diocesano de Quixadá" })
+      .closest("article");
+    const support = screen
+      .getByRole("img", { name: "Diocese de Quixadá" })
+      .closest("article");
+
+    expect(organisation?.parentElement).toBe(support?.parentElement);
+    expect(row).toContainElement(organisation!);
+    expect(row).toContainElement(support!);
+  });
 });
