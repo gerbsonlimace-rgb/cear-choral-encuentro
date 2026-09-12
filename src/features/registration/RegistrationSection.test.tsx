@@ -182,6 +182,7 @@ describe("RegistrationSection", () => {
     const navigateToCheckout = vi.fn();
     render(
       <RegistrationSection
+        checkAvailability={available}
         loadConfiguration={loadConfiguration}
         startCheckout={startCheckout}
         navigateToCheckout={navigateToCheckout}
