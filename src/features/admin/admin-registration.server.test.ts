@@ -222,6 +222,7 @@ describe("registration summary", () => {
             pricingType: "standard" as const,
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
+            photoUrl: null,
           },
         ];
       },
