@@ -147,7 +147,7 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
   doc.text(
-    "Acesse com o e-mail da inscrição e a senha: CPF + data de nascimento.",
+    "Acesse com o e-mail da inscrição e a senha inicial: CPF + ano de nascimento (AAAA).",
     marginX,
     y + 42,
   );

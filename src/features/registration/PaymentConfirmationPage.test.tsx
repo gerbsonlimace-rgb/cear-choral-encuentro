@@ -49,6 +49,7 @@ describe("PaymentConfirmationPage", () => {
       installments: 1,
       participantAccessStatus: "active" as const,
       participantName: "Maria de Lourdes",
+      participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
       amountCents: 12000,
       paidAmountCents: 12000,
@@ -74,6 +75,63 @@ describe("PaymentConfirmationPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
     await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps processing and confirmed states in one animated shell", async () => {
+    let resolvePayment!: (status: {
+      status: "paid";
+      paymentMethod: "pix";
+      installments: 1;
+      participantAccessStatus: "active";
+    }) => void;
+    const verifyPayment = vi.fn(
+      () =>
+        new Promise<{
+          status: "paid";
+          paymentMethod: "pix";
+          installments: 1;
+          participantAccessStatus: "active";
+        }>((resolve) => {
+          resolvePayment = resolve;
+        }),
+    );
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+    const shell = screen.getByTestId("payment-confirmation-shell");
+    expect(shell).toHaveAttribute("data-confirmation-state", "processing");
+
+    resolvePayment({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      participantAccessStatus: "active",
+    });
+
+    await waitFor(() => expect(shell).toHaveAttribute("data-confirmation-state", "paid"));
+    expect(screen.getByText("Inscrição confirmada")).toBeVisible();
+  });
+
+  it("shows the participant app credentials guidance in a second column", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      participantEmail: "maria@example.com",
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Acesso ao App do Coralista" }),
+    ).toBeVisible();
+    expect(screen.getByTestId("confirmation-columns")).toHaveClass("lg:grid-cols-2");
+    expect(screen.getByText("maria@example.com")).toBeVisible();
+    expect(screen.getByText("CPF + ano de nascimento (AAAA)")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Acessar o app do Coralista" })).toHaveAttribute(
+      "href",
+      "/acessar",
+    );
   });
 
   it("offers unified portal access only after participant access is active", async () => {

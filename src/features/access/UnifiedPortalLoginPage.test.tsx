@@ -102,7 +102,7 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "No primeiro acesso como participante, use os dígitos do CPF seguidos da data de nascimento em DDMMAAAA.",
+        "No primeiro acesso como participante, use os dígitos do CPF seguidos do ano de nascimento com quatro dígitos (AAAA).",
       ),
     ).toBeInTheDocument();
   });

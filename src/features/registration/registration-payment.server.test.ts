@@ -128,7 +128,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at";
 const identityColumns = "id";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -555,6 +555,7 @@ describe("registration payment service", () => {
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
       participantName: "Maria da Silva",
+      participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
     } as RegistrationPaymentRecord);
 
@@ -567,6 +568,7 @@ describe("registration payment service", () => {
       participantAccessStatus: "pending",
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
       participantName: "Maria da Silva",
+      participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
     });
     expect(JSON.stringify(status)).not.toContain("transaction-1");
@@ -824,6 +826,7 @@ describe("Supabase registration repository", () => {
       paymentMethod: "pix",
       installments: 1,
       receiptUrl: "https://receipts.infinitepay.io/receipt/abc",
+      participantEmail: null,
       participantName: null,
       choirName: null,
       paidAmountCents: null,

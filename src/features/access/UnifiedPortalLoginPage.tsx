@@ -232,8 +232,8 @@ export function UnifiedPortalLoginPage({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              No primeiro acesso como participante, use os dígitos do CPF seguidos da data de
-              nascimento em DDMMAAAA.
+              No primeiro acesso como participante, use os dígitos do CPF seguidos do ano de
+              nascimento com quatro dígitos (AAAA).
             </p>
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? "Entrando…" : "Entrar"}

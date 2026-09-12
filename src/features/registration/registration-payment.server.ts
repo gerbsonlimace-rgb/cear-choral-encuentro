@@ -35,7 +35,7 @@ export type RegistrationPaymentRecord = {
   choirName?: string | null;
   paidAmountCents?: number | null;
   paidAt?: string | null;
-  
+  participantEmail?: string | null;
 };
 
 export type PublicPaymentStatus =
@@ -51,6 +51,7 @@ export type PublicPaymentStatus =
       paidAmountCents?: number;
       paidAt?: string;
       participantName?: string;
+      participantEmail?: string;
       choirName?: string;
     };
 
@@ -230,12 +231,13 @@ function toPublicPaymentStatus(
     ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
     ...(record.paidAt ? { paidAt: record.paidAt } : {}),
     ...(record.participantName ? { participantName: record.participantName } : {}),
+    ...(record.participantEmail ? { participantEmail: record.participantEmail } : {}),
     ...(record.choirName ? { choirName: record.choirName } : {}),
   };
 }
 
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at" as const;
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at" as const;
 const identityColumns = "id" as const;
 
 function mapPaymentRow(row: {
@@ -248,6 +250,7 @@ function mapPaymentRow(row: {
   installments: number | null;
   receipt_url: string | null;
   name?: string | null;
+  email?: string | null;
   choir_name?: string | null;
   paid_amount_cents?: number | null;
   paid_at?: string | null;
@@ -266,6 +269,7 @@ function mapPaymentRow(row: {
     installments: row.installments,
     receiptUrl: row.receipt_url,
     participantName: row.name ?? null,
+    participantEmail: row.email ?? null,
     choirName: row.choir_name ?? null,
     paidAmountCents: row.paid_amount_cents ?? null,
     paidAt: row.paid_at ?? null,

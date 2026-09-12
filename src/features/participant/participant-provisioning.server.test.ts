@@ -181,7 +181,7 @@ describe("participant provisioning service", () => {
 
     expect(auth.createUser).toHaveBeenCalledWith({
       email: "participante@example.com",
-      password: "5299822472515011990",
+      password: "529982247251990",
       emailConfirm: true,
     });
     expect(repository.activate).toHaveBeenCalledWith({
@@ -372,7 +372,7 @@ describe("participant provisioning service", () => {
 
     expect(auth.updatePassword).toHaveBeenCalledExactlyOnceWith(
       createdUserId,
-      "5299822472515011990",
+      "529982247251990",
     );
     expect(repository.appendEvent).toHaveBeenCalledWith({
       registrationId,

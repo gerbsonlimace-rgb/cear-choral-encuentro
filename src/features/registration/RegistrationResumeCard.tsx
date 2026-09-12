@@ -19,8 +19,8 @@ export function RegistrationResumeCard() {
               Já fez sua inscrição?
             </h3>
             <p className="text-sm text-muted-foreground">
-              Acesse a Área do Participante com seu e-mail e a senha formada pelo CPF e a data de
-              nascimento para continuar um pagamento pendente.
+              Acesse a Área do Participante com seu e-mail e a senha formada pelo CPF e o ano de
+              nascimento com quatro dígitos para continuar um pagamento pendente.
             </p>
           </div>
         </div>

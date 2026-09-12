@@ -17,6 +17,6 @@ describe("RegistrationResumeCard", () => {
   it("explains the credentials required by the participant area", () => {
     render(<RegistrationResumeCard />);
 
-    expect(screen.getByText(/e-mail.*cpf.*data de nascimento/i)).toBeInTheDocument();
+    expect(screen.getByText(/e-mail.*cpf.*ano de nascimento/i)).toBeInTheDocument();
   });
 });
