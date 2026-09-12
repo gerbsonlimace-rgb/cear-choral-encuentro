@@ -249,33 +249,28 @@ function RegistrationViews({
                     <div className="min-w-0">
                       <p className="break-words font-medium">{row.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                      <div className="mt-1">
+                        <Status row={row} />
+                      </div>
+                      <ParticipantAccessActions
+                        row={row}
+                        busy={participantActionBusy}
+                        onReprocess={onReprocess}
+                        onReset={onReset}
+                      />
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="max-w-52 align-top">
-                  <p className="break-all">{row.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{row.phone}</p>
+                <TableCell className="align-top">{money(row.paidAmountCents)}</TableCell>
+                <TableCell className="align-top">
+                  {pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}
                 </TableCell>
+                <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
-                  <p className="break-words">{row.city}</p>
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
-                    {row.institution || "Não informado"}
-                  </p>
-                  <p className="mt-1 text-xs">{row.role}</p>
                 </TableCell>
-                <TableCell className="align-top">
-                  <Status row={row} />
-                  <ParticipantAccessActions
-                    row={row}
-                    busy={participantActionBusy}
-                    onReprocess={onReprocess}
-                    onReset={onReset}
-                  />
-                </TableCell>
-                <TableCell className="align-top">
-                  <Payment row={row} />
+                <TableCell className="max-w-44 align-top">
+                  <p className="break-words">{row.regentName ?? "Não informado"}</p>
                 </TableCell>
               </TableRow>
             ))}
