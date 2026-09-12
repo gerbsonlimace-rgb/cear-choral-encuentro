@@ -923,15 +923,15 @@ function SponsorsSection() {
                 <article
                     className="group flex aspect-square flex-col items-center justify-between rounded-xl border border-border bg-background p-4 text-center text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
                 >
-                    <div className="flex min-h-0 flex-1 items-center justify-center py-2">
+                    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden py-1 sm:py-2">
                     <img
                       src={partner.logo}
                       alt={partner.name}
-                        className="max-h-28 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-32"
+                        className="h-full max-h-20 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-28"
                       loading="lazy"
                     />
                   </div>
-                    <h4 className="mt-2 min-h-10 font-display text-sm font-extrabold leading-tight sm:text-base">
+                    <h4 className="mt-1 flex min-h-9 items-center justify-center font-display text-xs font-extrabold leading-tight sm:mt-2 sm:min-h-10 sm:text-base">
                     {partner.name}
                     </h4>
                 </article>
