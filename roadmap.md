@@ -17,3 +17,4 @@
 - [x] Compact the personal-data step and place the participant photo and event logo beside the name.
 - [x] Restore the full vertical badge with a lanyard on the right while keeping fields compact.
 - [x] Rebalance the sponsor area with square, left-aligned cards, larger logos, and hover effects.
+- [x] Put organisation and institutional support cards on the same line under one label.
