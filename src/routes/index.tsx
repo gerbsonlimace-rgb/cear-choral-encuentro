@@ -536,13 +536,6 @@ const quixadaSpots = [
   },
 ];
 
-const sponsors = [
-  { name: "Unicatolica", logo: unicatolicaLogo },
-  { name: "Pinheiro Supermercado", logo: pinheiroLogo },
-  { name: "Nosso Atacarejo", logo: nossoLogo },
-  { name: "Cultura Quixada", logo: culturaLogo },
-  { name: "Ampliart", logo: ampliartLogo },
-];
 
 const institutionalPartners = [
   { role: "Organização", name: "Coro Diocesano de Quixadá", logo: coroLogo },
