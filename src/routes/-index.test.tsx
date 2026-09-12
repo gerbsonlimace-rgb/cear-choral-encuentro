@@ -211,6 +211,14 @@ describe("landing page sponsors", () => {
     const row = organisation!.parentElement!;
     expect(row).toBe(support!.parentElement);
     expect(row.className).toContain("grid");
+    expect(row.className).toContain("sm:grid-cols-2");
     expect(within(row as HTMLElement).getAllByRole("article")).toHaveLength(2);
+
+    // Each card is a horizontal strip: logo beside the name, no fixed square box.
+    for (const card of within(row as HTMLElement).getAllByRole("article")) {
+      expect(card.className).toContain("flex");
+      expect(card.className).toContain("items-center");
+      expect(card.className).not.toContain("aspect-square");
+    }
   });
 });
