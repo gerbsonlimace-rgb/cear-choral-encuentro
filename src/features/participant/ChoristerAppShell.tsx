@@ -40,6 +40,12 @@ const playerVoiceLabels = {
   todos: "Todos",
 } as const;
 
+function isIntentionalPlaybackCancellation(error: unknown) {
+  return (
+    typeof error === "object" && error !== null && "name" in error && error.name === "AbortError"
+  );
+}
+
 export function ChoristerAppShell({
   participant,
   feed,
@@ -57,6 +63,7 @@ export function ChoristerAppShell({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerStatus, setPlayerStatus] = useState<"ready" | "ended" | "error">("ready");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const playbackGenerationRef = useRef(0);
   const audioById = useMemo(
     () =>
       new Map(
@@ -69,6 +76,13 @@ export function ChoristerAppShell({
   const selectedAudio = selectedAudioId ? audioById.get(selectedAudioId) : undefined;
 
   useEffect(() => {
+    playbackGenerationRef.current += 1;
+    return () => {
+      playbackGenerationRef.current += 1;
+    };
+  }, [selectedAudio?.audio.id]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -77,7 +91,14 @@ export function ChoristerAppShell({
       return;
     }
 
-    void audio.play().catch(() => {
+    const generation = playbackGenerationRef.current;
+    void audio.play().catch((error: unknown) => {
+      if (
+        generation !== playbackGenerationRef.current ||
+        isIntentionalPlaybackCancellation(error)
+      ) {
+        return;
+      }
       setIsPlaying(false);
       setPlayerStatus("error");
     });

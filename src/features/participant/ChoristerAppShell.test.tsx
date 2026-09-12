@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -179,5 +179,53 @@ describe("ChoristerAppShell", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Não foi possível reproduzir este áudio. Tente novamente.",
     );
+  });
+
+  it("ignores a stale play rejection after the listener changes tracks", async () => {
+    let rejectFirstPlay: (reason?: unknown) => void = () => undefined;
+    const firstPlay = new Promise<void>((_resolve, reject) => {
+      rejectFirstPlay = reject;
+    });
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockImplementationOnce(() => firstPlay)
+      .mockResolvedValueOnce(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    await waitFor(() => expect(play).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("button", { name: "Tocar Tenor" }));
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      rejectFirstPlay(new Error("old track rejected"));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/tenor.mp3",
+    );
+    expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not surface an intentional AbortError as a playback failure", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
+      new DOMException("playback interrupted", "AbortError"),
+    );
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
