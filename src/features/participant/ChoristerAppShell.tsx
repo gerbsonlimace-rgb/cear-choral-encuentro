@@ -1,5 +1,5 @@
 import { FileText, Home, Music2, Pause, Play, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type {
@@ -31,6 +31,15 @@ const tabs = [
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ] as const satisfies ReadonlyArray<{ id: ChoristerTab; label: string; icon: typeof Home }>;
 
+const playerVoiceLabels = {
+  principal: "Principal",
+  soprano: "Soprano",
+  contralto: "Contralto",
+  tenor: "Tenor",
+  baixo: "Baixo",
+  todos: "Todos",
+} as const;
+
 export function ChoristerAppShell({
   participant,
   feed,
@@ -46,6 +55,8 @@ export function ChoristerAppShell({
   const [selectedTab, setSelectedTab] = useState<ChoristerTab>(initialTab);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playerStatus, setPlayerStatus] = useState<"ready" | "ended" | "error">("ready");
+  const audioRef = useRef<HTMLAudioElement>(null);
   const audioById = useMemo(
     () =>
       new Map(
@@ -57,14 +68,38 @@ export function ChoristerAppShell({
   );
   const selectedAudio = selectedAudioId ? audioById.get(selectedAudioId) : undefined;
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!isPlaying) {
+      audio.pause();
+      return;
+    }
+
+    void audio.play().catch(() => {
+      setIsPlaying(false);
+      setPlayerStatus("error");
+    });
+  }, [isPlaying, selectedAudio?.audio.id]);
+
   function selectTab(tab: ChoristerTab) {
     setSelectedTab(tab);
     onTabChange?.(tab);
   }
 
   function handlePlay(audioId: string) {
-    setSelectedAudioId(audioId);
+    if (selectedAudioId !== audioId) {
+      const previousAudio = audioRef.current;
+      if (previousAudio) {
+        previousAudio.pause();
+        previousAudio.removeAttribute("src");
+        previousAudio.load();
+      }
+      setSelectedAudioId(audioId);
+    }
     setIsPlaying(true);
+    setPlayerStatus("ready");
     onPlay(audioId);
   }
 
@@ -133,6 +168,20 @@ export function ChoristerAppShell({
             aria-label="Player persistente"
             className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-4 z-10 mx-auto flex max-w-xl items-center gap-3 rounded-xl border border-amber-300 bg-zinc-950 p-3 text-white shadow-xl sm:right-6 sm:left-6"
           >
+            <audio
+              ref={audioRef}
+              aria-label="Reprodutor de áudio"
+              src={selectedAudio.audio.signedUrl}
+              preload="metadata"
+              onEnded={() => {
+                setIsPlaying(false);
+                setPlayerStatus("ended");
+              }}
+              onError={() => {
+                setIsPlaying(false);
+                setPlayerStatus("error");
+              }}
+            />
             <Button
               type="button"
               size="icon"
@@ -152,9 +201,19 @@ export function ChoristerAppShell({
             </Button>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{selectedAudio.song.name}</p>
-              <p className="truncate text-xs text-zinc-300">{selectedAudio.audio.title}</p>
+              <p className="truncate text-xs text-zinc-300">
+                {selectedAudio.audio.title} · {playerVoiceLabels[selectedAudio.audio.voicePart]}
+              </p>
             </div>
-            <span className="text-xs text-amber-200">Preparado</span>
+            {playerStatus === "error" ? (
+              <p role="alert" className="text-right text-xs text-amber-200">
+                Não foi possível reproduzir este áudio. Tente novamente.
+              </p>
+            ) : (
+              <span className="text-xs text-amber-200">
+                {playerStatus === "ended" ? "Concluído" : isPlaying ? "Reproduzindo" : "Pronto"}
+              </span>
+            )}
           </section>
         )}
 

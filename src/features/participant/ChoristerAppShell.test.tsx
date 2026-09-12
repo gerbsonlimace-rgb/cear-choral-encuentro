@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 
@@ -43,6 +43,13 @@ const feed: ChoristerPortalFeed = {
             signedUrl: "https://assets.example.test/audio.mp3",
             expiresAt: future,
           },
+          {
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            title: "Tenor",
+            voicePart: "tenor",
+            signedUrl: "https://assets.example.test/tenor.mp3",
+            expiresAt: future,
+          },
         ],
         sheetMusic: [
           {
@@ -83,6 +90,8 @@ function setup() {
 }
 
 describe("ChoristerAppShell", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("keeps the approved four-tab order in the mobile bottom navigation", () => {
     setup();
 
@@ -118,5 +127,57 @@ describe("ChoristerAppShell", () => {
     await user.click(screen.getByRole("button", { name: /Ensaiar cantos/i }));
     expect(screen.getByRole("heading", { name: "Cantos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cantos" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("plays signed audio in the persistent player and releases the previous track before switching", async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const load = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+
+    const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
+    expect(audio).toHaveAttribute("src", "https://assets.example.test/audio.mp3");
+    expect(screen.getByRole("region", { name: "Player persistente" })).toHaveTextContent(
+      "Canto de entradaSoprano",
+    );
+    await waitFor(() => expect(play).toHaveBeenCalledOnce());
+
+    await user.click(screen.getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("region", { name: "Player persistente" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Tenor" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
+        "src",
+        "https://assets.example.test/tenor.mp3",
+      ),
+    );
+    expect(pause).toHaveBeenCalled();
+    expect(load).toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles ended and failed playback without leaving the player in a playing state", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    const audio = screen.getByLabelText("Reprodutor de áudio");
+
+    fireEvent.ended(audio);
+    expect(screen.getByRole("button", { name: "Reproduzir Canto de entrada" })).toBeInTheDocument();
+    expect(screen.getByText("Concluído")).toBeInTheDocument();
+
+    fireEvent.error(audio);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Não foi possível reproduzir este áudio. Tente novamente.",
+    );
   });
 });
