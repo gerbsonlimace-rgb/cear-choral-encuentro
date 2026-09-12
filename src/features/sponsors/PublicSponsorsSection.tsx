@@ -33,17 +33,22 @@ export function PublicSponsorsSection({
       <p className="text-sm font-bold text-amber">Patrocinadores</p>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
         {sponsors.map((sponsor) => (
-          <article
+          <figure
             key={sponsor.id}
-            className="flex min-h-24 items-center justify-center rounded-xl bg-white p-4 sm:p-5"
+            className="flex flex-col rounded-xl border border-border bg-background p-4 sm:p-5"
           >
-            <img
-              src={sponsor.logoUrl}
-              alt={sponsor.name}
-              className="max-h-16 w-full object-contain sm:max-h-20"
-              loading="lazy"
-            />
-          </article>
+            <div className="flex h-20 items-center justify-center sm:h-24">
+              <img
+                src={sponsor.logoUrl}
+                alt={`Logo de ${sponsor.name}`}
+                className="max-h-full w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+            <figcaption className="mt-3 flex min-h-10 items-start justify-center text-center text-sm font-semibold leading-snug text-foreground line-clamp-2">
+              {sponsor.name}
+            </figcaption>
+          </figure>
         ))}
       </div>
     </div>
