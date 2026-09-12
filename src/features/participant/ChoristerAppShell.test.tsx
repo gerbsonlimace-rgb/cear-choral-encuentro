@@ -181,7 +181,7 @@ describe("ChoristerAppShell", () => {
     );
   });
 
-  it("ignores a stale play rejection after the listener changes tracks", async () => {
+  it("ignores a synchronous non-Abort rejection while the listener changes tracks", async () => {
     let rejectFirstPlay: (reason?: unknown) => void = () => undefined;
     const firstPlay = new Promise<void>((_resolve, reject) => {
       rejectFirstPlay = reject;
@@ -190,7 +190,9 @@ describe("ChoristerAppShell", () => {
       .spyOn(HTMLMediaElement.prototype, "play")
       .mockImplementationOnce(() => firstPlay)
       .mockResolvedValueOnce(undefined);
-    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {
+      rejectFirstPlay(new Error("old track rejected"));
+    });
     vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
     const { user } = setup();
 
@@ -200,15 +202,37 @@ describe("ChoristerAppShell", () => {
     await user.click(screen.getByRole("button", { name: "Tocar Tenor" }));
     await waitFor(() => expect(play).toHaveBeenCalledTimes(2));
 
-    await act(async () => {
-      rejectFirstPlay(new Error("old track rejected"));
-      await Promise.resolve();
-    });
-
     expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
       "src",
       "https://assets.example.test/tenor.mp3",
     );
+    expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("creates a fresh playback attempt when the listener replays the same track", async () => {
+    let rejectFirstPlay: (reason?: unknown) => void = () => undefined;
+    const firstPlay = new Promise<void>((_resolve, reject) => {
+      rejectFirstPlay = reject;
+    });
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockImplementationOnce(() => firstPlay)
+      .mockResolvedValueOnce(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    await waitFor(() => expect(play).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      rejectFirstPlay(new Error("first attempt rejected"));
+      await Promise.resolve();
+    });
+
     expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -227,5 +251,21 @@ describe("ChoristerAppShell", () => {
       expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument(),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("surfaces a non-Abort rejection for the current playback attempt", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
+      new Error("current track rejected"),
+    );
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível reproduzir este áudio. Tente novamente.",
+    );
+    expect(screen.getByRole("button", { name: "Reproduzir Canto de entrada" })).toBeInTheDocument();
   });
 });
