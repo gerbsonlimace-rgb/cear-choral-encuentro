@@ -9,9 +9,7 @@ describe("PublicSponsorsSection", () => {
     render(<PublicSponsorsSection loadSponsors={loadSponsors} />);
 
     await vi.waitFor(() => expect(loadSponsors).toHaveBeenCalledOnce());
-    expect(
-      screen.queryByRole("heading", { name: "Quem ajuda esta música a chegar mais longe" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Patrocinadores")).not.toBeInTheDocument();
   });
 
   it("renders configured sponsors with accessible logos", async () => {
@@ -28,11 +26,8 @@ describe("PublicSponsorsSection", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Quem ajuda esta música a chegar mais longe" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Universidade Católica" })).toHaveAttribute(
-      "src",
-      "https://example.test/unicatolica.png",
-    );
+      await screen.findByRole("img", { name: "Universidade Católica" }),
+    ).toHaveAttribute("src", "https://example.test/unicatolica.png");
+    expect(screen.getByText("Patrocinadores")).toBeInTheDocument();
   });
 });

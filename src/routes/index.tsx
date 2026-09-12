@@ -7,11 +7,7 @@ import logoImage from "../assets/logo-coros-preto.png";
 import logoImageLight from "../assets/logo-coros-branco.png";
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
-import ampliartLogo from "../assets/patrocinador-ampliart.png";
-import culturaLogo from "../assets/patrocinador-cultura-quixada.png";
-import nossoLogo from "../assets/patrocinador-nosso-atacarejo.png";
-import pinheiroLogo from "../assets/patrocinador-pinheiro.png";
-import unicatolicaLogo from "../assets/patrocinador-unicatolica.png";
+import { PublicSponsorsSection } from "@/features/sponsors/PublicSponsorsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -540,13 +536,6 @@ const quixadaSpots = [
   },
 ];
 
-const sponsors = [
-  { name: "Unicatolica", logo: unicatolicaLogo },
-  { name: "Pinheiro Supermercado", logo: pinheiroLogo },
-  { name: "Nosso Atacarejo", logo: nossoLogo },
-  { name: "Cultura Quixada", logo: culturaLogo },
-  { name: "Ampliart", logo: ampliartLogo },
-];
 
 const institutionalPartners = [
   { role: "Organização", name: "Coro Diocesano de Quixadá", logo: coroLogo },
@@ -906,72 +895,45 @@ function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
 function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
-      <div className="container-event space-y-8 px-4 lg:px-0">
-        <div className="grid gap-6 rounded-xl bg-foreground p-5 text-white sm:p-7 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
+      <div className="container-event px-4 lg:px-0">
+        <div className="grid gap-6 rounded-xl bg-foreground p-5 text-white sm:p-7 lg:grid-cols-[0.75fr_1.25fr] lg:gap-8">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/15 px-4 py-1.5 text-sm font-bold text-amber">
-              Apoio e organização
+              Apoio, organização e patrocínio
             </span>
             <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight sm:text-4xl">
               Instituições que conduzem o encontro
             </h2>
             <p className="mt-4 text-base leading-relaxed text-white/72 sm:text-lg">
               A realização nasce do trabalho conjunto entre o Coro Diocesano de Quixadá e a Diocese
-              de Quixadá.
+              de Quixadá, com parceiros que valorizam cultura, formação e vida comunitária.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {institutionalPartners.map((partner) => (
-              <article
-                key={partner.name}
-                className="flex min-h-36 flex-col justify-between rounded-xl bg-white p-5 text-foreground"
-              >
-                <span className="text-sm font-bold text-teal">{partner.role}</span>
-                <div className="mt-4 flex min-h-24 items-center justify-center">
-                  <img
-                    src={partner.logo}
-                    alt={partner.name}
-                    className="max-h-24 w-full object-contain"
-                    loading="lazy"
-                  />
-                </div>
-                <h3 className="mt-4 font-display text-xl font-extrabold leading-tight">
-                  {partner.name}
-                </h3>
-              </article>
-            ))}
-          </div>
-        </div>
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+              {institutionalPartners.map((partner) => (
+                <article
+                  key={partner.name}
+                  className="flex min-h-36 flex-col justify-between rounded-xl bg-white p-5 text-foreground"
+                >
+                  <span className="text-sm font-bold text-teal">{partner.role}</span>
+                  <div className="mt-4 flex min-h-24 items-center justify-center">
+                    <img
+                      src={partner.logo}
+                      alt={partner.name}
+                      className="max-h-24 w-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                  <h3 className="mt-4 font-display text-xl font-extrabold leading-tight">
+                    {partner.name}
+                  </h3>
+                </article>
+              ))}
+            </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
-              Patrocinadores
-            </span>
-            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
-              Quem ajuda esta musica chegar mais longe
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-              O encontro tambem e construido por parceiros que valorizam cultura, formacao e vida
-              comunitaria em Quixada.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-            {sponsors.map((sponsor) => (
-              <article
-                key={sponsor.name}
-                className="flex min-h-24 items-center justify-center rounded-xl border border-border bg-card p-4 sm:min-h-32 sm:p-5"
-              >
-                <img
-                  src={sponsor.logo}
-                  alt={sponsor.name}
-                  className="max-h-16 w-full object-contain sm:max-h-20"
-                  loading="lazy"
-                />
-              </article>
-            ))}
+            <PublicSponsorsSection />
           </div>
         </div>
       </div>
