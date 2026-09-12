@@ -525,7 +525,7 @@ describe("ChoristerScoresTab", () => {
     expect(onDownload).toHaveBeenCalledWith(
       expect.objectContaining({ id: renewed.id, signedUrl: expect.stringContaining("score.pdf") }),
     );
-    const downloadHref = click.mock.instances[0].getAttribute("href");
+    const downloadHref = (click.mock.instances[0] as HTMLAnchorElement).getAttribute("href");
     expect(downloadHref).toBeTruthy();
     expect(new URL(downloadHref!).origin).toBe(new URL(renewed.signedUrl).origin);
     expect(new URL(downloadHref!).pathname).toBe(new URL(renewed.signedUrl).pathname);
