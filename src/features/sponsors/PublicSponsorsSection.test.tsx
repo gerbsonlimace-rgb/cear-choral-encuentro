@@ -12,7 +12,7 @@ describe("PublicSponsorsSection", () => {
     expect(screen.queryByText("Patrocinadores")).not.toBeInTheDocument();
   });
 
-  it("renders configured sponsors with accessible logos", async () => {
+  it("renders configured sponsors with logos and name captions", async () => {
     render(
       <PublicSponsorsSection
         loadSponsors={vi.fn(async () => [
