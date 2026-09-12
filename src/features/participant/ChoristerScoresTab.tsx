@@ -1,5 +1,5 @@
 import { Download, ExternalLink, FileText, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,13 +45,26 @@ function orderedDocuments(event: ChoristerPortalFeed["event"]) {
 export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScoresTabProps) {
   const [viewerAsset, setViewerAsset] = useState<PdfAsset | null>(null);
   const [viewerStatus, setViewerStatus] = useState<"ready" | "refreshing" | "error">("ready");
+  const mountedRef = useRef(false);
   const viewerGenerationRef = useRef(0);
   const renewalAttemptRef = useRef<RenewalAttempt | null>(null);
+  const lifecycleAssetIdRef = useRef<string | null>(null);
+  const renewalUsedAssetIdsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      viewerGenerationRef.current += 1;
+    };
+  }, []);
+
+  function isCurrentGeneration(generation: number) {
+    return mountedRef.current && viewerGenerationRef.current === generation;
+  }
 
   function isCurrentAttempt(attempt: RenewalAttempt) {
-    return (
-      viewerGenerationRef.current === attempt.generation && renewalAttemptRef.current === attempt
-    );
+    return isCurrentGeneration(attempt.generation) && renewalAttemptRef.current === attempt;
   }
 
   function renew(
@@ -59,15 +72,14 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     { required }: { required: boolean },
   ): Promise<PdfAsset | undefined> {
     const generation = viewerGenerationRef.current;
+    if (!isCurrentGeneration(generation)) return Promise.resolve(undefined);
     const existingAttempt = renewalAttemptRef.current;
-    if (
-      existingAttempt?.used &&
-      existingAttempt.assetId === asset.id &&
-      existingAttempt.generation === generation
-    ) {
-      return existingAttempt.promise;
+    if (renewalUsedAssetIdsRef.current.has(asset.id)) {
+      if (existingAttempt?.assetId === asset.id) return existingAttempt.promise;
+      return Promise.resolve(undefined);
     }
 
+    renewalUsedAssetIdsRef.current.add(asset.id);
     if (required) setViewerStatus("refreshing");
     const attempt: RenewalAttempt = {
       assetId: asset.id,
@@ -108,29 +120,49 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
   }
 
   function open(asset: PdfAsset) {
+    if (lifecycleAssetIdRef.current === asset.id && renewalUsedAssetIdsRef.current.has(asset.id)) {
+      return;
+    }
+
     viewerGenerationRef.current += 1;
+    lifecycleAssetIdRef.current = asset.id;
     renewalAttemptRef.current = null;
+    renewalUsedAssetIdsRef.current.clear();
     setViewerAsset(asset);
     setViewerStatus("ready");
     void renew(asset, { required: isSignedUrlExpired(asset.expiresAt) });
   }
 
   async function download(asset: PdfAsset) {
+    const generation = viewerGenerationRef.current;
+    if (!isCurrentGeneration(generation)) return;
+    if (renewalUsedAssetIdsRef.current.has(asset.id)) {
+      if (!isSignedUrlExpired(asset.expiresAt)) triggerDownload(asset, generation);
+      else setViewerStatus("error");
+      return;
+    }
+
+    renewalUsedAssetIdsRef.current.add(asset.id);
     try {
       const refreshed = await onDownload(asset);
+      if (!isCurrentGeneration(generation)) return;
       const downloadable = isRefreshedAsset(refreshed) ? refreshed : asset;
       if (isSignedUrlExpired(downloadable.expiresAt)) throw new Error("Expired asset");
-
-      const anchor = document.createElement("a");
-      anchor.href = downloadable.signedUrl;
-      anchor.download = downloadable.title;
-      anchor.hidden = true;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
+      triggerDownload(downloadable, generation);
     } catch {
-      setViewerStatus("error");
+      if (isCurrentGeneration(generation)) setViewerStatus("error");
     }
+  }
+
+  function triggerDownload(asset: PdfAsset, generation: number) {
+    if (!isCurrentGeneration(generation)) return;
+    const anchor = document.createElement("a");
+    anchor.href = asset.signedUrl;
+    anchor.download = asset.title;
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
   }
 
   function openInNewTab() {
@@ -139,13 +171,13 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     const generation = viewerGenerationRef.current;
 
     if (isSignedUrlExpired(asset.expiresAt)) {
-      const popup = window.open("", "_blank");
+      const popup = window.open("", "_blank", "noopener,noreferrer");
       if (!popup) {
         setViewerStatus("error");
         return;
       }
       void renew(asset, { required: true }).then((refreshed) => {
-        if (!refreshed || viewerGenerationRef.current !== generation) {
+        if (!refreshed || !isCurrentGeneration(generation)) {
           popup.close();
           return;
         }
@@ -166,12 +198,18 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
       setViewerStatus("error");
       return;
     }
+    if (renewalUsedAssetIdsRef.current.has(viewerAsset.id)) {
+      setViewerStatus("error");
+      return;
+    }
     void renew(viewerAsset, { required: true });
   }
 
   function closeViewer() {
     viewerGenerationRef.current += 1;
     renewalAttemptRef.current = null;
+    lifecycleAssetIdRef.current = null;
+    renewalUsedAssetIdsRef.current.clear();
     setViewerAsset(null);
     setViewerStatus("ready");
   }

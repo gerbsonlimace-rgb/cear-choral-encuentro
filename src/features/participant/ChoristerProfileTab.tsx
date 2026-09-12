@@ -16,6 +16,15 @@ type ChoristerProfileTabProps = {
 };
 
 const moneyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const paidDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Fortaleza",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
 const voicePartLabels: Record<
   NonNullable<ParticipantRegistrationView["registration"]["voicePart"]>,
@@ -35,6 +44,13 @@ function formatBirthDate(value: string) {
 
 function formatMoney(value: number) {
   return moneyFormatter.format(value / 100);
+}
+
+function formatPaidDate(value: string) {
+  const parts = paidDateFormatter.formatToParts(new Date(value));
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value;
+  return `${read("day")}/${read("month")}/${read("year")} às ${read("hour")}:${read("minute")}`;
 }
 
 function getInitials(name: string) {
@@ -182,7 +198,22 @@ export function ChoristerProfileTab({
           {payment.installments != null && (
             <Detail label="Parcelas">{payment.installments}x</Detail>
           )}
+          {payment.paidAt != null && (
+            <Detail label="Pago em">{formatPaidDate(payment.paidAt)}</Detail>
+          )}
           {payment.orderNsu != null && <Detail label="Pedido">{payment.orderNsu}</Detail>}
+          {payment.receiptUrl != null && (
+            <Detail label="Comprovante">
+              <a
+                href={payment.receiptUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber-800 underline underline-offset-4"
+              >
+                Abrir comprovante
+              </a>
+            </Detail>
+          )}
         </dl>
         {canDownloadReceipt && (
           <div className="mt-5 space-y-2 border-t border-zinc-100 pt-5">
