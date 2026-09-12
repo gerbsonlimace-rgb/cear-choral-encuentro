@@ -129,6 +129,33 @@ describe("ChoristerAppShell", () => {
     expect(screen.getByRole("button", { name: "Cantos" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("renders scores and profile through their approved tabs without changing the navigation", async () => {
+    const { onChangePassword, onDownloadReceipt, onLogout, onOpenScore, user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Canto de entrada", level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Manual do encontro", level: 3 }),
+    ).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    expect(onOpenScore).toHaveBeenCalledWith("44444444-4444-4444-8444-444444444444");
+
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByText("***.***.***-25")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Baixar comprovante em PDF" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+
+    expect(onDownloadReceipt).not.toHaveBeenCalled();
+    expect(onChangePassword).toHaveBeenCalledOnce();
+    expect(onLogout).toHaveBeenCalledOnce();
+    expect(screen.getByText("Saindo…")).toBeInTheDocument();
+    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+  });
+
   it("plays signed audio in the persistent player and releases the previous track before switching", async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);

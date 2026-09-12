@@ -8,7 +8,9 @@ import type {
 } from "@/features/chorister-app/choristerApp.domain";
 
 import { ChoristerHomeTab } from "./ChoristerHomeTab";
+import { ChoristerProfileTab } from "./ChoristerProfileTab";
 import { ChoristerSongsTab } from "./ChoristerSongsTab";
+import { ChoristerScoresTab } from "./ChoristerScoresTab";
 import type { ParticipantRegistrationView } from "./participant.domain";
 
 export type ChoristerAppShellProps = {
@@ -20,6 +22,7 @@ export type ChoristerAppShellProps = {
   onPlay: (audioId: string) => void;
   onOpenSong: (songId: string) => void;
   onOpenScore: (assetId: string) => void;
+  onDownloadScore?: (assetId: string) => void;
   initialTab?: ChoristerTab;
   onTabChange?: (tab: ChoristerTab) => void;
 };
@@ -55,6 +58,7 @@ export function ChoristerAppShell({
   onPlay,
   onOpenSong,
   onOpenScore,
+  onDownloadScore = onOpenScore,
   initialTab = "home",
   onTabChange,
 }: ChoristerAppShellProps) {
@@ -173,30 +177,19 @@ export function ChoristerAppShell({
             />
           )}
           {selectedTab === "partituras" && (
-            <section
-              aria-labelledby="scores-pending-title"
-              className="rounded-xl border border-zinc-200 bg-white p-5"
-            >
-              <h1 id="scores-pending-title" className="font-display text-xl font-semibold">
-                Partituras
-              </h1>
-              <p className="mt-2 text-sm text-zinc-600">
-                As partituras do repertório estarão disponíveis aqui.
-              </p>
-            </section>
+            <ChoristerScoresTab
+              event={feed.event}
+              onOpen={(asset) => onOpenScore(asset.id)}
+              onDownload={(asset) => onDownloadScore(asset.id)}
+            />
           )}
           {selectedTab === "perfil" && (
-            <section
-              aria-labelledby="profile-pending-title"
-              className="rounded-xl border border-zinc-200 bg-white p-5"
-            >
-              <h1 id="profile-pending-title" className="font-display text-xl font-semibold">
-                Meu Perfil
-              </h1>
-              <p className="mt-2 text-sm text-zinc-600">
-                Seus dados de inscrição estarão disponíveis aqui.
-              </p>
-            </section>
+            <ChoristerProfileTab
+              participant={participant}
+              onChangePassword={_onChangePassword}
+              onDownloadReceipt={() => _onDownloadReceipt()}
+              onLogout={_onLogout}
+            />
           )}
         </main>
 
