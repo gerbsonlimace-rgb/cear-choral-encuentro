@@ -187,6 +187,9 @@ export function ChoristerAppShell({
         previousAudio.removeAttribute("src");
         previousAudio.load();
       }
+      // A failed previous track may have queued a resume position. Never
+      // apply that position to a newly selected track.
+      pendingAudioPositionRef.current = null;
       setSelectedAudioId(audioId);
       setCurrentTime(0);
       setDuration(0);
