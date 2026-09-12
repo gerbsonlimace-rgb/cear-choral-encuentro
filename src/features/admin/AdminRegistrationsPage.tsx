@@ -524,15 +524,30 @@ export function AdminRegistrationsPage({
       setSummaryLoading(true);
       setListError("");
       setSummaryError("");
-      void loadInitialData()
-        .then((bootstrap) => {
+      // Without a local session the protected server fn would 401 and blank the page.
+      const bootstrap = async () => {
+        try {
+          const session = await getSession();
+          if (!session.error && !session.data.session) return null;
+        } catch {
+          /* An unavailable local session cannot prove expiry; try the server call. */
+        }
+        return loadInitialData();
+      };
+      void bootstrap()
+        .then((result) => {
           if (!active) return;
-          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
-            setGate(bootstrap.access.status);
+          if (!result) {
+            setGate("expired");
+            onMissingSession();
             return;
           }
-          setResult(bootstrap.data.registrations);
-          setSummary(bootstrap.data.summary);
+          if (result.access.status !== "authorized" || !result.data) {
+            setGate(result.access.status);
+            return;
+          }
+          setResult(result.data.registrations);
+          setSummary(result.data.summary);
           setBootstrapDataReady(true);
           setGate("authorized");
         })
