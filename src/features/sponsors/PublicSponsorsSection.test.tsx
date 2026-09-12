@@ -12,7 +12,7 @@ describe("PublicSponsorsSection", () => {
     expect(screen.queryByText("Patrocinadores")).not.toBeInTheDocument();
   });
 
-  it("renders configured sponsors with accessible logos", async () => {
+  it("renders configured sponsors with logos and name captions", async () => {
     render(
       <PublicSponsorsSection
         loadSponsors={vi.fn(async () => [
@@ -26,8 +26,9 @@ describe("PublicSponsorsSection", () => {
     );
 
     expect(
-      await screen.findByRole("img", { name: "Universidade Católica" }),
+      await screen.findByRole("img", { name: "Logo de Universidade Católica" }),
     ).toHaveAttribute("src", "https://example.test/unicatolica.png");
     expect(screen.getByText("Patrocinadores")).toBeInTheDocument();
+    expect(screen.getByText("Universidade Católica")).toBeInTheDocument();
   });
 });
