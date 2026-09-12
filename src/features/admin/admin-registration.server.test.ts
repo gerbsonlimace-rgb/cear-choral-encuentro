@@ -343,6 +343,7 @@ describe("registration repository list", () => {
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
+          photoUrl: null,
         },
       ],
       total: 51,
@@ -378,6 +379,26 @@ describe("registration repository list", () => {
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 25 });
     expect(trace).toContainEqual(["range", 0, 24]);
     expect(trace.some(([method]) => method === "or" || method === "eq")).toBe(false);
+  });
+
+  it("signs the participant photo for listed rows and skips signing in bulk reads", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed/foto.jpg" },
+      error: null,
+    });
+    supabaseAdminMock.storage = {
+      from: (bucket: string) => (bucket === "registration-photos" ? { createSignedUrl } : null),
+    };
+    const { trace } = databaseHarness([success([{ ...selectedRow, photo_path: "a/foto.jpg" }])]);
+    const repository = createSupabaseAdminRegistrationRepository();
+
+    const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
+    expect(page.rows[0].photoUrl).toBe("https://storage.example/signed/foto.jpg");
+    expect(createSignedUrl).toHaveBeenCalledWith("a/foto.jpg", 3600);
+
+    await repository.listAll({ search: "", paymentStatus: "all" });
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+    expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
   });
 
   it("replaces database details with a generic query error", async () => {
