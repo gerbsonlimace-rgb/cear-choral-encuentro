@@ -69,6 +69,14 @@ function formatCpf(value: string): string {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits.replace(/^(\d{1,2})/, "($1");
+  if (digits.length <= 6) return digits.replace(/^(\d{2})(\d+)/, "($1) $2");
+  if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d+)/, "($1) $2-$3");
+  return digits.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+}
+
 const initialForm: Omit<RegistrationForm, "photo"> = {
   name: "",
   cpf: "",
@@ -571,8 +579,10 @@ export function RegistrationSection({
                           required
                           autoComplete="tel"
                           value={form.phone}
-                          onChange={(event) => handleChange("phone", event.target.value)}
+                          onChange={(event) => handleChange("phone", formatPhone(event.target.value))}
                           placeholder="(88) 99999-9999"
+                          inputMode="numeric"
+                          maxLength={15}
                           className={inputClassName}
                         />
                       </div>
