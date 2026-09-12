@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
-import { ChoristerAppShell } from "./ChoristerAppShell";
+import { ChoristerAppShell, type ChoristerAppShellProps } from "./ChoristerAppShell";
 
 const future = "2099-11-20T12:00:00.000Z";
 
@@ -74,8 +74,8 @@ const feed: ChoristerPortalFeed = {
   },
 };
 
-function setup() {
-  const props = {
+function setup(overrides: Partial<ChoristerAppShellProps> = {}) {
+  const props: ChoristerAppShellProps = {
     participant,
     feed,
     onChangePassword: vi.fn(),
@@ -84,6 +84,8 @@ function setup() {
     onPlay: vi.fn(),
     onOpenSong: vi.fn(),
     onOpenScore: vi.fn(),
+    onDownloadScore: vi.fn(),
+    ...overrides,
   };
   render(<ChoristerAppShell {...props} />);
   return { ...props, user: userEvent.setup() };
@@ -139,7 +141,9 @@ describe("ChoristerAppShell", () => {
       screen.getByRole("heading", { name: "Manual do encontro", level: 3 }),
     ).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
-    expect(onOpenScore).toHaveBeenCalledWith("44444444-4444-4444-8444-444444444444");
+    expect(onOpenScore).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "44444444-4444-4444-8444-444444444444" }),
+    );
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByText("***.***.***-25")).toBeInTheDocument();
@@ -187,6 +191,36 @@ describe("ChoristerAppShell", () => {
     expect(pause).toHaveBeenCalled();
     expect(load).toHaveBeenCalled();
     expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears the signed feed and player before handing logout to the route", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
+    let hadSignedAudioAtLogout = false;
+    let contentAtLogout = "";
+    const onLogout = vi.fn(() => {
+      hadSignedAudioAtLogout = document.querySelector("audio[src]") !== null;
+      contentAtLogout = document.body.textContent ?? "";
+    });
+    const { user } = setup({ onLogout });
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/audio.mp3",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+
+    expect(onLogout).toHaveBeenCalledOnce();
+    expect(hadSignedAudioAtLogout).toBe(false);
+    expect(contentAtLogout).not.toContain("Manual do encontro");
+    expect(screen.queryByLabelText("Reprodutor de áudio")).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("https://assets.example.test/audio.mp3");
+    expect(document.body).not.toHaveTextContent("Manual do encontro");
   });
 
   it("handles ended and failed playback without leaving the player in a playing state", async () => {

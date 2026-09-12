@@ -1,5 +1,6 @@
 import { FileText, Home, Music2, Pause, Play, UserRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import type {
@@ -10,7 +11,7 @@ import type {
 import { ChoristerHomeTab } from "./ChoristerHomeTab";
 import { ChoristerProfileTab } from "./ChoristerProfileTab";
 import { ChoristerSongsTab } from "./ChoristerSongsTab";
-import { ChoristerScoresTab } from "./ChoristerScoresTab";
+import { ChoristerScoresTab, type PdfAssetAction } from "./ChoristerScoresTab";
 import type { ParticipantRegistrationView } from "./participant.domain";
 
 export type ChoristerAppShellProps = {
@@ -21,8 +22,8 @@ export type ChoristerAppShellProps = {
   onLogout: () => void;
   onPlay: (audioId: string) => void;
   onOpenSong: (songId: string) => void;
-  onOpenScore: (assetId: string) => void;
-  onDownloadScore?: (assetId: string) => void;
+  onOpenScore: PdfAssetAction;
+  onDownloadScore: PdfAssetAction;
   initialTab?: ChoristerTab;
   onTabChange?: (tab: ChoristerTab) => void;
 };
@@ -58,10 +59,12 @@ export function ChoristerAppShell({
   onPlay,
   onOpenSong,
   onOpenScore,
-  onDownloadScore = onOpenScore,
+  onDownloadScore,
   initialTab = "home",
   onTabChange,
 }: ChoristerAppShellProps) {
+  const [portalFeed, setPortalFeed] = useState<ChoristerPortalFeed | null>(feed);
+  const [leaving, setLeaving] = useState(false);
   const [selectedTab, setSelectedTab] = useState<ChoristerTab>(initialTab);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -69,14 +72,19 @@ export function ChoristerAppShell({
   const [playAttempt, setPlayAttempt] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playbackGenerationRef = useRef(0);
+
+  useEffect(() => {
+    if (!leaving) setPortalFeed(feed);
+  }, [feed, leaving]);
+
   const audioById = useMemo(
     () =>
       new Map(
-        feed.event.songs.flatMap((song) =>
+        (portalFeed?.event.songs ?? []).flatMap((song) =>
           song.audios.map((audio) => [audio.id, { audio, song }] as const),
         ),
       ),
-    [feed.event.songs],
+    [portalFeed],
   );
   const selectedAudio = selectedAudioId ? audioById.get(selectedAudioId) : undefined;
 
@@ -144,6 +152,38 @@ export function ChoristerAppShell({
     setPlayerStatus("ready");
   }
 
+  function handleLogout() {
+    playbackGenerationRef.current += 1;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    flushSync(() => {
+      setSelectedAudioId(null);
+      setIsPlaying(false);
+      setPortalFeed(null);
+      setLeaving(true);
+    });
+    _onLogout();
+  }
+
+  function openScoreFromSong(assetId: string) {
+    const asset = portalFeed?.event.songs
+      .flatMap((song) => song.sheetMusic)
+      .find((score) => score.id === assetId);
+    if (asset) void onOpenScore(asset);
+  }
+
+  if (leaving || !portalFeed) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-[#f9f7f2] px-4 text-sm text-zinc-600">
+        Saindo…
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-svh bg-[#f9f7f2] text-zinc-950">
       <div className="mx-auto min-h-svh max-w-2xl bg-white shadow-xl">
@@ -155,7 +195,7 @@ export function ChoristerAppShell({
             <p className="mt-1 text-sm text-zinc-300">Área do coralista</p>
           </div>
           <span className="rounded-full border border-amber-300/50 px-3 py-1 text-xs font-semibold text-amber-200">
-            {feed.event.location ?? "Encontro"}
+            {portalFeed.event.location ?? "Encontro"}
           </span>
         </header>
 
@@ -163,24 +203,24 @@ export function ChoristerAppShell({
           {selectedTab === "home" && (
             <ChoristerHomeTab
               participant={participant}
-              event={feed.event}
+              event={portalFeed.event}
               onOpenSongs={() => selectTab("cantos")}
               onOpenScores={() => selectTab("partituras")}
             />
           )}
           {selectedTab === "cantos" && (
             <ChoristerSongsTab
-              songs={feed.event.songs}
+              songs={portalFeed.event.songs}
               onPlay={handlePlay}
               onOpenSong={onOpenSong}
-              onOpenScore={onOpenScore}
+              onOpenScore={openScoreFromSong}
             />
           )}
           {selectedTab === "partituras" && (
             <ChoristerScoresTab
-              event={feed.event}
-              onOpen={(asset) => onOpenScore(asset.id)}
-              onDownload={(asset) => onDownloadScore(asset.id)}
+              event={portalFeed.event}
+              onOpen={onOpenScore}
+              onDownload={onDownloadScore}
             />
           )}
           {selectedTab === "perfil" && (
@@ -188,7 +228,7 @@ export function ChoristerAppShell({
               participant={participant}
               onChangePassword={_onChangePassword}
               onDownloadReceipt={() => _onDownloadReceipt()}
-              onLogout={_onLogout}
+              onLogout={handleLogout}
             />
           )}
         </main>

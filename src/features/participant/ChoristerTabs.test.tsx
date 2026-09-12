@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -227,6 +227,89 @@ describe("ChoristerScoresTab", () => {
     expect(
       screen.queryByRole("button", { name: /enviar|upload|editar|remover/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("never opens an expired PDF in a new tab after its one renewal attempt fails", async () => {
+    const expiredEvent = {
+      ...scoreFeed.event,
+      songs: scoreFeed.event.songs.map((song) => ({
+        ...song,
+        sheetMusic: song.sheetMusic.map((asset) => ({
+          ...asset,
+          expiresAt: "2020-01-01T00:00:00.000Z",
+        })),
+      })),
+    };
+    const onOpen = vi.fn().mockResolvedValue(undefined);
+    const onDownload = vi.fn();
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(null);
+    const user = userEvent.setup();
+
+    render(<ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={onDownload} />);
+
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível abrir este PDF");
+    await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(openWindow).not.toHaveBeenCalled();
+  });
+
+  it("uses one refreshed signed URL after expiry and stops renewing when its iframe fails", async () => {
+    const refreshed = {
+      ...scoreFeed.event.songs[1].sheetMusic[0],
+      signedUrl: "https://assets.example.test/refreshed-score.pdf",
+      expiresAt: future,
+    };
+    const onOpen = vi.fn().mockResolvedValue(refreshed);
+    const user = userEvent.setup();
+    const expiredEvent = {
+      ...scoreFeed.event,
+      songs: scoreFeed.event.songs.map((song) => ({
+        ...song,
+        sheetMusic: song.sheetMusic.map((asset) => ({
+          ...asset,
+          expiresAt: "2020-01-01T00:00:00.000Z",
+        })),
+      })),
+    };
+
+    const view = render(
+      <ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    const viewer = await within(view.container).findByTitle("PDF Partitura");
+    expect(viewer).toHaveAttribute("src", refreshed.signedUrl);
+    fireEvent(viewer, new Event("error", { bubbles: true }));
+
+    expect(await within(view.container).findByRole("alert")).toHaveTextContent(
+      "Não foi possível abrir este PDF",
+    );
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("downloads the renewed signed PDF returned by the shell callback", async () => {
+    const renewed = {
+      ...scoreFeed.event.songs[1].sheetMusic[0],
+      signedUrl: "https://assets.example.test/renewed-download.pdf",
+      expiresAt: future,
+    };
+    const onDownload = vi.fn().mockResolvedValue(renewed);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={scoreFeed.event} onOpen={vi.fn()} onDownload={onDownload} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Baixar" })[0]);
+
+    await waitFor(() => expect(onDownload).toHaveBeenCalledTimes(1));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(onDownload).toHaveBeenCalledWith(
+      expect.objectContaining({ id: renewed.id, signedUrl: expect.stringContaining("score.pdf") }),
+    );
+    expect(click.mock.instances[0]).toHaveAttribute("href", renewed.signedUrl);
   });
 });
 
