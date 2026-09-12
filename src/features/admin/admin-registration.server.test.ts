@@ -49,7 +49,7 @@ type DatabaseResult = {
   status: number;
   statusText: string;
 };
-const success = (data: (typeof selectedRow)[], count = data.length): DatabaseResult => ({
+const success = (data: ResultRow[], count = data.length): DatabaseResult => ({
   data,
   error: null,
   count,
