@@ -171,8 +171,15 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     const generation = viewerGenerationRef.current;
 
     if (isSignedUrlExpired(asset.expiresAt)) {
-      const popup = window.open("", "_blank", "noopener,noreferrer");
+      const popup = window.open("", "_blank");
       if (!popup) {
+        setViewerStatus("error");
+        return;
+      }
+      try {
+        popup.opener = null;
+      } catch {
+        popup.close();
         setViewerStatus("error");
         return;
       }
