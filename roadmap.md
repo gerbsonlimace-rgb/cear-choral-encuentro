@@ -15,3 +15,4 @@
 
 - [x] Apply the dark-background logo on dark surfaces and the light-background logo on light surfaces.
 - [x] Compact the personal-data step and place the participant photo and event logo beside the name.
+- [ ] Restore the full vertical badge with a lanyard on the right while keeping fields compact.
