@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   paymentLookupSchema,
+  registrationAvailabilitySchema,
   registrationResumeSchema,
   registrationSchema,
 } from "@/features/registration/registration.domain";
