@@ -114,49 +114,6 @@ function Status({ row }: { row: AdminRegistrationRow }) {
   );
 }
 
-function Payment({ row }: { row: AdminRegistrationRow }) {
-  const method =
-    row.paymentMethod === "pix"
-      ? "Pix"
-      : row.paymentMethod === "credit_card"
-        ? `Cartão${row.installments === null ? "" : ` · ${row.installments}x`}`
-        : "Não informado";
-  return (
-    <dl className="space-y-1 text-xs">
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Inscrição</dt>
-        <dd>
-          {row.pricingType === null
-            ? "Não informado"
-            : `${row.pricingType === "promotional" ? "Promocional" : "Normal"} · ${money(row.registrationPriceCents)}`}
-        </dd>
-      </div>
-      {row.pricingType === "promotional" && (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="text-muted-foreground">Valor normal</dt>
-          <dd>{money(row.standardPriceCents)}</dd>
-        </div>
-      )}
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Esperado</dt>
-        <dd>{money(row.amountCents)}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Valor pago</dt>
-        <dd>{money(row.paidAmountCents)}</dd>
-      </div>
-      <div>
-        <dt className="sr-only">Forma de pagamento</dt>
-        <dd>{method}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Pago em</dt>
-        <dd>{date(row.paidAt)}</dd>
-      </div>
-    </dl>
-  );
-}
-
 function pendingAmountCents(row: AdminRegistrationRow): number | null {
   if (row.paymentStatus !== "pending") return null;
   return Math.max(0, (row.amountCents ?? 0) - (row.paidAmountCents ?? 0));
