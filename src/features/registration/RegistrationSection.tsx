@@ -584,7 +584,19 @@ export function RegistrationSection({
                           className={inputClassName}
                         />
                       </div>
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      {errors.email && (
+                        <p className="text-sm text-destructive">
+                          {errors.email}
+                          {identityConflict && errors.email.includes("Já existe") && (
+                            <>
+                              {" "}
+                              <a href="#retomar-pagamento" className="font-bold underline underline-offset-4">
+                                Retomar pagamento
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -601,7 +613,19 @@ export function RegistrationSection({
                         placeholder="000.000.000-00"
                         className={inputClassName}
                       />
-                      {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
+                      {errors.cpf && (
+                        <p className="text-sm text-destructive">
+                          {errors.cpf}
+                          {identityConflict && errors.cpf.includes("Já existe") && (
+                            <>
+                              {" "}
+                              <a href="#retomar-pagamento" className="font-bold underline underline-offset-4">
+                                Retomar pagamento
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -813,12 +837,25 @@ export function RegistrationSection({
                     )}
                   <Button
                     type={currentStep === 3 ? "submit" : "button"}
-                    onClick={currentStep === 3 ? undefined : goToNextStep}
-                    disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
+                    onClick={currentStep === 3 ? undefined : () => void goToNextStep()}
+                    disabled={
+                      isSubmitting ||
+                      isCheckingAvailability ||
+                      !configuration ||
+                      configuration.choirs.length === 0
+                    }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
-                    {isSubmitting ? "Preparando seu pagamento…" : currentStep === 3 ? "Pagar com segurança na InfinitePay" : "Continuar"}
-                    {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
+                    {isSubmitting
+                      ? "Preparando seu pagamento…"
+                      : isCheckingAvailability
+                        ? "Verificando seus dados…"
+                        : currentStep === 3
+                          ? "Pagar com segurança na InfinitePay"
+                          : "Continuar"}
+                    {!isSubmitting && !isCheckingAvailability && (
+                      <ArrowRight className="ml-2 size-5" aria-hidden="true" />
+                    )}
                   </Button>
                   </div>
                   {currentStep === 3 && (
