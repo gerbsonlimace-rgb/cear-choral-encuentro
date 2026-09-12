@@ -6,6 +6,7 @@ const { supabaseAdminMock } = vi.hoisted(() => ({
     from: (_table: string): unknown => {
       throw new Error("Unconfigured Supabase boundary");
     },
+    storage: undefined as unknown,
   },
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: supabaseAdminMock }));
@@ -389,7 +390,10 @@ describe("registration repository list", () => {
     supabaseAdminMock.storage = {
       from: (bucket: string) => (bucket === "registration-photos" ? { createSignedUrl } : null),
     };
-    const { trace } = databaseHarness([success([{ ...selectedRow, photo_path: "a/foto.jpg" }])]);
+    const { trace } = databaseHarness([
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+    ]);
     const repository = createSupabaseAdminRegistrationRepository();
 
     const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
