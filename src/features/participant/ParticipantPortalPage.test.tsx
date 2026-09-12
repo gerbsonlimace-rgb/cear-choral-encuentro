@@ -2,6 +2,11 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import type {
+  ChoristerPortalFeed,
+  ChoristerPortalFeedState,
+} from "@/features/chorister-app/choristerApp.domain";
+
 import type { ParticipantAccess } from "./participant-auth.server";
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
 import { ParticipantPortalPage } from "./ParticipantPortalPage";
@@ -10,6 +15,7 @@ vi.mock("@/lib/participant.functions", () => ({
   getParticipantAccess: vi.fn(),
   getParticipantRegistration: vi.fn(),
 }));
+vi.mock("@/lib/chorister-app.functions", () => ({ getChoristerPortalFeed: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 
 const authorizedAccess = {
@@ -51,9 +57,23 @@ const fullView: ParticipantRegistrationView = {
   },
 };
 
+const publishedFeed: ChoristerPortalFeed = {
+  status: "published",
+  event: {
+    id: "44444444-4444-4444-8444-444444444444",
+    name: "II Encontro de Coros Diocesanos e Litúrgicos",
+    date: "2026-11-20",
+    location: "Quixadá",
+    coverImageUrl: null,
+    songs: [],
+    documents: [],
+  },
+};
+
 type PortalOverrides = Partial<{
   checkAccess: () => Promise<ParticipantAccess>;
   loadRegistration: () => Promise<ParticipantRegistrationView>;
+  loadFeed: () => Promise<ChoristerPortalFeedState>;
   signOut: () => Promise<{ error: unknown }>;
   onMissingAccess: () => void;
   onSignedOut: () => void;
@@ -70,6 +90,7 @@ function setup(overrides: PortalOverrides = {}) {
   const props = {
     checkAccess: vi.fn().mockResolvedValue(authorizedAccess),
     loadRegistration: vi.fn().mockResolvedValue(fullView),
+    loadFeed: vi.fn().mockResolvedValue(publishedFeed),
     signOut: vi.fn().mockResolvedValue({ error: null }),
     onMissingAccess: vi.fn(),
     onSignedOut: vi.fn(),
@@ -94,32 +115,44 @@ function deferred<T>() {
 }
 
 describe("ParticipantPortalPage", () => {
-  it("does not load or reveal personal data before participant authorization", async () => {
+  it("does not load the registration, feed, or protected data before participant authorization", async () => {
     const access = deferred<ParticipantAccess>();
     const loadRegistration = vi.fn().mockResolvedValue(fullView);
-    setup({ checkAccess: () => access.promise, loadRegistration });
+    const loadFeed = vi.fn().mockResolvedValue(publishedFeed);
+    setup({ checkAccess: () => access.promise, loadRegistration, loadFeed });
 
     expect(screen.getByText("Verificando acesso…")).toBeInTheDocument();
     expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
     expect(loadRegistration).not.toHaveBeenCalled();
+    expect(loadFeed).not.toHaveBeenCalled();
 
     await act(async () => access.resolve(authorizedAccess));
 
     expect(
-      await screen.findByRole("heading", { name: "Maria da Silva", level: 1 }),
+      await screen.findByRole("heading", {
+        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+      }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledOnce();
+    expect(loadFeed).toHaveBeenCalledOnce();
   });
 
   it.each<ParticipantAccess>([{ status: "unauthenticated" }, { status: "unavailable" }])(
     "redirects missing or unavailable participant access without rendering protected data",
     async (access) => {
       const loadRegistration = vi.fn().mockResolvedValue(fullView);
+      const loadFeed = vi.fn().mockResolvedValue(publishedFeed);
       const onMissingAccess = vi.fn();
-      setup({ checkAccess: vi.fn().mockResolvedValue(access), loadRegistration, onMissingAccess });
+      setup({
+        checkAccess: vi.fn().mockResolvedValue(access),
+        loadRegistration,
+        loadFeed,
+        onMissingAccess,
+      });
 
       await waitFor(() => expect(onMissingAccess).toHaveBeenCalledOnce());
       expect(loadRegistration).not.toHaveBeenCalled();
+      expect(loadFeed).not.toHaveBeenCalled();
       expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
     },
   );
@@ -129,7 +162,8 @@ describe("ParticipantPortalPage", () => {
       .fn()
       .mockRejectedValueOnce(new Error("PRIVATE_DATABASE_DETAIL"))
       .mockResolvedValueOnce(fullView);
-    const { user } = setup({ loadRegistration });
+    const loadFeed = vi.fn().mockResolvedValue(publishedFeed);
+    const { user } = setup({ loadRegistration, loadFeed });
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar seus dados. Tente novamente.",
@@ -139,22 +173,116 @@ describe("ParticipantPortalPage", () => {
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Maria da Silva", level: 1 }),
+      await screen.findByRole("heading", {
+        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+      }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledTimes(2);
+    expect(loadFeed).toHaveBeenCalledOnce();
+  });
+
+  it("keeps registration data hidden when the event materials are not published", async () => {
+    setup({ loadFeed: vi.fn().mockResolvedValue({ status: "not_published" }) });
+
+    expect(
+      await screen.findByText("Os materiais do encontro ainda não foram publicados."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+    expect(screen.queryByText("Coral Santa Cecília")).not.toBeInTheDocument();
+  });
+
+  it("shows a retryable neutral state when the authorized feed is unavailable", async () => {
+    const loadFeed = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "unavailable" } satisfies ChoristerPortalFeedState)
+      .mockResolvedValueOnce(publishedFeed);
+    const { user } = setup({ loadFeed });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar os materiais do encontro. Tente novamente.",
+    );
+    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+      }),
+    ).toBeInTheDocument();
+    expect(loadFeed).toHaveBeenCalledTimes(2);
+  });
+
+  it("renews an expired score from the authorized feed without exposing its stale URL", async () => {
+    const expiredFeed: ChoristerPortalFeed = {
+      ...publishedFeed,
+      event: {
+        ...publishedFeed.event,
+        songs: [
+          {
+            id: "55555555-5555-4555-8555-555555555555",
+            order: 1,
+            name: "Canto de entrada",
+            liturgicalType: "Entrada",
+            lyrics: null,
+            chords: null,
+            audios: [],
+            sheetMusic: [
+              {
+                id: "66666666-6666-4666-8666-666666666666",
+                title: "Partitura",
+                signedUrl: "https://assets.example.test/stale-score.pdf",
+                expiresAt: "2020-01-01T00:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const renewedFeed: ChoristerPortalFeed = {
+      ...expiredFeed,
+      event: {
+        ...expiredFeed.event,
+        songs: expiredFeed.event.songs.map((song) => ({
+          ...song,
+          sheetMusic: song.sheetMusic.map((asset) => ({
+            ...asset,
+            signedUrl: "https://assets.example.test/renewed-score.pdf",
+            expiresAt: "2099-11-20T12:00:00.000Z",
+          })),
+        })),
+      },
+    };
+    const loadFeed = vi.fn().mockResolvedValueOnce(expiredFeed).mockResolvedValueOnce(renewedFeed);
+    const { user } = setup({ loadFeed });
+
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    await user.click(screen.getByRole("button", { name: "Abrir" }));
+
+    expect(await screen.findByTitle("PDF Partitura")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/renewed-score.pdf",
+    );
+    expect(loadFeed).toHaveBeenCalledTimes(2);
+    expect(document.body).not.toHaveTextContent("https://assets.example.test/stale-score.pdf");
   });
 
   it("clears protected content, signs out, and then navigates to login", async () => {
     const signOut = deferred<{ error: null }>();
     const onSignedOut = vi.fn();
     const { user } = setup({ signOut: () => signOut.promise, onSignedOut });
-    expect(
-      await screen.findByRole("heading", { name: "Maria da Silva", level: 1 }),
-    ).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Sair" }));
 
     expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("II Encontro de Coros Diocesanos e Litúrgicos"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Saindo…")).toBeInTheDocument();
     expect(onSignedOut).not.toHaveBeenCalled();
 
@@ -163,12 +291,15 @@ describe("ParticipantPortalPage", () => {
   });
 
   it("shows every available safe identification, registration, and payment field", async () => {
-    setup();
-    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    const { user } = setup();
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
-    expect(
-      within(identification).getByRole("img", { name: "Foto de Maria da Silva" }),
-    ).toHaveAttribute("src", fullView.identity.photoUrl);
+    expect(within(profile).getByRole("img", { name: "Foto de Maria da Silva" })).toHaveAttribute(
+      "src",
+      fullView.identity.photoUrl,
+    );
     for (const value of [
       "Maria da Silva",
       "***.***.***-25",
@@ -188,7 +319,7 @@ describe("ParticipantPortalPage", () => {
       "10/09/2026 às 12:30",
       "pedido-1234",
     ]) {
-      expect(within(identification).getAllByText(value).length).toBeGreaterThan(0);
+      expect(within(profile).getAllByText(value).length).toBeGreaterThan(0);
     }
     for (const [label, amount] of [
       ["Valor normal", /R\$\s*120,00/],
@@ -196,9 +327,9 @@ describe("ParticipantPortalPage", () => {
       ["Valor da cobrança", /R\$\s*125,00/],
       ["Valor pago", /R\$\s*125,00/],
     ] as const) {
-      expect(within(identification).getByText(label).parentElement).toHaveTextContent(amount);
+      expect(within(profile).getByText(label).parentElement).toHaveTextContent(amount);
     }
-    expect(within(identification).getByRole("link", { name: "Abrir comprovante" })).toHaveAttribute(
+    expect(within(profile).getByRole("link", { name: "Abrir comprovante" })).toHaveAttribute(
       "href",
       fullView.payment.receiptUrl,
     );
@@ -238,12 +369,14 @@ describe("ParticipantPortalPage", () => {
         receiptUrl: null,
       },
     };
-    setup({ loadRegistration: vi.fn().mockResolvedValue(sparseView) });
-    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(sparseView) });
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
-    expect(
-      within(identification).getByRole("img", { name: "Foto não disponível" }),
-    ).toHaveTextContent("JL");
+    expect(within(profile).getByRole("img", { name: "Foto não disponível" })).toHaveTextContent(
+      "JL",
+    );
     for (const absentLabel of [
       "E-mail",
       "Telefone",
@@ -264,98 +397,54 @@ describe("ParticipantPortalPage", () => {
       "Pedido",
       "Comprovante",
     ]) {
-      expect(within(identification).queryByText(absentLabel)).not.toBeInTheDocument();
+      expect(within(profile).queryByText(absentLabel)).not.toBeInTheDocument();
     }
-    expect(identification).not.toHaveTextContent(/null|undefined/i);
+    expect(profile).not.toHaveTextContent(/null|undefined/i);
   });
 
   it("replaces a failed signed photo with the neutral avatar fallback", async () => {
-    setup();
-    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
-    fireEvent.error(within(identification).getByRole("img", { name: "Foto de Maria da Silva" }));
+    const { user } = setup();
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
+    fireEvent.error(within(profile).getByRole("img", { name: "Foto de Maria da Silva" }));
 
+    expect(within(profile).getByRole("img", { name: "Foto não disponível" })).toHaveTextContent(
+      "MD",
+    );
     expect(
-      within(identification).getByRole("img", { name: "Foto não disponível" }),
-    ).toHaveTextContent("MD");
-    expect(
-      within(identification).queryByRole("img", { name: "Foto de Maria da Silva" }),
+      within(profile).queryByRole("img", { name: "Foto de Maria da Silva" }),
     ).not.toBeInTheDocument();
   });
 
-  it("shares one semantic section state across responsive keyboard navigation", async () => {
+  it("replaces participant placeholders with the approved four-tab Coralista navigation", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "Maria da Silva", level: 1 });
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
 
-    const navigations = screen.getAllByRole("navigation", {
-      name: "Seções da área do participante",
-    });
-    expect(navigations).toHaveLength(2);
-    expect(navigations[0]).toHaveClass("md:hidden", "overflow-x-auto");
-    expect(navigations[1]).toHaveClass("hidden", "md:block");
-    expect(within(navigations[0]).getByRole("tablist")).toHaveAttribute(
-      "aria-orientation",
-      "horizontal",
-    );
-    expect(within(navigations[1]).getByRole("tablist")).toHaveAttribute(
-      "aria-orientation",
-      "vertical",
-    );
-    for (const navigation of navigations) {
-      expect(
-        within(navigation)
-          .getAllByRole("tab")
-          .map((tab) => tab.textContent),
-      ).toEqual(["Identificação", "Playlist", "Partituras e Manuais", "Certificado"]);
-    }
+    const navigation = screen.getByRole("navigation", { name: "Navegação principal do app" });
+    expect(
+      within(navigation)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Home", "Cantos", "Partituras", "Meu Perfil"]);
+    expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
-    const mobilePlaylist = within(navigations[0]).getByRole("tab", { name: "Playlist" });
-    await user.click(mobilePlaylist);
-    expect(screen.getByRole("tabpanel", { name: "Playlist" })).toHaveTextContent(
-      "A playlist do encontro será disponibilizada em breve.",
-    );
-    expect(within(navigations[1]).getByRole("tab", { name: "Playlist" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-
-    expect(fireEvent.keyDown(mobilePlaylist, { key: "ArrowRight" })).toBe(false);
-    expect(screen.getByRole("tabpanel", { name: "Partituras e Manuais" })).toHaveTextContent(
-      "As partituras e os materiais de orientação serão disponibilizados em breve.",
-    );
-    const mobileScores = within(navigations[0]).getByRole("tab", {
-      name: "Partituras e Manuais",
-    });
-    expect(document.activeElement).toBe(mobileScores);
-
-    expect(fireEvent.keyDown(mobileScores, { key: "ArrowDown" })).toBe(true);
-    expect(document.activeElement).toBe(mobileScores);
-    expect(screen.getByRole("tabpanel", { name: "Partituras e Manuais" })).toBeInTheDocument();
-
-    const desktopCertificate = within(navigations[1]).getByRole("tab", { name: "Certificado" });
-    await user.click(desktopCertificate);
-    expect(screen.getByRole("tabpanel", { name: "Certificado" })).toHaveTextContent(
-      "Seu certificado estará disponível após o evento.",
-    );
-
-    expect(fireEvent.keyDown(desktopCertificate, { key: "ArrowDown" })).toBe(false);
-    const desktopIdentification = within(navigations[1]).getByRole("tab", {
-      name: "Identificação",
-    });
-    expect(document.activeElement).toBe(desktopIdentification);
-    expect(screen.getByRole("tabpanel", { name: "Identificação" })).toBeInTheDocument();
-
-    expect(fireEvent.keyDown(desktopIdentification, { key: "ArrowRight" })).toBe(true);
-    expect(document.activeElement).toBe(desktopIdentification);
-    expect(screen.getByRole("tabpanel", { name: "Identificação" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    expect(screen.getByRole("heading", { name: "Cantos" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
   });
 
   it("opens a functional voluntary password-change dialog from the header", async () => {
     const { user, getSignedInEmail, reauthenticateForPasswordChange, updatePassword } = setup();
-    await screen.findByRole("heading", { name: "Maria da Silva", level: 1 });
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
 
     expect(screen.queryByText(/obrigat[oó]ri[ao].*senha/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /recuperar|esqueci/i })).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     await user.click(screen.getByRole("button", { name: "Alterar senha" }));
     expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
 
@@ -380,24 +469,24 @@ describe("ParticipantPortalPage", () => {
       .mockRejectedValueOnce(new Error("PRIVATE_PDF_DETAIL"))
       .mockResolvedValueOnce(undefined);
     const { user } = setup({ downloadReceipt });
-    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
-    const downloadButton = within(identification).getByRole("button", {
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
+    const downloadButton = within(profile).getByRole("button", {
       name: "Baixar comprovante em PDF",
     });
 
     await user.click(downloadButton);
 
-    expect(await within(identification).findByRole("alert")).toHaveTextContent(
+    expect(await within(profile).findByRole("alert")).toHaveTextContent(
       "Não foi possível gerar o comprovante em PDF. Tente novamente.",
     );
-    expect(identification).not.toHaveTextContent("PRIVATE_PDF_DETAIL");
+    expect(profile).not.toHaveTextContent("PRIVATE_PDF_DETAIL");
 
     await user.click(downloadButton);
 
     await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(within(identification).queryByRole("alert")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(within(profile).queryByRole("alert")).not.toBeInTheDocument());
     expect(downloadReceipt).toHaveBeenNthCalledWith(1, fullView);
     expect(downloadReceipt).toHaveBeenNthCalledWith(2, fullView);
   });
@@ -411,11 +500,12 @@ describe("ParticipantPortalPage", () => {
       ...fullView,
       payment: { ...fullView.payment, ...paymentOverride },
     };
-    setup({ loadRegistration: vi.fn().mockResolvedValue(incompleteView) });
-
-    const identification = await screen.findByRole("tabpanel", { name: "Identificação" });
+    const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(incompleteView) });
+    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     expect(
-      within(identification).queryByRole("button", { name: "Baixar comprovante em PDF" }),
+      within(profile).queryByRole("button", { name: "Baixar comprovante em PDF" }),
     ).not.toBeInTheDocument();
   });
 });

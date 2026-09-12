@@ -184,8 +184,13 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
 
     if (isSignedUrlExpired(asset.expiresAt)) {
       void renew(asset, { required: true }).then((refreshed) => {
-        if (!refreshed || !isCurrentGeneration(generation)) {
+        if (
+          !refreshed ||
+          !isCurrentGeneration(generation) ||
+          isSignedUrlExpired(refreshed.expiresAt)
+        ) {
           popup.close();
+          if (isCurrentGeneration(generation)) setViewerStatus("error");
           return;
         }
         popup.location.href = refreshed.signedUrl;
@@ -193,6 +198,11 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
       return;
     }
 
+    if (isSignedUrlExpired(asset.expiresAt)) {
+      popup.close();
+      setViewerStatus("error");
+      return;
+    }
     popup.location.href = asset.signedUrl;
   }
 

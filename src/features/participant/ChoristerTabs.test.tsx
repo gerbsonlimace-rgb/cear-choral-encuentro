@@ -404,6 +404,43 @@ describe("ChoristerScoresTab", () => {
     expect(popup.close).not.toHaveBeenCalled();
   });
 
+  it("does not navigate a cached renewed PDF after that URL expires", async () => {
+    const expiredEvent = {
+      ...scoreFeed.event,
+      songs: scoreFeed.event.songs.map((song) => ({
+        ...song,
+        sheetMusic: song.sheetMusic.map((asset) => ({
+          ...asset,
+          expiresAt: "2020-01-01T00:00:00.000Z",
+        })),
+      })),
+    };
+    const renewed = {
+      ...scoreFeed.event.songs[1].sheetMusic[0],
+      signedUrl: "https://assets.example.test/cached-renewed-score.pdf",
+      expiresAt: future,
+    };
+    const onOpen = vi.fn().mockResolvedValue(renewed);
+    const popup = { close: vi.fn(), location: { href: "" }, opener: window };
+    const openWindow = vi.spyOn(window, "open");
+    openWindow.mockReturnValue(popup as unknown as Window);
+    const user = userEvent.setup();
+
+    render(<ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={vi.fn()} />);
+
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    await screen.findByTitle(`PDF ${renewed.title}`);
+    renewed.expiresAt = "2020-01-01T00:00:00.000Z";
+
+    await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível abrir este PDF");
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.location.href).toBe("");
+    expect(popup.close).toHaveBeenCalledOnce();
+  });
+
   it("does not renew the same viewer asset again after an iframe failure", async () => {
     const asset = { ...scoreFeed.event.songs[1].sheetMusic[0] };
     const lifecycleEvent = {
