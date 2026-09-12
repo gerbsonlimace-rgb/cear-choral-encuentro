@@ -62,6 +62,7 @@ export function ChoristerAppShell({
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerStatus, setPlayerStatus] = useState<"ready" | "ended" | "error">("ready");
+  const [playAttempt, setPlayAttempt] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playbackGenerationRef = useRef(0);
   const audioById = useMemo(
@@ -102,7 +103,7 @@ export function ChoristerAppShell({
       setIsPlaying(false);
       setPlayerStatus("error");
     });
-  }, [isPlaying, selectedAudio?.audio.id]);
+  }, [isPlaying, playAttempt, selectedAudio?.audio.id]);
 
   function selectTab(tab: ChoristerTab) {
     setSelectedTab(tab);
@@ -110,6 +111,7 @@ export function ChoristerAppShell({
   }
 
   function handlePlay(audioId: string) {
+    playbackGenerationRef.current += 1;
     if (selectedAudioId !== audioId) {
       const previousAudio = audioRef.current;
       if (previousAudio) {
@@ -119,9 +121,23 @@ export function ChoristerAppShell({
       }
       setSelectedAudioId(audioId);
     }
+    setPlayAttempt((attempt) => attempt + 1);
     setIsPlaying(true);
     setPlayerStatus("ready");
     onPlay(audioId);
+  }
+
+  function togglePlayback() {
+    if (isPlaying) {
+      playbackGenerationRef.current += 1;
+      setIsPlaying(false);
+      return;
+    }
+
+    playbackGenerationRef.current += 1;
+    setPlayAttempt((attempt) => attempt + 1);
+    setIsPlaying(true);
+    setPlayerStatus("ready");
   }
 
   return (
@@ -195,10 +211,12 @@ export function ChoristerAppShell({
               src={selectedAudio.audio.signedUrl}
               preload="metadata"
               onEnded={() => {
+                playbackGenerationRef.current += 1;
                 setIsPlaying(false);
                 setPlayerStatus("ended");
               }}
               onError={() => {
+                playbackGenerationRef.current += 1;
                 setIsPlaying(false);
                 setPlayerStatus("error");
               }}
@@ -212,7 +230,7 @@ export function ChoristerAppShell({
                   ? `Pausar ${selectedAudio.song.name}`
                   : `Reproduzir ${selectedAudio.song.name}`
               }
-              onClick={() => setIsPlaying((playing) => !playing)}
+              onClick={togglePlayback}
             >
               {isPlaying ? (
                 <Pause aria-hidden="true" className="size-4 fill-current" />
