@@ -40,6 +40,7 @@ export type AdminRegistrationRow = {
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
   photoUrl: string | null;
+  regentName: string | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -97,6 +98,7 @@ export function mapAdminRegistrationRow(
   row: RegistrationDatabaseRow,
   accountStatus?: "active" | "pending" | "conflict" | null,
   photoUrl: string | null = null,
+  regentName: string | null = null,
 ): AdminRegistrationRow {
   const status = row.payment_status as AdminRegistrationRow["paymentStatus"];
 
