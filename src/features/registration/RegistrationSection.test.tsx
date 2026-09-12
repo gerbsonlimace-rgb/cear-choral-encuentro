@@ -17,6 +17,7 @@ const configuration: PublicRegistrationConfiguration = {
   ],
 };
 const loadConfiguration = vi.fn(async () => configuration);
+const available = vi.fn(async () => ({ cpfTaken: false, emailTaken: false }));
 
 async function fillPersonalData(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
@@ -54,7 +55,7 @@ describe("RegistrationSection", () => {
 
   it("starts with a compact three-step form and participant badge header", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     expect(screen.getByRole("heading", { name: "Realize sua inscrição" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
@@ -70,7 +71,7 @@ describe("RegistrationSection", () => {
 
   it("validates the current step before advancing", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByText("Informe seu nome completo.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
@@ -78,7 +79,7 @@ describe("RegistrationSection", () => {
 
   it("loads configured choirs and all musical profiles in participation", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     expect(screen.getByRole("option", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
     const profile = screen.getByLabelText("Perfil musical");
@@ -89,7 +90,7 @@ describe("RegistrationSection", () => {
 
   it("shows promotional calculation and raffle guidance", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
@@ -103,7 +104,7 @@ describe("RegistrationSection", () => {
 
   it("shows the normal price for a choir without promotion", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), sobralId);
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
@@ -114,7 +115,7 @@ describe("RegistrationSection", () => {
 
   it("preserves values when moving back from review", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToReview(user);
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
     expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
@@ -128,14 +129,14 @@ describe("RegistrationSection", () => {
   it("limits birth dates to the current day in Fortaleza", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-08T01:30:00.000Z"));
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     expect(screen.getByLabelText("Data de nascimento")).toHaveAttribute("max", "2026-09-07");
   });
 
   it("offers a retry when configuration loading fails", async () => {
     const user = userEvent.setup();
     const retry = vi.fn().mockRejectedValueOnce(new Error("unavailable")).mockResolvedValueOnce(configuration);
-    render(<RegistrationSection loadConfiguration={retry} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={retry} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar");
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(retry).toHaveBeenCalledTimes(2));
@@ -145,7 +146,7 @@ describe("RegistrationSection", () => {
 
   it("explains the secure InfinitePay redirection on the review step", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToReview(user);
 
     expect(
@@ -189,7 +190,7 @@ describe("RegistrationSection", () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
     const navigateToCheckout = vi.fn();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={navigateToCheckout} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={navigateToCheckout} />);
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({ choirId: quixadaId, voicePart: "soprano", displayedQuote: { pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 } })));
@@ -199,7 +200,7 @@ describe("RegistrationSection", () => {
   it("keeps review visible when InfinitePay is unavailable", async () => {
     const user = userEvent.setup();
     const message = "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.";
-    render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message })} navigateToCheckout={vi.fn()} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message })} navigateToCheckout={vi.fn()} />);
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
@@ -208,7 +209,7 @@ describe("RegistrationSection", () => {
 
   it("points duplicate CPF registrations to payment recovery", async () => {
     const user = userEvent.setup();
-    render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message: "Já existe uma inscrição para este CPF. Use Retomar pagamento." })} />);
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message: "Já existe uma inscrição para este CPF. Use Retomar pagamento." })} />);
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute("href", "#retomar-pagamento");
