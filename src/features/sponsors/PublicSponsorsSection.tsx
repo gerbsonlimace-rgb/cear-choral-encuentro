@@ -37,13 +37,15 @@ export function PublicSponsorsSection({
             key={sponsor.id}
             className="flex flex-col rounded-xl border border-border bg-background p-4 sm:p-5"
           >
-            <div className="flex h-20 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/50 p-2 sm:h-24">
-              <img
-                src={sponsor.logoUrl}
-                alt={`Logo de ${sponsor.name}`}
-                className="max-h-full w-full rounded-lg object-contain"
-                loading="lazy"
-              />
+            <div className="flex h-20 items-center justify-center rounded-xl border border-border bg-muted/50 p-2 sm:h-24">
+              <span className="flex max-h-full min-w-0 max-w-full overflow-hidden rounded-lg">
+                <img
+                  src={sponsor.logoUrl}
+                  alt={`Logo de ${sponsor.name}`}
+                  className="max-h-full w-auto max-w-full object-contain"
+                  loading="lazy"
+                />
+              </span>
             </div>
             <figcaption className="mt-3 flex min-h-10 items-start justify-center text-center text-sm font-semibold leading-snug text-foreground line-clamp-2">
               {sponsor.name}
