@@ -39,6 +39,7 @@ export type AdminRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  photoUrl: string | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -69,19 +70,25 @@ export type AdminRegistrationPage = {
   pageSize: number;
 };
 
+export type AdminChoirFinancials = {
+  choirName: string;
+  total: number;
+  receivedCents: number;
+  pendingCents: number;
+  pendingRegentCents: number;
+  expectedCents: number;
+};
+
 export type AdminRegistrationSummary = {
   total: number;
   paid: number;
   pending: number;
   legacy: number;
   receivedCents: number;
+  pendingCents: number;
   pendingRegentCents: number;
-  byChoir: Array<{
-    choirName: string;
-    total: number;
-    receivedCents: number;
-    pendingRegentCents: number;
-  }>;
+  expectedCents: number;
+  byChoir: AdminChoirFinancials[];
 };
 
 export type AdminExportFile = { fileName: string; content: string };
