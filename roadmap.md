@@ -14,6 +14,7 @@
 - Restore the full vertical badge with a lanyard on the right while keeping fields compact.
 - Rebalance the sponsor area with square, left-aligned cards, larger logos, and hover effects.
 - Put organisation and institutional support cards on the same line under one label.
+- Make the organisation and institutional support cards horizontal strips, each half of the full row.
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).

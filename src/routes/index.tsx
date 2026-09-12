@@ -918,25 +918,25 @@ function SponsorsSection() {
                 </h3>
                 <div className="h-px flex-1 bg-border" />
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 {institutionalPartners.map((partner) => (
                   <article
                     key={partner.name}
-                    className="group flex aspect-square flex-col items-center justify-between rounded-xl border border-border bg-background p-4 text-center text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
+                    className="group flex items-center gap-4 rounded-xl border border-border bg-background p-4 text-left text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:gap-6 sm:p-6"
                   >
-                    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden py-1 sm:py-2">
+                    <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2 transition-colors duration-300 group-hover:bg-amber/5 sm:h-24 sm:w-32 sm:p-3">
                       <img
                         src={partner.logo}
                         alt={partner.name}
-                        className="h-full max-h-20 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-28"
+                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none"
                         loading="lazy"
                       />
                     </div>
-                    <div>
-                      <p className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                    <div className="min-w-0">
+                      <p className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground sm:text-xs">
                         {partner.role}
                       </p>
-                      <h4 className="mt-1 flex min-h-9 items-center justify-center font-display text-xs font-extrabold leading-tight sm:mt-2 sm:text-base">
+                      <h4 className="mt-1 font-display text-base font-extrabold leading-tight sm:text-xl">
                         {partner.name}
                       </h4>
                     </div>
