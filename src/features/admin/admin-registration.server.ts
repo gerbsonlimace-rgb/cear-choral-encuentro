@@ -79,7 +79,7 @@ export type AdminRegistrationRepository = {
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
   const repository: AdminRegistrationRepository = {
-    async list(query: AdminRegistrationQuery): Promise<AdminRegistrationPage> {
+    async list(query: AdminRegistrationQuery, options = {}): Promise<AdminRegistrationPage> {
       let request = supabaseAdmin
         .from("registrations")
         .select(adminRegistrationColumns, { count: "exact" });
@@ -92,17 +92,24 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         .order("id", { ascending: false })
         .range(start, start + query.pageSize - 1);
       if (error) throw new Error("Não foi possível consultar as inscrições.");
+      const includePhotos = options.includePhotos ?? true;
       return {
         // The shared mapper reads only the selected administrative columns.
-        rows: (data ?? []).map((row) => {
-          const record = row as unknown as RegistrationDatabaseRow & {
-            participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
-          };
-          return mapAdminRegistrationRow(
-            record,
-            record.participant_accounts?.[0]?.access_status ?? null,
-          );
-        }),
+        rows: await Promise.all(
+          (data ?? []).map(async (row) => {
+            const record = row as unknown as RegistrationDatabaseRow & {
+              participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
+            };
+            const photoUrl = includePhotos
+              ? await signRegistrationPhoto(record.photo_path)
+              : null;
+            return mapAdminRegistrationRow(
+              record,
+              record.participant_accounts?.[0]?.access_status ?? null,
+              photoUrl,
+            );
+          }),
+        ),
         total: count ?? 0,
         page: query.page,
         pageSize: query.pageSize,
@@ -112,7 +119,10 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       const rows: AdminRegistrationRow[] = [];
       let page = 1;
       while (true) {
-        const batch = await repository.list({ ...query, page, pageSize: 1000 });
+        const batch = await repository.list(
+          { ...query, page, pageSize: 1000 },
+          { includePhotos: false },
+        );
         rows.push(...batch.rows);
         if (rows.length >= batch.total || batch.rows.length === 0) return rows;
         page += 1;
