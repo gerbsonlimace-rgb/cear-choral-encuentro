@@ -293,30 +293,28 @@ function RegistrationViews({
                 <Status row={row} />
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs">
-                <div className="col-span-2 min-w-0">
-                  <dt className="text-muted-foreground">Contato</dt>
-                  <dd className="break-all">{row.email}</dd>
+                <div>
+                  <dt className="text-muted-foreground">Valor pago</dt>
+                  <dd>{money(row.paidAmountCents)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Valor pendente</dt>
+                  <dd>{pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">WhatsApp</dt>
                   <dd>{row.phone}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Coro/Diocese</dt>
+                  <dt className="text-muted-foreground">Coro</dt>
                   <dd className="break-words">{row.choirName}</dd>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Cidade</dt>
-                  <dd className="break-words">{row.city}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Função</dt>
-                  <dd className="break-words">{row.role}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Instituição</dt>
-                  <dd className="break-words">{row.institution || "Não informado"}</dd>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">Regente</dt>
+                  <dd className="break-words">{row.regentName ?? "Não informado"}</dd>
                 </div>
               </dl>
               <div className="border-t pt-3">
-                <Payment row={row} />
                 <ParticipantAccessActions
                   row={row}
                   busy={participantActionBusy}
