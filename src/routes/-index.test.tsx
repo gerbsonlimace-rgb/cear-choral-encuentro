@@ -178,7 +178,7 @@ describe("Quixadá city spots", () => {
 });
 
 describe("landing page sponsors", () => {
-  it("renders the institutional partners and the published sponsor", () => {
+  it("presents support, organisation and sponsors as a single area", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -189,6 +189,8 @@ describe("landing page sponsors", () => {
     expect(
       content.getByRole("heading", { name: "Instituições que conduzem o encontro" }),
     ).toBeInTheDocument();
-    expect(content.getByRole("img", { name: "Unicatolica" })).toBeInTheDocument();
+    expect(content.getByRole("img", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
+    expect(content.getByRole("img", { name: "Diocese de Quixadá" })).toBeInTheDocument();
+    expect(content.queryByRole("img", { name: "Unicatolica" })).not.toBeInTheDocument();
   });
 });
