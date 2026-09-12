@@ -193,18 +193,26 @@ function RegistrationBadgePreview({
   const photoSrc = photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
 
   return (
-    <aside aria-label="Prévia do crachá" className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="h-1.5 bg-amber" aria-hidden="true" />
-      <div className="grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] items-center gap-3 p-3 sm:grid-cols-[5rem_minmax(0,1fr)_7rem] sm:px-4">
-        <div className="grid size-[4.5rem] place-items-center overflow-hidden rounded-full border-2 border-amber bg-muted font-display text-xl font-extrabold text-foreground sm:size-20">
-          {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
+    <aside aria-label="Prévia do crachá" className="mx-auto w-full max-w-[15rem] lg:sticky lg:top-24">
+      <p className="mb-1 text-center text-[0.65rem] font-bold uppercase text-muted-foreground">Prévia do seu crachá</p>
+      <div className="relative mx-auto h-12 w-28" aria-hidden="true">
+        <span className="absolute left-4 top-0 h-12 w-1 origin-top rotate-12 rounded-full bg-amber" />
+        <span className="absolute right-4 top-0 h-12 w-1 origin-top -rotate-12 rounded-full bg-amber" />
+        <span className="absolute bottom-0 left-1/2 h-3 w-8 -translate-x-1/2 rounded-md border-2 border-amber bg-muted" />
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-lg">
+        <div className="h-2 bg-amber" aria-hidden="true" />
+        <div className="px-4 py-4 text-center">
+          <img src={eventLogoOnLight} alt="II Encontro de Coros" className="mx-auto h-12 w-auto object-contain" />
+          <div className="mx-auto mt-3 grid size-20 place-items-center overflow-hidden rounded-full border-[3px] border-amber bg-muted font-display text-2xl font-extrabold text-foreground">
+            {photoSrc ? <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" /> : initials}
+          </div>
+          <p className="mt-3 break-words font-display text-lg font-extrabold leading-tight text-foreground">{name.trim() || "Seu nome"}</p>
+          <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">Participante</p>
         </div>
-        <div className="min-w-0">
-          <p className="text-[0.65rem] font-bold uppercase text-muted-foreground">Prévia do crachá</p>
-          <p className="mt-1 break-words font-display text-lg font-extrabold leading-tight text-foreground sm:text-xl">{name.trim() || "Seu nome"}</p>
-          <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">Participante • Quixadá 2026</p>
+        <div className="bg-foreground px-3 py-2 text-center text-[0.65rem] font-semibold text-background">
+          Quixadá • 20–22 nov. 2026
         </div>
-        <img src={eventLogoOnLight} alt="II Encontro de Coros" className="h-auto w-full object-contain" />
       </div>
     </aside>
   );
@@ -472,7 +480,7 @@ export function RegistrationSection({
 
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
-                <div className="mx-auto max-w-4xl">
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
                 <fieldset className="space-y-4">
                   <legend className="flex items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-foreground text-background">
@@ -485,8 +493,6 @@ export function RegistrationSection({
                       <span className="block text-sm font-normal text-muted-foreground">Seus dados pessoais e de contato.</span>
                     </span>
                   </legend>
-
-                  <RegistrationBadgePreview name={form.name} photo={photo} />
 
                   <div className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                     <div className="space-y-1.5">
@@ -613,6 +619,7 @@ export function RegistrationSection({
 
                   </div>
                 </fieldset>
+                <RegistrationBadgePreview name={form.name} photo={photo} />
                 </div>
               )}
 
