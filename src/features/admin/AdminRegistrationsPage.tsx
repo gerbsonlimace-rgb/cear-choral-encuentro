@@ -157,6 +157,11 @@ function Payment({ row }: { row: AdminRegistrationRow }) {
   );
 }
 
+function pendingAmountCents(row: AdminRegistrationRow): number | null {
+  if (row.paymentStatus !== "pending") return null;
+  return Math.max(0, (row.amountCents ?? 0) - (row.paidAmountCents ?? 0));
+}
+
 function ParticipantAccessActions({
   row,
   busy,
@@ -226,7 +231,7 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {["Inscrição", "Contato", "Coro/Diocese / origem", "Situação", "Pagamento"].map(
+              {["Coralista", "Valor pago", "Valor pendente", "WhatsApp", "Coro", "Regente"].map(
                 (label) => (
                   <TableHead key={label} scope="col">
                     {label}
