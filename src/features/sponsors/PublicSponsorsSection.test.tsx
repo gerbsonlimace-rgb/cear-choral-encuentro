@@ -26,8 +26,9 @@ describe("PublicSponsorsSection", () => {
     );
 
     expect(
-      await screen.findByRole("img", { name: "Universidade Católica" }),
+      await screen.findByRole("img", { name: "Logo de Universidade Católica" }),
     ).toHaveAttribute("src", "https://example.test/unicatolica.png");
     expect(screen.getByText("Patrocinadores")).toBeInTheDocument();
+    expect(screen.getByText("Universidade Católica")).toBeInTheDocument();
   });
 });
