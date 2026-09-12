@@ -535,21 +535,19 @@ export function AdminRegistrationsPage({
         return loadInitialData();
       };
       void bootstrap()
-        .then((bootstrap) => {
+        .then((result) => {
           if (!active) return;
-          if (!bootstrap) {
+          if (!result) {
             setGate("expired");
             onMissingSession();
             return;
           }
-        .then((bootstrap) => {
-          if (!active) return;
-          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
-            setGate(bootstrap.access.status);
+          if (result.access.status !== "authorized" || !result.data) {
+            setGate(result.access.status);
             return;
           }
-          setResult(bootstrap.data.registrations);
-          setSummary(bootstrap.data.summary);
+          setResult(result.data.registrations);
+          setSummary(result.data.summary);
           setBootstrapDataReady(true);
           setGate("authorized");
         })
