@@ -62,6 +62,21 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
     }
   });
 
+export type RegistrationAvailabilityResult = { cpfTaken: boolean; emailTaken: boolean };
+
+export const checkRegistrationAvailability = createServerFn({ method: "POST" })
+  .validator(registrationAvailabilitySchema)
+  .handler(async ({ data }): Promise<RegistrationAvailabilityResult> => {
+    const { createSupabaseRegistrationRepository } =
+      await import("@/features/registration/registration-payment.server");
+    const repository = createSupabaseRegistrationRepository();
+    const [cpfRecord, emailRecord] = await Promise.all([
+      repository.findByCpf(data.cpf),
+      repository.findByEmail(data.email),
+    ]);
+    return { cpfTaken: Boolean(cpfRecord), emailTaken: Boolean(emailRecord) };
+  });
+
 export const resumeRegistrationCheckout = createServerFn({ method: "POST" })
   .validator(registrationResumeSchema)
   .handler(async ({ data }) => {
