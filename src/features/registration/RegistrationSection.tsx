@@ -236,6 +236,7 @@ export function RegistrationSection({
   loadConfiguration = defaultLoadConfiguration,
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
+  checkAvailability = (input) => checkRegistrationAvailability({ data: input }),
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
@@ -246,6 +247,8 @@ export function RegistrationSection({
   const [checkoutError, setCheckoutError] = useState("");
   const [hasCpfConflict, setHasCpfConflict] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [identityConflict, setIdentityConflict] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const mounted = useRef(false);
