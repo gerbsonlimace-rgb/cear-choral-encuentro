@@ -143,13 +143,55 @@ describe("RegistrationSection", () => {
     expect(screen.getByRole("option", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
   });
 
+  it("explains the secure InfinitePay redirection on the review step", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await goToReview(user);
+
+    expect(
+      screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }),
+    ).toBeInTheDocument();
+    expect(screen.getByAltText("InfinitePay")).toBeInTheDocument();
+    expect(
+      screen.getByText("Você será direcionado ao ambiente seguro da InfinitePay."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows that the participant payment is being prepared before redirecting", async () => {
+    const user = userEvent.setup();
+    let resolveCheckout!: (value: { ok: true; checkoutUrl: string; orderNsu: string }) => void;
+    const startCheckout = vi.fn(
+      () =>
+        new Promise<{ ok: true; checkoutUrl: string; orderNsu: string }>((resolve) => {
+          resolveCheckout = resolve;
+        }),
+    );
+    const navigateToCheckout = vi.fn();
+    render(
+      <RegistrationSection
+        loadConfiguration={loadConfiguration}
+        startCheckout={startCheckout}
+        navigateToCheckout={navigateToCheckout}
+      />,
+    );
+    await goToReview(user);
+
+    await user.click(
+      screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }),
+    );
+    expect(await screen.findByRole("button", { name: "Preparando seu pagamento…" })).toBeDisabled();
+
+    resolveCheckout({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
+    await waitFor(() => expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl));
+  });
+
   it("submits the reviewed quote and redirects", async () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
     const navigateToCheckout = vi.fn();
     render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={navigateToCheckout} />);
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Ir para pagamento" }));
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({ choirId: quixadaId, voicePart: "soprano", displayedQuote: { pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 } })));
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
   });
@@ -159,7 +201,7 @@ describe("RegistrationSection", () => {
     const message = "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.";
     render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message })} navigateToCheckout={vi.fn()} />);
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Ir para pagamento" }));
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
   });
@@ -168,7 +210,7 @@ describe("RegistrationSection", () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} startCheckout={vi.fn().mockResolvedValue({ ok: false, message: "Já existe uma inscrição para este CPF. Use Retomar pagamento." })} />);
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Ir para pagamento" }));
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute("href", "#retomar-pagamento");
   });
 });

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import pixLogo from "@/assets/logo-pix.svg";
+import infinitePayLogo from "@/assets/logo-infinitepay.svg";
 import eventLogoOnLight from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -777,10 +778,16 @@ export function RegistrationSection({
                     disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
-                    {isSubmitting ? "Preparando pagamento…" : currentStep === 3 ? "Ir para pagamento" : "Continuar"}
+                    {isSubmitting ? "Preparando seu pagamento…" : currentStep === 3 ? "Pagar com segurança na InfinitePay" : "Continuar"}
                     {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
                   </Button>
                   </div>
+                  {currentStep === 3 && (
+                    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs leading-relaxed text-muted-foreground">
+                      <img src={infinitePayLogo} alt="InfinitePay" className="h-4 w-auto" />
+                      <span>Você será direcionado ao ambiente seguro da InfinitePay.</span>
+                    </p>
+                  )}
                   <p className="flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-muted-foreground">
                     <LockKeyhole className="size-4 shrink-0" aria-hidden="true" /> Seus dados serão
                     usados apenas para processar a inscrição.
