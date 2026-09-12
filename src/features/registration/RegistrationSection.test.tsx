@@ -52,12 +52,12 @@ describe("RegistrationSection", () => {
     vi.clearAllMocks();
   });
 
-  it("starts with a three-step progress indicator and large personal fields", async () => {
+  it("starts with a compact three-step form and participant badge header", async () => {
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     expect(screen.getByRole("heading", { name: "Realize sua inscrição" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
-    expect(screen.getByLabelText("CPF")).toHaveClass("min-h-14");
+    expect(screen.getByLabelText("CPF")).toHaveClass("min-h-11");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
