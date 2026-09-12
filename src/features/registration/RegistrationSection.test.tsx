@@ -53,6 +53,7 @@ describe("RegistrationSection", () => {
   });
 
   it("starts with a compact three-step form and participant badge header", async () => {
+    const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     expect(screen.getByRole("heading", { name: "Realize sua inscrição" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
@@ -63,6 +64,8 @@ describe("RegistrationSection", () => {
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
     expect(screen.getByLabelText("Prévia do crachá")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
+    expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
 
   it("validates the current step before advancing", async () => {
