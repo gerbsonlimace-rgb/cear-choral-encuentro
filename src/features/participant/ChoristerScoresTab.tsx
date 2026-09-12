@@ -7,19 +7,19 @@ import {
   type ChoristerPortalFeed,
 } from "@/features/chorister-app/choristerApp.domain";
 
-type PdfAsset = {
+export type PdfAsset = {
   id: string;
   title: string;
   signedUrl: string;
   expiresAt: string;
 };
 
-type AssetAction = (asset: PdfAsset) => PdfAsset | void | Promise<PdfAsset | void>;
+export type PdfAssetAction = (asset: PdfAsset) => PdfAsset | void | Promise<PdfAsset | void>;
 
 type ChoristerScoresTabProps = {
   event: ChoristerPortalFeed["event"];
-  onOpen: AssetAction;
-  onDownload: AssetAction;
+  onOpen: PdfAssetAction;
+  onDownload: PdfAssetAction;
 };
 
 function isRefreshedAsset(value: PdfAsset | void): value is PdfAsset {
@@ -39,19 +39,22 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
   const [viewerStatus, setViewerStatus] = useState<"ready" | "refreshing" | "error">("ready");
   const renewedAssetId = useRef<string | null>(null);
 
-  async function refresh(asset: PdfAsset) {
+  async function refresh(asset: PdfAsset): Promise<PdfAsset | undefined> {
+    if (renewedAssetId.current === asset.id) return undefined;
     setViewerStatus("refreshing");
     renewedAssetId.current = asset.id;
     try {
       const refreshed = await onOpen(asset);
       if (!isRefreshedAsset(refreshed) || isSignedUrlExpired(refreshed.expiresAt)) {
         setViewerStatus("error");
-        return;
+        return undefined;
       }
       setViewerAsset(refreshed);
       setViewerStatus("ready");
+      return refreshed;
     } catch {
       setViewerStatus("error");
+      return undefined;
     }
   }
 
@@ -68,6 +71,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     try {
       const refreshed = await onOpen(asset);
       if (isRefreshedAsset(refreshed) && !isSignedUrlExpired(refreshed.expiresAt)) {
+        renewedAssetId.current = asset.id;
         setViewerAsset(refreshed);
       }
     } catch {
@@ -93,9 +97,15 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     }
   }
 
-  function openInNewTab() {
+  async function openInNewTab() {
     if (!viewerAsset) return;
-    const opened = window.open(viewerAsset.signedUrl, "_blank", "noopener,noreferrer");
+    let asset = viewerAsset;
+    if (isSignedUrlExpired(asset.expiresAt)) {
+      const refreshed = await refresh(asset);
+      if (!refreshed) return;
+      asset = refreshed;
+    }
+    const opened = window.open(asset.signedUrl, "_blank", "noopener,noreferrer");
     if (!opened) setViewerStatus("error");
   }
 
@@ -252,7 +262,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
               title={`PDF ${viewerAsset.title}`}
               src={viewerAsset.signedUrl}
               className="h-[60svh] w-full rounded-lg border border-zinc-200"
-              onError={viewerFailed}
+              onErrorCapture={viewerFailed}
             />
           )}
           {viewerStatus === "refreshing" && (
@@ -264,7 +274,12 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" className="min-h-11" onClick={openInNewTab}>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => void openInNewTab()}
+            >
               <ExternalLink aria-hidden="true" className="size-4" />
               Abrir em nova guia
             </Button>
