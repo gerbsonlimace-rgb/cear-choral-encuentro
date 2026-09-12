@@ -155,9 +155,10 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(overview).getByText("8")).toBeInTheDocument();
     expect(within(overview).getByText("4")).toBeInTheDocument();
     expect(within(overview).getByText("2")).toBeInTheDocument();
-    expect(within(overview).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(overview).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
-    expect(within(overview).getByText("Total previsto").parentElement).toHaveTextContent(
+    const financial = within(overview).getByRole("group", { name: "Resumo financeiro" });
+    expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
+    expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 1.100,00",
     );
     expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(

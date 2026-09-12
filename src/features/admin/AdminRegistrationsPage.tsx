@@ -363,7 +363,7 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
 
   return (
     <section aria-label="Visão geral das inscrições" className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
         {financial.map((metric) => (
           <div key={metric.label} className="rounded-xl border bg-card p-4 sm:p-5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
