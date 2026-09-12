@@ -214,6 +214,8 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
       expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
+      expect(scope.getByText("AH")).toBeInTheDocument();
+      expect(scope.getByText("CP")).toBeInTheDocument();
       expect(scope.getAllByText("R$ 139,90").length).toBe(2);
     }
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
