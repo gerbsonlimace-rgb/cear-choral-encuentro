@@ -244,8 +244,7 @@ describe("ChoristerScoresTab", () => {
     };
     const onOpen = vi.fn().mockResolvedValue(undefined);
     const onDownload = vi.fn();
-    const popup = { close: vi.fn(), location: { href: "" } };
-    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(null);
     const user = userEvent.setup();
 
     render(<ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={onDownload} />);
@@ -255,9 +254,7 @@ describe("ChoristerScoresTab", () => {
     await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
 
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
-    await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
-    expect(popup.location.href).toBe("");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
   });
 
   it("uses one refreshed signed URL after expiry and stops renewing when its iframe fails", async () => {
@@ -361,7 +358,7 @@ describe("ChoristerScoresTab", () => {
       resolveRenewal = resolve;
     });
     const onOpen = vi.fn().mockImplementation(() => renewal);
-    const popup = { close: vi.fn(), location: { href: "" } };
+    const popup = { close: vi.fn(), location: { href: "" }, opener: window };
     const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const user = userEvent.setup();
     const view = render(
@@ -371,7 +368,8 @@ describe("ChoristerScoresTab", () => {
     await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
     await user.click(within(view.container).getByRole("button", { name: "Abrir em nova guia" }));
 
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.opener).toBeNull();
     expect(popup.location.href).toBe("");
     expect(onOpen).toHaveBeenCalledTimes(1);
 
@@ -395,7 +393,7 @@ describe("ChoristerScoresTab", () => {
     };
     const onOpen = vi.fn().mockResolvedValue(undefined);
     const onDownload = vi.fn();
-    const popup = { close: vi.fn(), location: { href: "" } };
+    const popup = { close: vi.fn(), location: { href: "" }, opener: window };
     const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const user = userEvent.setup();
     const view = render(
@@ -414,7 +412,8 @@ describe("ChoristerScoresTab", () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onDownload).not.toHaveBeenCalled();
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.opener).toBeNull();
     await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
   });
 

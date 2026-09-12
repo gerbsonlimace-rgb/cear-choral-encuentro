@@ -246,14 +246,15 @@ describe("ChoristerAppShell", () => {
       resolveRenewal = resolve;
     });
     const onOpenScore = vi.fn().mockReturnValue(pendingRenewal);
-    const popup = { close: vi.fn(), location: { href: "" } };
+    const popup = { close: vi.fn(), location: { href: "" }, opener: window };
     const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const { user } = setup({ feed: expiredFeed, onOpenScore });
 
     await user.click(screen.getByRole("button", { name: "Partituras" }));
     await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
     await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
-    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank", "noopener,noreferrer");
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.opener).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     await user.click(screen.getByRole("button", { name: "Sair" }));
