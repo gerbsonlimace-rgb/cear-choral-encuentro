@@ -169,20 +169,20 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     if (!viewerAsset) return;
     const asset = viewerAsset;
     const generation = viewerGenerationRef.current;
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      setViewerStatus("error");
+      return;
+    }
+    try {
+      popup.opener = null;
+    } catch {
+      popup.close();
+      setViewerStatus("error");
+      return;
+    }
 
     if (isSignedUrlExpired(asset.expiresAt)) {
-      const popup = window.open("", "_blank");
-      if (!popup) {
-        setViewerStatus("error");
-        return;
-      }
-      try {
-        popup.opener = null;
-      } catch {
-        popup.close();
-        setViewerStatus("error");
-        return;
-      }
       void renew(asset, { required: true }).then((refreshed) => {
         if (!refreshed || !isCurrentGeneration(generation)) {
           popup.close();
@@ -193,8 +193,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
       return;
     }
 
-    const opened = window.open(asset.signedUrl, "_blank", "noopener,noreferrer");
-    if (!opened) setViewerStatus("error");
+    popup.location.href = asset.signedUrl;
   }
 
   function viewerFailed() {
