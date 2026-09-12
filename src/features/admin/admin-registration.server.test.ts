@@ -18,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -223,6 +223,7 @@ describe("registration summary", () => {
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
             photoUrl: null,
+            regentName: null,
           },
         ];
       },
@@ -347,6 +348,7 @@ describe("registration repository list", () => {
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
           photoUrl: null,
+          regentName: null,
         },
       ],
       total: 51,

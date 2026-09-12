@@ -18,6 +18,7 @@ export const adminRegistrationColumns = [
   "name",
   "cpf",
   "choir_name",
+  "choir_id",
   "email",
   "phone",
   "city",
@@ -46,6 +47,22 @@ async function signRegistrationPhoto(photoPath: string | null): Promise<string |
     .createSignedUrl(photoPath, PHOTO_URL_EXPIRY_SECONDS);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
+}
+
+async function fetchActiveRegentNames(choirIds: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const uniqueIds = [...new Set(choirIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return names;
+  const { data, error } = await supabaseAdmin
+    .from("choir_regents")
+    .select("choir_id,name")
+    .in("choir_id", uniqueIds)
+    .is("revoked_at", null);
+  if (error) return names;
+  for (const regent of data ?? []) {
+    if (regent.choir_id && !names.has(regent.choir_id)) names.set(regent.choir_id, regent.name);
+  }
+  return names;
 }
 
 function registrationSearchFilter(search: string): string {
@@ -93,13 +110,18 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         .range(start, start + query.pageSize - 1);
       if (error) throw new Error("Não foi possível consultar as inscrições.");
       const includePhotos = options.includePhotos ?? true;
+      const records = (data ?? []) as unknown as Array<
+        RegistrationDatabaseRow & {
+          participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
+        }
+      >;
+      const regentNames = await fetchActiveRegentNames(
+        records.map((record) => record.choir_id ?? "").filter(Boolean),
+      );
       return {
         // The shared mapper reads only the selected administrative columns.
         rows: await Promise.all(
-          (data ?? []).map(async (row) => {
-            const record = row as unknown as RegistrationDatabaseRow & {
-              participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
-            };
+          records.map(async (record) => {
             const photoUrl = includePhotos
               ? await signRegistrationPhoto(record.photo_path)
               : null;
@@ -107,6 +129,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
               record,
               record.participant_accounts?.[0]?.access_status ?? null,
               photoUrl,
+              (record.choir_id && regentNames.get(record.choir_id)) || null,
             );
           }),
         ),

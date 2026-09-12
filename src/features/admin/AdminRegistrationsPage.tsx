@@ -114,47 +114,9 @@ function Status({ row }: { row: AdminRegistrationRow }) {
   );
 }
 
-function Payment({ row }: { row: AdminRegistrationRow }) {
-  const method =
-    row.paymentMethod === "pix"
-      ? "Pix"
-      : row.paymentMethod === "credit_card"
-        ? `Cartão${row.installments === null ? "" : ` · ${row.installments}x`}`
-        : "Não informado";
-  return (
-    <dl className="space-y-1 text-xs">
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Inscrição</dt>
-        <dd>
-          {row.pricingType === null
-            ? "Não informado"
-            : `${row.pricingType === "promotional" ? "Promocional" : "Normal"} · ${money(row.registrationPriceCents)}`}
-        </dd>
-      </div>
-      {row.pricingType === "promotional" && (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="text-muted-foreground">Valor normal</dt>
-          <dd>{money(row.standardPriceCents)}</dd>
-        </div>
-      )}
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Esperado</dt>
-        <dd>{money(row.amountCents)}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Valor pago</dt>
-        <dd>{money(row.paidAmountCents)}</dd>
-      </div>
-      <div>
-        <dt className="sr-only">Forma de pagamento</dt>
-        <dd>{method}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Pago em</dt>
-        <dd>{date(row.paidAt)}</dd>
-      </div>
-    </dl>
-  );
+function pendingAmountCents(row: AdminRegistrationRow): number | null {
+  if (row.paymentStatus !== "pending") return null;
+  return Math.max(0, (row.amountCents ?? 0) - (row.paidAmountCents ?? 0));
 }
 
 function ParticipantAccessActions({
@@ -226,7 +188,7 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {["Inscrição", "Contato", "Coro/Diocese / origem", "Situação", "Pagamento"].map(
+              {["Coralista", "Valor pago", "Valor pendente", "WhatsApp", "Coro", "Regente"].map(
                 (label) => (
                   <TableHead key={label} scope="col">
                     {label}
@@ -244,33 +206,28 @@ function RegistrationViews({
                     <div className="min-w-0">
                       <p className="break-words font-medium">{row.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                      <div className="mt-1">
+                        <Status row={row} />
+                      </div>
+                      <ParticipantAccessActions
+                        row={row}
+                        busy={participantActionBusy}
+                        onReprocess={onReprocess}
+                        onReset={onReset}
+                      />
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="max-w-52 align-top">
-                  <p className="break-all">{row.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{row.phone}</p>
+                <TableCell className="align-top">{money(row.paidAmountCents)}</TableCell>
+                <TableCell className="align-top">
+                  {pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}
                 </TableCell>
+                <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
-                  <p className="break-words">{row.city}</p>
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
-                    {row.institution || "Não informado"}
-                  </p>
-                  <p className="mt-1 text-xs">{row.role}</p>
                 </TableCell>
-                <TableCell className="align-top">
-                  <Status row={row} />
-                  <ParticipantAccessActions
-                    row={row}
-                    busy={participantActionBusy}
-                    onReprocess={onReprocess}
-                    onReset={onReset}
-                  />
-                </TableCell>
-                <TableCell className="align-top">
-                  <Payment row={row} />
+                <TableCell className="max-w-44 align-top">
+                  <p className="break-words">{row.regentName ?? "Não informado"}</p>
                 </TableCell>
               </TableRow>
             ))}
@@ -293,30 +250,28 @@ function RegistrationViews({
                 <Status row={row} />
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs">
-                <div className="col-span-2 min-w-0">
-                  <dt className="text-muted-foreground">Contato</dt>
-                  <dd className="break-all">{row.email}</dd>
+                <div>
+                  <dt className="text-muted-foreground">Valor pago</dt>
+                  <dd>{money(row.paidAmountCents)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Valor pendente</dt>
+                  <dd>{pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">WhatsApp</dt>
                   <dd>{row.phone}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Coro/Diocese</dt>
+                  <dt className="text-muted-foreground">Coro</dt>
                   <dd className="break-words">{row.choirName}</dd>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Cidade</dt>
-                  <dd className="break-words">{row.city}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Função</dt>
-                  <dd className="break-words">{row.role}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Instituição</dt>
-                  <dd className="break-words">{row.institution || "Não informado"}</dd>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">Regente</dt>
+                  <dd className="break-words">{row.regentName ?? "Não informado"}</dd>
                 </div>
               </dl>
               <div className="border-t pt-3">
-                <Payment row={row} />
                 <ParticipantAccessActions
                   row={row}
                   busy={participantActionBusy}

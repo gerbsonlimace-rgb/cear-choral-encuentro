@@ -43,6 +43,7 @@ const legacy: AdminRegistrationRow = {
   standardPriceCents: null,
   registrationPriceCents: null,
   photoUrl: null,
+  regentName: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -212,11 +213,13 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Pendente")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
-      expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
       expect(scope.getByText("AH")).toBeInTheDocument();
       expect(scope.getByText("CP")).toBeInTheDocument();
-      expect(scope.getAllByText("R$ 139,90").length).toBe(2);
+      expect(scope.getAllByText("R$ 139,90").length).toBe(1);
+      expect(scope.getAllByText("R$ 100,00").length).toBe(1);
+      expect(scope.getAllByText("85999990000").length).toBe(3);
+      expect(scope.getAllByText("Regente").length).toBeGreaterThan(0);
     }
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");
