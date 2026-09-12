@@ -25,6 +25,8 @@ type CachedFeed = {
   expiresAtMs: number;
 };
 
+const validatedFeedCache = new Map<string, CachedFeed>();
+
 function getEndpoint(value: string | undefined): URL | null {
   if (!value) return null;
   try {
@@ -60,18 +62,19 @@ export function createChoristerAppServer({
   clock,
   env,
 }: ChoristerAppServerOptions) {
-  let cache: CachedFeed | undefined;
-
   return {
     async load(): Promise<ChoristerPortalFeedState> {
       if (participantAccess.status !== "authorized") return { status: "unavailable" };
 
       const now = clock().getTime();
-      if (cache && cache.expiresAtMs > now) return cache.value;
-
       const endpoint = getEndpoint(env.COROAPP_PORTAL_FEED_URL);
       const secret = env.CHORISTER_PORTAL_SHARED_SECRET;
       if (!endpoint || !secret) return { status: "unavailable" };
+
+      const cacheKey = endpoint.toString();
+      const cached = validatedFeedCache.get(cacheKey);
+      if (cached && cached.expiresAtMs > now) return cached.value;
+      if (cached) validatedFeedCache.delete(cacheKey);
 
       try {
         const timestamp = getTimestamp(clock);
@@ -88,7 +91,7 @@ export function createChoristerAppServer({
         if (!response.ok) return { status: "unavailable" };
 
         const value = ChoristerPortalFeedStateSchema.parse(await response.json());
-        cache = { value, expiresAtMs: now + MAX_CACHE_AGE_MS };
+        validatedFeedCache.set(cacheKey, { value, expiresAtMs: now + MAX_CACHE_AGE_MS });
         return value;
       } catch {
         return { status: "unavailable" };

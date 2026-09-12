@@ -67,9 +67,10 @@ const feed = {
 };
 
 describe("chorister portal feed domain", () => {
-  it("rejects malformed published feed values before they reach the UI", () => {
-    expect(() =>
-      ChoristerPortalFeedSchema.parse({
+  it.each([
+    [
+      "an invalid voice",
+      {
         ...feed,
         event: {
           ...feed.event,
@@ -80,20 +81,67 @@ describe("chorister portal feed domain", () => {
                 {
                   ...feed.event.songs[0].audios[0],
                   voicePart: "baritono",
-                  signedUrl: "http://assets.example.test/audio.mp3",
-                  expiresAt: "2020-01-01T00:00:00.000Z",
                 },
               ],
             },
           ],
         },
-      }),
-    ).toThrow();
+      },
+    ],
+    [
+      "an HTTP asset URL",
+      {
+        ...feed,
+        event: {
+          ...feed.event,
+          songs: [
+            {
+              ...feed.event.songs[0],
+              audios: [
+                { ...feed.event.songs[0].audios[0], signedUrl: "http://assets.example.test/audio.mp3" },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "an elapsed asset timestamp",
+      {
+        ...feed,
+        event: {
+          ...feed.event,
+          songs: [
+            {
+              ...feed.event.songs[0],
+              audios: [
+                { ...feed.event.songs[0].audios[0], expiresAt: "2020-01-01T00:00:00.000Z" },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      "an invalid event identifier",
+      { ...feed, event: { ...feed.event, id: "any-event-id" } },
+    ],
+  ])("rejects %s before it reaches the UI", (_label, value) => {
+    expect(() => ChoristerPortalFeedSchema.parse(value)).toThrow();
+  });
+
+  it("rejects an unknown feed status before it reaches the UI", () => {
     expect(() => ChoristerPortalFeedSchema.parse({ status: "draft" })).toThrow();
   });
 
+  it.each(["home", "cantos", "partituras", "perfil"] as const)(
+    "preserves the %s tab value",
+    (tab) => {
+      expect(resolveChoristerTab(tab)).toBe(tab);
+    },
+  );
+
   it("uses a safe home tab for hostile route state", () => {
-    expect(resolveChoristerTab("partituras")).toBe("partituras");
     expect(resolveChoristerTab("admin")).toBe("home");
     expect(resolveChoristerTab(undefined)).toBe("home");
   });

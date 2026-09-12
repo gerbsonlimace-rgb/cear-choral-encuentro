@@ -28,13 +28,17 @@ function response(value: unknown, status = 200) {
   });
 }
 
-function createServer(fetchImpl: typeof fetch, now = new Date("2026-01-01T00:00:00.000Z")) {
+function createServer(
+  fetchImpl: typeof fetch,
+  now = new Date("2026-01-01T00:00:00.000Z"),
+  endpoint = "https://coroapp.example.test/functions/v1/chorister-portal-feed",
+) {
   return createChoristerAppServer({
     participantAccess: access,
     fetchImpl,
     clock: () => now,
     env: {
-      COROAPP_PORTAL_FEED_URL: "https://coroapp.example.test/functions/v1/chorister-portal-feed",
+      COROAPP_PORTAL_FEED_URL: endpoint,
       CHORISTER_PORTAL_SHARED_SECRET: "shared-secret",
     },
   });
@@ -78,7 +82,7 @@ describe("chorister app server", () => {
       fetchImpl,
       clock: () => now,
       env: {
-        COROAPP_PORTAL_FEED_URL: "https://coroapp.example.test/functions/v1/chorister-portal-feed",
+        COROAPP_PORTAL_FEED_URL: "https://coroapp-cache.example.test/functions/v1/chorister-portal-feed",
         CHORISTER_PORTAL_SHARED_SECRET: "shared-secret",
       },
     });
@@ -92,11 +96,68 @@ describe("chorister app server", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("maps timeouts, bad responses, and malformed JSON to a generic unavailable state", async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new DOMException("Timed out", "TimeoutError"));
-    await expect(createServer(fetchImpl).load()).resolves.toEqual({ status: "unavailable" });
+  it("shares a validated feed across separate server factories for at most sixty seconds", async () => {
+    let now = new Date("2026-01-01T00:00:00.000Z");
+    const endpoint = "https://coroapp-shared-cache.example.test/functions/v1/chorister-portal-feed";
+    const firstFetch = vi.fn<typeof fetch>().mockResolvedValue(response(body));
+    const secondFetch = vi.fn<typeof fetch>().mockResolvedValue(response(body));
 
-    const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({ status: "published", event: {} }));
-    await expect(createServer(invalid).load()).resolves.toEqual({ status: "unavailable" });
+    await createServer(firstFetch, now, endpoint).load();
+    now = new Date("2026-01-01T00:00:59.999Z");
+    await createServer(secondFetch, now, endpoint).load();
+    now = new Date("2026-01-01T00:01:00.000Z");
+    await createServer(secondFetch, now, endpoint).load();
+
+    expect(firstFetch).toHaveBeenCalledOnce();
+    expect(secondFetch).toHaveBeenCalledOnce();
+  });
+
+  it("maps a timeout to a generic unavailable state", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new DOMException("Timed out", "TimeoutError"));
+    await expect(
+      createServer(
+        fetchImpl,
+        new Date("2026-01-01T00:00:00.000Z"),
+        "https://coroapp-timeout.example.test/functions/v1/chorister-portal-feed",
+      ).load(),
+    ).resolves.toEqual({ status: "unavailable" });
+  });
+
+  it("maps a non-2xx response to a generic unavailable state", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({ error: "internal detail" }, 502));
+    await expect(
+      createServer(
+        fetchImpl,
+        new Date("2026-01-01T00:00:00.000Z"),
+        "https://coroapp-non-2xx.example.test/functions/v1/chorister-portal-feed",
+      ).load(),
+    ).resolves.toEqual({ status: "unavailable" });
+  });
+
+  it("maps malformed JSON to a generic unavailable state", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("{", { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    await expect(
+      createServer(
+        fetchImpl,
+        new Date("2026-01-01T00:00:00.000Z"),
+        "https://coroapp-malformed-json.example.test/functions/v1/chorister-portal-feed",
+      ).load(),
+    ).resolves.toEqual({ status: "unavailable" });
+  });
+
+  it("sets the fixed ten-second request timeout", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    try {
+      await createServer(
+        vi.fn<typeof fetch>().mockResolvedValue(response(body)),
+        new Date("2026-01-01T00:00:00.000Z"),
+        "https://coroapp-timeout-value.example.test/functions/v1/chorister-portal-feed",
+      ).load();
+      expect(timeout).toHaveBeenCalledWith(10_000);
+    } finally {
+      timeout.mockRestore();
+    }
   });
 });
