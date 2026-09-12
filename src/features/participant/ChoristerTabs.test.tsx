@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 
+import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
+import { ChoristerProfileTab } from "./ChoristerProfileTab";
+import { ChoristerScoresTab } from "./ChoristerScoresTab";
 import { ChoristerSongsTab } from "./ChoristerSongsTab";
 
 Object.defineProperties(HTMLElement.prototype, {
@@ -68,6 +71,83 @@ const feed: ChoristerPortalFeed = {
   },
 };
 
+const scoreFeed: ChoristerPortalFeed = {
+  ...feed,
+  event: {
+    ...feed.event,
+    songs: [
+      ...feed.event.songs,
+      {
+        id: "77777777-7777-4777-8777-777777777777",
+        order: 3,
+        name: "Canto de comunhão",
+        liturgicalType: "Comunhão",
+        lyrics: null,
+        chords: null,
+        audios: [],
+        sheetMusic: [
+          {
+            id: "88888888-8888-4888-8888-888888888888",
+            title: "Partitura de comunhão",
+            signedUrl: "https://assets.example.test/communion.pdf",
+            expiresAt: future,
+          },
+        ],
+      },
+    ],
+    documents: [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        kind: "manual",
+        title: "Manual do encontro",
+        signedUrl: "https://assets.example.test/manual.pdf",
+        expiresAt: future,
+        sortOrder: 2,
+      },
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        kind: "document",
+        title: "Orientações litúrgicas",
+        signedUrl: "https://assets.example.test/guidance.pdf",
+        expiresAt: future,
+        sortOrder: 1,
+      },
+    ],
+  },
+};
+
+const participant: ParticipantRegistrationView = {
+  identity: {
+    name: "Maria da Silva",
+    cpf: "***.***.***-25" as MaskedCpf,
+    birthDate: "1990-01-15",
+    email: "maria@example.com",
+    phone: "(85) 99999-0000",
+    photoUrl: null,
+  },
+  registration: {
+    choirName: "Coral Santa Cecília",
+    diocese: "Diocese de Quixadá",
+    city: null,
+    institution: null,
+    role: null,
+    voicePart: "soprano",
+    pricingType: null,
+    standardPriceCents: null,
+    registrationPriceCents: null,
+  },
+  payment: {
+    status: "paid",
+    amountCents: 12000,
+    paidAmountCents: 12000,
+    paymentMethod: "pix",
+    installments: null,
+    paidAt: "2026-09-10T15:30:00.000Z",
+    orderNsu: "pedido-1234",
+    receiptUrl: "https://receipts.example.test/pedido-1234",
+  },
+};
+
 function setup() {
   const props = { onPlay: vi.fn(), onOpenSong: vi.fn(), onOpenScore: vi.fn() };
   render(<ChoristerSongsTab songs={feed.event.songs} {...props} />);
@@ -126,5 +206,71 @@ describe("ChoristerSongsTab", () => {
       within(screen.getByRole("region", { name: "Cantos publicados" })).getAllByRole("button")
         .length,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe("ChoristerScoresTab", () => {
+  it("groups published scores by song and documents by their feed order", () => {
+    const onOpen = vi.fn();
+    const onDownload = vi.fn();
+
+    render(<ChoristerScoresTab event={scoreFeed.event} onOpen={onOpen} onDownload={onDownload} />);
+
+    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Canto de entrada", level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Canto de comunhão", level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(["Orientações litúrgicas", "Manual do encontro"]);
+    expect(
+      screen.queryByRole("button", { name: /enviar|upload|editar|remover/i }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("ChoristerProfileTab", () => {
+  it("keeps the existing neutral identity fallback when a private profile photo is unavailable", () => {
+    render(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: "Foto não disponível" })).toHaveTextContent("MD");
+    expect(document.body).not.toHaveTextContent("registration-photos/");
+  });
+
+  it("keeps the masked registration actions together and clears its content before logout completes", async () => {
+    const onChangePassword = vi.fn();
+    const onDownloadReceipt = vi.fn();
+    const onLogout = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={onChangePassword}
+        onDownloadReceipt={onDownloadReceipt}
+        onLogout={onLogout}
+      />,
+    );
+
+    expect(screen.getByText("***.***.***-25")).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("529.982.247-25");
+
+    await user.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+
+    expect(onDownloadReceipt).toHaveBeenCalledExactlyOnceWith(participant);
+    expect(onChangePassword).toHaveBeenCalledTimes(1);
+    expect(onLogout).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Saindo…")).toBeInTheDocument();
+    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
   });
 });
