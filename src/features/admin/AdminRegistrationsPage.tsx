@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -86,6 +87,24 @@ const date = (value: string | null) =>
   value ? dateFormatter.format(new Date(value)) : "Não informado";
 const money = (value: number | null) =>
   value === null ? "Não informado" : moneyFormatter.format(value / 100);
+
+function nameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "?";
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function ParticipantAvatar({ row }: { row: AdminRegistrationRow }) {
+  return (
+    <Avatar className="h-10 w-10 shrink-0 border border-border">
+      {row.photoUrl && <AvatarImage src={row.photoUrl} alt={`Foto de ${row.name}`} />}
+      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+        {nameInitials(row.name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 function Status({ row }: { row: AdminRegistrationRow }) {
   return (
