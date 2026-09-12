@@ -274,6 +274,7 @@ function mapPaymentRow(row: {
 
 export type SupabaseRegistrationRepository = RegistrationRepository & {
   findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
+  findByEmail: (email: string) => Promise<RegistrationIdentityRecord | null>;
 };
 
 export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
