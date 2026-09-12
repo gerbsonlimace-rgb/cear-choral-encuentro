@@ -31,7 +31,9 @@ import {
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
+  checkRegistrationAvailability,
   startRegistrationCheckout,
+  type RegistrationAvailabilityResult,
   type StartRegistrationCheckoutResult,
 } from "@/lib/registration.functions";
 import {
@@ -50,6 +52,10 @@ type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
   startCheckout?: (input: RegistrationInput) => Promise<StartRegistrationCheckoutResult>;
   navigateToCheckout?: (url: string) => void;
+  checkAvailability?: (input: {
+    cpf: string;
+    email: string;
+  }) => Promise<RegistrationAvailabilityResult>;
 };
 
 type RegistrationForm = Omit<
@@ -230,6 +236,7 @@ export function RegistrationSection({
   loadConfiguration = defaultLoadConfiguration,
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
+  checkAvailability = (input) => checkRegistrationAvailability({ data: input }),
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
@@ -240,6 +247,8 @@ export function RegistrationSection({
   const [checkoutError, setCheckoutError] = useState("");
   const [hasCpfConflict, setHasCpfConflict] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [identityConflict, setIdentityConflict] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const mounted = useRef(false);
@@ -286,6 +295,7 @@ export function RegistrationSection({
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+    if (field === "cpf" || field === "email") setIdentityConflict(false);
   };
 
   const handlePhotoChange = async (file: File | undefined) => {
@@ -338,8 +348,37 @@ export function RegistrationSection({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const goToNextStep = () => {
-    if (currentStep === 1 && validateStep(1)) setCurrentStep(2);
+  const goToNextStep = async () => {
+    if (currentStep === 1) {
+      if (!validateStep(1)) return;
+      setIsCheckingAvailability(true);
+      setIdentityConflict(false);
+      try {
+        const availability = await checkAvailability({
+          cpf: form.cpf.replace(/\D/g, ""),
+          email: form.email.trim(),
+        });
+        const conflictErrors: Partial<Record<RegistrationFormField, string>> = {};
+        if (availability.cpfTaken) {
+          conflictErrors.cpf = "Já existe uma inscrição para este CPF.";
+        }
+        if (availability.emailTaken) {
+          conflictErrors.email = "Já existe uma inscrição para este e-mail.";
+        }
+        if (Object.keys(conflictErrors).length > 0) {
+          setErrors((previous) => ({ ...previous, ...conflictErrors }));
+          setIdentityConflict(true);
+          focusFirstError(conflictErrors);
+          return;
+        }
+        setCurrentStep(2);
+      } catch {
+        setCheckoutError("Não foi possível verificar seus dados. Tente novamente.");
+      } finally {
+        setIsCheckingAvailability(false);
+      }
+      return;
+    }
     if (currentStep === 2 && validateStep(2)) setCurrentStep(3);
   };
 
@@ -352,7 +391,7 @@ export function RegistrationSection({
     event.preventDefault();
     if (isSubmitting) return;
     if (currentStep < 3) {
-      goToNextStep();
+      void goToNextStep();
       return;
     }
     if (!selectedChoir) {
@@ -545,7 +584,19 @@ export function RegistrationSection({
                           className={inputClassName}
                         />
                       </div>
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      {errors.email && (
+                        <p className="text-sm text-destructive">
+                          {errors.email}
+                          {identityConflict && errors.email.includes("Já existe") && (
+                            <>
+                              {" "}
+                              <a href="#retomar-pagamento" className="font-bold underline underline-offset-4">
+                                Retomar pagamento
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -562,7 +613,19 @@ export function RegistrationSection({
                         placeholder="000.000.000-00"
                         className={inputClassName}
                       />
-                      {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
+                      {errors.cpf && (
+                        <p className="text-sm text-destructive">
+                          {errors.cpf}
+                          {identityConflict && errors.cpf.includes("Já existe") && (
+                            <>
+                              {" "}
+                              <a href="#retomar-pagamento" className="font-bold underline underline-offset-4">
+                                Retomar pagamento
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -774,12 +837,25 @@ export function RegistrationSection({
                     )}
                   <Button
                     type={currentStep === 3 ? "submit" : "button"}
-                    onClick={currentStep === 3 ? undefined : goToNextStep}
-                    disabled={isSubmitting || !configuration || configuration.choirs.length === 0}
+                    onClick={currentStep === 3 ? undefined : () => void goToNextStep()}
+                    disabled={
+                      isSubmitting ||
+                      isCheckingAvailability ||
+                      !configuration ||
+                      configuration.choirs.length === 0
+                    }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
-                    {isSubmitting ? "Preparando seu pagamento…" : currentStep === 3 ? "Pagar com segurança na InfinitePay" : "Continuar"}
-                    {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
+                    {isSubmitting
+                      ? "Preparando seu pagamento…"
+                      : isCheckingAvailability
+                        ? "Verificando seus dados…"
+                        : currentStep === 3
+                          ? "Pagar com segurança na InfinitePay"
+                          : "Continuar"}
+                    {!isSubmitting && !isCheckingAvailability && (
+                      <ArrowRight className="ml-2 size-5" aria-hidden="true" />
+                    )}
                   </Button>
                   </div>
                   {currentStep === 3 && (

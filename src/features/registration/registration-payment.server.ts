@@ -274,6 +274,7 @@ function mapPaymentRow(row: {
 
 export type SupabaseRegistrationRepository = RegistrationRepository & {
   findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
+  findByEmail: (email: string) => Promise<RegistrationIdentityRecord | null>;
 };
 
 export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
@@ -282,6 +283,19 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       .from("registrations")
       .select(identityColumns)
       .eq("cpf", cpf)
+      .maybeSingle();
+
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    if (typeof data.id !== "string") throw new Error("Registro de inscrição inválido.");
+    return { id: data.id };
+  };
+
+  const findByEmail = async (email: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(identityColumns)
+      .ilike("email", email)
       .maybeSingle();
 
     if (error) throw new Error("Não foi possível consultar a inscrição.");
@@ -303,6 +317,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
   return {
     findByCpf,
+    findByEmail,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
