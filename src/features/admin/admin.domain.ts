@@ -123,6 +123,7 @@ export function mapAdminRegistrationRow(
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
     photoUrl,
+    regentName,
     ...(accountStatus === undefined
       ? {}
       : { participantAccess: resolveParticipantAccess(status, accountStatus) }),
