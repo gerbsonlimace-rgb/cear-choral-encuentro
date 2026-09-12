@@ -181,14 +181,15 @@ describe("ParticipantPortalPage", () => {
     expect(loadFeed).toHaveBeenCalledOnce();
   });
 
-  it("keeps registration data hidden when the event materials are not published", async () => {
-    setup({ loadFeed: vi.fn().mockResolvedValue({ status: "not_published" }) });
+  it("keeps the authenticated shell and profile available when materials are not published", async () => {
+    const { user } = setup({ loadFeed: vi.fn().mockResolvedValue({ status: "not_published" }) });
 
     expect(
       await screen.findByText("Os materiais do encontro ainda não foram publicados."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
-    expect(screen.queryByText("Coral Santa Cecília")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
+    expect(screen.getByText("Coral Santa Cecília")).toBeInTheDocument();
   });
 
   it("shows a retryable neutral state when the authorized feed is unavailable", async () => {
@@ -201,7 +202,8 @@ describe("ParticipantPortalPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar os materiais do encontro. Tente novamente.",
     );
-    expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 

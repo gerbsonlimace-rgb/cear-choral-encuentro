@@ -45,12 +45,32 @@ type Gate =
   | "redirecting"
   | "leaving";
 
+type ContentStatus = "ready" | "not_published" | "unavailable";
+type AudioAsset = ChoristerPortalFeed["event"]["songs"][number]["audios"][number];
+
+const EMPTY_PORTAL_FEED: ChoristerPortalFeed = {
+  status: "published",
+  event: {
+    id: "00000000-0000-4000-8000-000000000000",
+    name: "II Encontro de Coros Diocesanos e Litúrgicos",
+    date: "2026-11-20",
+    location: null,
+    coverImageUrl: null,
+    songs: [],
+    documents: [],
+  },
+};
+
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
 
 function findScoreAsset(feed: ChoristerPortalFeed, assetId: string): PdfAsset | undefined {
   return [...feed.event.songs.flatMap((song) => song.sheetMusic), ...feed.event.documents].find(
     (asset) => asset.id === assetId,
   );
+}
+
+function findAudioAsset(feed: ChoristerPortalFeed, assetId: string): AudioAsset | undefined {
+  return feed.event.songs.flatMap((song) => song.audios).find((audio) => audio.id === assetId);
 }
 
 export function ParticipantPortalPage({
@@ -68,6 +88,7 @@ export function ParticipantPortalPage({
   const [gate, setGate] = useState<Gate>("checking");
   const [view, setView] = useState<ParticipantRegistrationView | null>(null);
   const [feed, setFeed] = useState<ChoristerPortalFeed | null>(null);
+  const [contentStatus, setContentStatus] = useState<ContentStatus>("ready");
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const revision = useRef(0);
   const mounted = useRef(true);
@@ -77,6 +98,7 @@ export function ParticipantPortalPage({
     const current = ++revision.current;
     setView(null);
     setFeed(null);
+    setContentStatus("ready");
     setGate("checking");
     try {
       const access = await checkAccess();
@@ -95,21 +117,33 @@ export function ParticipantPortalPage({
       try {
         portalFeed = await loadFeed();
       } catch {
-        if (current === revision.current && mounted.current) setGate("unavailable");
+        if (current === revision.current && mounted.current) {
+          setView(registration);
+          setFeed(EMPTY_PORTAL_FEED);
+          setContentStatus("unavailable");
+          setGate("ready");
+        }
         return;
       }
       if (current !== revision.current || !mounted.current) return;
       if (portalFeed.status === "not_published") {
-        setGate("not_published");
+        setView(registration);
+        setFeed(EMPTY_PORTAL_FEED);
+        setContentStatus("not_published");
+        setGate("ready");
         return;
       }
       if (portalFeed.status === "unavailable") {
-        setGate("unavailable");
+        setView(registration);
+        setFeed(EMPTY_PORTAL_FEED);
+        setContentStatus("unavailable");
+        setGate("ready");
         return;
       }
 
       setView(registration);
       setFeed(portalFeed);
+      setContentStatus("ready");
       setGate("ready");
     } catch {
       if (current === revision.current && mounted.current) setGate("error");
@@ -140,6 +174,30 @@ export function ParticipantPortalPage({
         if (!refreshedAsset) return undefined;
         setFeed(refreshedFeed);
         return refreshedAsset;
+      } catch {
+        return undefined;
+      }
+    },
+    [loadFeed],
+  );
+
+  const renewAudio = useCallback(
+    async (audioId: string): Promise<AudioAsset | undefined> => {
+      const current = revision.current;
+      try {
+        const refreshedFeed = await loadFeed();
+        if (
+          current !== revision.current ||
+          !mounted.current ||
+          refreshedFeed.status !== "published"
+        ) {
+          return undefined;
+        }
+        const refreshedAudio = findAudioAsset(refreshedFeed, audioId);
+        if (!refreshedAudio) return undefined;
+        setFeed(refreshedFeed);
+        setContentStatus("ready");
+        return refreshedAudio;
       } catch {
         return undefined;
       }
@@ -180,6 +238,9 @@ export function ParticipantPortalPage({
           onOpenSong={() => undefined}
           onOpenScore={renewScoreAsset}
           onDownloadScore={renewScoreAsset}
+          onRenewAudio={renewAudio}
+          contentStatus={contentStatus}
+          onRetryContent={() => void loadPortal()}
         />
         <ParticipantPasswordDialog
           open={passwordDialogOpen}
