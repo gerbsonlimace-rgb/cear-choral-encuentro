@@ -161,9 +161,9 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 1.100,00",
     );
-    expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(
-      "R$ 400,00",
-    );
+    expect(
+      within(overview).getAllByText("Pendente do regente")[0].parentElement,
+    ).toHaveTextContent("R$ 400,00");
     expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
     const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
