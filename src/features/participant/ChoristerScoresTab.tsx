@@ -20,6 +20,7 @@ type ChoristerScoresTabProps = {
   event: ChoristerPortalFeed["event"];
   onOpen: PdfAssetAction;
   onDownload: PdfAssetAction;
+  initialAsset?: PdfAsset | null;
 };
 
 type RenewalAttempt = {
@@ -42,7 +43,7 @@ function orderedDocuments(event: ChoristerPortalFeed["event"]) {
   return [...event.documents].sort((first, second) => first.sortOrder - second.sortOrder);
 }
 
-export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScoresTabProps) {
+export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: ChoristerScoresTabProps) {
   const [viewerAsset, setViewerAsset] = useState<PdfAsset | null>(null);
   const [viewerStatus, setViewerStatus] = useState<"ready" | "refreshing" | "error">("ready");
   const mountedRef = useRef(false);
@@ -132,6 +133,12 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     setViewerStatus("ready");
     void renew(asset, { required: isSignedUrlExpired(asset.expiresAt) });
   }
+
+  useEffect(() => {
+    if (initialAsset) open(initialAsset);
+    // The shell changes the asset id to request a new viewer lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAsset?.id]);
 
   async function download(asset: PdfAsset) {
     const generation = viewerGenerationRef.current;

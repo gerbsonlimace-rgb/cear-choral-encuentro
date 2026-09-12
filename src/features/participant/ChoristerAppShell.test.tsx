@@ -94,6 +94,48 @@ function setup(overrides: Partial<ChoristerAppShellProps> = {}) {
 describe("ChoristerAppShell", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it("opens a song detail with its lyrics and chords from Cantos", async () => {
+    const detailedFeed: ChoristerPortalFeed = {
+      ...feed,
+      event: {
+        ...feed.event,
+        songs: [
+          {
+            ...feed.event.songs[0],
+            lyrics: "Vem, Senhor, visitar teu povo.",
+            chords: "C        G        Am",
+          },
+        ],
+      },
+    };
+    const { user } = setup({ feed: detailedFeed });
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Abrir canto Canto de entrada" }));
+
+    const detail = screen.getByRole("region", { name: "Detalhe do canto Canto de entrada" });
+    expect(within(detail).getByText("Vem, Senhor, visitar teu povo.")).toBeInTheDocument();
+    expect(within(detail).getByText(/C\s+G\s+Am/)).toBeInTheDocument();
+    await user.click(within(detail).getByRole("button", { name: "Fechar detalhe" }));
+    expect(screen.queryByRole("region", { name: "Detalhe do canto Canto de entrada" })).not.toBeInTheDocument();
+  });
+
+  it("takes a Cantos score shortcut to Partituras and opens its viewer", async () => {
+    const onOpenScore = vi.fn().mockImplementation((asset) => asset);
+    const { user } = setup({ onOpenScore });
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(
+      screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }),
+    );
+
+    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Visualizador de Partitura" })).toBeInTheDocument();
+    expect(onOpenScore).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "44444444-4444-4444-8444-444444444444" }),
+    );
+  });
+
   it("keeps the approved four-tab order in the mobile bottom navigation", () => {
     setup();
 
@@ -191,6 +233,64 @@ describe("ChoristerAppShell", () => {
     expect(pause).toHaveBeenCalled();
     expect(load).toHaveBeenCalled();
     expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("renews an expired audio URL before starting playback", async () => {
+    const expiredFeed: ChoristerPortalFeed = {
+      ...feed,
+      event: {
+        ...feed.event,
+        songs: feed.event.songs.map((song) => ({
+          ...song,
+          audios: song.audios.map((audio) => ({
+            ...audio,
+            expiresAt: "2020-01-01T00:00:00.000Z",
+          })),
+        })),
+      },
+    };
+    const renewedAudio = {
+      ...expiredFeed.event.songs[0].audios[0],
+      signedUrl: "https://assets.example.test/fresh-audio.mp3",
+      expiresAt: future,
+    };
+    const onRenewAudio = vi.fn().mockResolvedValue(renewedAudio);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup({ feed: expiredFeed, onRenewAudio });
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
+        "src",
+        renewedAudio.signedUrl,
+      ),
+    );
+    expect(onRenewAudio).toHaveBeenCalledExactlyOnceWith(renewedAudio.id);
+  });
+
+  it("tracks audio progress and keeps the seek control touch friendly", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Tocar Soprano" }));
+    const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
+    Object.defineProperty(audio, "duration", { configurable: true, value: 120 });
+    Object.defineProperty(audio, "currentTime", { configurable: true, writable: true, value: 30 });
+    fireEvent.loadedMetadata(audio);
+    fireEvent.timeUpdate(audio);
+
+    const progress = screen.getByRole("slider", { name: "Progresso do áudio" });
+    expect(progress).toHaveValue("30");
+    expect(progress).toHaveAttribute("max", "120");
+    expect(progress).toHaveClass("min-h-11");
+
+    fireEvent.change(progress, { target: { value: "45" } });
+    expect(audio.currentTime).toBe(45);
   });
 
   it("clears the signed feed and player before handing logout to the route", async () => {
