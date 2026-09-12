@@ -32,8 +32,21 @@ export const adminRegistrationColumns = [
   "payment_method",
   "installments",
   "paid_at",
+  "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
+
+const REGISTRATION_PHOTO_BUCKET = "registration-photos";
+const PHOTO_URL_EXPIRY_SECONDS = 3600;
+
+async function signRegistrationPhoto(photoPath: string | null): Promise<string | null> {
+  if (!photoPath) return null;
+  const { data, error } = await supabaseAdmin.storage
+    .from(REGISTRATION_PHOTO_BUCKET)
+    .createSignedUrl(photoPath, PHOTO_URL_EXPIRY_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
 
 function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
@@ -56,14 +69,17 @@ export type AdminExportAuditEvent = {
 };
 
 export type AdminRegistrationRepository = {
-  list(query: AdminRegistrationQuery): Promise<AdminRegistrationPage>;
+  list(
+    query: AdminRegistrationQuery,
+    options?: { includePhotos?: boolean },
+  ): Promise<AdminRegistrationPage>;
   listAll(query: AdminRegistrationExportQuery): Promise<AdminRegistrationRow[]>;
   recordExport(event: AdminExportAuditEvent): Promise<void>;
 };
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
   const repository: AdminRegistrationRepository = {
-    async list(query: AdminRegistrationQuery): Promise<AdminRegistrationPage> {
+    async list(query: AdminRegistrationQuery, options = {}): Promise<AdminRegistrationPage> {
       let request = supabaseAdmin
         .from("registrations")
         .select(adminRegistrationColumns, { count: "exact" });
@@ -76,17 +92,24 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         .order("id", { ascending: false })
         .range(start, start + query.pageSize - 1);
       if (error) throw new Error("Não foi possível consultar as inscrições.");
+      const includePhotos = options.includePhotos ?? true;
       return {
         // The shared mapper reads only the selected administrative columns.
-        rows: (data ?? []).map((row) => {
-          const record = row as unknown as RegistrationDatabaseRow & {
-            participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
-          };
-          return mapAdminRegistrationRow(
-            record,
-            record.participant_accounts?.[0]?.access_status ?? null,
-          );
-        }),
+        rows: await Promise.all(
+          (data ?? []).map(async (row) => {
+            const record = row as unknown as RegistrationDatabaseRow & {
+              participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
+            };
+            const photoUrl = includePhotos
+              ? await signRegistrationPhoto(record.photo_path)
+              : null;
+            return mapAdminRegistrationRow(
+              record,
+              record.participant_accounts?.[0]?.access_status ?? null,
+              photoUrl,
+            );
+          }),
+        ),
         total: count ?? 0,
         page: query.page,
         pageSize: query.pageSize,
@@ -96,7 +119,10 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       const rows: AdminRegistrationRow[] = [];
       let page = 1;
       while (true) {
-        const batch = await repository.list({ ...query, page, pageSize: 1000 });
+        const batch = await repository.list(
+          { ...query, page, pageSize: 1000 },
+          { includePhotos: false },
+        );
         rows.push(...batch.rows);
         if (rows.length >= batch.total || batch.rows.length === 0) return rows;
         page += 1;

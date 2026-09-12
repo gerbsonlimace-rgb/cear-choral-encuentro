@@ -39,6 +39,7 @@ export type AdminRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  photoUrl: string | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -69,19 +70,25 @@ export type AdminRegistrationPage = {
   pageSize: number;
 };
 
+export type AdminChoirFinancials = {
+  choirName: string;
+  total: number;
+  receivedCents: number;
+  pendingCents: number;
+  pendingRegentCents: number;
+  expectedCents: number;
+};
+
 export type AdminRegistrationSummary = {
   total: number;
   paid: number;
   pending: number;
   legacy: number;
   receivedCents: number;
+  pendingCents: number;
   pendingRegentCents: number;
-  byChoir: Array<{
-    choirName: string;
-    total: number;
-    receivedCents: number;
-    pendingRegentCents: number;
-  }>;
+  expectedCents: number;
+  byChoir: AdminChoirFinancials[];
 };
 
 export type AdminExportFile = { fileName: string; content: string };
@@ -89,6 +96,7 @@ export type AdminExportFile = { fileName: string; content: string };
 export function mapAdminRegistrationRow(
   row: RegistrationDatabaseRow,
   accountStatus?: "active" | "pending" | "conflict" | null,
+  photoUrl: string | null = null,
 ): AdminRegistrationRow {
   const status = row.payment_status as AdminRegistrationRow["paymentStatus"];
 
@@ -112,6 +120,7 @@ export function mapAdminRegistrationRow(
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
+    photoUrl,
     ...(accountStatus === undefined
       ? {}
       : { participantAccess: resolveParticipantAccess(status, accountStatus) }),
@@ -124,6 +133,7 @@ export function summarizeAdminRegistrations(
       AdminRegistrationRow,
       | "choirName"
       | "paymentStatus"
+      | "amountCents"
       | "paidAmountCents"
       | "pricingType"
       | "standardPriceCents"
@@ -137,12 +147,14 @@ export function summarizeAdminRegistrations(
     pending: 0,
     legacy: 0,
     receivedCents: 0,
+    pendingCents: 0,
     pendingRegentCents: 0,
+    expectedCents: 0,
     byChoir: [],
   };
   const choirs = new Map<
     string,
-    { total: number; receivedCents: number; pendingRegentCents: number }
+    { total: number; receivedCents: number; pendingCents: number; pendingRegentCents: number }
   >();
 
   for (const row of rows) {
@@ -150,6 +162,7 @@ export function summarizeAdminRegistrations(
     const choir = choirs.get(row.choirName) ?? {
       total: 0,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
     };
     choir.total += 1;
@@ -167,13 +180,23 @@ export function summarizeAdminRegistrations(
       summary.pendingRegentCents += pendingRegentCents;
       choir.receivedCents += receivedCents;
       choir.pendingRegentCents += pendingRegentCents;
+    } else if (row.paymentStatus === "pending") {
+      const pendingCents = row.amountCents ?? 0;
+      summary.pendingCents += pendingCents;
+      choir.pendingCents += pendingCents;
     }
 
     choirs.set(row.choirName, choir);
   }
 
+  summary.expectedCents = summary.receivedCents + summary.pendingCents + summary.pendingRegentCents;
   summary.byChoir = [...choirs.entries()]
-    .map(([choirName, financials]) => ({ choirName, ...financials }))
+    .map(([choirName, financials]) => ({
+      choirName,
+      ...financials,
+      expectedCents:
+        financials.receivedCents + financials.pendingCents + financials.pendingRegentCents,
+    }))
     .sort(
       (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),
     );

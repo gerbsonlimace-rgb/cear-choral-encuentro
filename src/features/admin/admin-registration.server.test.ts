@@ -6,6 +6,7 @@ const { supabaseAdminMock } = vi.hoisted(() => ({
     from: (_table: string): unknown => {
       throw new Error("Unconfigured Supabase boundary");
     },
+    storage: undefined as unknown,
   },
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: supabaseAdminMock }));
@@ -17,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -40,14 +41,15 @@ const selectedRow = {
   paid_at: "2026-09-07T13:00:00Z",
 } satisfies Partial<RegistrationDatabaseRow>;
 
+type ResultRow = typeof selectedRow & { photo_path?: string | null };
 type DatabaseResult = {
-  data: (typeof selectedRow)[] | null;
+  data: ResultRow[] | null;
   error: { message: string; details: string; hint: string; code: string } | null;
   count: number | null;
   status: number;
   statusText: string;
 };
-const success = (data: (typeof selectedRow)[], count = data.length): DatabaseResult => ({
+const success = (data: ResultRow[], count = data.length): DatabaseResult => ({
   data,
   error: null,
   count,
@@ -220,6 +222,7 @@ describe("registration summary", () => {
             pricingType: "standard" as const,
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
+            photoUrl: null,
           },
         ];
       },
@@ -343,6 +346,7 @@ describe("registration repository list", () => {
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
+          photoUrl: null,
         },
       ],
       total: 51,
@@ -378,6 +382,29 @@ describe("registration repository list", () => {
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 25 });
     expect(trace).toContainEqual(["range", 0, 24]);
     expect(trace.some(([method]) => method === "or" || method === "eq")).toBe(false);
+  });
+
+  it("signs the participant photo for listed rows and skips signing in bulk reads", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed/foto.jpg" },
+      error: null,
+    });
+    supabaseAdminMock.storage = {
+      from: (bucket: string) => (bucket === "registration-photos" ? { createSignedUrl } : null),
+    };
+    const { trace } = databaseHarness([
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+    ]);
+    const repository = createSupabaseAdminRegistrationRepository();
+
+    const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
+    expect(page.rows[0].photoUrl).toBe("https://storage.example/signed/foto.jpg");
+    expect(createSignedUrl).toHaveBeenCalledWith("a/foto.jpg", 3600);
+
+    await repository.listAll({ search: "", paymentStatus: "all" });
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+    expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
   });
 
   it("replaces database details with a generic query error", async () => {

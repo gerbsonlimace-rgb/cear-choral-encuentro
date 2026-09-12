@@ -42,6 +42,7 @@ const legacy: AdminRegistrationRow = {
   pricingType: null,
   standardPriceCents: null,
   registrationPriceCents: null,
+  photoUrl: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -60,6 +61,7 @@ const paid: AdminRegistrationRow = {
   paymentMethod: "credit_card",
   installments: 2,
   paidAt: "2026-09-02T12:00:00Z",
+  photoUrl: "https://example.com/foto-clara.jpg",
   participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
 };
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
@@ -69,25 +71,33 @@ const summary: AdminRegistrationSummary = {
   pending: 4,
   legacy: 2,
   receivedCents: 20000,
+  pendingCents: 50000,
   pendingRegentCents: 40000,
+  expectedCents: 110000,
   byChoir: [
     {
       choirName: "Diocese de Quixadá",
       total: 7,
       receivedCents: 20000,
+      pendingCents: 50000,
       pendingRegentCents: 40000,
+      expectedCents: 110000,
     },
     {
       choirName: "Diocese de Sobral",
       total: 4,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
     {
       choirName: "Arquidiocese de Fortaleza",
       total: 3,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
   ],
 };
@@ -145,16 +155,29 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(overview).getByText("8")).toBeInTheDocument();
     expect(within(overview).getByText("4")).toBeInTheDocument();
     expect(within(overview).getByText("2")).toBeInTheDocument();
-    expect(within(overview).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(
-      "R$ 400,00",
+    const financial = within(overview).getByRole("group", { name: "Resumo financeiro" });
+    expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
+    expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
+      "R$ 1.100,00",
     );
+    expect(
+      within(overview).getAllByText("Pendente do regente")[0].parentElement,
+    ).toHaveTextContent("R$ 400,00");
     expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
     const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
     expect(quixada).not.toBeNull();
-    expect(within(quixada!).getByText(/Recebido:/)).toHaveTextContent("R$ 200,00");
-    expect(within(quixada!).getByText(/Pendente do regente:/)).toHaveTextContent("R$ 400,00");
+    expect(within(quixada!).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(quixada!).getByText(/^Pendente$/).parentElement).toHaveTextContent(
+      "R$ 500,00",
+    );
+    expect(within(quixada!).getByText("Pendente do regente").parentElement).toHaveTextContent(
+      "R$ 400,00",
+    );
+    expect(within(quixada!).getByText("Total previsto").parentElement).toHaveTextContent(
+      "R$ 1.100,00",
+    );
     expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
     expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
     expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();
@@ -191,6 +214,8 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
       expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
+      expect(scope.getByText("AH")).toBeInTheDocument();
+      expect(scope.getByText("CP")).toBeInTheDocument();
       expect(scope.getAllByText("R$ 139,90").length).toBe(2);
     }
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");

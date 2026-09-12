@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -86,6 +87,24 @@ const date = (value: string | null) =>
   value ? dateFormatter.format(new Date(value)) : "Não informado";
 const money = (value: number | null) =>
   value === null ? "Não informado" : moneyFormatter.format(value / 100);
+
+function nameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "?";
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function ParticipantAvatar({ row }: { row: AdminRegistrationRow }) {
+  return (
+    <Avatar className="h-10 w-10 shrink-0 border border-border">
+      {row.photoUrl && <AvatarImage src={row.photoUrl} alt={`Foto de ${row.name}`} />}
+      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+        {nameInitials(row.name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 function Status({ row }: { row: AdminRegistrationRow }) {
   return (
@@ -219,10 +238,15 @@ function RegistrationViews({
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="max-w-48 align-top">
-                  <p className="break-words font-medium">{row.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <TableCell className="max-w-56 align-top">
+                  <div className="flex items-center gap-3">
+                    <ParticipantAvatar row={row} />
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{row.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="max-w-52 align-top">
                   <p className="break-all">{row.email}</p>
@@ -258,10 +282,13 @@ function RegistrationViews({
           <Card key={row.id} className="shadow-none">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="break-words text-sm font-semibold">{row.name}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <ParticipantAvatar row={row} />
+                  <div className="min-w-0">
+                    <h2 className="break-words text-sm font-semibold">{row.name}</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                  </div>
                 </div>
                 <Status row={row} />
               </div>
@@ -306,64 +333,122 @@ function RegistrationViews({
 }
 
 function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
-  const metrics = [
-    { label: "Total", value: String(summary.total), emphasis: true },
+  const financial = [
+    {
+      label: "Recebido",
+      value: money(summary.receivedCents),
+      hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
+      valueClass: "text-primary",
+    },
+    {
+      label: "Pendente",
+      value: money(summary.pendingCents),
+      hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
+      valueClass: "text-foreground",
+    },
+    {
+      label: "Total previsto",
+      value: money(summary.expectedCents),
+      hint: "Recebido + pendente + regente",
+      valueClass: "text-foreground",
+    },
+  ];
+  const counts = [
+    { label: "Total", value: String(summary.total) },
     { label: "Pagas", value: String(summary.paid) },
     { label: "Pendentes", value: String(summary.pending) },
     { label: "Históricas", value: String(summary.legacy) },
-    { label: "Recebido", value: money(summary.receivedCents), emphasis: true },
     { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
   ];
 
   return (
-    <section
-      aria-label="Visão geral das inscrições"
-      className="overflow-hidden rounded-xl border bg-card"
-    >
-      <div className="p-4 sm:p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Visão geral</h2>
-          <p className="text-xs text-muted-foreground">Todos os registros</p>
-        </div>
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-          {metrics.map((metric) => (
-            <div key={metric.label}>
-              <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
-              <dd
-                className={`mt-1 text-2xl font-semibold tabular-nums ${
-                  metric.emphasis ? "text-primary" : "text-foreground"
-                }`}
-              >
-                {metric.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+    <section aria-label="Visão geral das inscrições" className="space-y-4">
+      <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
+        {financial.map((metric) => (
+          <div key={metric.label} className="rounded-xl border bg-card p-4 sm:p-5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {metric.label}
+            </p>
+            <p
+              className={`mt-2 text-2xl font-semibold tabular-nums sm:text-3xl ${metric.valueClass}`}
+            >
+              {metric.value}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
+          </div>
+        ))}
       </div>
-      <div className="border-t bg-muted/30 p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-foreground">Inscritos por coro/diocese</h3>
-        {summary.byChoir.length ? (
-          <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.byChoir.map((item) => (
-              <li key={item.choirName} className="min-w-0 border-b border-border/70 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 text-sm font-medium text-foreground">
-                    {item.choirName}
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                    {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>Recebido: {money(item.receivedCents)}</span>
-                  <span>Pendente do regente: {money(item.pendingRegentCents)}</span>
-                </div>
-              </li>
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-base font-semibold text-foreground">Inscrições</h2>
+            <p className="text-xs text-muted-foreground">Todos os registros</p>
+          </div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+            {counts.map((metric) => (
+              <div key={metric.label}>
+                <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
+                <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {metric.value}
+                </dd>
+              </div>
             ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Nenhum coro/diocese com inscrições.</p>
-        )}
+          </dl>
+        </div>
+        <div className="border-t bg-muted/30 p-4 sm:p-5">
+          <h3 className="text-sm font-semibold text-foreground">Financeiro por coro/diocese</h3>
+          {summary.byChoir.length ? (
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {summary.byChoir.map((item) => (
+                <li
+                  key={item.choirName}
+                  className="min-w-0 rounded-lg border bg-card p-4 shadow-none"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 break-words text-sm font-medium text-foreground">
+                      {item.choirName}
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                      {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
+                    </span>
+                  </div>
+                  <dl className="mt-3 space-y-1.5 text-xs">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-muted-foreground">Recebido</dt>
+                      <dd className="font-semibold tabular-nums text-foreground">
+                        {money(item.receivedCents)}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-muted-foreground">Pendente</dt>
+                      <dd className="font-semibold tabular-nums text-foreground">
+                        {money(item.pendingCents)}
+                      </dd>
+                    </div>
+                    {item.pendingRegentCents > 0 && (
+                      <div className="flex items-baseline justify-between gap-2">
+                        <dt className="text-muted-foreground">Pendente do regente</dt>
+                        <dd className="font-semibold tabular-nums text-foreground">
+                          {money(item.pendingRegentCents)}
+                        </dd>
+                      </div>
+                    )}
+                    <div className="flex items-baseline justify-between gap-2 border-t border-border/70 pt-1.5">
+                      <dt className="text-muted-foreground">Total previsto</dt>
+                      <dd className="font-semibold tabular-nums text-primary">
+                        {money(item.expectedCents)}
+                      </dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Nenhum coro/diocese com inscrições.
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
