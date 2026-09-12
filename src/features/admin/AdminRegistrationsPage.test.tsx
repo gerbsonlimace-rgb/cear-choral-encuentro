@@ -156,6 +156,10 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(overview).getByText("4")).toBeInTheDocument();
     expect(within(overview).getByText("2")).toBeInTheDocument();
     expect(within(overview).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(overview).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
+    expect(within(overview).getByText("Total previsto").parentElement).toHaveTextContent(
+      "R$ 1.100,00",
+    );
     expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(
       "R$ 400,00",
     );
@@ -163,8 +167,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
     const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
     expect(quixada).not.toBeNull();
-    expect(within(quixada!).getByText(/Recebido:/)).toHaveTextContent("R$ 200,00");
-    expect(within(quixada!).getByText(/Pendente do regente:/)).toHaveTextContent("R$ 400,00");
+    expect(within(quixada!).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(quixada!).getByText(/^Pendente$/).parentElement).toHaveTextContent(
+      "R$ 500,00",
+    );
+    expect(within(quixada!).getByText("Pendente do regente").parentElement).toHaveTextContent(
+      "R$ 400,00",
+    );
+    expect(within(quixada!).getByText("Total previsto").parentElement).toHaveTextContent(
+      "R$ 1.100,00",
+    );
     expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
     expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
     expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();
