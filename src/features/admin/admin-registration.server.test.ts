@@ -223,6 +223,8 @@ describe("registration summary", () => {
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
             photoUrl: null,
+          regentName: null,
+            regentName: null,
           },
         ];
       },
@@ -347,6 +349,7 @@ describe("registration repository list", () => {
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
           photoUrl: null,
+          regentName: null,
         },
       ],
       total: 51,

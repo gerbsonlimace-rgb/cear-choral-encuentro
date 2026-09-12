@@ -43,6 +43,7 @@ const legacy: AdminRegistrationRow = {
   standardPriceCents: null,
   registrationPriceCents: null,
   photoUrl: null,
+  regentName: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
