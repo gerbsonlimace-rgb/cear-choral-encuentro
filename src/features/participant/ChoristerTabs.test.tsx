@@ -107,6 +107,15 @@ describe("ChoristerSongsTab", () => {
     expect(onOpenScore).toHaveBeenCalledExactlyOnceWith("66666666-6666-4666-8666-666666666666");
   });
 
+  it("keeps every voice option at the 44px minimum touch target", async () => {
+    const { user } = setup();
+
+    await user.click(screen.getByRole("combobox", { name: "Filtrar por naipe" }));
+    for (const option of screen.getAllByRole("option")) {
+      expect(option).toHaveClass("min-h-11");
+    }
+  });
+
   it("keeps read-only content without administrative upload controls", () => {
     setup();
     expect(screen.getByText("Este canto ainda não possui áudio publicado.")).toBeInTheDocument();

@@ -87,9 +87,11 @@ export function ChoristerSongsTab({
             <SelectValue placeholder="Todos os naipes" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os naipes</SelectItem>
+            <SelectItem value="all" className="min-h-11">
+              Todos os naipes
+            </SelectItem>
             {Object.entries(voiceLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
+              <SelectItem key={value} value={value} className="min-h-11">
                 {label}
               </SelectItem>
             ))}
