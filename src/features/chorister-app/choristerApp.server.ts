@@ -8,10 +8,10 @@ import {
 const MAX_CACHE_AGE_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 
-type ChoristerAppEnvironment = Pick<
-  NodeJS.ProcessEnv,
-  "COROAPP_PORTAL_FEED_URL" | "CHORISTER_PORTAL_SHARED_SECRET"
->;
+type ChoristerAppEnvironment = {
+  COROAPP_PORTAL_FEED_URL?: string;
+  CHORISTER_PORTAL_SHARED_SECRET?: string;
+};
 
 type ChoristerAppServerOptions = {
   participantAccess: ParticipantAccess;
