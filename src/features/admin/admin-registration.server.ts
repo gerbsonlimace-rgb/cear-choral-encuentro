@@ -32,8 +32,21 @@ export const adminRegistrationColumns = [
   "payment_method",
   "installments",
   "paid_at",
+  "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
+
+const REGISTRATION_PHOTO_BUCKET = "registration-photos";
+const PHOTO_URL_EXPIRY_SECONDS = 3600;
+
+async function signRegistrationPhoto(photoPath: string | null): Promise<string | null> {
+  if (!photoPath) return null;
+  const { data, error } = await supabaseAdmin.storage
+    .from(REGISTRATION_PHOTO_BUCKET)
+    .createSignedUrl(photoPath, PHOTO_URL_EXPIRY_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
 
 function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
@@ -56,7 +69,10 @@ export type AdminExportAuditEvent = {
 };
 
 export type AdminRegistrationRepository = {
-  list(query: AdminRegistrationQuery): Promise<AdminRegistrationPage>;
+  list(
+    query: AdminRegistrationQuery,
+    options?: { includePhotos?: boolean },
+  ): Promise<AdminRegistrationPage>;
   listAll(query: AdminRegistrationExportQuery): Promise<AdminRegistrationRow[]>;
   recordExport(event: AdminExportAuditEvent): Promise<void>;
 };
