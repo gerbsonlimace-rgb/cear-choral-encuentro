@@ -96,6 +96,7 @@ export type AdminExportFile = { fileName: string; content: string };
 export function mapAdminRegistrationRow(
   row: RegistrationDatabaseRow,
   accountStatus?: "active" | "pending" | "conflict" | null,
+  photoUrl: string | null = null,
 ): AdminRegistrationRow {
   const status = row.payment_status as AdminRegistrationRow["paymentStatus"];
 
@@ -119,6 +120,7 @@ export function mapAdminRegistrationRow(
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
+    photoUrl,
     ...(accountStatus === undefined
       ? {}
       : { participantAccess: resolveParticipantAccess(status, accountStatus) }),
