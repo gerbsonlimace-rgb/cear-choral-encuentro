@@ -133,6 +133,7 @@ export function summarizeAdminRegistrations(
       AdminRegistrationRow,
       | "choirName"
       | "paymentStatus"
+      | "amountCents"
       | "paidAmountCents"
       | "pricingType"
       | "standardPriceCents"
