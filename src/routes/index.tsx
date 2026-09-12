@@ -896,42 +896,48 @@ function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
-        <div className="grid gap-6 rounded-xl border border-border bg-card p-5 sm:p-7 lg:grid-cols-[0.75fr_1.25fr] lg:gap-8">
-          <div>
+        <div className="rounded-xl border border-border bg-card p-5 sm:p-7 lg:p-10">
+          <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/15 px-4 py-1.5 text-sm font-bold text-amber">
               Apoio, organização e patrocínio
             </span>
-            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
+            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.75rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
               Instituições que conduzem o encontro
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
               A realização nasce do trabalho conjunto entre o Coro Diocesano de Quixadá e a Diocese
               de Quixadá, com parceiros que valorizam cultura, formação e vida comunitária.
             </p>
           </div>
 
-          <div className="space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-              {institutionalPartners.map((partner) => (
+          <div className="mt-9 space-y-9 sm:mt-11 sm:space-y-11">
+            {institutionalPartners.map((partner) => (
+              <div key={partner.name}>
+                <div className="flex items-center gap-4">
+                  <h3 className="shrink-0 font-body text-xs font-extrabold uppercase text-muted-foreground">
+                    {partner.role}
+                  </h3>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
                 <article
-                  key={partner.name}
-                  className="flex min-h-36 flex-col justify-between rounded-xl border border-border bg-background p-5 text-foreground"
+                    className="group flex aspect-square flex-col items-center justify-between rounded-xl border border-border bg-background p-4 text-center text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
                 >
-                  <span className="text-sm font-bold text-teal">{partner.role}</span>
-                  <div className="mt-4 flex min-h-24 items-center justify-center">
+                    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden py-1 sm:py-2">
                     <img
                       src={partner.logo}
                       alt={partner.name}
-                      className="max-h-24 w-full object-contain"
+                        className="h-full max-h-20 w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none sm:max-h-28"
                       loading="lazy"
                     />
                   </div>
-                  <h3 className="mt-4 font-display text-xl font-extrabold leading-tight">
+                    <h4 className="mt-1 flex min-h-9 items-center justify-center font-display text-xs font-extrabold leading-tight sm:mt-2 sm:min-h-10 sm:text-base">
                     {partner.name}
-                  </h3>
+                    </h4>
                 </article>
-              ))}
-            </div>
+                </div>
+              </div>
+            ))}
 
             <PublicSponsorsSection />
           </div>
