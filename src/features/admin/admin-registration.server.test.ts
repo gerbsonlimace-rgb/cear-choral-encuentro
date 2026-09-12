@@ -41,8 +41,9 @@ const selectedRow = {
   paid_at: "2026-09-07T13:00:00Z",
 } satisfies Partial<RegistrationDatabaseRow>;
 
+type ResultRow = typeof selectedRow & { photo_path?: string | null };
 type DatabaseResult = {
-  data: (typeof selectedRow)[] | null;
+  data: ResultRow[] | null;
   error: { message: string; details: string; hint: string; code: string } | null;
   count: number | null;
   status: number;
