@@ -146,12 +146,14 @@ export function summarizeAdminRegistrations(
     pending: 0,
     legacy: 0,
     receivedCents: 0,
+    pendingCents: 0,
     pendingRegentCents: 0,
+    expectedCents: 0,
     byChoir: [],
   };
   const choirs = new Map<
     string,
-    { total: number; receivedCents: number; pendingRegentCents: number }
+    { total: number; receivedCents: number; pendingCents: number; pendingRegentCents: number }
   >();
 
   for (const row of rows) {
@@ -159,6 +161,7 @@ export function summarizeAdminRegistrations(
     const choir = choirs.get(row.choirName) ?? {
       total: 0,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
     };
     choir.total += 1;
@@ -176,13 +179,23 @@ export function summarizeAdminRegistrations(
       summary.pendingRegentCents += pendingRegentCents;
       choir.receivedCents += receivedCents;
       choir.pendingRegentCents += pendingRegentCents;
+    } else if (row.paymentStatus === "pending") {
+      const pendingCents = row.amountCents ?? 0;
+      summary.pendingCents += pendingCents;
+      choir.pendingCents += pendingCents;
     }
 
     choirs.set(row.choirName, choir);
   }
 
+  summary.expectedCents = summary.receivedCents + summary.pendingCents + summary.pendingRegentCents;
   summary.byChoir = [...choirs.entries()]
-    .map(([choirName, financials]) => ({ choirName, ...financials }))
+    .map(([choirName, financials]) => ({
+      choirName,
+      ...financials,
+      expectedCents:
+        financials.receivedCents + financials.pendingCents + financials.pendingRegentCents,
+    }))
     .sort(
       (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),
     );
