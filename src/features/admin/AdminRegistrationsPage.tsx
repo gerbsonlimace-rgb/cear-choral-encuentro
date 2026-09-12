@@ -238,10 +238,15 @@ function RegistrationViews({
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="max-w-48 align-top">
-                  <p className="break-words font-medium">{row.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <TableCell className="max-w-56 align-top">
+                  <div className="flex items-center gap-3">
+                    <ParticipantAvatar row={row} />
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{row.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="max-w-52 align-top">
                   <p className="break-all">{row.email}</p>
@@ -277,10 +282,13 @@ function RegistrationViews({
           <Card key={row.id} className="shadow-none">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="break-words text-sm font-semibold">{row.name}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <ParticipantAvatar row={row} />
+                  <div className="min-w-0">
+                    <h2 className="break-words text-sm font-semibold">{row.name}</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                  </div>
                 </div>
                 <Status row={row} />
               </div>
