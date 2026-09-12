@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -242,7 +242,8 @@ describe("ChoristerScoresTab", () => {
     };
     const onOpen = vi.fn().mockResolvedValue(undefined);
     const onDownload = vi.fn();
-    const openWindow = vi.spyOn(window, "open").mockReturnValue(null);
+    const popup = { close: vi.fn(), location: { href: "" } };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const user = userEvent.setup();
 
     render(<ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={onDownload} />);
@@ -252,7 +253,9 @@ describe("ChoristerScoresTab", () => {
     await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
 
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(openWindow).not.toHaveBeenCalled();
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    await waitFor(() => expect(popup.close).toHaveBeenCalledOnce());
+    expect(popup.location.href).toBe("");
   });
 
   it("uses one refreshed signed URL after expiry and stops renewing when its iframe fails", async () => {
@@ -287,6 +290,97 @@ describe("ChoristerScoresTab", () => {
       "Não foi possível abrir este PDF",
     );
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one renewal per viewer when an iframe fails before its initial request resolves", async () => {
+    const firstAsset = scoreFeed.event.songs[1].sheetMusic[0];
+    const newerAsset = {
+      ...scoreFeed.event.songs[2].sheetMusic[0],
+      signedUrl: "https://assets.example.test/newer-score.pdf",
+    };
+    let resolveFirst: (asset: typeof firstAsset) => void = () => undefined;
+    const firstRequest = new Promise<typeof firstAsset>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const onOpen = vi
+      .fn()
+      .mockImplementationOnce(() => firstRequest)
+      .mockResolvedValueOnce(newerAsset);
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={scoreFeed.event} onOpen={onOpen} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    const firstViewer = await within(view.container).findByTitle("PDF Partitura");
+    fireEvent(firstViewer, new Event("error", { bubbles: true }));
+
+    expect(await within(view.container).findByRole("alert")).toHaveTextContent(
+      "Não foi possível abrir este PDF",
+    );
+    expect(onOpen.mock.calls.filter(([asset]) => asset.id === firstAsset.id)).toHaveLength(1);
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[1]);
+    expect(await within(view.container).findByTitle("PDF Partitura de comunhão")).toHaveAttribute(
+      "src",
+      newerAsset.signedUrl,
+    );
+
+    await act(async () => {
+      resolveFirst({ ...firstAsset, signedUrl: "https://assets.example.test/stale-score.pdf" });
+      await Promise.resolve();
+    });
+
+    expect(within(view.container).getByTitle("PDF Partitura de comunhão")).toHaveAttribute(
+      "src",
+      newerAsset.signedUrl,
+    );
+    expect(onOpen.mock.calls.filter(([asset]) => asset.id === firstAsset.id)).toHaveLength(1);
+  });
+
+  it("pre-opens a popup and only sends it the renewed URL for an expired PDF", async () => {
+    const expiredEvent = {
+      ...scoreFeed.event,
+      songs: scoreFeed.event.songs.map((song) => ({
+        ...song,
+        sheetMusic: song.sheetMusic.map((asset) => ({
+          ...asset,
+          expiresAt: "2020-01-01T00:00:00.000Z",
+        })),
+      })),
+    };
+    const renewed = {
+      ...scoreFeed.event.songs[1].sheetMusic[0],
+      signedUrl: "https://assets.example.test/popup-renewed-score.pdf",
+      expiresAt: future,
+    };
+    let resolveRenewal: (asset: typeof renewed) => void = () => undefined;
+    const renewal = new Promise<typeof renewed>((resolve) => {
+      resolveRenewal = resolve;
+    });
+    const onOpen = vi.fn().mockImplementation(() => renewal);
+    const popup = { close: vi.fn(), location: { href: "" } };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={expiredEvent} onOpen={onOpen} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    await user.click(within(view.container).getByRole("button", { name: "Abrir em nova guia" }));
+
+    expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
+    expect(popup.location.href).toBe("");
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRenewal(renewed);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(popup.location.href).toBe(renewed.signedUrl));
+    expect(openWindow).not.toHaveBeenCalledWith(renewed.signedUrl, "_blank", expect.anything());
+    expect(popup.close).not.toHaveBeenCalled();
   });
 
   it("downloads the renewed signed PDF returned by the shell callback", async () => {

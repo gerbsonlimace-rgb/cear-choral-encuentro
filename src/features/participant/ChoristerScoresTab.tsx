@@ -22,6 +22,14 @@ type ChoristerScoresTabProps = {
   onDownload: PdfAssetAction;
 };
 
+type RenewalAttempt = {
+  assetId: string;
+  generation: number;
+  used: boolean;
+  inFlight: boolean;
+  promise: Promise<PdfAsset | undefined>;
+};
+
 function isRefreshedAsset(value: PdfAsset | void): value is PdfAsset {
   return Boolean(value?.id && value.signedUrl && value.expiresAt && value.title);
 }
@@ -37,46 +45,74 @@ function orderedDocuments(event: ChoristerPortalFeed["event"]) {
 export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScoresTabProps) {
   const [viewerAsset, setViewerAsset] = useState<PdfAsset | null>(null);
   const [viewerStatus, setViewerStatus] = useState<"ready" | "refreshing" | "error">("ready");
-  const renewedAssetId = useRef<string | null>(null);
+  const viewerGenerationRef = useRef(0);
+  const renewalAttemptRef = useRef<RenewalAttempt | null>(null);
 
-  async function refresh(asset: PdfAsset): Promise<PdfAsset | undefined> {
-    if (renewedAssetId.current === asset.id) return undefined;
-    setViewerStatus("refreshing");
-    renewedAssetId.current = asset.id;
-    try {
-      const refreshed = await onOpen(asset);
-      if (!isRefreshedAsset(refreshed) || isSignedUrlExpired(refreshed.expiresAt)) {
-        setViewerStatus("error");
-        return undefined;
-      }
-      setViewerAsset(refreshed);
-      setViewerStatus("ready");
-      return refreshed;
-    } catch {
-      setViewerStatus("error");
-      return undefined;
-    }
+  function isCurrentAttempt(attempt: RenewalAttempt) {
+    return (
+      viewerGenerationRef.current === attempt.generation && renewalAttemptRef.current === attempt
+    );
   }
 
-  async function open(asset: PdfAsset) {
-    renewedAssetId.current = null;
+  function renew(
+    asset: PdfAsset,
+    { required }: { required: boolean },
+  ): Promise<PdfAsset | undefined> {
+    const generation = viewerGenerationRef.current;
+    const existingAttempt = renewalAttemptRef.current;
+    if (
+      existingAttempt?.used &&
+      existingAttempt.assetId === asset.id &&
+      existingAttempt.generation === generation
+    ) {
+      return existingAttempt.promise;
+    }
+
+    if (required) setViewerStatus("refreshing");
+    const attempt: RenewalAttempt = {
+      assetId: asset.id,
+      generation,
+      used: true,
+      inFlight: true,
+      promise: Promise.resolve(undefined),
+    };
+    renewalAttemptRef.current = attempt;
+
+    let renewal: PdfAsset | void | Promise<PdfAsset | void>;
+    try {
+      renewal = onOpen(asset);
+    } catch {
+      attempt.inFlight = false;
+      if (isCurrentAttempt(attempt) && required) setViewerStatus("error");
+      return attempt.promise;
+    }
+
+    attempt.promise = Promise.resolve(renewal)
+      .then((refreshed) => {
+        attempt.inFlight = false;
+        if (!isCurrentAttempt(attempt)) return undefined;
+        if (!isRefreshedAsset(refreshed) || isSignedUrlExpired(refreshed.expiresAt)) {
+          if (required) setViewerStatus("error");
+          return undefined;
+        }
+        setViewerAsset(refreshed);
+        setViewerStatus("ready");
+        return refreshed;
+      })
+      .catch(() => {
+        attempt.inFlight = false;
+        if (isCurrentAttempt(attempt) && required) setViewerStatus("error");
+        return undefined;
+      });
+    return attempt.promise;
+  }
+
+  function open(asset: PdfAsset) {
+    viewerGenerationRef.current += 1;
+    renewalAttemptRef.current = null;
     setViewerAsset(asset);
     setViewerStatus("ready");
-
-    if (isSignedUrlExpired(asset.expiresAt)) {
-      await refresh(asset);
-      return;
-    }
-
-    try {
-      const refreshed = await onOpen(asset);
-      if (isRefreshedAsset(refreshed) && !isSignedUrlExpired(refreshed.expiresAt)) {
-        renewedAssetId.current = asset.id;
-        setViewerAsset(refreshed);
-      }
-    } catch {
-      setViewerStatus("error");
-    }
+    void renew(asset, { required: isSignedUrlExpired(asset.expiresAt) });
   }
 
   async function download(asset: PdfAsset) {
@@ -97,25 +133,47 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
     }
   }
 
-  async function openInNewTab() {
+  function openInNewTab() {
     if (!viewerAsset) return;
-    let asset = viewerAsset;
+    const asset = viewerAsset;
+    const generation = viewerGenerationRef.current;
+
     if (isSignedUrlExpired(asset.expiresAt)) {
-      const refreshed = await refresh(asset);
-      if (!refreshed) return;
-      asset = refreshed;
+      const popup = window.open("", "_blank");
+      if (!popup) {
+        setViewerStatus("error");
+        return;
+      }
+      void renew(asset, { required: true }).then((refreshed) => {
+        if (!refreshed || viewerGenerationRef.current !== generation) {
+          popup.close();
+          return;
+        }
+        popup.location.href = refreshed.signedUrl;
+      });
+      return;
     }
+
     const opened = window.open(asset.signedUrl, "_blank", "noopener,noreferrer");
     if (!opened) setViewerStatus("error");
   }
 
   function viewerFailed() {
     if (!viewerAsset) return;
-    if (renewedAssetId.current === viewerAsset.id) {
+    const attempt = renewalAttemptRef.current;
+    if (attempt?.assetId === viewerAsset.id && attempt.generation === viewerGenerationRef.current) {
+      if (attempt.inFlight) viewerGenerationRef.current += 1;
       setViewerStatus("error");
       return;
     }
-    void refresh(viewerAsset);
+    void renew(viewerAsset, { required: true });
+  }
+
+  function closeViewer() {
+    viewerGenerationRef.current += 1;
+    renewalAttemptRef.current = null;
+    setViewerAsset(null);
+    setViewerStatus("ready");
   }
 
   const songsWithScores = orderedSongs(event).filter((song) => song.sheetMusic.length > 0);
@@ -251,7 +309,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload }: ChoristerScore
               size="icon"
               className="min-h-11 min-w-11"
               aria-label="Fechar visualizador"
-              onClick={() => setViewerAsset(null)}
+              onClick={closeViewer}
             >
               <X aria-hidden="true" className="size-4" />
             </Button>
