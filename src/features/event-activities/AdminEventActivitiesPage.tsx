@@ -178,7 +178,7 @@ export function AdminEventActivitiesPage({
   const download = async () => {
     setBusy(true); setError("");
     try { downloadBase64Pdf(await downloadQrPdf()); setMessage("PDF gerado para download."); }
-    catch { setError("Não foi possível gerar o PDF dos QR Codes."); }
+    catch (caught) { setError(caught instanceof Error && caught.message ? caught.message : "Não foi possível gerar o PDF dos QR Codes."); }
     finally { setBusy(false); }
   };
 

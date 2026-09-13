@@ -242,10 +242,9 @@ export async function getEventActivityService() {
           });
         },
         readLogo: async () => {
-          const [fs, path] = await Promise.all([import("node:fs/promises"), import("node:path")]);
-          return new Uint8Array(
-            await fs.readFile(path.resolve(process.cwd(), "src/assets/logo-coros-preto.png")),
-          );
+          const logo = (await import("@/assets/logo-coros-preto.png?inline")).default as string;
+          const base64 = logo.slice(logo.indexOf(",") + 1);
+          return Uint8Array.from(Buffer.from(base64, "base64"));
         },
         buildPdf: async (input) =>
           (await import("./eventActivityQrPdf.server")).buildEventActivityQrPdf(input),
