@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-13T22:31:07.5064099Z",
+  "title": "Design System: Encontro de Coros",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Tinta de Partitura", "canonical": "#18181b", "tonalRamp": ["#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#f4f4f5"] },
+      "gold": { "role": "primary", "displayName": "Ouro Litúrgico", "canonical": "#d5a900", "tonalRamp": ["#302300", "#5e4700", "#8a6c00", "#b78f00", "#d5a900", "#e7c94d", "#f3df87", "#fff6c7"] },
+      "gold-soft": { "role": "secondary", "displayName": "Luz Dourada", "canonical": "#fff8d6", "tonalRamp": ["#362f0f", "#665a25", "#95863e", "#c0ae61", "#dfcf8a", "#eee2ad", "#f8efc6", "#fff8d6"] },
+      "canvas": { "role": "neutral", "displayName": "Papel de Ensaio", "canonical": "#f7f7f5", "tonalRamp": ["#242422", "#474744", "#6c6c68", "#92928d", "#b7b7b2", "#d8d8d4", "#eaeaE7", "#f7f7f5"] },
+      "surface": { "role": "neutral", "displayName": "Branco de Superfície", "canonical": "#ffffff", "tonalRamp": ["#262626", "#4d4d4d", "#737373", "#999999", "#bfbfbf", "#d9d9d9", "#ededed", "#ffffff"] },
+      "muted-text": { "role": "neutral", "displayName": "Grafite de Apoio", "canonical": "#52525b", "tonalRamp": ["#17171b", "#2b2b31", "#404047", "#52525b", "#74747d", "#9a9aa2", "#c4c4c9", "#eeeeF0"] },
+      "border": { "role": "neutral", "displayName": "Linha de Pauta", "canonical": "#e4e4e7", "tonalRamp": ["#222225", "#444448", "#67676b", "#8b8b8f", "#afafb3", "#ccccd0", "#e4e4e7", "#f5f5f6"] },
+      "destructive": { "role": "tertiary", "displayName": "Vermelho de Alerta", "canonical": "#b91c1c", "tonalRamp": ["#350707", "#651010", "#941717", "#b91c1c", "#d84848", "#e77b7b", "#f2b0b0", "#fbe1e1"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Cerimonial", "purpose": "Grandes momentos da campanha pública." },
+      "headline": { "displayName": "Operacional Forte", "purpose": "Títulos de páginas autenticadas." },
+      "body": { "displayName": "Leitura Operacional", "purpose": "Conteúdo, formulários e dados." },
+      "label": { "displayName": "Sinalização", "purpose": "Navegação, métricas e estados." }
+    },
+    "shadows": [
+      { "name": "card-ambient", "value": "0 1px 2px rgba(24,24,27,0.04)", "purpose": "Separação mínima de superfícies brancas." },
+      { "name": "topbar-structural", "value": "0 2px 12px rgba(24,24,27,0.12)", "purpose": "Separa a moldura preta do conteúdo." },
+      { "name": "mobile-navigation", "value": "0 -8px 24px rgba(24,24,27,0.06)", "purpose": "Eleva a navegação fixa no mobile." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "200ms ease", "purpose": "Hover, seleção e recolhimento da sidebar." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Substitui animações quando o sistema solicita movimento reduzido." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal operacional em tinta preta.",
+      "html": "<button class=\"ds-btn-primary\">Salvar alterações</button>",
+      "css": ".ds-btn-primary { min-height:44px; padding:8px 16px; border:0; border-radius:8px; background:#18181b; color:#fff; font:600 14px Manrope,system-ui,sans-serif; transition:background 200ms ease,color 200ms ease; } .ds-btn-primary:hover { background:#27272a; } .ds-btn-primary:focus-visible { outline:2px solid #d5a900; outline-offset:2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação secundária branca com borda neutra.",
+      "html": "<button class=\"ds-btn-secondary\">Exportar CSV</button>",
+      "css": ".ds-btn-secondary { min-height:44px; padding:8px 16px; border:1px solid #d4d4d8; border-radius:8px; background:#fff; color:#18181b; font:600 14px Manrope,system-ui,sans-serif; transition:background 200ms ease; } .ds-btn-secondary:hover { background:#fff8d6; } .ds-btn-secondary:focus-visible { outline:2px solid #d5a900; outline-offset:2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo operacional claro e confortável para toque.",
+      "html": "<input class=\"ds-input\" value=\"Coro Diocesano\" aria-label=\"Nome do coro\">",
+      "css": ".ds-input { height:44px; width:260px; padding:8px 12px; border:1px solid #d4d4d8; border-radius:8px; background:#fff; color:#18181b; font:400 14px Manrope,system-ui,sans-serif; caret-color:#d5a900; } .ds-input:hover { border-color:#a1a1aa; } .ds-input:focus-visible { outline:2px solid #d5a900; outline-offset:2px; }"
+    },
+    {
+      "name": "Metric Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Indicador com ícone dourado, valor tabular e detalhe.",
+      "html": "<article class=\"ds-metric\"><span class=\"ds-metric-icon\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12h8M12 8v8\"/></svg></span><div><small>Total de participantes</small><strong>128</strong><p>Inscrições confirmadas</p></div></article>",
+      "css": ".ds-metric { display:flex; gap:12px; padding:16px; border:1px solid #e4e4e7; border-radius:12px; background:#fff; color:#18181b; box-shadow:0 1px 2px rgba(24,24,27,.04); font-family:Manrope,system-ui,sans-serif; } .ds-metric-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:12px; background:#fff8d6; color:#9a7300; } .ds-metric-icon svg { width:20px; height:20px; } .ds-metric small,.ds-metric p { display:block; color:#52525b; font-size:12px; } .ds-metric strong { display:block; margin-top:4px; font-size:24px; font-variant-numeric:tabular-nums; } .ds-metric p { margin:4px 0 0; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Destino ativo da sidebar com luz e marcador dourados.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\" rx=\"1\"/></svg><span>Resumo</span></a>",
+      "css": ".ds-nav-active { position:relative; display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:12px; background:#fff8d6; color:#18181b; font:700 14px Manrope,system-ui,sans-serif; text-decoration:none; } .ds-nav-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:2px; border-radius:999px; background:#d5a900; } .ds-nav-active svg { width:18px; height:18px; color:#9a7300; } .ds-nav-active:focus-visible { outline:2px solid #d5a900; outline-offset:2px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Estado curto com cor e texto explícito.",
+      "html": "<span class=\"ds-chip\">Pago</span>",
+      "css": ".ds-chip { display:inline-flex; align-items:center; min-height:24px; padding:2px 9px; border:1px solid #e7c94d; border-radius:999px; background:#fff8d6; color:#5e4700; font:700 12px Manrope,system-ui,sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Console de Regência",
+    "overview": "O sistema combina a solenidade musical da marca com a objetividade de uma mesa de regência: estrutura escura e precisa, superfícies claras para trabalho e sinais dourados usados somente onde orientam a ação. O portal público preserva a voz cerimonial; os módulos autenticados são operacionais, light, densos e legíveis.",
+    "keyCharacteristics": ["Base light em branco levemente aquecido, nunca branco infinito sem estrutura.", "Preto organiza a arquitetura; dourado indica foco, seleção e prioridade.", "Ícones Lucide acompanham rótulos em navegação e ações não universais.", "Densidade compacta, alvos de toque confortáveis e informação escaneável.", "O portal público e os módulos autenticados compartilham a marca, não a mesma composição."],
+    "rules": [
+      { "name": "The Gold Is a Signal Rule", "body": "Dourado marca seleção, foco ou prioridade; não preenche grandes áreas decorativas.", "section": "colors" },
+      { "name": "The Light Has Structure Rule", "body": "Telas claras sempre preservam hierarquia por bordas, blocos brancos e enquadramento preto.", "section": "colors" },
+      { "name": "The One Operational Voice Rule", "body": "Participante, Regente e Administração usam Manrope inclusive nos títulos; Cinzel não entra nos fluxos de trabalho.", "section": "typography" },
+      { "name": "The Flat-by-Default Rule", "body": "Bordas e contraste tonal fazem o trabalho; sombras existem apenas para hierarquia entre camadas.", "section": "elevation" }
+    ],
+    "dos": ["Do mantenha a base light e use preto para enquadrar navegação e ações principais.", "Do reserve dourado para foco, seleção, indicadores e ícones de prioridade.", "Do combine ícones com texto e preserve aria-current, foco visível e alvos de 44px.", "Do mantenha três destinos primários no mobile e mova o restante para Mais."],
+    "donts": ["Don't altere a composição do portal público ao evoluir os módulos autenticados.", "Don't use Cinzel em dashboards, formulários, tabelas ou navegação operacional.", "Don't transforme cards e controles comuns em pílulas grandes.", "Don't use dourado como único sinal de status ou em grandes fundos decorativos.", "Don't introduza gradientes, sombras duras ou ornamentação que reduza a leitura."]
+  }
+}

@@ -76,7 +76,7 @@ export function InternalAppShell({
           </span>
           <div className="min-w-0 leading-tight">
             <p className="truncate text-[13px] font-bold tracking-tight sm:text-sm">{brandLabel}</p>
-            <p className="truncate text-[10px] font-medium text-white/65 sm:text-[11px]">{moduleLabel}</p>
+            <p className="truncate text-[11px] font-medium text-white/70">{moduleLabel}</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export function InternalAppShell({
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-xs font-semibold">{profileName}</span>
                     {profileDetail && (
-                      <span className="block truncate text-[10px] text-white/60">{profileDetail}</span>
+                      <span className="block truncate text-[11px] text-white/70">{profileDetail}</span>
                     )}
                   </span>
                 </div>

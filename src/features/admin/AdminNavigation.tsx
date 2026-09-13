@@ -94,7 +94,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
           <span className="block truncate text-[13px] font-bold tracking-tight sm:text-sm">
             Encontro de Coros
           </span>
-          <span className="block truncate text-[10px] font-medium text-white/65 sm:text-[11px]">
+          <span className="block truncate text-[11px] font-medium text-white/70">
             Administração
           </span>
         </span>
