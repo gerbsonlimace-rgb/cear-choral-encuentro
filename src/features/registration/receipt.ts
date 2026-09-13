@@ -253,16 +253,13 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
     );
     const annotsKey = PDFName.of("Annots");
     const existing = page.node.get(annotsKey);
-    if (existing) {
-      doc.context.lookup(existing);
-    }
     // Append to (or create) the page's Annots array.
+    type AnnotsArrayLike = { push(ref: unknown): void };
     const annotsArray = existing
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (doc.context.lookup(existing) as any)
-      : doc.context.obj([]);
+      ? (doc.context.lookup(existing) as unknown as AnnotsArrayLike)
+      : (doc.context.obj([]) as unknown as AnnotsArrayLike);
     annotsArray.push(linkRef);
-    if (!existing) page.node.set(annotsKey, annotsArray);
+    if (!existing) page.node.set(annotsKey, annotsArray as never);
   } catch {
     /* link annotation is best-effort */
   }
