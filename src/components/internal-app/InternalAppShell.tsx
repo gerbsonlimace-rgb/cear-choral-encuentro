@@ -187,6 +187,7 @@ export function InternalAppShell({
                 key={item.id}
                 type="button"
                 data-testid="internal-mobile-primary-item"
+                aria-label={`Abrir ${item.label}`}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold",
@@ -239,6 +240,7 @@ export function InternalAppShell({
                 <SheetClose key={item.id} asChild>
                   <button
                     type="button"
+                    aria-label={item.label}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold",
