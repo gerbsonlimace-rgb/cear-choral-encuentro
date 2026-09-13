@@ -305,7 +305,111 @@ describe("derived registration listing", () => {
     expect(page.rows[0].financialState?.pendingCents).toBe(12000);
     expect(repository.listCandidates).toHaveBeenCalledWith("Maria");
     expect(repository.listComplementPayments).toHaveBeenCalledWith(["partial"]);
+    expect(repository.signPhotos).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "partial" }),
+    ]);
     expect(repository.signPhotos).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["all", ["legacy", "pending", "partial", "paid", "standard"]],
+    ["pending", ["pending"]],
+    ["partially_paid", ["partial"]],
+    ["paid", ["paid", "standard"]],
+    ["legacy", ["legacy"]],
+  ] as const)("applies the %s filter to derived state before paging", async (filter, expected) => {
+    const make = (id: string, overrides: Partial<RegistrationDatabaseRow>) => ({
+      row: { ...selectedRow, id, ...overrides } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [
+      make("legacy", {
+        payment_status: "legacy",
+        amount_cents: null,
+        pricing_type: null,
+        standard_price_cents: null,
+        registration_price_cents: null,
+      }),
+      make("pending", {
+        payment_status: "pending",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("partial", {
+        payment_status: "paid",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("paid", {
+        payment_status: "paid",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("standard", {
+        payment_status: "paid",
+        amount_cents: 30000,
+        pricing_type: "standard",
+        standard_price_cents: 30000,
+        registration_price_cents: 30000,
+      }),
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "partial-c",
+          registrationId: "partial",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-01",
+          paidAt: "2026-09-01",
+          initiatedByName: "A",
+          initiatedAs: "admin" as const,
+        },
+        {
+          id: "paid-c",
+          registrationId: "paid",
+          amountCents: 20000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-01",
+          paidAt: "2026-09-01",
+          initiatedByName: "A",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: filter,
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(expected);
+    expect(page.total).toBe(expected.length);
+  });
+
+  it("bounds complement ID batches at 1,000", async () => {
+    const { trace } = databaseHarness([success([]), success([])]);
+    await createSupabaseAdminRegistrationRepository().listComplementPayments!(
+      Array.from({ length: 1001 }, (_, index) => `registration-${index}`),
+    );
+    const inCalls = trace.filter(([method]) => method === "in");
+    expect(inCalls).toHaveLength(2);
+    expect((inCalls[0]?.[2] as string[]).length).toBe(1000);
+    expect((inCalls[1]?.[2] as string[]).length).toBe(1);
   });
 });
 const failure: DatabaseResult = {
@@ -324,7 +428,7 @@ const failure: DatabaseResult = {
 function databaseHarness(results: DatabaseResult[]) {
   const trace: unknown[][] = [];
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "or", "order", "range", "insert"]) {
+  for (const method of ["select", "eq", "or", "in", "order", "range", "insert"]) {
     builder[method] = (...args: unknown[]) => {
       trace.push([method, ...args]);
       return builder;

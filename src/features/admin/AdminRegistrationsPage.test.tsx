@@ -65,6 +65,27 @@ const paid: AdminRegistrationRow = {
   photoUrl: "https://example.com/foto-clara.jpg",
   participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
 };
+const partial: AdminRegistrationRow = {
+  ...paid,
+  id: "partial",
+  name: "Daniela Parcial",
+  paidAmountCents: 18000,
+  financialState: {
+    status: "partially_paid",
+    pendingCents: 12000,
+    confirmedPrincipalCents: 18000,
+  },
+  openComplementPayment: {
+    id: "open-unsafe",
+    amountCents: 12000,
+    status: "pending",
+    checkoutUrl: "http://evil.example/checkout",
+    createdAt: "2026-09-10T12:00:00Z",
+    paidAt: null,
+    initiatedByName: "Admin",
+    initiatedAs: "admin",
+  },
+};
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
 const summary: AdminRegistrationSummary = {
   total: 14,
@@ -126,6 +147,84 @@ function setup(overrides = {}) {
 }
 
 describe("AdminRegistrationsPage read-only views", () => {
+  it("does not create a duplicate checkout when an open complement URL is unsafe", async () => {
+    setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [partial],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+    });
+    await waitFor(() => expect(screen.getAllByText("Daniela Parcial")).toHaveLength(2));
+    expect(screen.getAllByText("Pagamento em processamento")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /Pagar saldo/ })).not.toBeInTheDocument();
+  });
+
+  it("renders derived states on desktop and mobile and opens the exact server-owned balance", async () => {
+    const partialWithoutOpen = {
+      ...partial,
+      id: "partial-pay",
+      name: "Eduarda Parcial",
+      openComplementPayment: null,
+    } satisfies AdminRegistrationRow;
+    const settled = {
+      ...paid,
+      id: "settled",
+      name: "Fernanda Paga",
+      financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 30000 },
+    } satisfies AdminRegistrationRow;
+    const loadRegistrations = vi.fn().mockResolvedValue({
+      rows: [partialWithoutOpen, pending, settled],
+      total: 3,
+      page: 1,
+      pageSize: 25,
+    });
+    const startCheckout = vi.fn().mockResolvedValue({
+      checkoutUrl: "https://checkout.infinitepay.io/partial-pay",
+      orderNsu: "order-1",
+    });
+    const navigateToCheckout = vi.fn();
+    const { user } = setup({ loadRegistrations, startCheckout, navigateToCheckout });
+    await screen.findByRole("table");
+
+    for (const view of [
+      screen.getByRole("table"),
+      screen.getByRole("region", { name: "Cartões de inscrições" }),
+    ]) {
+      expect(within(view).getByText("Parcialmente pago")).toBeInTheDocument();
+      expect(within(view).getAllByText("Valor pendente").length).toBeGreaterThan(0);
+      expect(within(view).getAllByText(/R\$\s*120,00/).length).toBeGreaterThan(0);
+      expect(
+        within(view).getByRole("button", { name: /Pagar saldo de R\$\s*120,00/ }),
+      ).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("Pendente").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/R\$\s*0,00/).length).toBeGreaterThan(0);
+
+    await user.click(screen.getAllByRole("button", { name: /Pagar saldo de R\$\s*120,00/ })[0]);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Eduarda Parcial");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Pagar saldo de R\$\s*120,00/,
+      }),
+    );
+    await waitFor(() =>
+      expect(startCheckout).toHaveBeenCalledWith({ data: { registrationId: "partial-pay" } }),
+    );
+    expect(navigateToCheckout).toHaveBeenCalledWith("https://checkout.infinitepay.io/partial-pay");
+
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("combobox", { name: "Situação" }));
+    await user.click(await screen.findByRole("option", { name: "Parcialmente pagas" }));
+    await waitFor(() =>
+      expect(loadRegistrations).toHaveBeenLastCalledWith({
+        data: { search: "", paymentStatus: "partially_paid", page: 1, pageSize: 25 },
+      }),
+    );
+  });
+
   it("renders the aggregated initial payload without repeating authorization or reads", async () => {
     const checkAdmin = vi.fn();
     const loadRegistrations = vi.fn();
@@ -162,17 +261,15 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 1.100,00",
     );
-    expect(
-      within(overview).getAllByText("Pendente do regente")[0].parentElement,
-    ).toHaveTextContent("R$ 400,00");
+    expect(within(overview).getAllByText("Pendente do regente")[0].parentElement).toHaveTextContent(
+      "R$ 400,00",
+    );
     expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
     const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
     expect(quixada).not.toBeNull();
     expect(within(quixada!).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(quixada!).getByText(/^Pendente$/).parentElement).toHaveTextContent(
-      "R$ 500,00",
-    );
+    expect(within(quixada!).getByText(/^Pendente$/).parentElement).toHaveTextContent("R$ 500,00");
     expect(within(quixada!).getByText("Pendente do regente").parentElement).toHaveTextContent(
       "R$ 400,00",
     );

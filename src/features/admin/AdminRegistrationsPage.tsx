@@ -340,6 +340,9 @@ function BalanceAction({
       </Button>
     );
   }
+  if (row.openComplementPayment) {
+    return <span className="text-xs text-muted-foreground">Pagamento em processamento</span>;
+  }
   if (state.status !== "partially_paid" || state.pendingCents <= 0) return null;
   return (
     <Button size="sm" variant="outline" onClick={() => onBalancePayment(row)}>
