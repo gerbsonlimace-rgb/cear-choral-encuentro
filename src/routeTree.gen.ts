@@ -9,42 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RegenteRouteImport } from './routes/regente'
-import { Route as ParticipanteRouteImport } from './routes/participante'
-import { Route as PagamentoRouteImport } from './routes/pagamento'
-import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RegenteIndexRouteImport } from './routes/regente.index'
-import { Route as ParticipanteIndexRouteImport } from './routes/participante.index'
-import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento'
-import { Route as RegenteLoginRouteImport } from './routes/regente.login'
-import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
-import { Route as ParticipanteLoginRouteImport } from './routes/participante.login'
-import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
-import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocinadores'
-import { Route as AdminLoginRouteImport } from './routes/admin.login'
-import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
+import { Route as AcessarRouteImport } from './routes/acessar'
+import { Route as PagamentoRouteImport } from './routes/pagamento'
+import { Route as ParticipanteRouteImport } from './routes/participante'
+import { Route as RegenteRouteImport } from './routes/regente'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
+import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminPagamentoRouteImport } from './routes/admin.pagamento'
+import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocinadores'
+import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
+import { Route as ParticipanteIndexRouteImport } from './routes/participante.index'
+import { Route as ParticipanteLoginRouteImport } from './routes/participante.login'
+import { Route as RegenteIndexRouteImport } from './routes/regente.index'
+import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
+import { Route as RegenteLoginRouteImport } from './routes/regente.login'
+import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegenteRoute = RegenteRouteImport.update({
-  id: '/regente',
-  path: '/regente',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParticipanteRoute = ParticipanteRouteImport.update({
-  id: '/participante',
-  path: '/participante',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PagamentoRoute = PagamentoRouteImport.update({
-  id: '/pagamento',
-  path: '/pagamento',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcessarRoute = AcessarRouteImport.update({
@@ -52,54 +38,29 @@ const AcessarRoute = AcessarRouteImport.update({
   path: '/acessar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegenteIndexRoute = RegenteIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RegenteRoute,
-} as any)
-const ParticipanteIndexRoute = ParticipanteIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ParticipanteRoute,
-} as any)
-const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
+const PagamentoRoute = PagamentoRouteImport.update({
   id: '/pagamento',
   path: '/pagamento',
-  getParentRoute: () => RegenteRoute,
-} as any)
-const RegenteLoginRoute = RegenteLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => RegenteRoute,
-} as any)
-const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
-  id: '/alterar-senha',
-  path: '/alterar-senha',
-  getParentRoute: () => RegenteRoute,
-} as any)
-const ParticipanteLoginRoute = ParticipanteLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => ParticipanteRoute,
-} as any)
-const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
-  id: '/api/infinitepay-webhook',
-  path: '/api/infinitepay-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPatrocinadoresRoute = AdminPatrocinadoresRouteImport.update({
-  id: '/admin/patrocinadores',
-  path: '/admin/patrocinadores',
+const ParticipanteRoute = ParticipanteRouteImport.update({
+  id: '/participante',
+  path: '/participante',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin/login',
-  path: '/admin/login',
+const RegenteRoute = RegenteRouteImport.update({
+  id: '/regente',
+  path: '/regente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCorosRoute = AdminCorosRouteImport.update({
+  id: '/admin/coros',
+  path: '/admin/coros',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminInscricoesRoute = AdminInscricoesRouteImport.update({
@@ -107,10 +68,55 @@ const AdminInscricoesRoute = AdminInscricoesRouteImport.update({
   path: '/admin/inscricoes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminCorosRoute = AdminCorosRouteImport.update({
-  id: '/admin/coros',
-  path: '/admin/coros',
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPagamentoRoute = AdminPagamentoRouteImport.update({
+  id: '/admin/pagamento',
+  path: '/admin/pagamento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPatrocinadoresRoute = AdminPatrocinadoresRouteImport.update({
+  id: '/admin/patrocinadores',
+  path: '/admin/patrocinadores',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
+  id: '/api/infinitepay-webhook',
+  path: '/api/infinitepay-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParticipanteIndexRoute = ParticipanteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ParticipanteRoute,
+} as any)
+const ParticipanteLoginRoute = ParticipanteLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => ParticipanteRoute,
+} as any)
+const RegenteIndexRoute = RegenteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RegenteRoute,
+} as any)
+const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
+  id: '/alterar-senha',
+  path: '/alterar-senha',
+  getParentRoute: () => RegenteRoute,
+} as any)
+const RegenteLoginRoute = RegenteLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => RegenteRoute,
+} as any)
+const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
+  id: '/pagamento',
+  path: '/pagamento',
+  getParentRoute: () => RegenteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/admin/coros': typeof AdminCorosRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/participante/login'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/participante/login'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/admin/coros'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/api/infinitepay-webhook'
     | '/participante/login'
@@ -237,38 +249,18 @@ export interface RootRouteChildren {
   AdminCorosRoute: typeof AdminCorosRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPagamentoRoute: typeof AdminPagamentoRoute
   AdminPatrocinadoresRoute: typeof AdminPatrocinadoresRoute
   ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/regente': {
-      id: '/regente'
-      path: '/regente'
-      fullPath: '/regente'
-      preLoaderRoute: typeof RegenteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/participante': {
-      id: '/participante'
-      path: '/participante'
-      fullPath: '/participante'
-      preLoaderRoute: typeof ParticipanteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pagamento': {
-      id: '/pagamento'
-      path: '/pagamento'
-      fullPath: '/pagamento'
-      preLoaderRoute: typeof PagamentoRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acessar': {
@@ -278,74 +270,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcessarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/regente/': {
-      id: '/regente/'
-      path: '/'
-      fullPath: '/regente/'
-      preLoaderRoute: typeof RegenteIndexRouteImport
-      parentRoute: typeof RegenteRoute
-    }
-    '/participante/': {
-      id: '/participante/'
-      path: '/'
-      fullPath: '/participante/'
-      preLoaderRoute: typeof ParticipanteIndexRouteImport
-      parentRoute: typeof ParticipanteRoute
-    }
-    '/regente/pagamento': {
-      id: '/regente/pagamento'
+    '/pagamento': {
+      id: '/pagamento'
       path: '/pagamento'
-      fullPath: '/regente/pagamento'
-      preLoaderRoute: typeof RegentePagamentoRouteImport
-      parentRoute: typeof RegenteRoute
-    }
-    '/regente/login': {
-      id: '/regente/login'
-      path: '/login'
-      fullPath: '/regente/login'
-      preLoaderRoute: typeof RegenteLoginRouteImport
-      parentRoute: typeof RegenteRoute
-    }
-    '/regente/alterar-senha': {
-      id: '/regente/alterar-senha'
-      path: '/alterar-senha'
-      fullPath: '/regente/alterar-senha'
-      preLoaderRoute: typeof RegenteAlterarSenhaRouteImport
-      parentRoute: typeof RegenteRoute
-    }
-    '/participante/login': {
-      id: '/participante/login'
-      path: '/login'
-      fullPath: '/participante/login'
-      preLoaderRoute: typeof ParticipanteLoginRouteImport
-      parentRoute: typeof ParticipanteRoute
-    }
-    '/api/infinitepay-webhook': {
-      id: '/api/infinitepay-webhook'
-      path: '/api/infinitepay-webhook'
-      fullPath: '/api/infinitepay-webhook'
-      preLoaderRoute: typeof ApiInfinitepayWebhookRouteImport
+      fullPath: '/pagamento'
+      preLoaderRoute: typeof PagamentoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/patrocinadores': {
-      id: '/admin/patrocinadores'
-      path: '/admin/patrocinadores'
-      fullPath: '/admin/patrocinadores'
-      preLoaderRoute: typeof AdminPatrocinadoresRouteImport
+    '/participante': {
+      id: '/participante'
+      path: '/participante'
+      fullPath: '/participante'
+      preLoaderRoute: typeof ParticipanteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/admin/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
+    '/regente': {
+      id: '/regente'
+      path: '/regente'
+      fullPath: '/regente'
+      preLoaderRoute: typeof RegenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/coros': {
+      id: '/admin/coros'
+      path: '/admin/coros'
+      fullPath: '/admin/coros'
+      preLoaderRoute: typeof AdminCorosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/inscricoes': {
@@ -355,12 +312,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInscricoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/coros': {
-      id: '/admin/coros'
-      path: '/admin/coros'
-      fullPath: '/admin/coros'
-      preLoaderRoute: typeof AdminCorosRouteImport
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/pagamento': {
+      id: '/admin/pagamento'
+      path: '/admin/pagamento'
+      fullPath: '/admin/pagamento'
+      preLoaderRoute: typeof AdminPagamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/patrocinadores': {
+      id: '/admin/patrocinadores'
+      path: '/admin/patrocinadores'
+      fullPath: '/admin/patrocinadores'
+      preLoaderRoute: typeof AdminPatrocinadoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/infinitepay-webhook': {
+      id: '/api/infinitepay-webhook'
+      path: '/api/infinitepay-webhook'
+      fullPath: '/api/infinitepay-webhook'
+      preLoaderRoute: typeof ApiInfinitepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/participante/': {
+      id: '/participante/'
+      path: '/'
+      fullPath: '/participante/'
+      preLoaderRoute: typeof ParticipanteIndexRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
+    '/participante/login': {
+      id: '/participante/login'
+      path: '/login'
+      fullPath: '/participante/login'
+      preLoaderRoute: typeof ParticipanteLoginRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
+    '/regente/': {
+      id: '/regente/'
+      path: '/'
+      fullPath: '/regente/'
+      preLoaderRoute: typeof RegenteIndexRouteImport
+      parentRoute: typeof RegenteRoute
+    }
+    '/regente/alterar-senha': {
+      id: '/regente/alterar-senha'
+      path: '/alterar-senha'
+      fullPath: '/regente/alterar-senha'
+      preLoaderRoute: typeof RegenteAlterarSenhaRouteImport
+      parentRoute: typeof RegenteRoute
+    }
+    '/regente/login': {
+      id: '/regente/login'
+      path: '/login'
+      fullPath: '/regente/login'
+      preLoaderRoute: typeof RegenteLoginRouteImport
+      parentRoute: typeof RegenteRoute
+    }
+    '/regente/pagamento': {
+      id: '/regente/pagamento'
+      path: '/pagamento'
+      fullPath: '/regente/pagamento'
+      preLoaderRoute: typeof RegentePagamentoRouteImport
+      parentRoute: typeof RegenteRoute
     }
   }
 }
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCorosRoute: AdminCorosRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPagamentoRoute: AdminPagamentoRoute,
   AdminPatrocinadoresRoute: AdminPatrocinadoresRoute,
   ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
 }

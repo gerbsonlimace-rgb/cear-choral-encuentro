@@ -221,10 +221,6 @@ export function createRegentPaymentService({
       if (access.role === "regent" && access.passwordChangeRequired) {
         throw new Error("Altere sua senha antes de acessar a área do regente.");
       }
-      if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
-        throw new Error("Informe um valor válido para o pagamento.");
-      }
-
       const registration = await repository.findRegistration(input.registrationId);
       if (!registration?.choirId) throw new Error("Inscrição indisponível para pagamento.");
       if (access.role === "regent" && registration.choirId !== access.choirId) {
@@ -249,13 +245,13 @@ export function createRegentPaymentService({
         openPayment: null,
       });
       if (!state.eligible) throw new Error(eligibilityMessage(state.reason));
-      if (input.amountCents > state.balanceCents) throw new Error(BALANCE_MESSAGE);
+      const amountCents = state.balanceCents;
 
       const orderNsu = randomUUID();
       const reservation: RegentPaymentReservation = {
         registrationId: registration.id,
         choirId: authorizedChoirId,
-        amountCents: input.amountCents,
+        amountCents,
         status: "creating",
         orderNsu,
         initiatedBy: access.userId,
@@ -281,11 +277,11 @@ export function createRegentPaymentService({
           items: [
             {
               quantity: 1,
-              price: input.amountCents,
-              description: "Complemento de inscrição — II Encontro de Coros",
+              price: amountCents,
+              description: "Saldo da inscrição — II Encontro de Coros",
             },
           ],
-          redirectPath: "/regente/pagamento",
+          redirectPath: access.role === "admin" ? "/admin/pagamento" : "/regente/pagamento",
         });
       } catch (caught) {
         if (

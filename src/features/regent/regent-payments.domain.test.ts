@@ -91,7 +91,10 @@ describe("complement balance", () => {
 
   it("preserves a one-cent complement balance through the shared financial state", () => {
     expect(
-      calculateComplementState({ ...paidPromotionalRegistration, confirmedComplementCents: 19_999 }),
+      calculateComplementState({
+        ...paidPromotionalRegistration,
+        confirmedComplementCents: 19_999,
+      }),
     ).toEqual({
       eligible: true,
       totalCents: 20_000,
@@ -102,22 +105,13 @@ describe("complement balance", () => {
 });
 
 describe("complement checkout and presentation", () => {
-  it("accepts only a strict UUID and positive integer cents", () => {
+  it("accepts only a strict registration UUID and rejects a browser amount", () => {
     const registrationId = "11111111-1111-4111-8111-111111111111";
+    expect(complementCheckoutSchema.safeParse({ registrationId }).success).toBe(true);
     expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 1 }).success).toBe(
-      true,
-    );
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 0 }).success).toBe(
       false,
     );
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 1.5 }).success).toBe(
-      false,
-    );
-    expect(
-      complementCheckoutSchema.safeParse({ registrationId: "registration-1", amountCents: 1 })
-        .success,
-    ).toBe(false);
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: -1 }).success).toBe(
+    expect(complementCheckoutSchema.safeParse({ registrationId: "registration-1" }).success).toBe(
       false,
     );
   });

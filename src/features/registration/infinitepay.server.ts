@@ -56,7 +56,7 @@ export type InfinitePayClient = {
     orderNsu: string;
     items: CheckoutItem[];
     customer?: { name: string; email: string; phoneNumber?: string };
-    redirectPath?: "/pagamento" | "/regente/pagamento";
+    redirectPath?: "/pagamento" | "/regente/pagamento" | "/admin/pagamento";
   }): Promise<{ url: string }>;
   checkPayment(input: PaymentLookup): Promise<CheckedPayment>;
 };
