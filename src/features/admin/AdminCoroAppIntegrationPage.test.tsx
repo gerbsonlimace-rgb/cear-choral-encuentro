@@ -34,10 +34,7 @@ describe("CoroApp event integration admin page", () => {
     );
 
     expect(await screen.findByText("Missa de abertura")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Integrações" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(screen.queryByRole("link", { name: "Integrações" })).not.toBeInTheDocument();
     const textarea = screen.getByLabelText("URLs públicas dos eventos");
     fireEvent.change(textarea, {
       target: {

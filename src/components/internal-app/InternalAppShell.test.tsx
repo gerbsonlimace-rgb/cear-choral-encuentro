@@ -10,7 +10,7 @@ const navItems = [
   { id: "songs", label: "Cantos", icon: Music2 },
   { id: "documents", label: "Documentos", icon: FileText },
   { id: "profile", label: "Meu perfil", description: "Conta e acesso", icon: UserRound },
-];
+] as const;
 
 describe("InternalAppShell", () => {
   it("exposes the complete desktop navigation and marks the active destination", () => {

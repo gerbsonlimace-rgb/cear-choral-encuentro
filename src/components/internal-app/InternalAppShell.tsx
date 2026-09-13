@@ -27,7 +27,7 @@ export type InternalNavItem = {
 export type InternalAppShellProps = {
   brandLabel?: string;
   moduleLabel: string;
-  navItems: InternalNavItem[];
+  navItems: readonly InternalNavItem[];
   activeId: string;
   onNavigate: (id: string) => void;
   children: ReactNode;

@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   MoreHorizontal,
   Music2,
-  PlugZap,
   Settings,
 } from "lucide-react";
 import { useState, type MouseEvent } from "react";
@@ -48,7 +47,6 @@ export type AdminNavigationPath =
   | "/admin/patrocinadores"
   | "/admin/documentos"
   | "/admin/atividades"
-  | "/admin/coroapp"
   | "/admin/configuracoes"
   | "/participante";
 
@@ -56,10 +54,9 @@ const links = [
   { key: "summary", href: "/admin/resumo", label: "Resumo", icon: LayoutDashboard },
   { key: "registrations", href: "/admin/inscricoes", label: "Inscrições", icon: ClipboardList },
   { key: "choirs", href: "/admin/coros", label: "Coros", icon: Music2 },
+  { key: "activities", href: "/admin/atividades", label: "Programação", icon: CalendarCheck2 },
   { key: "sponsors", href: "/admin/patrocinadores", label: "Patrocinadores", icon: HeartHandshake },
   { key: "documents", href: "/admin/documentos", label: "Documentos", icon: Files },
-  { key: "activities", href: "/admin/atividades", label: "Atividades", icon: CalendarCheck2 },
-  { key: "integrations", href: "/admin/coroapp", label: "Integrações", icon: PlugZap },
   { key: "settings", href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ] as const satisfies ReadonlyArray<{
   key: AdminNavigationKey;

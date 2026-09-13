@@ -25,24 +25,20 @@ describe("AdminNavigation", () => {
       "href",
       "/admin/configuracoes",
     );
-    expect(screen.getByRole("link", { name: "Atividades" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Programação" })).toHaveAttribute(
       "href",
       "/admin/atividades",
     );
-    expect(screen.getByRole("link", { name: "Integrações" })).toHaveAttribute(
-      "href",
-      "/admin/coroapp",
-    );
+    expect(screen.queryByRole("link", { name: "Integrações" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Navegação administrativa" }).querySelectorAll("a"),
-    ).toHaveLength(8);
+    ).toHaveLength(7);
     expect(screen.getByTestId("admin-topbar")).toHaveClass("bg-brand-ink");
     expect(screen.getByTestId("admin-sidebar")).toHaveClass("md:flex");
     expect(screen.getAllByTestId("mobile-admin-navigation-item")).toHaveLength(4);
     await user.click(link);
 
     expect(navigateTo).toHaveBeenCalledExactlyOnceWith("/admin/coros");
-    expect(screen.getByRole("link", { name: "Integrações" })).toBeInTheDocument();
   });
 
   it("groups secondary administration destinations under Mais", async () => {
