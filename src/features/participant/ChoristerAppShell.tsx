@@ -19,6 +19,7 @@ import type {
   ChoristerTab,
   ChoristerPortalFeed,
 } from "@/features/chorister-app/choristerApp.domain";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 import { cn } from "@/lib/utils";
 
 import { ChoristerEventGuideTab, type ParticipantGuideActivity } from "./ChoristerEventGuideTab";
@@ -52,8 +53,6 @@ export type ChoristerAppShellProps = {
   onEventChange?: (eventId: string | null) => void;
   loadGuideActivities?: () => Promise<ParticipantGuideActivity[]>;
 };
-
-const loadPublishedGuideOnly = async (): Promise<ParticipantGuideActivity[]> => [];
 
 const tabs = [
   { id: "home", label: "Home", icon: Home },
@@ -121,10 +120,16 @@ export function ChoristerAppShell({
   const audioRecoveryIdsRef = useRef(new Set<string>());
   const pendingAudioPositionRef = useRef<number | null>(null);
   const guideActivitiesPromiseRef = useRef<Promise<ParticipantGuideActivity[]> | null>(null);
-  const guideActivitiesLoader = loadGuideActivities ?? loadPublishedGuideOnly;
+  const guideActivitiesLoader = loadGuideActivities ?? getParticipantEventActivities;
   const loadGuideActivitiesOnce = useCallback(() => {
     if (!guideActivitiesPromiseRef.current) {
-      guideActivitiesPromiseRef.current = guideActivitiesLoader();
+      const request = guideActivitiesLoader();
+      guideActivitiesPromiseRef.current = request;
+      void request.catch(() => {
+        if (guideActivitiesPromiseRef.current === request) {
+          guideActivitiesPromiseRef.current = null;
+        }
+      });
     }
     return guideActivitiesPromiseRef.current;
   }, [guideActivitiesLoader]);

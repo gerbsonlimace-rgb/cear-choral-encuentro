@@ -2,7 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/event-activity.functions", () => ({
+  getParticipantEventActivities: vi.fn().mockResolvedValue([]),
+}));
+
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
 import { ChoristerAppShell, type ChoristerAppShellProps } from "./ChoristerAppShell";
@@ -196,20 +201,41 @@ describe("ChoristerAppShell", () => {
     expect(loadGuideActivities).toHaveBeenCalledOnce();
   });
 
-  it("does not repeat a failed guide request on every tab visit", async () => {
-    const loadGuideActivities = vi.fn().mockRejectedValue(new Error("unavailable"));
+  it("loads the participant programme from the activities CRUD by default", async () => {
+    setup();
+
+    await waitFor(() => expect(getParticipantEventActivities).toHaveBeenCalledOnce());
+  });
+
+  it("retries a failed guide preload when the programme is opened", async () => {
+    const loadGuideActivities = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("unavailable"))
+      .mockResolvedValueOnce([
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          title: "Programação recuperada",
+          activityDate: "2026-11-20",
+          startsAt: "09:00",
+          endsAt: "10:00",
+          location: null,
+          description: null,
+          sortOrder: 1,
+          requiresQr: false,
+        },
+      ]);
     const { user } = setup({
       loadGuideActivities,
     } as Partial<ChoristerAppShellProps>);
 
     await waitFor(() => expect(loadGuideActivities).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: "Programação" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("programação completa");
+    expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Home" }));
     await user.click(screen.getByRole("button", { name: "Programação" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("programação completa");
+    expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
 
-    expect(loadGuideActivities).toHaveBeenCalledOnce();
+    expect(loadGuideActivities).toHaveBeenCalledTimes(2);
   });
 
   it("lists event summaries before opening one dedicated repertoire", async () => {

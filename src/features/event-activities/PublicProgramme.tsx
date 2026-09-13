@@ -22,6 +22,54 @@ const presentation: Record<EventActivityCategory, { label: string; icon: LucideI
 
 const dayFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" });
 const weekdayFormat = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "UTC" });
+const monthFormat = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
+const monthShortFormat = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+
+function programmeDatePresentation(days: ProgrammeDay[]) {
+  if (days.length === 0) {
+    return {
+      badge: "PROGRAMAÇÃO DO EVENTO",
+      description: "Confira as atividades publicadas para o encontro.",
+    };
+  }
+
+  const first = new Date(`${days[0].date}T12:00:00Z`);
+  const last = new Date(`${days.at(-1)!.date}T12:00:00Z`);
+  const firstDay = first.getUTCDate();
+  const lastDay = last.getUTCDate();
+  const firstMonth = monthFormat.format(first);
+  const lastMonth = monthFormat.format(last);
+  const firstMonthShort = monthShortFormat.format(first).replace(".", "").toUpperCase();
+  const lastMonthShort = monthShortFormat.format(last).replace(".", "").toUpperCase();
+  const firstYear = first.getUTCFullYear();
+  const lastYear = last.getUTCFullYear();
+
+  if (days.length === 1) {
+    return {
+      badge: `${firstDay} ${firstMonthShort} ${firstYear}`,
+      description: `Confira as atividades do encontro em ${firstDay} de ${firstMonth} de ${firstYear}.`,
+    };
+  }
+
+  if (firstYear === lastYear && first.getUTCMonth() === last.getUTCMonth()) {
+    return {
+      badge: `${firstDay}–${lastDay} ${firstMonthShort} ${firstYear}`,
+      description: `Confira as atividades do encontro de ${firstDay} a ${lastDay} de ${firstMonth} de ${firstYear}.`,
+    };
+  }
+
+  if (firstYear === lastYear) {
+    return {
+      badge: `${firstDay} ${firstMonthShort}–${lastDay} ${lastMonthShort} ${firstYear}`,
+      description: `Confira as atividades do encontro de ${firstDay} de ${firstMonth} a ${lastDay} de ${lastMonth} de ${firstYear}.`,
+    };
+  }
+
+  return {
+    badge: `${firstDay} ${firstMonthShort} ${firstYear}–${lastDay} ${lastMonthShort} ${lastYear}`,
+    description: `Confira as atividades do encontro de ${firstDay} de ${firstMonth} de ${firstYear} a ${lastDay} de ${lastMonth} de ${lastYear}.`,
+  };
+}
 
 export function groupPublicProgramme(activities: PublicEventActivity[]): ProgrammeDay[] {
   const groups = new Map<string, PublicEventActivity[]>();
@@ -59,6 +107,7 @@ function ProgrammeDayCard({ day }: { day: ProgrammeDay }) {
 
 export function PublicProgramme({ result }: { result: PublicProgrammeResult }) {
   const days = groupPublicProgramme(result.activities);
+  const datePresentation = programmeDatePresentation(days);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [carouselHeight, setCarouselHeight] = useState<number>();
   useEffect(() => {
@@ -68,7 +117,7 @@ export function PublicProgramme({ result }: { result: PublicProgrammeResult }) {
     return () => { carouselApi.off("select", update); carouselApi.off("reInit", update); };
   }, [carouselApi]);
 
-  return <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16"><div className="container-event px-4 lg:px-0"><div className="mx-auto max-w-3xl text-center"><span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald"><Calendar aria-hidden="true" className="size-4" />20–22 NOV 2026</span><h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">Programação</h2><p className="mt-2 text-base text-muted-foreground sm:text-lg">Confira as atividades do encontro de 20 a 22 de novembro de 2026.</p></div>
+  return <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16"><div className="container-event px-4 lg:px-0"><div className="mx-auto max-w-3xl text-center"><span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald"><Calendar aria-hidden="true" className="size-4" />{datePresentation.badge}</span><h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">Programação</h2><p className="mt-2 text-base text-muted-foreground sm:text-lg">{datePresentation.description}</p></div>
     {result.status === "unavailable" && <p role="alert" className="mx-auto mt-8 max-w-2xl rounded-xl bg-card px-5 py-4 text-center text-sm text-muted-foreground">Não foi possível carregar a programação agora. Tente novamente em alguns instantes.</p>}
     {result.status === "ready" && days.length === 0 && <p className="mt-8 text-center text-sm text-muted-foreground">A programação será publicada em breve.</p>}
     {days.length > 0 && <><Carousel opts={{ align: "start", loop: false }} setApi={setCarouselApi} style={{ height: carouselHeight }} className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"><CarouselContent className="items-start">{days.map((day) => <CarouselItem key={day.date} className="basis-[92%] sm:basis-[88%]"><ProgrammeDayCard day={day} /></CarouselItem>)}</CarouselContent></Carousel><div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">{days.map((day) => <ProgrammeDayCard key={day.date} day={day} />)}</div></>}

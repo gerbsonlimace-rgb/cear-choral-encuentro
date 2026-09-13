@@ -3,8 +3,8 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
-const { programmeFixture } = vi.hoisted(() => ({
-  programmeFixture: {
+const { getPublicEventProgrammeMock, programmeFixture } = vi.hoisted(() => {
+  const programmeFixture = {
     status: "ready" as const,
     activities: [
       { id: "1", title: "Credenciamento", activityDate: "2026-11-20", startsAt: "16:00", endsAt: "18:00", location: null, description: null, category: "welcome" as const, sortOrder: 10 },
@@ -14,7 +14,15 @@ const { programmeFixture } = vi.hoisted(() => ({
       { id: "5", title: "Ensaio", activityDate: "2026-11-21", startsAt: "11:30", endsAt: null, location: null, description: null, category: "music" as const, sortOrder: 20 },
       { id: "6", title: "Visita", activityDate: "2026-11-21", startsAt: "16:00", endsAt: null, location: null, description: null, category: "visit" as const, sortOrder: 30 },
     ],
-  },
+  };
+  return {
+    getPublicEventProgrammeMock: vi.fn().mockResolvedValue(programmeFixture),
+    programmeFixture,
+  };
+});
+
+vi.mock("@/lib/event-activity.functions", () => ({
+  getPublicEventProgramme: getPublicEventProgrammeMock,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -65,6 +73,13 @@ beforeAll(() => {
 });
 
 describe("landing page program", () => {
+  it("loads the public programme endpoint without requiring a portal session", async () => {
+    await expect(
+      (Route.options.loader as () => Promise<typeof programmeFixture>)(),
+    ).resolves.toBe(programmeFixture);
+    expect(getPublicEventProgrammeMock).toHaveBeenCalledOnce();
+  });
+
   it("presents Programação as the section heading", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);

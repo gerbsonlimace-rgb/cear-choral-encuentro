@@ -16,4 +16,44 @@ describe("PublicProgramme", () => {
     render(<PublicProgramme result={{ status: "unavailable", activities: [] }} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível carregar a programação");
   });
+
+  it("derives the published date range from the CRUD activities", () => {
+    render(
+      <PublicProgramme
+        result={{
+          status: "ready",
+          activities: [
+            {
+              id: "later",
+              title: "Encerramento",
+              activityDate: "2027-12-03",
+              startsAt: "18:00",
+              endsAt: null,
+              location: null,
+              description: null,
+              category: "celebration",
+              sortOrder: 20,
+            },
+            {
+              id: "earlier",
+              title: "Acolhida",
+              activityDate: "2027-12-01",
+              startsAt: "08:00",
+              endsAt: null,
+              location: null,
+              description: null,
+              category: "welcome",
+              sortOrder: 10,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("1–3 DEZ 2027")).toBeInTheDocument();
+    expect(
+      screen.getByText("Confira as atividades do encontro de 1 a 3 de dezembro de 2027."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/20–22 NOV 2026/)).not.toBeInTheDocument();
+  });
 });
