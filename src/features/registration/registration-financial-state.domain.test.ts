@@ -24,6 +24,33 @@ describe("deriveRegistrationFinancialState", () => {
     ).toEqual({ status: "pending", pendingCents: 10_000, confirmedPrincipalCents: 0 });
   });
 
+  it("returns legacy for a pending checkout with missing or contradictory price snapshots", () => {
+    for (const input of [
+      {
+        paymentStatus: "pending" as const,
+        initialAmountCents: 10_000,
+        pricingType: null,
+        standardPriceCents: 30_000,
+        registrationPriceCents: 10_000,
+        confirmedComplementCents: 0,
+      },
+      {
+        paymentStatus: "pending" as const,
+        initialAmountCents: 10_000,
+        pricingType: "promotional" as const,
+        standardPriceCents: 10_000,
+        registrationPriceCents: 10_000,
+        confirmedComplementCents: 0,
+      },
+    ]) {
+      expect(deriveRegistrationFinancialState(input)).toEqual({
+        status: "legacy",
+        pendingCents: null,
+        confirmedPrincipalCents: null,
+      });
+    }
+  });
+
   it("combines the paid promotional principal with confirmed complement principal", () => {
     expect(deriveRegistrationFinancialState(promotionalRegistration)).toEqual({
       status: "partially_paid",

@@ -41,14 +41,8 @@ export function deriveRegistrationFinancialState(
     return legacyState();
   }
 
-  if (input.paymentStatus === "pending") {
-    return input.confirmedComplementCents === 0
-      ? { status: "pending", pendingCents: input.initialAmountCents, confirmedPrincipalCents: 0 }
-      : legacyState();
-  }
-
   if (
-    input.paymentStatus !== "paid" ||
+    input.paymentStatus === "legacy" ||
     (input.pricingType !== "standard" && input.pricingType !== "promotional") ||
     !isPositiveSafeInteger(input.standardPriceCents) ||
     !isPositiveSafeInteger(input.registrationPriceCents) ||
@@ -63,6 +57,12 @@ export function deriveRegistrationFinancialState(
     (input.pricingType === "promotional" && complementDueCents > 0);
   if (!coherentPriceSnapshots || input.confirmedComplementCents > complementDueCents) {
     return legacyState();
+  }
+
+  if (input.paymentStatus === "pending") {
+    return input.confirmedComplementCents === 0
+      ? { status: "pending", pendingCents: input.initialAmountCents, confirmedPrincipalCents: 0 }
+      : legacyState();
   }
 
   const confirmedPrincipalCents = input.registrationPriceCents + input.confirmedComplementCents;
