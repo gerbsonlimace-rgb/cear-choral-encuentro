@@ -287,7 +287,7 @@ function RegistrationViews({
   );
 }
 
-function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
+function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
   const financial = [
     {
       label: "Recebido",
@@ -308,100 +308,18 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
       icon: ChartNoAxesCombined,
     },
   ];
-  const counts = [
-    { label: "Total", value: String(summary.total) },
-    { label: "Pagas", value: String(summary.paid) },
-    { label: "Pendentes", value: String(summary.pending) },
-    { label: "Históricas", value: String(summary.legacy) },
-    { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
-  ];
-
   return (
-    <section aria-label="Visão geral das inscrições" className="space-y-4">
-      <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
-        {financial.map((metric) => (
-          <InternalMetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            detail={metric.hint}
-            icon={metric.icon}
-          />
-        ))}
-      </div>
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="p-4 sm:p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold text-foreground">Inscrições</h2>
-            <p className="text-xs text-muted-foreground">Todos os registros</p>
-          </div>
-          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
-            {counts.map((metric) => (
-              <div key={metric.label}>
-                <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">
-                  {metric.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div className="border-t bg-muted/30 p-4 sm:p-5">
-          <h3 className="text-sm font-semibold text-foreground">Financeiro por coro/diocese</h3>
-          {summary.byChoir.length ? (
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {summary.byChoir.map((item) => (
-                <li
-                  key={item.choirName}
-                  className="min-w-0 rounded-lg border bg-card p-4 shadow-none"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 break-words text-sm font-medium text-foreground">
-                      {item.choirName}
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                      {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
-                    </span>
-                  </div>
-                  <dl className="mt-3 space-y-1.5 text-xs">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-muted-foreground">Recebido</dt>
-                      <dd className="font-semibold tabular-nums text-foreground">
-                        {money(item.receivedCents)}
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-muted-foreground">Pendente</dt>
-                      <dd className="font-semibold tabular-nums text-foreground">
-                        {money(item.pendingCents)}
-                      </dd>
-                    </div>
-                    {item.pendingRegentCents > 0 && (
-                      <div className="flex items-baseline justify-between gap-2">
-                        <dt className="text-muted-foreground">Pendente do regente</dt>
-                        <dd className="font-semibold tabular-nums text-foreground">
-                          {money(item.pendingRegentCents)}
-                        </dd>
-                      </div>
-                    )}
-                    <div className="flex items-baseline justify-between gap-2 border-t border-border/70 pt-1.5">
-                      <dt className="text-muted-foreground">Total previsto</dt>
-                      <dd className="font-semibold tabular-nums text-primary">
-                        {money(item.expectedCents)}
-                      </dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Nenhum coro/diocese com inscrições.
-            </p>
-          )}
-        </div>
-      </div>
-    </section>
+    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
+      {financial.map((metric) => (
+        <InternalMetricCard
+          key={metric.label}
+          label={metric.label}
+          value={metric.value}
+          detail={metric.hint}
+          icon={metric.icon}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -783,7 +701,7 @@ export function AdminRegistrationsPage({
                 </CardContent>
               </Card>
             ) : (
-              summary && <RegistrationSummary summary={summary} />
+              summary && <RegistrationFinancialSummary summary={summary} />
             )}
             <form
               onSubmit={search}
