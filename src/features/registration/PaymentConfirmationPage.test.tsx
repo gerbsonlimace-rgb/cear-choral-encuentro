@@ -204,6 +204,35 @@ describe("PaymentConfirmationPage", () => {
     ],
     ["conflict", "Seu acesso precisa de atendimento da organização."],
   ] as const)(
+    "keeps a paid promotional pre-registration honest while access is %s",
+    async (participantAccessStatus, message) => {
+      const verifyPayment = vi.fn().mockResolvedValue({
+        status: "paid" as const,
+        paymentMethod: "pix" as const,
+        installments: 1,
+        participantAccessStatus,
+        pricingType: "promotional" as const,
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+      });
+
+      render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+      expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
+      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
+      expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+      expect(screen.queryByText("Acesso ao app liberado")).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    [
+      "pending",
+      "Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.",
+    ],
+    ["conflict", "Seu acesso precisa de atendimento da organização."],
+  ] as const)(
     "keeps a paid %s participant access state honest",
     async (participantAccessStatus, message) => {
       const verifyPayment = vi.fn().mockResolvedValue({

@@ -119,7 +119,7 @@ describe("participant authorizer", () => {
     });
   });
 
-  it("authorizes app access for a paid promotional initial registration before balance settlement", async () => {
+  it("authorizes app access for an active paid initial registration", async () => {
     const authorizer = createParticipantAuthorizer(repository(activePaidAccount));
 
     await expect(authorizer.findAccess("user-1")).resolves.toMatchObject({

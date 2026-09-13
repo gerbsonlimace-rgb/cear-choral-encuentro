@@ -83,7 +83,7 @@ describe("participant provisioning service", () => {
     expect(auth.createUser).not.toHaveBeenCalled();
   });
 
-  it("provisions a paid promotional initial registration before its balance is settled", async () => {
+  it("provisions a paid initial registration after payment confirmation", async () => {
     const { repository, auth, service } = setup();
 
     await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });

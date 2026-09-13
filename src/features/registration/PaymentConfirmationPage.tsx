@@ -249,8 +249,12 @@ function ConfirmedPayment({
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
                   {isPreRegistration ? (
                     <>
-                      <span>Acesso ao app liberado</span>. Sua vaga será confirmada após a quitação do valor
-                      restante.
+                      {payment.participantAccessStatus === "active" && (
+                        <>
+                          <span>Acesso ao app liberado</span>.{" "}
+                        </>
+                      )}
+                      Sua vaga será confirmada após a quitação do valor restante.
                     </>
                   ) : (
                     <><span>Vaga confirmada</span>. Confira abaixo os dados da sua inscrição e guarde este comprovante.</>
