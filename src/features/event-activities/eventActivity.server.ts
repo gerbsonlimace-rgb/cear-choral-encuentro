@@ -213,37 +213,42 @@ let singleton: ReturnType<typeof createEventActivityService> | undefined;
 
 export async function getEventActivityService() {
   if (!singleton) {
-    const [{ createSupabaseEventActivityRepository }, { buildEventActivityQrPdf }, qrcode, fs, path] = await Promise.all([
-      import("./eventActivity.repository.server"),
-      import("./eventActivityQrPdf.server"),
-      import("qrcode"),
-      import("node:fs/promises"),
-      import("node:path"),
-    ]);
+    const { createSupabaseEventActivityRepository } = await import(
+      "./eventActivity.repository.server"
+    );
     singleton = createEventActivityService(
       createSupabaseEventActivityRepository(),
       createEnvironmentAttendanceTokenCodec(),
-      (value) =>
-        qrcode.toString(value, {
+      async (value) => {
+        const qrcode = await import("qrcode");
+        return qrcode.toString(value, {
           type: "svg",
           errorCorrectionLevel: "M",
           margin: 2,
           width: 360,
           color: { dark: "#18181b", light: "#ffffff" },
-        }),
+        });
+      },
       () => new Date(),
       {
-        renderQrPng: (value) =>
-          qrcode.toDataURL(value, {
+        renderQrPng: async (value) => {
+          const qrcode = await import("qrcode");
+          return qrcode.toDataURL(value, {
             type: "image/png",
             errorCorrectionLevel: "M",
             margin: 2,
             width: 900,
             color: { dark: "#18181b", light: "#ffffff" },
-          }),
-        readLogo: async () =>
-          new Uint8Array(await fs.readFile(path.resolve(process.cwd(), "src/assets/logo-coros-preto.png"))),
-        buildPdf: buildEventActivityQrPdf,
+          });
+        },
+        readLogo: async () => {
+          const [fs, path] = await Promise.all([import("node:fs/promises"), import("node:path")]);
+          return new Uint8Array(
+            await fs.readFile(path.resolve(process.cwd(), "src/assets/logo-coros-preto.png")),
+          );
+        },
+        buildPdf: async (input) =>
+          (await import("./eventActivityQrPdf.server")).buildEventActivityQrPdf(input),
       },
     );
   }

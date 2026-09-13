@@ -25,11 +25,11 @@ vi.mock("@/features/access/UnifiedPortalLoginPage", () => ({
     onAuthorized,
   }: {
     onAuthorized: (
-      destination: "/admin/inscricoes" | "/regente/alterar-senha" | "/regente" | "/participante",
+      destination: "/admin/resumo" | "/regente/alterar-senha" | "/regente" | "/participante",
     ) => void;
   }) => (
     <>
-      <button onClick={() => onAuthorized("/admin/inscricoes")}>Resolve admin</button>
+      <button onClick={() => onAuthorized("/admin/resumo")}>Resolve admin</button>
       <button onClick={() => onAuthorized("/regente/alterar-senha")}>
         Resolve password change
       </button>
@@ -128,7 +128,7 @@ afterEach(() => vi.clearAllMocks());
 
 describe("unified portal routes", () => {
   it.each([
-    ["Resolve admin", "/admin/inscricoes"],
+    ["Resolve admin", "/admin/resumo"],
     ["Resolve password change", "/regente/alterar-senha"],
     ["Resolve regent", "/regente"],
     ["Resolve participant", "/participante"],
