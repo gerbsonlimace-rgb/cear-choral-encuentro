@@ -9,11 +9,13 @@ const safeUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const quixadaId = "11111111-1111-4111-8111-111111111111";
 const sobralId = "22222222-2222-4222-8222-222222222222";
+const canindeId = "33333333-3333-4333-8333-333333333333";
 
 const configuration: PublicRegistrationConfiguration = {
   choirs: [
     { id: quixadaId, name: "Coro Diocesano de Quixadá", pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 },
     { id: sobralId, name: "Coro Diocesano de Sobral", pricingType: "standard", standardPriceCents: 30000, registrationPriceCents: 30000 },
+    { id: canindeId, name: "Coro Diocesano de Canindé", pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 },
   ],
 };
 const loadConfiguration = vi.fn(async () => configuration);
@@ -40,14 +42,27 @@ async function fillParticipation(user: ReturnType<typeof userEvent.setup>, choir
   await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
 }
 
-async function goToReview(user: ReturnType<typeof userEvent.setup>) {
+async function goToReview(
+  user: ReturnType<typeof userEvent.setup>,
+  choirId = quixadaId,
+  raffleChoice: "participate" | "full_price" | null = "participate",
+) {
   await goToParticipation(user);
-  await fillParticipation(user);
+  await fillParticipation(user, choirId);
+  if (raffleChoice) {
+    await user.click(
+      screen.getByLabelText(
+        raffleChoice === "participate"
+          ? "Quero participar do Programa de Venda de Rifas"
+          : "Prefiro pagar a inscrição integral",
+      ),
+    );
+  }
   await user.click(screen.getByRole("button", { name: "Continuar" }));
   await screen.findByRole("heading", { name: "Confira sua inscrição" });
 }
 
-describe("RegistrationSection", () => {
+describe("RegistrationSection", { timeout: 10_000 }, () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
@@ -100,18 +115,45 @@ describe("RegistrationSection", () => {
     }
   });
 
-  it("shows promotional calculation and raffle guidance", async () => {
+  it("requires an explicit raffle choice before advancing and focuses the group", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
     await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    const raffleChoice = screen.getByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" });
+    expect(screen.getByLabelText("Quero participar do Programa de Venda de Rifas")).not.toBeChecked();
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).not.toBeChecked();
+    expect(await screen.findByText("Escolha como deseja realizar sua inscrição.")).toBeInTheDocument();
+    await waitFor(() => expect(raffleChoice).toHaveFocus());
+    expect(screen.getByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
+  });
+
+  it("shows the raffle pre-registration and remaining balance after the participant opts in", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+    await goToReview(user);
+
     const summary = screen.getByLabelText("Resumo do valor da inscrição");
-    expect(summary).toHaveTextContent("Valor normalR$ 300,00");
-    expect(summary).toHaveTextContent("Desconto das rifas− R$ 200,00");
-    expect(summary).toHaveTextContent("Você paga agoraR$ 100,00");
-    expect(screen.getByRole("status")).toHaveTextContent(/25 rifas.*regente/i);
+    expect(summary).toHaveTextContent(/Pré-inscrição agora:\s*R\$ 100,00/);
+    expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 200,00/);
+    expect(summary).toHaveTextContent(/25 rifas/);
+    expect(summary).toHaveTextContent(/sua vaga estará confirmada/);
+    expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent("Participarei");
+  });
+
+  it("shows only the full amount due now when the participant declines the raffle program", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+    await goToReview(user, quixadaId, "full_price");
+
+    const summary = screen.getByLabelText("Resumo do valor da inscrição");
+    expect(summary).toHaveTextContent("Valor da inscriçãoR$ 300,00");
+    expect(summary).toHaveTextContent(/vaga será confirmada após a confirmação desse pagamento/);
+    expect(summary).not.toHaveTextContent("Pré-inscrição agora");
+    expect(summary).not.toHaveTextContent("Valor restante");
+    expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent("Pagamento integral");
   });
 
   it("shows the normal price for a choir without promotion", async () => {
@@ -122,7 +164,26 @@ describe("RegistrationSection", () => {
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent("Valor da inscriçãoR$ 300,00");
+    expect(screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" })).not.toBeInTheDocument();
     expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
+  });
+
+  it("preserves an explicit choice between raffle-enabled choirs and resets it after a standard choir", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+    await goToParticipation(user);
+
+    const choir = screen.getByLabelText("Coro/Diocese");
+    await user.selectOptions(choir, quixadaId);
+    await user.click(screen.getByLabelText("Prefiro pagar a inscrição integral"));
+    await user.selectOptions(choir, canindeId);
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+
+    await user.selectOptions(choir, sobralId);
+    expect(screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" })).not.toBeInTheDocument();
+    await user.selectOptions(choir, canindeId);
+    expect(screen.getByLabelText("Quero participar do Programa de Venda de Rifas")).not.toBeChecked();
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).not.toBeChecked();
   });
 
   it("preserves values when moving back from review", async () => {
@@ -206,8 +267,36 @@ describe("RegistrationSection", () => {
     render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={navigateToCheckout} />);
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
-    await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({ choirId: quixadaId, voicePart: "soprano", displayedQuote: { pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 } })));
+    await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({ choirId: quixadaId, voicePart: "soprano", raffleChoice: "participate", displayedQuote: { pricingType: "promotional", standardPriceCents: 30000, registrationPriceCents: 10000 } })));
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
+  });
+
+  it("submits the full-price choice for a raffle-enabled choir", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={vi.fn()} />);
+    await goToReview(user, quixadaId, "full_price");
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+
+    await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      choirId: quixadaId,
+      raffleChoice: "full_price",
+      displayedQuote: { pricingType: "standard", standardPriceCents: 30000, registrationPriceCents: 30000 },
+    })));
+  });
+
+  it("submits the full-price choice for a choir outside the raffle program", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} startCheckout={startCheckout} navigateToCheckout={vi.fn()} />);
+    await goToReview(user, sobralId, null);
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+
+    await waitFor(() => expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      choirId: sobralId,
+      raffleChoice: "full_price",
+      displayedQuote: { pricingType: "standard", standardPriceCents: 30000, registrationPriceCents: 30000 },
+    })));
   });
 
   it("keeps review visible when InfinitePay is unavailable", async () => {

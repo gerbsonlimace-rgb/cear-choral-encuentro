@@ -28,7 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
+import {
+  applyRaffleChoice,
+  type DisplayedQuote,
+  type PublicChoirOption,
+  type PublicRegistrationConfiguration,
+  type RaffleChoice,
+} from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
   checkRegistrationAvailability,
@@ -60,8 +66,8 @@ type RegistrationSectionProps = {
 
 type RegistrationForm = Omit<
   RegistrationInput,
-  "choirId" | "displayedQuote" | "photo" | "voicePart"
-> & { choirId: string; voicePart: VoicePart | "" };
+  "choirId" | "displayedQuote" | "photo" | "raffleChoice" | "voicePart"
+> & { choirId: string; raffleChoice: "" | RaffleChoice; voicePart: VoicePart | "" };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
 
@@ -91,6 +97,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   phone: "",
   birthDate: "",
   choirId: "",
+  raffleChoice: "",
   voicePart: "",
 };
 
@@ -101,17 +108,22 @@ const inputClassName =
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
   1: ["name", "cpf", "email", "phone", "birthDate", "photo"],
-  2: ["choirId", "voicePart"],
+  2: ["choirId", "raffleChoice", "voicePart"],
 };
 
 function RegistrationPriceSummary({
   selectedChoir,
+  appliedQuote,
+  raffleChoice,
 }: {
-  selectedChoir: PublicRegistrationConfiguration["choirs"][number] | null;
+  selectedChoir: PublicChoirOption | null;
+  appliedQuote: DisplayedQuote | null;
+  raffleChoice: "" | RaffleChoice;
 }) {
-  const discountCents = selectedChoir
-    ? selectedChoir.standardPriceCents - selectedChoir.registrationPriceCents
-    : null;
+  const remainingCents =
+    appliedQuote && raffleChoice === "participate"
+      ? appliedQuote.standardPriceCents - appliedQuote.registrationPriceCents
+      : null;
 
   return (
     <aside
@@ -130,48 +142,38 @@ function RegistrationPriceSummary({
           <ShieldCheck className="size-5 text-amber" aria-hidden="true" />
         </div>
 
-        {selectedChoir ? (
+        {selectedChoir && appliedQuote ? (
           <>
             <p className="mt-3 text-sm text-background/70">{selectedChoir.name}</p>
-            {selectedChoir.pricingType === "promotional" && discountCents !== null ? (
-              <div className="mt-4 space-y-2 border-t border-background/15 pt-4 text-sm">
-                <div className="flex items-center justify-between gap-4 text-background/70">
-                  <span>Valor normal</span>
-                  <span className="line-through">
-                    {formatCurrency(selectedChoir.standardPriceCents)}
-                  </span>
+            {raffleChoice === "participate" && remainingCents !== null ? (
+              <div className="mt-4 space-y-4 border-t border-background/15 pt-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-bold">Pré-inscrição agora:</span>
+                    <span className="font-display text-2xl font-extrabold">
+                      {formatCurrency(appliedQuote.registrationPriceCents)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 text-background/75">
+                    <span className="font-semibold">Valor restante:</span>
+                    <span className="font-bold">{formatCurrency(remainingCents)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-4 text-amber">
-                  <span>Desconto das rifas</span>
-                  <span className="font-bold">− {formatCurrency(discountCents)}</span>
-                </div>
-                <div className="mt-3 flex items-end justify-between gap-4 border-t border-background/15 pt-3">
-                  <span className="font-bold">Você paga agora</span>
-                  <span className="font-display text-3xl font-extrabold">
-                    {formatCurrency(selectedChoir.registrationPriceCents)}
-                  </span>
-                </div>
+                <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90">
+                  Você está aderindo ao Programa de Venda de Rifas do seu coro. Com essa escolha,
+                  você realiza agora sua pré-inscrição no valor de {formatCurrency(appliedQuote.registrationPriceCents)} e participa da mobilização do grupo com a venda de 25 rifas. Assim que o valor restante de {formatCurrency(remainingCents)} for pago, sua inscrição será concluída e sua vaga estará confirmada.
+                </p>
               </div>
             ) : (
-              <div className="mt-4 flex items-end justify-between gap-4 border-t border-background/15 pt-4">
-                <span className="font-bold">Valor da inscrição</span>
-                <span className="font-display text-3xl font-extrabold">
-                  {formatCurrency(selectedChoir.registrationPriceCents)}
-                </span>
-              </div>
-            )}
-
-            {selectedChoir.pricingType === "promotional" && discountCents !== null && (
-              <div
-                role="status"
-                className="mt-5 rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90"
-              >
-                <p className="font-bold text-amber">Programa de venda de rifas</p>
-                <p className="mt-1">
-                  Prezado coralista, o <strong>{selectedChoir.name}</strong> aderiu ao programa de
-                  venda de rifas. Para conseguir este desconto, você deve vender um total de 25
-                  rifas. O valor arrecadado deve ser repassado ao seu regente, que ficará
-                  responsável por coletá-lo e pagar o valor restante da inscrição.
+              <div className="mt-4 space-y-3 border-t border-background/15 pt-4">
+                <div className="flex items-end justify-between gap-4">
+                  <span className="font-bold">Valor da inscrição</span>
+                  <span className="font-display text-3xl font-extrabold">
+                    {formatCurrency(appliedQuote.registrationPriceCents)}
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed text-background/75">
+                  O pagamento integral será realizado agora e sua vaga será confirmada após a confirmação desse pagamento.
                 </p>
               </div>
             )}
@@ -292,6 +294,35 @@ export function RegistrationSection({
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,
     [configuration, form.choirId],
   );
+  const displayedQuote = useMemo(() => {
+    if (!selectedChoir) return null;
+    const availableQuote: DisplayedQuote = {
+      pricingType: selectedChoir.pricingType,
+      standardPriceCents: selectedChoir.standardPriceCents,
+      registrationPriceCents: selectedChoir.registrationPriceCents,
+    };
+    const raffleChoice =
+      selectedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
+    return raffleChoice ? applyRaffleChoice(availableQuote, raffleChoice) : null;
+  }, [form.raffleChoice, selectedChoir]);
+
+  const handleChoirChange = (choirId: string) => {
+    setForm((previous) => {
+      const previousChoir = configuration?.choirs.find((choir) => choir.id === previous.choirId);
+      const nextChoir = configuration?.choirs.find((choir) => choir.id === choirId);
+      const keepsExplicitChoice =
+        previousChoir?.pricingType === "promotional" && nextChoir?.pricingType === "promotional";
+      const raffleChoice =
+        nextChoir?.pricingType === "standard"
+          ? "full_price"
+          : keepsExplicitChoice
+            ? previous.raffleChoice
+            : "";
+      return { ...previous, choirId, raffleChoice };
+    });
+    setErrors((previous) => ({ ...previous, choirId: undefined, raffleChoice: undefined }));
+  };
+
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -337,6 +368,9 @@ export function RegistrationSection({
     } else {
       if (!selectedChoir) nextErrors.choirId = "Selecione um coro/diocese.";
       if (!form.voicePart) nextErrors.voicePart = "Selecione seu perfil musical.";
+      if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
+        nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
+      }
     }
 
     setErrors((previous) => {
@@ -402,15 +436,17 @@ export function RegistrationSection({
       setErrors((previous) => ({ ...previous, photo: "Envie uma foto do participante." }));
       return;
     }
+    if (!displayedQuote) {
+      const raffleChoiceError = "Escolha como deseja realizar sua inscrição.";
+      setErrors((previous) => ({ ...previous, raffleChoice: raffleChoiceError }));
+      focusFirstError({ raffleChoice: raffleChoiceError });
+      return;
+    }
 
     const parsedForm = registrationSchema.safeParse({
       ...form,
       photo,
-      displayedQuote: {
-        pricingType: selectedChoir.pricingType,
-        standardPriceCents: selectedChoir.standardPriceCents,
-        registrationPriceCents: selectedChoir.registrationPriceCents,
-      },
+      displayedQuote,
     });
     if (!parsedForm.success) {
       const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
@@ -722,7 +758,7 @@ export function RegistrationSection({
                           id="choirId"
                           required
                           value={form.choirId}
-                          onChange={(event) => handleChange("choirId", event.target.value)}
+                          onChange={(event) => handleChoirChange(event.target.value)}
                           disabled={!configuration || configuration.choirs.length === 0}
                           className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -747,6 +783,58 @@ export function RegistrationSection({
                         <p className="text-sm text-destructive">{errors.choirId}</p>
                       )}
                     </div>
+
+                    {selectedChoir?.pricingType === "promotional" && (
+                      <fieldset
+                        id="raffleChoice"
+                        role="radiogroup"
+                        tabIndex={-1}
+                        aria-describedby={errors.raffleChoice ? "raffleChoice-error" : undefined}
+                        className="rounded-xl border border-border bg-muted/35 p-4 outline-none"
+                      >
+                        <legend className="font-semibold text-foreground">
+                          Como deseja realizar sua inscrição?
+                        </legend>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Escolha entre aderir ao programa de rifas ou pagar o valor integral agora.
+                        </p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="radio"
+                              name="raffleChoice"
+                              value="participate"
+                              aria-label="Quero participar do Programa de Venda de Rifas"
+                              checked={form.raffleChoice === "participate"}
+                              onChange={(event) => handleChange("raffleChoice", event.target.value)}
+                              className="peer sr-only"
+                            />
+                            <span className="flex min-h-28 rounded-xl border border-border bg-background p-4 text-sm font-semibold text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                              Quero participar do Programa de Venda de Rifas
+                            </span>
+                          </label>
+                          <label className="cursor-pointer">
+                            <input
+                              type="radio"
+                              name="raffleChoice"
+                              value="full_price"
+                              aria-label="Prefiro pagar a inscrição integral"
+                              checked={form.raffleChoice === "full_price"}
+                              onChange={(event) => handleChange("raffleChoice", event.target.value)}
+                              className="peer sr-only"
+                            />
+                            <span className="flex min-h-28 rounded-xl border border-border bg-background p-4 text-sm font-semibold text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                              Prefiro pagar a inscrição integral
+                            </span>
+                          </label>
+                        </div>
+                        {errors.raffleChoice && (
+                          <p id="raffleChoice-error" role="alert" className="mt-3 text-sm text-destructive">
+                            {errors.raffleChoice}
+                          </p>
+                        )}
+                      </fieldset>
+                    )}
 
                     <div className="space-y-1.5">
                       <Label htmlFor="voicePart" className="font-semibold">
@@ -798,6 +886,7 @@ export function RegistrationSection({
                         ["Nascimento", form.birthDate ? new Date(`${form.birthDate}T12:00:00`).toLocaleDateString("pt-BR") : ""],
                         ["Coro/Diocese", selectedChoir?.name ?? ""],
                         ["Perfil musical", voicePartOptions.find((option) => option.value === form.voicePart)?.label ?? ""],
+                        ["Programa de rifas", form.raffleChoice === "participate" ? "Participarei" : "Pagamento integral"],
                         ["Foto", photoFileName],
                       ].map(([label, value]) => (
                         <div key={label} className="min-w-0 bg-card p-4">
@@ -807,7 +896,11 @@ export function RegistrationSection({
                       ))}
                     </dl>
                   </div>
-                  <RegistrationPriceSummary selectedChoir={selectedChoir} />
+                  <RegistrationPriceSummary
+                    selectedChoir={selectedChoir}
+                    appliedQuote={displayedQuote}
+                    raffleChoice={form.raffleChoice}
+                  />
                 </div>
               )}
 
