@@ -254,7 +254,7 @@ export function ParticipantPortalPage({
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+    <main className="chorister-app flex min-h-svh items-center justify-center bg-white px-4 py-10">
       <div className="w-full max-w-md space-y-4 text-center" aria-live="polite" aria-atomic="true">
         {gate === "checking" && (
           <>

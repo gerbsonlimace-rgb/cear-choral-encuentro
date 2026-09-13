@@ -89,6 +89,9 @@ describe("UnifiedPortalLoginPage", () => {
     setup();
 
     expect(
+      screen.getByRole("img", { name: "Encontro de Coros Diocesanos e Litúrgicos" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(
         "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
       ),
@@ -104,6 +107,11 @@ describe("UnifiedPortalLoginPage", () => {
       screen.getByText(
         "No primeiro acesso como participante, use os dígitos do CPF seguidos do ano de nascimento com quatro dígitos (AAAA).",
       ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("20 a 22 de novembro de 2026")).toBeInTheDocument();
+    expect(screen.getByText("Quixadá, Ceará")).toBeInTheDocument();
+    expect(
+      screen.getByText("Um único acesso para participante, regente e administração"),
     ).toBeInTheDocument();
   });
 

@@ -1,103 +1,182 @@
-import { CalendarDays, ChevronRight, FileText, MapPin, Music2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronRight, Files, Music2, Play } from "lucide-react";
+import { useState } from "react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 
 import type { ParticipantRegistrationView } from "./participant.domain";
 
 type ChoristerHomeTabProps = {
   participant: ParticipantRegistrationView;
-  event: ChoristerPortalFeed["event"];
-  onOpenSongs: () => void;
-  onOpenScores: () => void;
+  recentPlayback?: {
+    songName: string;
+    audioTitle: string;
+  };
+  onContinuePlayback?: () => void;
+  onNavigate?: (tab: "cantos" | "documentos" | "guia") => void;
 };
 
 function getFirstName(name: string) {
   return name.trim().split(/\s+/)[0] || "coralista";
 }
 
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export function ChoristerHomeTab({
   participant,
-  event,
-  onOpenSongs,
-  onOpenScores,
+  recentPlayback,
+  onContinuePlayback,
+  onNavigate,
 }: ChoristerHomeTabProps) {
-  const scoreCount =
-    event.songs.reduce((count, song) => count + song.sheetMusic.length, 0) + event.documents.length;
-  const songLabel = `${event.songs.length} ${event.songs.length === 1 ? "canto publicado" : "cantos publicados"}`;
-  const scoreLabel = `${scoreCount} ${scoreCount === 1 ? "material publicado" : "materiais publicados"}`;
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   return (
-    <section aria-labelledby="chorister-home-title" className="space-y-5">
-      <header>
-        <p className="text-sm font-medium text-amber-700">
-          Olá, {getFirstName(participant.identity.name)}
-        </p>
-        <h1
-          id="chorister-home-title"
-          className="mt-1 font-display text-2xl font-semibold text-zinc-950"
-        >
-          Seu encontro começa aqui
-        </h1>
+    <section aria-labelledby="chorister-home-title" className="space-y-6">
+      <header className="flex items-center gap-4 border-b border-zinc-200 pb-5">
+        <Avatar className="size-14 border border-zinc-200 bg-zinc-50 sm:size-16">
+          {participant.identity.photoUrl && !photoFailed ? (
+            <img
+              src={participant.identity.photoUrl}
+              alt={`Foto de ${participant.identity.name}`}
+              className="h-full w-full object-cover"
+              onError={() => setPhotoFailed(true)}
+            />
+          ) : (
+            <AvatarFallback
+              role="img"
+              aria-label="Foto não disponível"
+              className="bg-zinc-100 font-semibold text-zinc-700"
+            >
+              {getInitials(participant.identity.name)}
+            </AvatarFallback>
+          )}
+        </Avatar>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-zinc-500">Bem-vindo</p>
+          <h1
+            id="chorister-home-title"
+            className="truncate text-2xl font-semibold tracking-tight text-zinc-950"
+          >
+            {getFirstName(participant.identity.name)}
+          </h1>
+          <p className="mt-0.5 truncate text-sm text-zinc-600">
+            {participant.registration.choirName}
+          </p>
+        </div>
       </header>
 
-      <article className="overflow-hidden rounded-2xl bg-zinc-950 text-white shadow-lg">
-        <div className="border-b border-amber-300/35 bg-amber-400 px-5 py-3 text-xs font-bold tracking-[0.2em] text-zinc-950 uppercase">
-          Evento oficial
-        </div>
-        <div className="space-y-4 p-5">
-          <h2 className="font-display text-2xl leading-tight">{event.name}</h2>
-          <div className="space-y-2 text-sm text-zinc-200">
-            <p className="flex items-center gap-2">
-              <CalendarDays aria-hidden="true" className="size-4 text-amber-300" />
-              <span>20–22 de novembro de 2026</span>
+      <section
+        aria-label="Status do acesso"
+        className="grid grid-cols-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+      >
+        {[
+          ["Inscrição", "Confirmada"],
+          ["Pagamento", participant.payment.status === "paid" ? "Pago" : "Pendente"],
+          ["Acesso", "Liberado"],
+        ].map(([label, value], index) => (
+          <div
+            key={label}
+            className={
+              index > 0 ? "border-l border-zinc-100 px-2.5 py-4 sm:px-4" : "px-2.5 py-4 sm:px-4"
+            }
+          >
+            <p className="text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
+              {label}
             </p>
-            <p className="flex items-center gap-2">
-              <MapPin aria-hidden="true" className="size-4 text-amber-300" />
-              <span>{event.location ?? "Local a confirmar"}</span>
+            <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-zinc-900">
+              <CheckCircle2 aria-hidden="true" className="size-3.5 text-emerald-600" />
+              {value}
             </p>
           </div>
-        </div>
-      </article>
+        ))}
+      </section>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 h-auto justify-between border-amber-300 bg-white px-4 py-3 text-left text-zinc-950 hover:bg-amber-50"
-          aria-label={`Ensaiar cantos, ${songLabel}`}
-          onClick={onOpenSongs}
-        >
-          <span className="flex items-center gap-3">
-            <Music2 aria-hidden="true" className="size-5 text-amber-700" />
-            <span>
-              <span className="block font-semibold">Ensaiar cantos</span>
-              <span className="block text-xs font-normal text-zinc-600">{songLabel}</span>
-            </span>
-          </span>
-          <ChevronRight aria-hidden="true" className="size-5" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 h-auto justify-between border-amber-300 bg-white px-4 py-3 text-left text-zinc-950 hover:bg-amber-50"
-          aria-label={`Abrir partituras, ${scoreLabel}`}
-          onClick={onOpenScores}
-        >
-          <span className="flex items-center gap-3">
-            <FileText aria-hidden="true" className="size-5 text-amber-700" />
-            <span>
-              <span className="block font-semibold">Abrir partituras</span>
-              <span className="block text-xs font-normal text-zinc-600">{scoreLabel}</span>
-            </span>
-          </span>
-          <ChevronRight aria-hidden="true" className="size-5" />
-        </Button>
-      </div>
+      {onNavigate && (
+        <section aria-labelledby="home-shortcuts-title" className="space-y-3">
+          <h2 id="home-shortcuts-title" className="text-sm font-semibold text-zinc-900">
+            Seu encontro, à mão
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              {
+                tab: "cantos",
+                title: "Explorar cantos",
+                description: "Áudios e partituras",
+                icon: Music2,
+              },
+              {
+                tab: "documentos",
+                title: "Ver documentos",
+                description: "Guias e materiais",
+                icon: Files,
+              },
+              {
+                tab: "guia",
+                title: "Consultar programação",
+                description: "Horários e locais",
+                icon: CalendarDays,
+              },
+            ].map(({ tab, title, description, icon: Icon }) => (
+              <button
+                key={tab}
+                type="button"
+                aria-label={title}
+                onClick={() => onNavigate(tab as "cantos" | "documentos" | "guia")}
+                className="flex min-h-20 items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              >
+                <Icon aria-hidden="true" className="size-5 shrink-0 text-zinc-500" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-zinc-900">{title}</span>
+                  <span className="mt-0.5 block text-xs text-zinc-500">{description}</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-zinc-400" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <aside className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-zinc-800">
-        Escolha o áudio do seu próprio naipe para ensaiar com mais segurança.
-      </aside>
+      {recentPlayback && onContinuePlayback ? (
+        <section
+          aria-labelledby="continue-listening-title"
+          className="rounded-2xl border border-zinc-200 p-4"
+        >
+          <p id="continue-listening-title" className="mb-1 text-xs font-semibold text-zinc-500">
+            Continuar ouvindo
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto min-h-14 w-full justify-start rounded-xl px-2 py-2 text-left text-zinc-950 hover:bg-zinc-50"
+            aria-label={`Continuar ouvindo ${recentPlayback.songName}`}
+            onClick={onContinuePlayback}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-900">
+                <Play aria-hidden="true" className="ml-0.5 size-4 fill-current" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{recentPlayback.songName}</span>
+                <span className="block truncate text-xs font-normal text-zinc-600">
+                  {recentPlayback.audioTitle}
+                </span>
+              </span>
+            </span>
+          </Button>
+        </section>
+      ) : !onNavigate ? (
+        <p className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
+          <Music2 aria-hidden="true" className="size-4" />
+          Seus repertórios estão disponíveis em Cantos.
+        </p>
+      ) : null}
     </section>
   );
 }

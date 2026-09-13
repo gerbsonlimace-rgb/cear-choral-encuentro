@@ -215,6 +215,46 @@
   }
 }
 
+/* The participant portal uses one contemporary app typeface throughout.
+ * Keep the ceremonial display face restricted to the public event site. */
+.chorister-app {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #27272a;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #27272a;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #71717a;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+}
+
+.chorister-app :is(button, a, input):focus-visible {
+  outline: 2px solid #71717a;
+  outline-offset: 3px;
+}
+
+.chorister-app,
+.chorister-app h1,
+.chorister-app h2,
+.chorister-app h3,
+.chorister-app h4,
+.chorister-app h5,
+.chorister-app h6 {
+  font-family: var(--font-body);
+}
+
 @utility container-event {
   width: 100%;
   max-width: 80rem;

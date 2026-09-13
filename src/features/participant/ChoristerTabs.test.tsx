@@ -58,6 +58,20 @@ const feed: ChoristerPortalFeed = {
             signedUrl: "https://assets.example.test/tenor.mp3",
             expiresAt: future,
           },
+          {
+            id: "12121212-1212-4212-8212-121212121212",
+            title: "Contralto",
+            voicePart: "contralto",
+            signedUrl: "https://assets.example.test/contralto.mp3",
+            expiresAt: future,
+          },
+          {
+            id: "13131313-1313-4313-8313-131313131313",
+            title: "Baixo",
+            voicePart: "baixo",
+            signedUrl: "https://assets.example.test/baixo.mp3",
+            expiresAt: future,
+          },
         ],
         sheetMusic: [
           {
@@ -157,6 +171,71 @@ function setup() {
 }
 
 describe("ChoristerSongsTab", () => {
+  it("matches the compact CoroApp song-group browser", () => {
+    setup();
+
+    const playlist = screen.getByRole("region", { name: "Músicas do evento" });
+    expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
+    expect(screen.getByText("2 cantos")).toBeInTheDocument();
+    expect(within(playlist).getByText(/01 · Entrada · Soprano/)).toBeInTheDocument();
+    expect(
+      within(playlist).getByRole("img", {
+        name: "Miniatura musical neutra de Canto de entrada",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Contralto de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Tenor de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Baixo de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tocar Principal" })).not.toBeInTheDocument();
+    for (const voice of ["Soprano", "Contralto", "Tenor", "Baixo"]) {
+      expect(screen.getByRole("radio", { name: voice })).toHaveAttribute(
+        "aria-checked",
+        voice === "Soprano" ? "true" : "false",
+      );
+    }
+    expect(screen.getByText("Sem áudio para Soprano.")).toBeInTheDocument();
+  });
+
+  it("selects the useful first-available voice when the participant has no voice", () => {
+    setup();
+
+    expect(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" })).toHaveClass(
+      "size-11",
+      "rounded-full",
+      "bg-pink-500/10",
+    );
+    expect(screen.getByRole("radio", { name: "Soprano" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("starts with the authenticated participant voice when that voice is available", () => {
+    render(
+      <ChoristerSongsTab
+        songs={feed.event.songs}
+        initialVoicePart="contralto"
+        onPlay={vi.fn()}
+        onOpenSong={vi.fn()}
+        onOpenScore={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: "Contralto" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Tocar Contralto de Canto de entrada" }),
+    ).toBeInTheDocument();
+  });
+
   it("orders songs from the feed and filters them locally by search", async () => {
     const { user } = setup();
     expect(
@@ -175,11 +254,16 @@ describe("ChoristerSongsTab", () => {
   it("filters available audio by voice and emits only asset identifiers for read-only actions", async () => {
     const { onOpenScore, onOpenSong, onPlay, user } = setup();
 
-    await user.click(screen.getByRole("combobox", { name: "Filtrar por naipe" }));
-    await user.click(await screen.findByRole("option", { name: "Tenor" }));
-    expect(screen.queryByRole("button", { name: "Tocar Soprano" })).not.toBeInTheDocument();
-    const playButton = screen.getByRole("button", { name: "Tocar Tenor" });
-    expect(playButton).toHaveClass("min-h-11");
+    await user.click(screen.getByRole("radio", { name: "Tenor" }));
+    expect(
+      screen.queryByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Salmo responsorial", level: 3 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Sem áudio para Tenor.")).toBeInTheDocument();
+    const playButton = screen.getByRole("button", { name: "Tocar Tenor de Canto de entrada" });
+    expect(playButton).toHaveClass("size-11", "rounded-full", "bg-emerald-500/10");
     await user.click(playButton);
     await user.click(screen.getByRole("button", { name: "Abrir canto Canto de entrada" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
@@ -189,11 +273,10 @@ describe("ChoristerSongsTab", () => {
     expect(onOpenScore).toHaveBeenCalledExactlyOnceWith("66666666-6666-4666-8666-666666666666");
   });
 
-  it("keeps every voice option at the 44px minimum touch target", async () => {
-    const { user } = setup();
+  it("keeps every CoroApp voice filter at the 44px minimum touch target", () => {
+    setup();
 
-    await user.click(screen.getByRole("combobox", { name: "Filtrar por naipe" }));
-    for (const option of screen.getAllByRole("option")) {
+    for (const option of screen.getAllByRole("radio")) {
       expect(option).toHaveClass("min-h-11");
     }
   });
@@ -205,7 +288,7 @@ describe("ChoristerSongsTab", () => {
       screen.queryByRole("button", { name: /enviar|upload|editar|remover/i }),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Cantos publicados" })).getAllByRole("button")
+      within(screen.getByRole("region", { name: "Músicas do evento" })).getAllByRole("button")
         .length,
     ).toBeGreaterThan(0);
   });
@@ -534,6 +617,33 @@ describe("ChoristerScoresTab", () => {
 });
 
 describe("ChoristerProfileTab", () => {
+  it("offers a return to administration only for a participant who is also an admin", async () => {
+    const onOpenAdmin = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Ir para administração" })).not.toBeInTheDocument();
+
+    rerender(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        onLogout={vi.fn()}
+        onOpenAdmin={onOpenAdmin}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Ir para administração" }));
+    expect(onOpenAdmin).toHaveBeenCalledOnce();
+  });
+
   it("keeps the existing neutral identity fallback when a private profile photo is unavailable", () => {
     render(
       <ChoristerProfileTab

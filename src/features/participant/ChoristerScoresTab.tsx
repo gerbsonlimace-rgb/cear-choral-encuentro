@@ -18,9 +18,12 @@ export type PdfAssetAction = (asset: PdfAsset) => PdfAsset | void | Promise<PdfA
 
 type ChoristerScoresTabProps = {
   event: ChoristerPortalFeed["event"];
+  headingId?: string;
   onOpen: PdfAssetAction;
   onDownload: PdfAssetAction;
   initialAsset?: PdfAsset | null;
+  showSongScores?: boolean;
+  viewerOnly?: boolean;
 };
 
 type RenewalAttempt = {
@@ -43,7 +46,15 @@ function orderedDocuments(event: ChoristerPortalFeed["event"]) {
   return [...event.documents].sort((first, second) => first.sortOrder - second.sortOrder);
 }
 
-export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: ChoristerScoresTabProps) {
+export function ChoristerScoresTab({
+  event,
+  headingId = "chorister-scores-title",
+  onOpen,
+  onDownload,
+  initialAsset,
+  showSongScores = true,
+  viewerOnly = false,
+}: ChoristerScoresTabProps) {
   const [viewerAsset, setViewerAsset] = useState<PdfAsset | null>(null);
   const [viewerStatus, setViewerStatus] = useState<"ready" | "refreshing" | "error">("ready");
   const mountedRef = useRef(false);
@@ -242,98 +253,110 @@ export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: 
     setViewerStatus("ready");
   }
 
-  const songsWithScores = orderedSongs(event).filter((song) => song.sheetMusic.length > 0);
+  const songsWithScores = showSongScores
+    ? orderedSongs(event).filter((song) => song.sheetMusic.length > 0)
+    : [];
   const documents = orderedDocuments(event);
 
   return (
-    <section aria-labelledby="chorister-scores-title" className="space-y-5">
-      <header>
-        <p className="text-sm font-medium text-amber-700">Materiais publicados</p>
-        <h1
-          id="chorister-scores-title"
-          className="mt-1 font-display text-2xl font-semibold text-zinc-950"
-        >
-          Partituras
-        </h1>
-      </header>
+    <section
+      aria-label={viewerOnly ? "Partitura do canto" : undefined}
+      aria-labelledby={viewerOnly ? undefined : headingId}
+      className="space-y-5"
+    >
+      {viewerOnly ? null : showSongScores ? (
+        <header>
+          <p className="text-sm font-medium text-zinc-500">Materiais publicados</p>
+          <h1 id={headingId} className="mt-1 text-xl font-semibold text-zinc-950">
+            Partituras
+          </h1>
+        </header>
+      ) : (
+        <h2 id={headingId} className="sr-only">
+          Materiais extras
+        </h2>
+      )}
 
-      {songsWithScores.length > 0 && (
-        <section aria-labelledby="repertoire-scores-title" className="space-y-3">
-          <h2
-            id="repertoire-scores-title"
-            className="font-display text-lg font-semibold text-zinc-950"
-          >
+      {!viewerOnly && songsWithScores.length > 0 && (
+        <section aria-labelledby={`${headingId}-repertoire`} className="space-y-2">
+          <h2 id={`${headingId}-repertoire`} className="text-lg font-semibold text-zinc-950">
             Repertório
           </h2>
-          {songsWithScores.map((song) => (
-            <article
-              key={song.id}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
-            >
-              <p className="text-xs font-semibold tracking-wider text-amber-700 uppercase">
-                {song.liturgicalType}
-              </p>
-              <h2 className="mt-1 font-display text-lg font-semibold text-zinc-950">{song.name}</h2>
-              <ul className="mt-3 space-y-2" aria-label={`Partituras de ${song.name}`}>
-                {song.sheetMusic.map((asset) => (
-                  <li
-                    key={asset.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 p-3"
-                  >
-                    <span className="flex min-h-11 items-center gap-2 text-sm font-medium text-zinc-800">
-                      <FileText aria-hidden="true" className="size-4 text-amber-700" />
-                      {asset.title}
-                    </span>
-                    <span className="flex flex-wrap gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="min-h-11 px-3 text-zinc-700 hover:bg-white"
-                        onClick={() => void open(asset)}
-                      >
-                        Abrir
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="min-h-11 px-3 text-zinc-700 hover:bg-white"
-                        onClick={() => void download(asset)}
-                      >
-                        <Download aria-hidden="true" className="size-4" />
-                        Baixar
-                      </Button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+          <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
+            {songsWithScores.map((song) => (
+              <article
+                key={song.id}
+                className="flex min-h-44 flex-col rounded-2xl border border-zinc-200 bg-white p-4"
+              >
+                <p className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
+                  {song.liturgicalType}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-zinc-950">{song.name}</h2>
+                <ul className="mt-auto space-y-2 pt-4" aria-label={`Partituras de ${song.name}`}>
+                  {song.sheetMusic.map((asset) => (
+                    <li key={asset.id} className="border-t border-zinc-200 pt-2">
+                      <span className="flex min-h-11 items-center gap-2 text-xs font-medium text-zinc-700">
+                        <FileText aria-hidden="true" className="size-4 text-zinc-500" />
+                        {asset.title}
+                      </span>
+                      <span className="grid grid-cols-2 gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-11 px-2 text-xs text-zinc-700 hover:bg-zinc-100"
+                          onClick={() => void open(asset)}
+                        >
+                          Abrir
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-11 px-2 text-xs text-zinc-700 hover:bg-zinc-100"
+                          onClick={() => void download(asset)}
+                        >
+                          <Download aria-hidden="true" className="size-4" />
+                          Baixar
+                        </Button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
-      {documents.length > 0 && (
-        <section aria-labelledby="event-documents-title" className="space-y-3">
+      {!viewerOnly && documents.length > 0 && (
+        <section aria-labelledby={`${headingId}-documents`} className="space-y-3">
           <h2
-            id="event-documents-title"
-            className="font-display text-lg font-semibold text-zinc-950"
+            id={`${headingId}-documents`}
+            className={showSongScores ? "text-lg font-semibold text-zinc-950" : "sr-only"}
           >
             Manuais e documentos
           </h2>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
             {documents.map((asset) => (
               <article
                 key={asset.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+                className="flex min-h-44 flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4"
               >
-                <div className="flex min-h-11 items-center gap-2">
-                  <FileText aria-hidden="true" className="size-4 text-amber-700" />
-                  <h3 className="text-sm font-semibold text-zinc-950">{asset.title}</h3>
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <FileText aria-hidden="true" className="size-10 text-zinc-400" />
+                  <div>
+                    <p className="text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
+                      {asset.kind === "manual" ? "Guia / manual" : "Documento"}
+                    </p>
+                    <h3 className="mt-1 line-clamp-3 text-sm font-semibold text-zinc-950">
+                      {asset.title}
+                    </h3>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="grid grid-cols-2 gap-1 border-t border-zinc-200 pt-2">
                   <Button
                     type="button"
                     variant="ghost"
-                    className="min-h-11 px-3"
+                    className="min-h-11 px-2 text-xs"
                     onClick={() => void open(asset)}
                   >
                     Abrir
@@ -341,7 +364,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: 
                   <Button
                     type="button"
                     variant="ghost"
-                    className="min-h-11 px-3"
+                    className="min-h-11 px-2 text-xs"
                     onClick={() => void download(asset)}
                   >
                     <Download aria-hidden="true" className="size-4" />
@@ -354,7 +377,7 @@ export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: 
         </section>
       )}
 
-      {songsWithScores.length === 0 && documents.length === 0 && (
+      {!viewerOnly && showSongScores && songsWithScores.length === 0 && documents.length === 0 && (
         <p className="rounded-xl border border-dashed border-zinc-300 bg-white p-5 text-sm text-zinc-600">
           Nenhuma partitura ou material foi publicado ainda.
         </p>
@@ -363,22 +386,22 @@ export function ChoristerScoresTab({ event, onOpen, onDownload, initialAsset }: 
       {viewerAsset && (
         <section
           aria-label={`Visualizador de ${viewerAsset.title}`}
-          className="rounded-xl border border-amber-200 bg-white p-3 shadow-sm"
+          className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm"
         >
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="truncate font-display text-lg font-semibold text-zinc-950">
-              {viewerAsset.title}
-            </h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="min-h-11 min-w-11"
-              aria-label="Fechar visualizador"
-              onClick={closeViewer}
-            >
-              <X aria-hidden="true" className="size-4" />
-            </Button>
+            <h2 className="truncate text-lg font-semibold text-zinc-950">{viewerAsset.title}</h2>
+            {!viewerOnly && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="min-h-11 min-w-11"
+                aria-label="Fechar visualizador"
+                onClick={closeViewer}
+              >
+                <X aria-hidden="true" className="size-4" />
+              </Button>
+            )}
           </div>
           {viewerStatus === "ready" && (
             <iframe

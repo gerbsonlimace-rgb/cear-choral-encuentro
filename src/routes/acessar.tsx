@@ -8,6 +8,8 @@ export const Route = createFileRoute("/acessar")({
     meta: [
       { title: "Acessar portal | Encontro de Coros" },
       { name: "robots", content: "noindex, nofollow" },
+      { name: "theme-color", content: "#ffffff" },
+      { name: "color-scheme", content: "light" },
     ],
   }),
 });

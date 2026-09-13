@@ -130,7 +130,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+        name: "Maria",
       }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledOnce();
@@ -174,7 +174,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+        name: "Maria",
       }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledTimes(2);
@@ -209,7 +209,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "II Encontro de Coros Diocesanos e Litúrgicos",
+        name: "Maria",
       }),
     ).toBeInTheDocument();
     expect(loadFeed).toHaveBeenCalledTimes(2);
@@ -258,9 +258,9 @@ describe("ParticipantPortalPage", () => {
     const loadFeed = vi.fn().mockResolvedValueOnce(expiredFeed).mockResolvedValueOnce(renewedFeed);
     const { user } = setup({ loadFeed });
 
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
-    await user.click(screen.getByRole("button", { name: "Partituras" }));
-    await user.click(screen.getByRole("button", { name: "Abrir" }));
+    await screen.findByRole("heading", { name: "Maria" });
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
 
     expect(await screen.findByTitle("PDF Partitura")).toHaveAttribute(
       "src",
@@ -274,7 +274,7 @@ describe("ParticipantPortalPage", () => {
     const signOut = deferred<{ error: null }>();
     const onSignedOut = vi.fn();
     const { user } = setup({ signOut: () => signOut.promise, onSignedOut });
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
@@ -294,7 +294,7 @@ describe("ParticipantPortalPage", () => {
 
   it("shows every available safe identification, registration, and payment field", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
@@ -372,7 +372,7 @@ describe("ParticipantPortalPage", () => {
       },
     };
     const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(sparseView) });
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "João" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
@@ -406,7 +406,7 @@ describe("ParticipantPortalPage", () => {
 
   it("replaces a failed signed photo with the neutral avatar fallback", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     fireEvent.error(within(profile).getByRole("img", { name: "Foto de Maria da Silva" }));
@@ -419,29 +419,29 @@ describe("ParticipantPortalPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("replaces participant placeholders with the approved four-tab Coralista navigation", async () => {
+  it("replaces participant placeholders with the white five-tab Coralista navigation", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
 
     const navigation = screen.getByRole("navigation", { name: "Navegação principal do app" });
     expect(
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Cantos", "Partituras", "Meu Perfil"]);
+    ).toEqual(["Home", "Cantos", "Documentos", "Guia", "Meu Perfil"]);
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cantos" }));
-    expect(screen.getByRole("heading", { name: "Cantos" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Partituras" }));
-    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: publishedFeed.event.name })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Documentos" }));
+    expect(screen.getByRole("heading", { name: "Documentos" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
   });
 
   it("opens a functional voluntary password-change dialog from the header", async () => {
     const { user, getSignedInEmail, reauthenticateForPasswordChange, updatePassword } = setup();
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
 
     expect(screen.queryByText(/obrigat[oó]ri[ao].*senha/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /recuperar|esqueci/i })).not.toBeInTheDocument();
@@ -471,7 +471,7 @@ describe("ParticipantPortalPage", () => {
       .mockRejectedValueOnce(new Error("PRIVATE_PDF_DETAIL"))
       .mockResolvedValueOnce(undefined);
     const { user } = setup({ downloadReceipt });
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     const downloadButton = within(profile).getByRole("button", {
@@ -503,7 +503,7 @@ describe("ParticipantPortalPage", () => {
       payment: { ...fullView.payment, ...paymentOverride },
     };
     const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(incompleteView) });
-    await screen.findByRole("heading", { name: "II Encontro de Coros Diocesanos e Litúrgicos" });
+    await screen.findByRole("heading", { name: "Maria" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     expect(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ChoristerPortalCollectionSchema,
   ChoristerPortalFeedSchema,
   isSignedUrlExpired,
   resolveChoristerTab,
@@ -98,7 +99,10 @@ describe("chorister portal feed domain", () => {
             {
               ...feed.event.songs[0],
               audios: [
-                { ...feed.event.songs[0].audios[0], signedUrl: "http://assets.example.test/audio.mp3" },
+                {
+                  ...feed.event.songs[0].audios[0],
+                  signedUrl: "http://assets.example.test/audio.mp3",
+                },
               ],
             },
           ],
@@ -114,18 +118,13 @@ describe("chorister portal feed domain", () => {
           songs: [
             {
               ...feed.event.songs[0],
-              audios: [
-                { ...feed.event.songs[0].audios[0], expiresAt: "2020-01-01T00:00:00.000Z" },
-              ],
+              audios: [{ ...feed.event.songs[0].audios[0], expiresAt: "2020-01-01T00:00:00.000Z" }],
             },
           ],
         },
       },
     ],
-    [
-      "an invalid event identifier",
-      { ...feed, event: { ...feed.event, id: "any-event-id" } },
-    ],
+    ["an invalid event identifier", { ...feed, event: { ...feed.event, id: "any-event-id" } }],
   ])("rejects %s before it reaches the UI", (_label, value) => {
     expect(() => ChoristerPortalFeedSchema.parse(value)).toThrow();
   });
@@ -134,7 +133,29 @@ describe("chorister portal feed domain", () => {
     expect(() => ChoristerPortalFeedSchema.parse({ status: "draft" })).toThrow();
   });
 
-  it.each(["home", "cantos", "partituras", "perfil"] as const)(
+  it("keeps each celebration and its media isolated in a multi-event collection", () => {
+    const second = {
+      ...feed.event,
+      id: "77777777-7777-4777-8777-777777777777",
+      name: "Celebração de encerramento",
+      songs: [{ ...feed.event.songs[1], id: "88888888-8888-4888-8888-888888888888" }],
+      documents: [],
+    };
+
+    const parsed = ChoristerPortalCollectionSchema.parse({
+      status: "published",
+      events: [feed.event, second],
+    });
+
+    expect(parsed.events.map((event) => event.name)).toEqual([
+      "II Encontro de Coros",
+      "Celebração de encerramento",
+    ]);
+    expect(parsed.events[0].songs[0].audios).toHaveLength(1);
+    expect(parsed.events[1].songs[0].audios).toHaveLength(0);
+  });
+
+  it.each(["home", "cantos", "documentos", "guia", "perfil"] as const)(
     "preserves the %s tab value",
     (tab) => {
       expect(resolveChoristerTab(tab)).toBe(tab);
@@ -143,6 +164,7 @@ describe("chorister portal feed domain", () => {
 
   it("uses a safe home tab for hostile route state", () => {
     expect(resolveChoristerTab("admin")).toBe("home");
+    expect(resolveChoristerTab("partituras")).toBe("home");
     expect(resolveChoristerTab(undefined)).toBe("home");
   });
 
@@ -152,15 +174,13 @@ describe("chorister portal feed domain", () => {
     expect(searchChoristerSongs(parsed.event.songs, "RESPONSORIAL")).toEqual([
       parsed.event.songs[1],
     ]);
-    expect(searchChoristerSongs(parsed.event.songs, "entrada")).toEqual([
-      parsed.event.songs[0],
-    ]);
+    expect(searchChoristerSongs(parsed.event.songs, "entrada")).toEqual([parsed.event.songs[0]]);
   });
 
   it("treats malformed and elapsed signed URLs as expired", () => {
-    expect(isSignedUrlExpired("2026-11-20T12:00:00.000Z", new Date("2026-11-20T12:00:00.000Z"))).toBe(
-      true,
-    );
+    expect(
+      isSignedUrlExpired("2026-11-20T12:00:00.000Z", new Date("2026-11-20T12:00:00.000Z")),
+    ).toBe(true);
     expect(isSignedUrlExpired("not-a-date", new Date("2026-01-01T00:00:00.000Z"))).toBe(true);
     expect(isSignedUrlExpired(future, new Date("2026-01-01T00:00:00.000Z"))).toBe(false);
   });
