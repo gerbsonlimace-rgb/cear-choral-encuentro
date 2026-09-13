@@ -16,6 +16,7 @@
 - Put organisation and institutional support cards on the same line under one label.
 - Make the organisation and institutional support cards horizontal strips, each half of the full row.
 - Rework /admin/inscricoes with financial summary (received, pending, total expected — overall and per diocese) and participant avatars.
+- Make the administrative summary the `/admin` home page and correct its fixed-navigation layout.
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
