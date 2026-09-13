@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { deriveRegistrationFinancialState } from "../registration/registration-financial-state.domain";
 
 export type ComplementPaymentStatus = "creating" | "pending" | "paid" | "failed" | "expired";
 
@@ -102,13 +103,25 @@ export function calculateComplementState(
   if (input.paymentStatus !== "paid") {
     return { eligible: false, reason: "awaiting_participant_payment" };
   }
-  if (input.confirmedComplementCents === totalCents) return { eligible: false, reason: "settled" };
+
+  const financialState = deriveRegistrationFinancialState({
+    paymentStatus: "paid",
+    initialAmountCents: input.registrationPriceCents,
+    pricingType: input.pricingType,
+    standardPriceCents: input.standardPriceCents,
+    registrationPriceCents: input.registrationPriceCents,
+    confirmedComplementCents: input.confirmedComplementCents,
+  });
+  if (financialState.status === "legacy") {
+    return { eligible: false, reason: "missing_snapshot" };
+  }
+  if (financialState.status === "paid") return { eligible: false, reason: "settled" };
 
   return {
     eligible: true,
     totalCents,
     paidCents: input.confirmedComplementCents,
-    balanceCents: totalCents - input.confirmedComplementCents,
+    balanceCents: financialState.pendingCents,
     ...(input.openPayment?.status === "creating" || input.openPayment?.status === "pending"
       ? { openPayment: input.openPayment }
       : {}),

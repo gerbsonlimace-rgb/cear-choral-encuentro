@@ -88,6 +88,17 @@ describe("complement balance", () => {
       }),
     ).toMatchObject({ totalCents: 20_000, paidCents: 2_000, balanceCents: 18_000, openPayment });
   });
+
+  it("preserves a one-cent complement balance through the shared financial state", () => {
+    expect(
+      calculateComplementState({ ...paidPromotionalRegistration, confirmedComplementCents: 19_999 }),
+    ).toEqual({
+      eligible: true,
+      totalCents: 20_000,
+      paidCents: 19_999,
+      balanceCents: 1,
+    });
+  });
 });
 
 describe("complement checkout and presentation", () => {
