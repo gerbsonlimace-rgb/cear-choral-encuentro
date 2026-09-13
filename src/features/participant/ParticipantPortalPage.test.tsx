@@ -143,7 +143,7 @@ describe("ParticipantPortalPage", () => {
     );
 
     await screen.findByRole("heading", { name: "Maria" });
-    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     expect(screen.getByText(publishedFeed.event.name)).toBeInTheDocument();
     expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
   });
@@ -292,7 +292,7 @@ describe("ParticipantPortalPage", () => {
     const { user } = setup({ loadFeed });
 
     await screen.findByRole("heading", { name: "Maria" });
-    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
 
     expect(await screen.findByTitle("PDF Partitura")).toHaveAttribute(
@@ -461,14 +461,14 @@ describe("ParticipantPortalPage", () => {
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Cantos", "Documentos", "Guia", "Meu Perfil"]);
+    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos", "Meu Perfil"]);
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Documentos" }));
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Guia" }));
+    await user.click(screen.getByRole("button", { name: "Programação" }));
     expect(screen.getByRole("heading", { name: "Guia do evento" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
