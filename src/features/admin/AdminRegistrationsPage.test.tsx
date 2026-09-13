@@ -193,12 +193,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).toHaveBeenCalledOnce();
   });
 
-  it("links to choir and event-value administration", async () => {
+  it("links separately to choir and event-value administration", async () => {
     setup();
 
-    expect(await screen.findByRole("link", { name: "Coros e valores" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Coros" })).toHaveAttribute(
       "href",
       "/admin/coros",
+    );
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/admin/configuracoes",
     );
   });
 

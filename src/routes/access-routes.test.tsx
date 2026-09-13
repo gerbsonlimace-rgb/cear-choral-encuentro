@@ -13,6 +13,11 @@ const server = vi.hoisted(() => ({
 
 vi.mock("@/lib/regent.functions", () => ({
   getRegentAccess: server.getRegentAccess,
+  getRegentPortalBootstrap: async () => ({
+    access: await server.getRegentAccess(),
+    participants: [],
+    payment: null,
+  }),
 }));
 
 vi.mock("@/features/access/UnifiedPortalLoginPage", () => ({
