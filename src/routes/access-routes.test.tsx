@@ -69,6 +69,10 @@ vi.mock("@/features/admin/AdminChoirsPage", () => ({
   ),
 }));
 
+vi.mock("@/features/admin/AdminSummaryPage", () => ({
+  AdminSummaryPage: () => <h1>Authorized admin summary</h1>,
+}));
+
 vi.mock("@/features/regent/RegentPasswordChangePage", () => ({
   RegentPasswordChangePage: ({ onLoginRequired }: { onLoginRequired: () => void }) => (
     <button onClick={onLoginRequired}>Require regent login</button>
@@ -152,6 +156,12 @@ describe("unified portal routes", () => {
       expect(history.length).toBe(1);
     },
   );
+
+  it("redirects the administrative home to the summary", async () => {
+    const { router } = await renderRoute("/admin");
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/resumo"));
+  });
 
   it.each([
     ["/admin/inscricoes", "Sign out from registrations"],
