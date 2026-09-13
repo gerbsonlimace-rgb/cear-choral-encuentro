@@ -73,6 +73,14 @@ vi.mock("@/features/admin/AdminSummaryPage", () => ({
   AdminSummaryPage: () => <h1>Authorized admin summary</h1>,
 }));
 
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test" } } }),
+    },
+  },
+}));
+
 vi.mock("@/features/regent/RegentPasswordChangePage", () => ({
   RegentPasswordChangePage: ({ onLoginRequired }: { onLoginRequired: () => void }) => (
     <button onClick={onLoginRequired}>Require regent login</button>
