@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,17 +12,54 @@ describe("AdminNavigation", () => {
 
     const link = screen.getByRole("link", { name: "Coros" });
     expect(link).toHaveAttribute("href", "/admin/coros");
+    expect(screen.getByRole("link", { name: "Inscrições" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("href", "/admin/resumo");
+    expect(screen.getByRole("link", { name: "Documentos" })).toHaveAttribute(
+      "href",
+      "/admin/documentos",
+    );
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/admin/configuracoes",
+    );
+    expect(screen.getByRole("link", { name: "Atividades" })).toHaveAttribute(
+      "href",
+      "/admin/atividades",
+    );
+    expect(screen.getByRole("link", { name: "Integrações" })).toHaveAttribute(
+      "href",
+      "/admin/coroapp",
+    );
+    expect(
+      screen.getByRole("navigation", { name: "Navegação administrativa" }).querySelectorAll("a"),
+    ).toHaveLength(8);
+    expect(screen.getByTestId("admin-topbar")).toHaveClass("bg-brand-ink");
+    expect(screen.getByTestId("admin-sidebar")).toHaveClass("md:flex");
+    expect(screen.getAllByTestId("mobile-admin-navigation-item")).toHaveLength(4);
     await user.click(link);
 
     expect(navigateTo).toHaveBeenCalledExactlyOnceWith("/admin/coros");
-    expect(screen.queryByRole("link", { name: "Área dos regentes" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Integrações" })).toBeInTheDocument();
   });
 
-  it("shows the approved seven menus in order and marks Programação", () => {
-    render(<AdminNavigation current="activities" />);
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Resumo", "Inscrições", "Coros", "Programação", "Patrocinadores", "Documentos", "Configurações",
-    ]);
-    expect(screen.getByRole("link", { name: "Programação" })).toHaveAttribute("aria-current", "page");
+  it("groups secondary administration destinations under Mais", async () => {
+    const navigateTo = vi.fn();
+    const user = userEvent.setup();
+    render(<AdminNavigation current="summary" navigateTo={navigateTo} />);
+
+    await user.click(screen.getByRole("button", { name: "Mais opções administrativas" }));
+    const sheet = screen.getByRole("dialog", { name: "Mais opções de Administração" });
+    await user.click(within(sheet).getByRole("link", { name: "Documentos" }));
+
+    expect(navigateTo).toHaveBeenCalledExactlyOnceWith("/admin/documentos");
+  });
+
+  it("marks the summary as the current administrative section", () => {
+    render(<AdminNavigation current="summary" />);
+
+    expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
   });
 });

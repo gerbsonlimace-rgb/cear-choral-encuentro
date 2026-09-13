@@ -57,6 +57,34 @@ function setup(
 }
 
 describe("RegentPortalPage", () => {
+  it("uses the shared black-and-gold shell across desktop and mobile navigation", async () => {
+    const { user } = setup({
+      initialData: {
+        access: {
+          status: "authorized",
+          role: "regent",
+          choirId: choir.id,
+          choirName: choir.name,
+          name: "Ana Regente",
+          email: "ana@example.com",
+        },
+        choirs: [],
+        selectedChoirId: choir.id,
+        summary,
+        participants: emptyPage,
+      },
+    });
+
+    expect(screen.getByTestId("internal-topbar")).toHaveClass("bg-brand-ink");
+    const navigation = screen.getByRole("navigation", { name: "Navegação de Regente" });
+    expect(navigation).toHaveTextContent("Resumo");
+    expect(navigation).toHaveTextContent("Coralistas");
+    expect(navigation).toHaveTextContent("Meu perfil");
+    expect(screen.getAllByTestId("internal-mobile-primary-item")).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: "Coralistas" }));
+    expect(screen.getByRole("region", { name: "Participantes do coro" })).toHaveClass("block");
+  });
+
   it("renders the aggregated initial payload without repeating portal reads", async () => {
     const loadParticipants = vi.fn();
     const loadSummary = vi.fn();
@@ -99,7 +127,7 @@ describe("RegentPortalPage", () => {
     expect(screen.getByText("Saldo a receber")).toBeInTheDocument();
     expect(screen.getByText("R$ 310,00")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Coro" })).not.toBeInTheDocument();
-    expect(screen.getByText("Ana Regente")).toBeInTheDocument();
+    expect(screen.getAllByText("Ana Regente")).toHaveLength(2);
     expect(screen.getByText("ana@example.com")).toBeInTheDocument();
     expect(screen.getByText(`Coro ativo: ${choir.name}`)).toBeInTheDocument();
   });
@@ -109,7 +137,7 @@ describe("RegentPortalPage", () => {
 
     const selector = await screen.findByRole("combobox", { name: "Coro" });
     expect(selector).toHaveTextContent("Coro Diocesano de Quixadá");
-    expect(screen.getByText("Administrador · admin@example.com")).toBeInTheDocument();
+    expect(screen.getAllByText("Administrador · admin@example.com")).toHaveLength(2);
     expect(screen.getByText(`Coro ativo: ${choir.name}`)).toBeInTheDocument();
     await waitFor(() =>
       expect(props.loadParticipants).toHaveBeenCalledWith({

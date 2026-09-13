@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
 import { isSignedUrlExpired } from "@/features/chorister-app/choristerApp.domain";
 import type {
   ChoristerPortalCollection,
@@ -55,12 +56,17 @@ export type ChoristerAppShellProps = {
 };
 
 const tabs = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "guia", label: "Programação", icon: CalendarDays },
-  { id: "cantos", label: "Kit Ensaio", icon: Music2 },
-  { id: "documentos", label: "Documentos", icon: Files },
-  { id: "perfil", label: "Meu Perfil", icon: UserRound },
-] as const satisfies ReadonlyArray<{ id: ChoristerTab; label: string; icon: typeof Home }>;
+  { id: "home", label: "Início", description: "Visão geral do seu encontro", icon: Home },
+  { id: "cantos", label: "Cantos", description: "Áudios, letras e partituras", icon: Music2 },
+  { id: "documentos", label: "Documentos", description: "Guias e materiais publicados", icon: Files },
+  { id: "guia", label: "Programação", description: "Agenda completa do encontro", icon: CalendarDays },
+  { id: "perfil", label: "Meu Perfil", description: "Conta, acesso e segurança", icon: UserRound },
+] as const satisfies ReadonlyArray<{
+  id: ChoristerTab;
+  label: string;
+  description: string;
+  icon: typeof Home;
+}>;
 
 function isIntentionalPlaybackCancellation(error: unknown) {
   return (
@@ -406,36 +412,15 @@ export function ChoristerAppShell({
   }
 
   return (
-    <div className="chorister-app min-h-svh bg-white font-body text-zinc-950">
-      <div className="mx-auto min-h-svh max-w-6xl bg-white">
-        <nav
-          aria-label="Navegação principal do app"
-          className="fixed right-0 bottom-0 left-0 z-20 mx-auto flex max-w-6xl border-t border-zinc-200 bg-white px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:top-0 md:justify-center md:gap-2 md:border-t-0 md:border-b md:px-4 md:py-3"
-        >
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = selectedTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() => selectTab(tab.id)}
-                className={cn(
-                  "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 sm:text-xs md:min-h-11 md:w-36 md:flex-none md:flex-row md:gap-2 md:px-3 md:text-sm",
-                  active
-                    ? "bg-zinc-100 font-semibold text-zinc-950"
-                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900",
-                )}
-              >
-                <Icon aria-hidden="true" className="size-5 md:size-4" />
-                <span className="whitespace-nowrap">{tab.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <main className="mx-auto w-full max-w-4xl px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 md:pt-8 md:pb-12">
+    <InternalAppShell
+      moduleLabel="Participante"
+      navItems={tabs}
+      activeId={selectedTab}
+      onNavigate={(id) => selectTab(id as ChoristerTab)}
+      profileName={participant.identity.name}
+      profileDetail={participant.registration.choirName}
+    >
+      <div className="chorister-app mx-auto w-full max-w-5xl text-zinc-950">
           {contentStatus !== "ready" && (
             <aside
               role={contentStatus === "unavailable" ? "alert" : undefined}
@@ -722,8 +707,6 @@ export function ChoristerAppShell({
               onOpenAdmin={onOpenAdmin}
             />
           )}
-        </main>
-
         {selectedAudio && (
           <audio
             ref={audioRef}
@@ -756,6 +739,6 @@ export function ChoristerAppShell({
           />
         )}
       </div>
-    </div>
+    </InternalAppShell>
   );
 }

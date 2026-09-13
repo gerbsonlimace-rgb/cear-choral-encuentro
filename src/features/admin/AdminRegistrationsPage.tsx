@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Banknote, ChartNoAxesCombined, Clock3 } from "lucide-react";
+import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -291,19 +293,19 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
       label: "Recebido",
       value: money(summary.receivedCents),
       hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
-      valueClass: "text-primary",
+      icon: Banknote,
     },
     {
       label: "Pendente",
       value: money(summary.pendingCents),
       hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
-      valueClass: "text-foreground",
+      icon: Clock3,
     },
     {
       label: "Total previsto",
       value: money(summary.expectedCents),
       hint: "Recebido + pendente + regente",
-      valueClass: "text-foreground",
+      icon: ChartNoAxesCombined,
     },
   ];
   const counts = [
@@ -318,17 +320,13 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
     <section aria-label="Visão geral das inscrições" className="space-y-4">
       <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
         {financial.map((metric) => (
-          <div key={metric.label} className="rounded-xl border bg-card p-4 sm:p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {metric.label}
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold tabular-nums sm:text-3xl ${metric.valueClass}`}
-            >
-              {metric.value}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
-          </div>
+          <InternalMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            detail={metric.hint}
+            icon={metric.icon}
+          />
         ))}
       </div>
       <div className="overflow-hidden rounded-xl border bg-card">
@@ -702,7 +700,7 @@ export function AdminRegistrationsPage({
             : "";
 
   return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>

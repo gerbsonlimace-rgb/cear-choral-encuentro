@@ -255,6 +255,69 @@
   font-family: var(--font-body);
 }
 
+/* Authenticated operating surfaces share a DetraPay-inspired light shell.
+ * Public pages intentionally remain on the event campaign system above. */
+.internal-app {
+  color-scheme: light;
+  --brand-ink: #18181b;
+  --brand-gold: #d5a900;
+  --brand-gold-soft: #fff8d6;
+  --background: #f7f7f5;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #18181b;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #27272a;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #fff8d6;
+  --accent-foreground: #18181b;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #d5a900;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.internal-app :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-body);
+}
+
+.internal-app :is(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+.internal-app :is(input, textarea, select) {
+  caret-color: var(--brand-gold);
+}
+
+.internal-app ::selection {
+  background: var(--brand-gold-soft);
+  color: var(--brand-ink);
+}
+
+.internal-app :is([data-slot="card"], table) {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .internal-app *,
+  .internal-app *::before,
+  .internal-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 @utility container-event {
   width: 100%;
   max-width: 80rem;
