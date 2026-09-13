@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { displayedQuoteSchema, type DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
+import {
+  displayedQuoteSchema,
+  raffleChoiceSchema,
+  type DisplayedQuote,
+} from "@/features/choirs/choir-pricing.domain";
 
 function isValidCpf(value: string): boolean {
   if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
@@ -86,8 +90,6 @@ export type RegistrationAvailabilityInput = z.infer<typeof registrationAvailabil
 
 export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 
-
-
 export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BYTES / 3) * 4;
 
@@ -114,6 +116,7 @@ export const registrationSchema = z
     choirId: z.string().uuid("Selecione um coro válido."),
     voicePart: voicePartSchema,
     photo: registrationPhotoSchema,
+    raffleChoice: raffleChoiceSchema,
     displayedQuote: displayedQuoteSchema,
   })
   .strict()
@@ -127,6 +130,19 @@ export const registrationSchema = z
         code: "custom",
         path: ["displayedQuote"],
         message: "O valor exibido para a inscrição é inválido.",
+      });
+    }
+
+    const choiceMatchesQuote =
+      value.raffleChoice === "participate"
+        ? value.displayedQuote.pricingType === "promotional"
+        : value.displayedQuote.pricingType === "standard" &&
+          value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents;
+    if (!choiceMatchesQuote) {
+      context.addIssue({
+        code: "custom",
+        path: ["displayedQuote"],
+        message: "A escolha de rifas não corresponde ao valor exibido para a inscrição.",
       });
     }
   });

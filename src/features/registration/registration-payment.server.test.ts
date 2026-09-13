@@ -85,9 +85,15 @@ const baseInput: RegistrationInput = {
   choirId,
   voicePart: "soprano",
   photo: registrationPhoto,
+  raffleChoice: "participate",
   displayedQuote: trustedSelection.quote,
 };
-const { photo: _photo, ...baseRegistrationInput } = baseInput;
+const {
+  photo: _photo,
+  raffleChoice: _raffleChoice,
+  displayedQuote: _displayedQuote,
+  ...baseRegistrationInput
+} = baseInput;
 
 const lookup: PaymentLookup = {
   orderNsu: fixedOrderNsu,
@@ -327,6 +333,68 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("uses the trusted full-price quote when the participant opts out of raffles", async () => {
+    const fullPriceInput: RegistrationInput = {
+      ...baseInput,
+      raffleChoice: "full_price",
+      displayedQuote: {
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+      },
+    };
+
+    await fixture.service.startCheckout(fullPriceInput);
+
+    expect(fixture.repository.createPending).toHaveBeenCalledWith({
+      ...baseRegistrationInput,
+      orderNsu: fixedOrderNsu,
+      amountCents: 30000,
+      choirName: "Coro Diocesano de Quixadá",
+      photoPath: registrationPhotoPath,
+      pricingType: "standard",
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
+    });
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ quantity: 1, price: 30000, description: "Inscrição — II Encontro de Coros" }],
+      }),
+    );
+  });
+
+  it("uses the trusted promotional quote only when the participant joins raffles", async () => {
+    await fixture.service.startCheckout(baseInput);
+
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 10000,
+        pricingType: "promotional",
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+      }),
+    );
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
+      }),
+    );
+  });
+
+  it("rejects an incoherent displayed quote before uploading or persisting", async () => {
+    await expect(
+      fixture.service.startCheckout({
+        ...baseInput,
+        raffleChoice: "full_price",
+        displayedQuote: trustedSelection.quote,
+      }),
+    ).rejects.toThrow("configuração de preços mudou");
+
+    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
+    expect(fixture.repository.createPending).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
   it("uploads the participant photo and stores only its private path", async () => {

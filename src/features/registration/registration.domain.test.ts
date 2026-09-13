@@ -24,6 +24,7 @@ const baseInput = {
   choirId: "11111111-1111-4111-8111-111111111111",
   voicePart: "soprano" as const,
   photo: { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" },
+  raffleChoice: "full_price" as const,
   displayedQuote: standardQuote,
 };
 
@@ -68,6 +69,36 @@ describe("registration domain", () => {
       registrationSchema.safeParse({
         ...baseInput,
         displayedQuote: { ...standardQuote, registrationPriceCents: 10000 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires the displayed quote to match the raffle choice", () => {
+    const promotionalQuote = {
+      pricingType: "promotional" as const,
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+    };
+
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        raffleChoice: "participate",
+        displayedQuote: promotionalQuote,
+      }).success,
+    ).toBe(true);
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        raffleChoice: "participate",
+        displayedQuote: standardQuote,
+      }).success,
+    ).toBe(false);
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        raffleChoice: "full_price",
+        displayedQuote: promotionalQuote,
       }).success,
     ).toBe(false);
   });

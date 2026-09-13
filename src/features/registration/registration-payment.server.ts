@@ -3,6 +3,7 @@ import {
   getChoirPricingService,
   type ResolvedChoirSelection,
 } from "@/features/choirs/choir-pricing.server";
+import { applyRaffleChoice } from "@/features/choirs/choir-pricing.domain";
 import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
 import {
   createInfinitePayClient,
@@ -65,7 +66,7 @@ export type RegistrationResumeResult =
 export type RegistrationRepository = {
   findByCpf?: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
   createPending(
-    input: Omit<RegistrationInput, "photo"> & {
+    input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
       orderNsu: string;
       amountCents: number;
       choirName: string;
@@ -124,18 +125,24 @@ export function createRegistrationPaymentService(deps: {
       if (existing) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
 
       const selection = await deps.resolveChoirSelection(input.choirId);
+      const appliedQuote = applyRaffleChoice(selection.quote, input.raffleChoice);
       const quoteChanged =
-        input.displayedQuote.pricingType !== selection.quote.pricingType ||
-        input.displayedQuote.standardPriceCents !== selection.quote.standardPriceCents ||
-        input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents;
+        input.displayedQuote.pricingType !== appliedQuote.pricingType ||
+        input.displayedQuote.standardPriceCents !== appliedQuote.standardPriceCents ||
+        input.displayedQuote.registrationPriceCents !== appliedQuote.registrationPriceCents;
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
 
       const orderNsu = deps.randomUUID();
-      const amountCents = calculateOrderAmountCents(input, selection.quote);
+      const amountCents = calculateOrderAmountCents(input, appliedQuote);
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
-      const { photo: _photo, ...registrationData } = input;
+      const {
+        photo: _photo,
+        raffleChoice: _raffleChoice,
+        displayedQuote: _displayedQuote,
+        ...registrationData
+      } = input;
 
       try {
         await deps.repository.createPending({
@@ -144,9 +151,9 @@ export function createRegistrationPaymentService(deps: {
           amountCents,
           choirName: selection.choir.name,
           photoPath,
-          pricingType: selection.quote.pricingType,
-          standardPriceCents: selection.quote.standardPriceCents,
-          registrationPriceCents: selection.quote.registrationPriceCents,
+          pricingType: appliedQuote.pricingType,
+          standardPriceCents: appliedQuote.standardPriceCents,
+          registrationPriceCents: appliedQuote.registrationPriceCents,
         });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
@@ -157,7 +164,7 @@ export function createRegistrationPaymentService(deps: {
       try {
         checkout = await deps.infinitePay.createCheckout({
           orderNsu,
-          items: buildCheckoutItems(input, selection.quote),
+          items: buildCheckoutItems(input, appliedQuote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
         await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
