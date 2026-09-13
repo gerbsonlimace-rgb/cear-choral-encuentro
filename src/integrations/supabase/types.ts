@@ -71,6 +71,122 @@ export type Database = {
         }
         Relationships: []
       }
+      choir_regents: {
+        Row: {
+          choir_id: string
+          email: string
+          granted_at: string
+          granted_by: string
+          id: string
+          name: string
+          password_change_candidate_fingerprint: string | null
+          password_change_operation_kind: string | null
+          password_change_operation_previous_required: boolean | null
+          password_change_operation_stage: string | null
+          password_change_required: boolean
+          password_change_retry_token_hash: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string
+        }
+        Insert: {
+          choir_id: string
+          email: string
+          granted_at?: string
+          granted_by: string
+          id?: string
+          name: string
+          password_change_candidate_fingerprint?: string | null
+          password_change_operation_kind?: string | null
+          password_change_operation_previous_required?: boolean | null
+          password_change_operation_stage?: string | null
+          password_change_required?: boolean
+          password_change_retry_token_hash?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id: string
+        }
+        Update: {
+          choir_id?: string
+          email?: string
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          name?: string
+          password_change_candidate_fingerprint?: string | null
+          password_change_operation_kind?: string | null
+          password_change_operation_previous_required?: boolean | null
+          password_change_operation_stage?: string | null
+          password_change_required?: boolean
+          password_change_retry_token_hash?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "choir_regents_choir_id_fkey"
+            columns: ["choir_id"]
+            isOneToOne: false
+            referencedRelation: "choirs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      choirs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          uses_promotional_price: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          uses_promotional_price?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          uses_promotional_price?: boolean
+        }
+        Relationships: []
+      }
+      coroapp_event_sources: {
+        Row: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          event_id?: string
+          event_name?: string
+          public_url?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       event_activities: {
         Row: {
           activity_date: string
@@ -198,92 +314,48 @@ export type Database = {
           },
         ]
       }
-      choir_regents: {
+      event_documents: {
         Row: {
-          choir_id: string
-          email: string
-          granted_at: string
-          granted_by: string
-          id: string
-          name: string
-          password_change_candidate_fingerprint: string | null
-          password_change_operation_kind: string | null
-          password_change_operation_previous_required: boolean | null
-          password_change_operation_stage: string | null
-          password_change_required: boolean
-          password_change_retry_token_hash: string | null
-          revoked_at: string | null
-          revoked_by: string | null
-          user_id: string
-        }
-        Insert: {
-          choir_id: string
-          email: string
-          granted_at?: string
-          granted_by: string
-          id?: string
-          name: string
-          password_change_candidate_fingerprint?: string | null
-          password_change_operation_kind?: string | null
-          password_change_operation_previous_required?: boolean | null
-          password_change_operation_stage?: string | null
-          password_change_required?: boolean
-          password_change_retry_token_hash?: string | null
-          revoked_at?: string | null
-          revoked_by?: string | null
-          user_id: string
-        }
-        Update: {
-          choir_id?: string
-          email?: string
-          granted_at?: string
-          granted_by?: string
-          id?: string
-          name?: string
-          password_change_candidate_fingerprint?: string | null
-          password_change_operation_kind?: string | null
-          password_change_operation_previous_required?: boolean | null
-          password_change_operation_stage?: string | null
-          password_change_required?: boolean
-          password_change_retry_token_hash?: string | null
-          revoked_at?: string | null
-          revoked_by?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "choir_regents_choir_id_fkey"
-            columns: ["choir_id"]
-            isOneToOne: false
-            referencedRelation: "choirs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      choirs: {
-        Row: {
+          category: string
           created_at: string
+          created_by: string | null
+          event_id: string
           id: string
-          is_active: boolean
-          name: string
+          mime_type: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+          title: string
           updated_at: string
-          uses_promotional_price: boolean
+          updated_by: string | null
         }
         Insert: {
+          category: string
           created_at?: string
+          created_by?: string | null
+          event_id: string
           id?: string
-          is_active?: boolean
-          name: string
+          mime_type?: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+          title: string
           updated_at?: string
-          uses_promotional_price?: boolean
+          updated_by?: string | null
         }
         Update: {
+          category?: string
           created_at?: string
+          created_by?: string | null
+          event_id?: string
           id?: string
-          is_active?: boolean
-          name?: string
+          mime_type?: string
+          original_file_name?: string
+          size_bytes?: number
+          storage_path?: string
+          title?: string
           updated_at?: string
-          uses_promotional_price?: boolean
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -635,28 +707,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      increment_event_activity_qr_version: {
-        Args: { p_activity_id: string }
-        Returns: Database["public"]["Tables"]["event_activities"]["Row"]
-      }
-      record_event_activity_attendance: {
-        Args: {
-          p_accuracy_meters?: number | null
-          p_activity_id: string
-          p_latitude?: number | null
-          p_longitude?: number | null
-          p_participant_account_id: string
-          p_position_collected_at?: string | null
-          p_qr_version: number
-          p_registration_id: string
-        }
-        Returns: {
-          activity_title: string
-          checked_in_at: string
-          distance_meters: number | null
-          status: string
-        }[]
-      }
       claim_choir_regent_admin_password_candidate_operation: {
         Args: {
           p_candidate_fingerprint: string
@@ -688,6 +738,10 @@ export type Database = {
         Args: { p_claim_id: string; p_registration_id: string }
         Returns: boolean
       }
+      delete_admin_registration: {
+        Args: { p_admin_user_id: string; p_registration_id: string }
+        Returns: string
+      }
       finish_choir_regent_password_operation: {
         Args: {
           p_membership_id: string
@@ -696,6 +750,35 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      increment_event_activity_qr_version: {
+        Args: { p_activity_id: string }
+        Returns: {
+          activity_date: string
+          category: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          qr_version: number
+          radius_meters: number | null
+          requires_qr: boolean
+          sort_order: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+          verify_location: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_activities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mark_choir_regent_admin_password_operation_retryable: {
         Args: {
@@ -714,6 +797,24 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      record_event_activity_attendance: {
+        Args: {
+          p_accuracy_meters?: number
+          p_activity_id: string
+          p_latitude?: number
+          p_longitude?: number
+          p_participant_account_id: string
+          p_position_collected_at?: string
+          p_qr_version: number
+          p_registration_id: string
+        }
+        Returns: {
+          activity_title: string
+          checked_in_at: string
+          distance_meters: number
+          status: string
+        }[]
       }
       release_choir_regent_admin_password_candidate_operation: {
         Args: {
@@ -773,6 +874,23 @@ export type Database = {
           to: "choir_regents"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      replace_coroapp_event_sources: {
+        Args: { p_admin_user_id: string; p_sources: Json }
+        Returns: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "coroapp_event_sources"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       verify_choir_regent_password_operation_candidate: {
