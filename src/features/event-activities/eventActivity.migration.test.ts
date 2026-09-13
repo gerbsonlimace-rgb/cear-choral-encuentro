@@ -63,4 +63,29 @@ describe("event activity attendance migration", () => {
       expect(migration).toContain(`'${category}'`);
     }
   });
+
+  it("keeps QR regeneration and attendance recording inside server-only RPCs", () => {
+    expect(migration).toContain("create or replace function public.increment_event_activity_qr_version");
+    expect(migration).toContain("create or replace function public.record_event_activity_attendance");
+    expect(migration).toContain("security definer");
+    expect(migration).toContain("set search_path = public, pg_temp");
+    expect(migration).toContain("grant execute on function public.increment_event_activity_qr_version");
+    expect(migration).toContain("grant execute on function public.record_event_activity_attendance");
+    expect(migration).toContain("to service_role");
+    expect(migration).toContain("from public, anon, authenticated");
+  });
+
+  it("revalidates QR, participant, window and optional geofence atomically", () => {
+    expect(migration).toContain("activity.requires_qr = false");
+    expect(migration).toContain("activity.qr_version <> p_qr_version");
+    expect(migration).toContain("participant.access_status <> 'active'");
+    expect(migration).toContain("registration.payment_status <> 'paid'");
+    expect(migration).toContain("interval '30 minutes'");
+    expect(migration).toContain("interval '2 minutes'");
+    expect(migration).toContain("interval '30 seconds'");
+    expect(migration).toContain("p_accuracy_meters > 100");
+    expect(migration).toContain("activity.radius_meters");
+    expect(migration).toContain("on conflict (activity_id, participant_account_id) do nothing");
+    expect(migration).toContain("already_recorded");
+  });
 });
