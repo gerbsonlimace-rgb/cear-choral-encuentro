@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
+  ChoristerPortalCollectionState,
   ChoristerPortalFeed,
   ChoristerPortalFeedState,
 } from "@/features/chorister-app/choristerApp.domain";
@@ -115,6 +116,38 @@ function deferred<T>() {
 }
 
 describe("ParticipantPortalPage", () => {
+  it("renders every configured CoroApp event without mixing their repertoires", async () => {
+    const collection: ChoristerPortalCollectionState = {
+      status: "published",
+      events: [
+        publishedFeed.event,
+        {
+          ...publishedFeed.event,
+          id: "55555555-5555-4555-8555-555555555555",
+          name: "Solenidade de Cristo Rei",
+          date: "2026-11-22",
+          location: "Catedral Jesus, Maria e José",
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    render(
+      <ParticipantPortalPage
+        onMissingAccess={vi.fn()}
+        onSignedOut={vi.fn()}
+        checkAccess={async () => authorizedAccess}
+        loadRegistration={async () => fullView}
+        loadCollection={async () => collection}
+        signOut={async () => ({ error: null })}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: "Maria" });
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
+    expect(screen.getByText(publishedFeed.event.name)).toBeInTheDocument();
+    expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
+  });
+
   it("does not load the registration, feed, or protected data before participant authorization", async () => {
     const access = deferred<ParticipantAccess>();
     const loadRegistration = vi.fn().mockResolvedValue(fullView);
@@ -419,7 +452,7 @@ describe("ParticipantPortalPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("replaces participant placeholders with the white five-tab Coralista navigation", async () => {
+  it("replaces participant placeholders with the approved five-tab Coralista navigation", async () => {
     const { user } = setup();
     await screen.findByRole("heading", { name: "Maria" });
 
@@ -432,9 +465,11 @@ describe("ParticipantPortalPage", () => {
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cantos" }));
-    expect(screen.getByRole("heading", { name: publishedFeed.event.name })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Documentos" }));
-    expect(screen.getByRole("heading", { name: "Documentos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Guia" }));
+    expect(screen.getByRole("heading", { name: "Guia do evento" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
   });
