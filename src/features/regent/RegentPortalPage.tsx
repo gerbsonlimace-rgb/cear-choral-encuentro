@@ -20,9 +20,10 @@ import {
   type RegentPortalBootstrap,
 } from "@/lib/regent.functions";
 
-import { ComplementPaymentDialog } from "./ComplementPaymentDialog";
+import { BalancePaymentDialog } from "./BalancePaymentDialog";
 import {
   formatComplementCents,
+  type BalancePaymentTarget,
   type PortalParticipant,
   type PortalSummary,
 } from "./regent-payments.domain";
@@ -81,7 +82,8 @@ export function RegentPortalPage({
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [query, setQuery] = useState({ search: "", page: 1 });
-  const [paymentParticipant, setPaymentParticipant] = useState<PortalParticipant | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<BalancePaymentTarget | null>(null);
+  const [portalRefresh, setPortalRefresh] = useState(0);
   const skipInitialSummary = useRef(Boolean(initialData));
   const skipInitialList = useRef(Boolean(initialData));
 
@@ -128,7 +130,7 @@ export function RegentPortalPage({
     return () => {
       disposed = true;
     };
-  }, [access.role, loadSummary, ready, selectedChoirId]);
+  }, [access.role, loadSummary, portalRefresh, ready, selectedChoirId]);
 
   useEffect(() => {
     if (!ready) return;
@@ -160,7 +162,24 @@ export function RegentPortalPage({
     return () => {
       disposed = true;
     };
-  }, [access.role, listRetry, loadParticipants, query.page, query.search, ready, selectedChoirId]);
+  }, [
+    access.role,
+    listRetry,
+    loadParticipants,
+    portalRefresh,
+    query.page,
+    query.search,
+    ready,
+    selectedChoirId,
+  ]);
+
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") setPortalRefresh((value) => value + 1);
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
+  }, []);
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -296,7 +315,22 @@ export function RegentPortalPage({
             </CardContent>
           </Card>
         ) : result?.rows.length ? (
-          <RegentParticipantList participants={result.rows} onPay={setPaymentParticipant} />
+          <RegentParticipantList
+            participants={result.rows}
+            onPay={(participant) => {
+              if (
+                participant.financialState.status !== "partially_paid" ||
+                !participant.complement.eligible
+              ) {
+                return;
+              }
+              setPaymentTarget({
+                id: participant.id,
+                name: participant.name,
+                balanceCents: participant.complement.balanceCents,
+              });
+            }}
+          />
         ) : result ? (
           <Card>
             <CardContent className="p-6 text-center text-sm">
@@ -337,11 +371,11 @@ export function RegentPortalPage({
         )}
       </div>
 
-      <ComplementPaymentDialog
-        participant={paymentParticipant}
-        open={paymentParticipant !== null}
+      <BalancePaymentDialog
+        target={paymentTarget}
+        open={paymentTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setPaymentParticipant(null);
+          if (!open) setPaymentTarget(null);
         }}
       />
     </main>

@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { deriveRegistrationFinancialState } from "../registration/registration-financial-state.domain";
+import {
+  deriveRegistrationFinancialState,
+  type RegistrationFinancialState,
+} from "../registration/registration-financial-state.domain";
 
 export type ComplementPaymentStatus = "creating" | "pending" | "paid" | "failed" | "expired";
 
@@ -35,9 +38,11 @@ export interface PortalParticipant {
   whatsappUrl: string | null;
   photoUrl: string | null;
   paymentStatus: "legacy" | "pending" | "paid";
+  initialAmountCents: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  financialState: RegistrationFinancialState;
   complement: ComplementEligibility;
   payments: ComplementPaymentRow[];
   // Optional presentation snapshots retained for consumers that expose them.
@@ -46,6 +51,12 @@ export interface PortalParticipant {
   includeShirt?: boolean;
   shirtPriceCents?: number | null;
 }
+
+export type BalancePaymentTarget = {
+  id: string;
+  name: string;
+  balanceCents: number;
+};
 
 export interface PortalSummary {
   totalParticipants: number;

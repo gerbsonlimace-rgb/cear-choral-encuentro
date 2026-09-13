@@ -11,11 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { startComplementCheckout } from "@/lib/regent.functions";
 
-import { formatComplementCents, type PortalParticipant } from "./regent-payments.domain";
+import { formatComplementCents, type BalancePaymentTarget } from "./regent-payments.domain";
 
 type CheckoutResult = { checkoutUrl: string; orderNsu: string };
 type Props = {
-  participant: PortalParticipant | null;
+  target: BalancePaymentTarget | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   startCheckout?: (input: { data: { registrationId: string } }) => Promise<CheckoutResult>;
@@ -36,8 +36,8 @@ function isSafeCheckoutUrl(value: string) {
   }
 }
 
-export function ComplementPaymentDialog({
-  participant,
+export function BalancePaymentDialog({
+  target,
   open,
   onOpenChange,
   startCheckout = startComplementCheckout,
@@ -48,29 +48,19 @@ export function ComplementPaymentDialog({
   const busy = useRef(false);
 
   useEffect(() => {
-    if (!open) {
-      setError("");
-    }
-  }, [open, participant?.id]);
-
-  const balanceCents =
-    participant?.complement.eligible === true ? participant.complement.balanceCents : 0;
+    if (!open) setError("");
+  }, [open, target?.id]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy.current || !participant || !participant.complement.eligible) return;
-
-    setError("");
+    if (busy.current || !target) return;
 
     busy.current = true;
     setSubmitting(true);
+    setError("");
     try {
-      const result = await startCheckout({
-        data: { registrationId: participant.id },
-      });
-      if (!isSafeCheckoutUrl(result.checkoutUrl)) {
-        throw new Error("unsafe checkout URL");
-      }
+      const result = await startCheckout({ data: { registrationId: target.id } });
+      if (!isSafeCheckoutUrl(result.checkoutUrl)) throw new Error("unsafe checkout URL");
       navigateToCheckout(result.checkoutUrl);
     } catch {
       setError("Não foi possível abrir o pagamento. Tente novamente.");
@@ -80,15 +70,16 @@ export function ComplementPaymentDialog({
     }
   }
 
+  const balance = target ? formatComplementCents(target.balanceCents) : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Pagar complemento</DialogTitle>
+          <DialogTitle>Pagar saldo pendente</DialogTitle>
           <DialogDescription>
-            {participant?.complement.eligible
-              ? `Você pagará o saldo pendente integral de ${formatComplementCents(balanceCents)} para ${participant.name}. O valor final será calculado pelo servidor.`
-              : "Selecione um participante elegível."}
+            {target
+              ? `Você criará uma cobrança de ${balance} para ${target.name}. O valor será confirmado pelo servidor.`
+              : "Selecione um participante com saldo pendente."}
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -96,7 +87,7 @@ export function ComplementPaymentDialog({
             {error}
           </p>
         )}
-        <form className="space-y-4" onSubmit={submit}>
+        <form onSubmit={submit}>
           <DialogFooter>
             <Button
               type="button"
@@ -106,11 +97,8 @@ export function ComplementPaymentDialog({
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting || !participant || !participant.complement.eligible}
-            >
-              {submitting ? "Abrindo pagamento…" : "Pagar complemento"}
+            <Button type="submit" disabled={submitting || !target}>
+              {submitting ? "Abrindo pagamento…" : `Pagar saldo de ${balance ?? "R$ 0,00"}`}
             </Button>
           </DialogFooter>
         </form>

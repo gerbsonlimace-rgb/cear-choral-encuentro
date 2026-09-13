@@ -162,4 +162,17 @@ describe("RegentPortalPage", () => {
     });
     expect(loadParticipants.mock.calls[1][0]).toEqual(loadParticipants.mock.calls[0][0]);
   });
+
+  it("refreshes participants and summary when the portal becomes visible again", async () => {
+    const { props } = setup();
+    await screen.findByText("Nenhum participante encontrado.");
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await waitFor(() => {
+      expect(props.loadParticipants).toHaveBeenCalledTimes(2);
+      expect(props.loadSummary).toHaveBeenCalledTimes(2);
+    });
+  });
 });
