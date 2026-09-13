@@ -347,12 +347,12 @@ export function createSupabaseEventActivityRepository(): EventActivityRepository
         longitude: number | null;
         accuracy_meters: number | null;
         distance_meters: number | null;
-        registrations: { name: string } | Array<{ name: string }>;
+        registrations: { name: string } | Array<{ name: string }> | null;
       }>).map((row) => ({
         id: row.id,
         participantName: Array.isArray(row.registrations)
           ? (row.registrations[0]?.name ?? "Participante")
-          : row.registrations.name,
+          : (row.registrations?.name ?? "Participante"),
         checkedInAt: row.checked_in_at,
         latitude: row.latitude,
         longitude: row.longitude,

@@ -24,7 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AdminAccessState } from "@/lib/admin.functions";
 import {
   createAdminChoir,
@@ -47,10 +46,12 @@ import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
 import { getAdminAccess } from "@/lib/admin.functions";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 import { AdminRegentsPanel } from "./AdminRegentsPanel";
+import { AdminCoroAppIntegrationPage } from "./AdminCoroAppIntegrationPage";
 
 type ServerMutation<TInput, TOutput> = (input: { data: TInput }) => Promise<TOutput>;
 
 export type AdminChoirsPageProps = {
+  section?: "choirs" | "settings";
   onSignedOut: () => void;
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
@@ -101,6 +102,7 @@ function choirAvailability(choir: AdminChoir, settings: PricingSettings) {
 }
 
 export function AdminChoirsPage({
+  section = "choirs",
   onSignedOut,
   onMissingSession,
   checkAdmin = getAdminAccess,
@@ -127,6 +129,7 @@ export function AdminChoirsPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminChoir | null>(null);
   const [pendingInactivation, setPendingInactivation] = useState<AdminChoir | null>(null);
+  const [regentChoir, setRegentChoir] = useState<AdminChoir | null>(null);
   const [choirDraft, setChoirDraft] = useState<ChoirMutation>(emptyChoirDraft);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
 
@@ -314,14 +317,16 @@ export function AdminChoirsPage({
   };
 
   return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <main className="min-h-svh bg-background px-4 pb-24 pt-6 sm:px-6 md:pb-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Encontro de Coros · Administração
             </p>
-            <h1 className="mt-2 font-display text-2xl">Coros e valores</h1>
+            <h1 className="mt-2 font-display text-2xl">
+              {section === "settings" ? "Configurações" : "Coros"}
+            </h1>
           </div>
           {gate === "authorized" && (
             <Button size="sm" variant="outline" onClick={logout}>
@@ -329,7 +334,9 @@ export function AdminChoirsPage({
             </Button>
           )}
         </header>
-        {gate === "authorized" && <AdminNavigation current="choirs" navigateTo={navigateTo} />}
+        {gate === "authorized" && (
+          <AdminNavigation current={section} navigateTo={navigateTo} />
+        )}
         <div aria-live="polite" className="text-sm text-muted-foreground">
           {message}
         </div>
@@ -347,15 +354,7 @@ export function AdminChoirsPage({
         {gate === "forbidden" && <p role="alert">Acesso não autorizado.</p>}
         {gate === "error" && <p role="alert">Não foi possível verificar seu acesso.</p>}
         {gate === "authorized" && loading && <Skeleton className="h-64 w-full" />}
-        {gate === "authorized" && !loading && data && (
-          <Tabs defaultValue="choirs" className="space-y-4">
-            <TabsList className="grid h-auto w-full grid-cols-1 sm:grid-cols-3">
-              <TabsTrigger value="choirs">Coros</TabsTrigger>
-              <TabsTrigger value="regents">Regentes</TabsTrigger>
-              <TabsTrigger value="pricing">Valores do evento</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="choirs" className="space-y-4">
+        {gate === "authorized" && !loading && data && section === "choirs" && (
               <section className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -392,6 +391,13 @@ export function AdminChoirsPage({
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setRegentChoir(choir)}
+                            >
+                              Gerenciar regente
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
                               Editar
                             </Button>
@@ -413,13 +419,9 @@ export function AdminChoirsPage({
                   </div>
                 )}
               </section>
-            </TabsContent>
-
-            <TabsContent value="regents">
-              <AdminRegentsPanel choirs={data.choirs} />
-            </TabsContent>
-
-            <TabsContent value="pricing">
+        )}
+        {gate === "authorized" && !loading && data && section === "settings" && (
+          <div className="space-y-5">
               <Card>
                 <CardContent className="p-5 sm:p-6">
                   <div className="mb-5">
@@ -460,8 +462,14 @@ export function AdminChoirsPage({
                   </form>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            <AdminCoroAppIntegrationPage
+              embedded
+              checkAdmin={checkAdmin}
+              getSession={getSession}
+              navigateTo={navigateTo}
+              onMissingSession={onMissingSession}
+            />
+          </div>
         )}
       </div>
 
@@ -510,6 +518,29 @@ export function AdminChoirsPage({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={regentChoir !== null}
+        onOpenChange={(open) => {
+          if (!open) setRegentChoir(null);
+        }}
+      >
+        <DialogContent className="max-h-[90svh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Regente de {regentChoir?.name}</DialogTitle>
+            <DialogDescription>
+              Cadastre e gerencie o acesso do regente vinculado a este coro.
+            </DialogDescription>
+          </DialogHeader>
+          {regentChoir && data && (
+            <AdminRegentsPanel
+              key={regentChoir.id}
+              choirId={regentChoir.id}
+              choirs={data.choirs}
+            />
+          )}
         </DialogContent>
       </Dialog>
       <AlertDialog
