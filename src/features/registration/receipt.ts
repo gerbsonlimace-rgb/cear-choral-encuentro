@@ -80,55 +80,142 @@ async function loadEventLogoDataUrl(): Promise<string | undefined> {
   }
 }
 
-export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteUrl?: string }) {
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const marginX = 56;
+const HEADER_HEIGHT = 132;
+const MARGIN_X = 56;
+const BRAND = { r: 15 / 255, g: 76 / 255, b: 74 / 255 };
+const INK = { r: 20 / 255, g: 20 / 255, b: 20 / 255 };
+const MUTED = { r: 110 / 255, g: 110 / 255, b: 110 / 255 };
+const FAINT = { r: 120 / 255, g: 120 / 255, b: 120 / 255 };
+const LINE = { r: 230 / 255, g: 230 / 255, b: 230 / 255 };
+const WHITE = { r: 1, g: 1, b: 1 };
 
-  doc.setFillColor(15, 76, 74);
-  doc.rect(0, 0, pageWidth, 132, "F");
+type PdfFontLike = { widthOfTextAtSize(text: string, size: number): number };
+
+function wrapText(text: string, font: PdfFontLike, size: number, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [""];
+}
+
+function saveBytes(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteUrl?: string }) {
+  const { PDFDocument, PageSizes, StandardFonts, PDFName, PDFString, rgb } = await import("pdf-lib");
+
+  const doc = await PDFDocument.create();
+  const page = doc.addPage(PageSizes.A4);
+  const { width: pageWidth, height: pageHeight } = page.getSize();
+
+  const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const color = (c: { r: number; g: number; b: number }) => rgb(c.r, c.g, c.b);
+
+  // Header
+  page.drawRectangle({
+    x: 0,
+    y: pageHeight - HEADER_HEIGHT,
+    width: pageWidth,
+    height: HEADER_HEIGHT,
+    color: color(BRAND),
+  });
 
   const logoDataUrl = await loadEventLogoDataUrl();
   if (logoDataUrl) {
     try {
-      doc.addImage(logoDataUrl, "PNG", pageWidth - marginX - 78, 26, 78, 78);
+      const logo = await doc.embedPng(logoDataUrl);
+      page.drawImage(logo, {
+        x: pageWidth - MARGIN_X - 78,
+        y: pageHeight - 26 - 78,
+        width: 78,
+        height: 78,
+      });
     } catch {
       /* logo is decorative */
     }
   }
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
-  doc.text("Comprovante de inscrição", marginX, 56);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", marginX, 80);
-  doc.text("20 a 22 de novembro de 2026 — Quixadá (CE)", marginX, 98);
+  page.drawText("Comprovante de inscrição", {
+    x: MARGIN_X,
+    y: pageHeight - 56,
+    size: 17,
+    font: fontBold,
+    color: color(WHITE),
+  });
+  page.drawText("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", {
+    x: MARGIN_X,
+    y: pageHeight - 80,
+    size: 11,
+    font: fontRegular,
+    color: color(WHITE),
+  });
+  page.drawText("20 a 22 de novembro de 2026 — Quixadá (CE)", {
+    x: MARGIN_X,
+    y: pageHeight - 98,
+    size: 11,
+    font: fontRegular,
+    color: color(WHITE),
+  });
 
-  doc.setTextColor(20, 20, 20);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("Inscrição confirmada", marginX, 176);
+  page.drawText("Inscrição confirmada", {
+    x: MARGIN_X,
+    y: pageHeight - 176,
+    size: 13,
+    font: fontBold,
+    color: color(INK),
+  });
 
-  let y = 212;
+  let y = pageHeight - 212;
   for (const row of buildReceiptRows(receipt)) {
-    doc.setDrawColor(230, 230, 230);
-    doc.line(marginX, y - 16, pageWidth - marginX, y - 16);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(110, 110, 110);
-    doc.text(row.label, marginX, y);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(20, 20, 20);
-    doc.text(doc.splitTextToSize(row.value, pageWidth - marginX * 2 - 190), marginX + 190, y);
-    y += 38;
+    page.drawLine({
+      start: { x: MARGIN_X, y: y + 16 },
+      end: { x: pageWidth - MARGIN_X, y: y + 16 },
+      thickness: 1,
+      color: color(LINE),
+    });
+    page.drawText(row.label, { x: MARGIN_X, y, size: 10, font: fontRegular, color: color(MUTED) });
+
+    const valueMaxWidth = pageWidth - MARGIN_X * 2 - 190;
+    const valueLines = wrapText(row.value, fontBold, 11, valueMaxWidth);
+    valueLines.forEach((line, index) => {
+      page.drawText(line, {
+        x: MARGIN_X + 190,
+        y: y - index * 14,
+        size: 11,
+        font: fontBold,
+        color: color(INK),
+      });
+    });
+    y -= 38 + Math.max(0, valueLines.length - 1) * 14;
   }
 
-  doc.setDrawColor(230, 230, 230);
-  doc.line(marginX, y - 16, pageWidth - marginX, y - 16);
+  page.drawLine({
+    start: { x: MARGIN_X, y: y + 16 },
+    end: { x: pageWidth - MARGIN_X, y: y + 16 },
+    thickness: 1,
+    color: color(LINE),
+  });
 
   const baseUrl = (
     options?.siteUrl ??
@@ -136,27 +223,66 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
   ).replace(/\/$/, "");
   const participantAreaUrl = `${baseUrl}${PARTICIPANT_AREA_PATH}`;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
-  doc.text("Área do participante", marginX, y + 6);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(15, 76, 74);
-  doc.textWithLink(participantAreaUrl, marginX, y + 24, { url: participantAreaUrl });
-  doc.setFontSize(9);
-  doc.setTextColor(120, 120, 120);
-  doc.text(
-    "Acesse com o e-mail da inscrição e a senha inicial: CPF + ano de nascimento (AAAA).",
-    marginX,
-    y + 42,
-  );
-  doc.text(
-    "Documento gerado automaticamente pelo site do evento. Pagamento processado pela InfinitePay.",
-    marginX,
-    y + 60,
-  );
+  page.drawText("Área do participante", {
+    x: MARGIN_X,
+    y: y - 6,
+    size: 10,
+    font: fontBold,
+    color: color(INK),
+  });
 
+  const linkY = y - 24;
+  page.drawText(participantAreaUrl, {
+    x: MARGIN_X,
+    y: linkY,
+    size: 10,
+    font: fontRegular,
+    color: color(BRAND),
+  });
+
+  try {
+    const linkWidth = fontRegular.widthOfTextAtSize(participantAreaUrl, 10);
+    const linkRef = doc.context.register(
+      doc.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [MARGIN_X, linkY - 2, MARGIN_X + linkWidth, linkY + 10],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(participantAreaUrl) },
+      }),
+    );
+    const annotsKey = PDFName.of("Annots");
+    const existing = page.node.get(annotsKey);
+    if (existing) {
+      doc.context.lookup(existing);
+    }
+    // Append to (or create) the page's Annots array.
+    const annotsArray = existing
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (doc.context.lookup(existing) as any)
+      : doc.context.obj([]);
+    annotsArray.push(linkRef);
+    if (!existing) page.node.set(annotsKey, annotsArray);
+  } catch {
+    /* link annotation is best-effort */
+  }
+
+  page.drawText("Acesse com o e-mail da inscrição e a senha inicial: CPF + ano de nascimento (AAAA).", {
+    x: MARGIN_X,
+    y: y - 42,
+    size: 9,
+    font: fontRegular,
+    color: color(FAINT),
+  });
+  page.drawText("Documento gerado automaticamente pelo site do evento. Pagamento processado pela InfinitePay.", {
+    x: MARGIN_X,
+    y: y - 60,
+    size: 9,
+    font: fontRegular,
+    color: color(FAINT),
+  });
+
+  const bytes = await doc.save();
   const code = formatOrderCode(receipt.orderNsu);
-  doc.save(code ? `comprovante-inscricao-${code}.pdf` : "comprovante-inscricao.pdf");
+  saveBytes(bytes, code ? `comprovante-inscricao-${code}.pdf` : "comprovante-inscricao.pdf");
 }
