@@ -128,7 +128,6 @@ function Index() {
     </div>
   );
 }
-
 function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
 
