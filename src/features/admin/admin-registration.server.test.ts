@@ -94,10 +94,9 @@ describe("registration export", () => {
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
     ]);
-    expect(trace.filter(([method]) => method === "eq")).toEqual([
-      ["eq", "payment_status", "paid"],
-      ["eq", "payment_status", "paid"],
-    ]);
+    // Payment filters are derived after candidate retrieval; no raw
+    // payment_status predicate may hide partially-paid registrations.
+    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
     expect(trace.filter(([method]) => method === "or")).toHaveLength(2);
     expect(trace.slice(-4)).toEqual([
       ["response", 200],
@@ -191,7 +190,7 @@ describe("registration export", () => {
     await expect(
       service.list({ search: "", paymentStatus: "pending", page: 1, pageSize: 10 }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
-    expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
+    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
   });
 });
 
@@ -241,6 +240,72 @@ describe("registration summary", () => {
       legacy: 0,
       byChoir: [{ choirName: "Diocese de Quixadá", total: 1 }],
     });
+  });
+});
+
+describe("derived registration listing", () => {
+  it("filters derived states before pagination and signs only the final page", async () => {
+    const base = {
+      ...selectedRow,
+      amount_cents: 10000,
+      paid_amount_cents: 10000,
+      pricing_type: "promotional",
+      standard_price_cents: 30000,
+      registration_price_cents: 10000,
+    } satisfies Partial<RegistrationDatabaseRow>;
+    const candidates = [
+      {
+        row: { ...base, id: "partial" } as RegistrationDatabaseRow,
+        accountStatus: null,
+        regentName: null,
+      },
+      {
+        row: {
+          ...base,
+          id: "paid",
+          pricing_type: "standard",
+          standard_price_cents: 10000,
+          registration_price_cents: 10000,
+          amount_cents: 10000,
+        } as RegistrationDatabaseRow,
+        accountStatus: null,
+        regentName: null,
+      },
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "complement",
+          registrationId: "partial",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-08T00:00:00Z",
+          paidAt: "2026-09-08T01:00:00Z",
+          initiatedByName: "Admin",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const service = createAdminRegistrationService(repository, () => new Date());
+
+    const page = await service.list({
+      search: "Maria",
+      paymentStatus: "partially_paid",
+      page: 1,
+      pageSize: 1,
+    });
+    expect(page.total).toBe(1);
+    expect(page.rows[0].id).toBe("partial");
+    expect(page.rows[0].financialState?.pendingCents).toBe(12000);
+    expect(repository.listCandidates).toHaveBeenCalledWith("Maria");
+    expect(repository.listComplementPayments).toHaveBeenCalledWith(["partial"]);
+    expect(repository.signPhotos).toHaveBeenCalledOnce();
   });
 });
 const failure: DatabaseResult = {

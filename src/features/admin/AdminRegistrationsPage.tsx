@@ -31,6 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { BalancePaymentDialog, isSafeCheckoutUrl } from "@/features/regent/BalancePaymentDialog";
+import { startComplementCheckout } from "@/lib/regent.functions";
 import {
   exportAdminRegistrations,
   getAdminAccess,
@@ -50,6 +52,7 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
+import { getAdminFinancialState } from "./admin.domain";
 import { AdminNavigation } from "./AdminNavigation";
 
 type Props = {
@@ -67,6 +70,16 @@ type Props = {
   }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
+  startBalanceCheckout?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    orderNsu: string;
+  }>;
+  /** Test/embedding seam matching the shared dialog's naming. */
+  startCheckout?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    orderNsu: string;
+  }>;
+  navigateToCheckout?: (url: string) => void;
   navigateTo?: (
     to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
   ) => void;
@@ -107,16 +120,28 @@ function ParticipantAvatar({ row }: { row: AdminRegistrationRow }) {
 }
 
 function Status({ row }: { row: AdminRegistrationRow }) {
+  const status = getAdminFinancialState(row).status;
   return (
-    <Badge variant={row.paymentStatus === "paid" ? "default" : "secondary"}>
-      {{ legacy: "Histórico", pending: "Pendente", paid: "Pago" }[row.paymentStatus]}
+    <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
+      {
+        {
+          legacy: "Histórico",
+          pending: "Pendente",
+          partially_paid: "Parcialmente pago",
+          paid: "Pago",
+        }[status]
+      }
     </Badge>
   );
 }
 
 function pendingAmountCents(row: AdminRegistrationRow): number | null {
-  if (row.paymentStatus !== "pending") return null;
-  return Math.max(0, (row.amountCents ?? 0) - (row.paidAmountCents ?? 0));
+  return getAdminFinancialState(row).pendingCents;
+}
+
+function receivedAmountCents(row: AdminRegistrationRow): number | null {
+  const state = getAdminFinancialState(row);
+  return state.confirmedPrincipalCents ?? row.paidAmountCents;
 }
 
 function ParticipantAccessActions({
@@ -176,11 +201,13 @@ function RegistrationViews({
   participantActionBusy,
   onReprocess,
   onReset,
+  onBalancePayment,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
   onReprocess: (row: AdminRegistrationRow) => void;
   onReset: (row: AdminRegistrationRow) => Promise<void>;
+  onBalancePayment: (row: AdminRegistrationRow) => void;
 }) {
   return (
     <>
@@ -188,13 +215,19 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {["Coralista", "Valor pago", "Valor pendente", "WhatsApp", "Coro", "Regente"].map(
-                (label) => (
-                  <TableHead key={label} scope="col">
-                    {label}
-                  </TableHead>
-                ),
-              )}
+              {[
+                "Coralista",
+                "Valor pago",
+                "Valor pendente",
+                "WhatsApp",
+                "Coro",
+                "Regente",
+                "Ação",
+              ].map((label) => (
+                <TableHead key={label} scope="col">
+                  {label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,7 +251,7 @@ function RegistrationViews({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="align-top">{money(row.paidAmountCents)}</TableCell>
+                <TableCell className="align-top">{money(receivedAmountCents(row))}</TableCell>
                 <TableCell className="align-top">
                   {pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}
                 </TableCell>
@@ -228,6 +261,9 @@ function RegistrationViews({
                 </TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words">{row.regentName ?? "Não informado"}</p>
+                </TableCell>
+                <TableCell className="align-top">
+                  <BalanceAction row={row} onBalancePayment={onBalancePayment} />
                 </TableCell>
               </TableRow>
             ))}
@@ -252,7 +288,7 @@ function RegistrationViews({
               <dl className="grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <dt className="text-muted-foreground">Valor pago</dt>
-                  <dd>{money(row.paidAmountCents)}</dd>
+                  <dd>{money(receivedAmountCents(row))}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Valor pendente</dt>
@@ -272,6 +308,7 @@ function RegistrationViews({
                 </div>
               </dl>
               <div className="border-t pt-3">
+                <BalanceAction row={row} onBalancePayment={onBalancePayment} />
                 <ParticipantAccessActions
                   row={row}
                   busy={participantActionBusy}
@@ -284,6 +321,30 @@ function RegistrationViews({
         ))}
       </section>
     </>
+  );
+}
+
+function BalanceAction({
+  row,
+  onBalancePayment,
+}: {
+  row: AdminRegistrationRow;
+  onBalancePayment: (row: AdminRegistrationRow) => void;
+}) {
+  const state = getAdminFinancialState(row);
+  const openUrl = row.openComplementPayment?.checkoutUrl;
+  if (openUrl && isSafeCheckoutUrl(openUrl)) {
+    return (
+      <Button asChild size="sm" variant="outline">
+        <a href={openUrl}>Continuar pagamento</a>
+      </Button>
+    );
+  }
+  if (state.status !== "partially_paid" || state.pendingCents <= 0) return null;
+  return (
+    <Button size="sm" variant="outline" onClick={() => onBalancePayment(row)}>
+      Pagar saldo de {money(state.pendingCents)}
+    </Button>
   );
 }
 
@@ -311,6 +372,7 @@ function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary })
   const counts = [
     { label: "Total", value: String(summary.total) },
     { label: "Pagas", value: String(summary.paid) },
+    { label: "Parcialmente pagas", value: String(summary.partiallyPaid ?? 0) },
     { label: "Pendentes", value: String(summary.pending) },
     { label: "Históricas", value: String(summary.legacy) },
     { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
@@ -419,10 +481,14 @@ export function AdminRegistrationsPage({
   exportRegistrations = exportAdminRegistrations,
   reprocessAccess = reprocessParticipantAccess,
   resetInitialPassword = resetParticipantInitialPassword,
+  startBalanceCheckout,
+  startCheckout,
+  navigateToCheckout,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
   navigateTo,
 }: Props) {
+  const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
   >("checking");
@@ -438,6 +504,7 @@ export function AdminRegistrationsPage({
   const [announcement, setAnnouncement] = useState("");
   const [exporting, setExporting] = useState(false);
   const [participantActionBusy, setParticipantActionBusy] = useState(false);
+  const [balanceTarget, setBalanceTarget] = useState<AdminRegistrationRow | null>(null);
   const [retry, setRetry] = useState(0);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
@@ -827,6 +894,7 @@ export function AdminRegistrationsPage({
                     <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="pending">Pendentes</SelectItem>
                     <SelectItem value="paid">Pagas</SelectItem>
+                    <SelectItem value="partially_paid">Parcialmente pagas</SelectItem>
                     <SelectItem value="legacy">Históricas</SelectItem>
                   </SelectContent>
                 </Select>
@@ -853,6 +921,7 @@ export function AdminRegistrationsPage({
                   participantActionBusy={participantActionBusy}
                   onReprocess={(row) => void runParticipantAction(row, "reprocess")}
                   onReset={(row) => runParticipantAction(row, "reset")}
+                  onBalancePayment={setBalanceTarget}
                 />
               ) : (
                 <Card>
@@ -862,6 +931,23 @@ export function AdminRegistrationsPage({
                 </Card>
               ))
             )}
+            <BalancePaymentDialog
+              target={
+                balanceTarget && getAdminFinancialState(balanceTarget).status === "partially_paid"
+                  ? {
+                      id: balanceTarget.id,
+                      name: balanceTarget.name,
+                      balanceCents: getAdminFinancialState(balanceTarget).pendingCents ?? 0,
+                    }
+                  : null
+              }
+              open={balanceTarget !== null}
+              onOpenChange={(open) => {
+                if (!open) setBalanceTarget(null);
+              }}
+              startCheckout={openBalanceCheckout}
+              navigateToCheckout={navigateToCheckout}
+            />
             {result && (
               <nav
                 aria-label="Paginação de inscrições"

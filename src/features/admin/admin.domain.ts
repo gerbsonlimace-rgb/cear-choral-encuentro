@@ -1,7 +1,18 @@
 import { z } from "zod";
 import type { Tables } from "@/integrations/supabase/types";
+import type { ComplementPaymentRow } from "@/features/regent/regent-payments.domain";
+import {
+  deriveRegistrationFinancialState,
+  type RegistrationFinancialState,
+} from "@/features/registration/registration-financial-state.domain";
 
-export const adminPaymentStatusSchema = z.enum(["all", "pending", "paid", "legacy"]);
+export const adminPaymentStatusSchema = z.enum([
+  "all",
+  "pending",
+  "partially_paid",
+  "paid",
+  "legacy",
+]);
 
 export const adminRegistrationQuerySchema = z.object({
   search: z.string().trim().max(100).default(""),
@@ -41,6 +52,10 @@ export type AdminRegistrationRow = {
   registrationPriceCents: number | null;
   photoUrl: string | null;
   regentName: string | null;
+  /** Present on rows returned by the enriched admin service. */
+  financialState?: RegistrationFinancialState;
+  /** The newest creating/pending complement checkout, if one exists. */
+  openComplementPayment?: ComplementPaymentRow | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -84,6 +99,7 @@ export type AdminRegistrationSummary = {
   total: number;
   paid: number;
   pending: number;
+  partiallyPaid?: number;
   legacy: number;
   receivedCents: number;
   pendingCents: number;
@@ -130,6 +146,78 @@ export function mapAdminRegistrationRow(
   };
 }
 
+export type AdminComplementPaymentRow = ComplementPaymentRow & { registrationId: string };
+
+export type AdminRegistrationCandidate = {
+  row: RegistrationDatabaseRow;
+  accountStatus: "active" | "pending" | "conflict" | null;
+  regentName: string | null;
+};
+
+export function enrichAdminRegistrationRow(
+  candidate: AdminRegistrationCandidate,
+  payments: AdminComplementPaymentRow[],
+  photoUrl: string | null = null,
+): AdminRegistrationRow {
+  const confirmedComplementCents = payments.reduce(
+    (total, payment) => total + (payment.status === "paid" ? payment.amountCents : 0),
+    0,
+  );
+  const financialState = deriveRegistrationFinancialState({
+    paymentStatus: candidate.row.payment_status as "legacy" | "pending" | "paid",
+    initialAmountCents: candidate.row.amount_cents,
+    pricingType: candidate.row.pricing_type as "standard" | "promotional" | null,
+    standardPriceCents: candidate.row.standard_price_cents,
+    registrationPriceCents: candidate.row.registration_price_cents,
+    confirmedComplementCents,
+  });
+  const openComplementPayment =
+    payments
+      .filter((payment) => payment.status === "creating" || payment.status === "pending")
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+      )[0] ?? null;
+  const mapped = mapAdminRegistrationRow(
+    candidate.row,
+    candidate.accountStatus,
+    photoUrl,
+    candidate.regentName,
+  );
+  // A pre-registration has app access after the initial payment, even while
+  // its derived financial state remains partially paid.
+  if (mapped.participantAccess && financialState.status === "partially_paid") {
+    mapped.participantAccess = resolveParticipantAccess("paid", candidate.accountStatus);
+  }
+  return { ...mapped, financialState, openComplementPayment };
+}
+
+export function getAdminFinancialState(row: AdminRegistrationRow): RegistrationFinancialState {
+  if (row.financialState) return row.financialState;
+  const derived = deriveRegistrationFinancialState({
+    paymentStatus: row.paymentStatus,
+    initialAmountCents: row.amountCents,
+    pricingType: row.pricingType,
+    standardPriceCents: row.standardPriceCents,
+    registrationPriceCents: row.registrationPriceCents,
+    confirmedComplementCents: 0,
+  });
+  if (derived.status !== "legacy") return derived;
+  // Rows assembled by older consumers predate the enriched server contract.
+  // Keep their presentation stable until they are refreshed from the server.
+  if (row.paymentStatus === "pending" && row.amountCents !== null) {
+    return { status: "pending", pendingCents: row.amountCents, confirmedPrincipalCents: 0 };
+  }
+  if (row.paymentStatus === "paid") {
+    return {
+      status: "paid",
+      pendingCents: 0,
+      confirmedPrincipalCents: row.paidAmountCents ?? row.amountCents ?? 0,
+    };
+  }
+  return derived;
+}
+
 export function summarizeAdminRegistrations(
   rows: Array<
     Pick<
@@ -148,6 +236,7 @@ export function summarizeAdminRegistrations(
     total: rows.length,
     paid: 0,
     pending: 0,
+    partiallyPaid: 0,
     legacy: 0,
     receivedCents: 0,
     pendingCents: 0,
@@ -161,7 +250,10 @@ export function summarizeAdminRegistrations(
   >();
 
   for (const row of rows) {
-    summary[row.paymentStatus] += 1;
+    const financialState = getAdminFinancialState(row as AdminRegistrationRow);
+    if (financialState.status === "partially_paid") {
+      summary.partiallyPaid = (summary.partiallyPaid ?? 0) + 1;
+    } else summary[financialState.status] += 1;
     const choir = choirs.get(row.choirName) ?? {
       total: 0,
       receivedCents: 0,
@@ -170,21 +262,17 @@ export function summarizeAdminRegistrations(
     };
     choir.total += 1;
 
-    if (row.paymentStatus === "paid") {
-      const receivedCents = row.paidAmountCents ?? 0;
+    if (financialState.status === "paid" || financialState.status === "partially_paid") {
+      const receivedCents = financialState.confirmedPrincipalCents;
       const pendingRegentCents =
-        row.pricingType === "promotional" &&
-        row.standardPriceCents !== null &&
-        row.registrationPriceCents !== null
-          ? Math.max(0, row.standardPriceCents - row.registrationPriceCents)
-          : 0;
+        financialState.status === "partially_paid" ? financialState.pendingCents : 0;
 
       summary.receivedCents += receivedCents;
       summary.pendingRegentCents += pendingRegentCents;
       choir.receivedCents += receivedCents;
       choir.pendingRegentCents += pendingRegentCents;
-    } else if (row.paymentStatus === "pending") {
-      const pendingCents = row.amountCents ?? 0;
+    } else if (financialState.status === "pending") {
+      const pendingCents = financialState.pendingCents;
       summary.pendingCents += pendingCents;
       choir.pendingCents += pendingCents;
     }
@@ -258,8 +346,13 @@ function displayDate(value: string | null): string {
   return value === null ? "Não informado" : dateFormatter.format(new Date(value));
 }
 
-function displayStatus(value: AdminRegistrationRow["paymentStatus"]): string {
-  return { pending: "Pendente", paid: "Pago", legacy: "Histórico" }[value];
+function displayStatus(value: RegistrationFinancialState["status"]): string {
+  return {
+    pending: "Pendente",
+    partially_paid: "Parcialmente pago",
+    paid: "Pago",
+    legacy: "Histórico",
+  }[value];
 }
 
 function displayPaymentMethod(value: AdminRegistrationRow["paymentMethod"]): string {
@@ -303,12 +396,26 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
       row.city,
       displayText(row.institution),
       row.role,
-      displayStatus(row.paymentStatus),
+      displayStatus(getAdminFinancialState(row).status),
       displayPricingType(row.pricingType),
       displayAmount(row.standardPriceCents),
       displayAmount(row.registrationPriceCents),
-      displayAmount(row.amountCents),
-      displayAmount(row.paidAmountCents),
+      displayAmount(
+        row.financialState
+          ? getAdminFinancialState(row).status === "legacy"
+            ? row.amountCents
+            : getAdminFinancialState(row).status === "pending"
+              ? getAdminFinancialState(row).pendingCents
+              : row.standardPriceCents
+          : row.amountCents,
+      ),
+      displayAmount(
+        getAdminFinancialState(row).status === "pending"
+          ? row.paidAmountCents
+          : row.financialState
+            ? getAdminFinancialState(row).confirmedPrincipalCents
+            : row.paidAmountCents,
+      ),
       displayPaymentMethod(row.paymentMethod),
       row.installments === null ? "Não informado" : String(row.installments),
       displayDate(row.paidAt),

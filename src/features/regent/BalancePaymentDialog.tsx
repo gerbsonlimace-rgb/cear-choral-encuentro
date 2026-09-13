@@ -24,7 +24,9 @@ type Props = {
 
 const defaultNavigateToCheckout = (url: string) => window.location.assign(url);
 
-function isSafeCheckoutUrl(value: string) {
+// Shared by the admin and regent presentations; keep the validation in one place.
+// eslint-disable-next-line react-refresh/only-export-components
+export function isSafeCheckoutUrl(value: string) {
   try {
     const url = new URL(value);
     return (

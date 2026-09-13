@@ -13,8 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
 
 export type AdminAccessState =
-  | { status: "authorized"; userId: string; email: string | null }
-  | { status: "forbidden" };
+  { status: "authorized"; userId: string; email: string | null } | { status: "forbidden" };
 
 export type AdminPageBootstrap<T> = {
   access: AdminAccessState;

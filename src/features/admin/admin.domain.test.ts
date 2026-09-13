@@ -4,6 +4,7 @@ import {
   adminRegistrationExportSchema,
   adminRegistrationQuerySchema,
   buildRegistrationsCsv,
+  enrichAdminRegistrationRow,
   mapAdminRegistrationRow,
   resolveParticipantAccess,
   summarizeAdminRegistrations,
@@ -354,8 +355,9 @@ describe("admin registration summary", () => {
 
     expect(summarizeAdminRegistrations(rows)).toEqual({
       total: 5,
-      paid: 3,
+      paid: 1,
       pending: 1,
+      partiallyPaid: 2,
       legacy: 1,
       receivedCents: 50000,
       pendingCents: 10000,
@@ -388,5 +390,65 @@ describe("admin registration summary", () => {
         },
       ],
     });
+  });
+});
+
+describe("admin derived financial state", () => {
+  it("counts only paid complement principal and keeps the newest open checkout", () => {
+    const candidate = {
+      row: {
+        ...paidRow,
+        amount_cents: 10000,
+        paid_amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      },
+      accountStatus: "active" as const,
+      regentName: "Regente",
+    };
+    const row = enrichAdminRegistrationRow(candidate, [
+      {
+        id: "open-old",
+        registrationId: candidate.row.id,
+        amountCents: 5000,
+        status: "pending",
+        checkoutUrl: "https://checkout.infinitepay.io/old",
+        createdAt: "2026-09-01T12:00:00Z",
+        paidAt: null,
+        initiatedByName: "Admin",
+        initiatedAs: "admin",
+      },
+      {
+        id: "paid-1",
+        registrationId: candidate.row.id,
+        amountCents: 8000,
+        status: "paid",
+        checkoutUrl: null,
+        createdAt: "2026-09-02T12:00:00Z",
+        paidAt: "2026-09-02T13:00:00Z",
+        initiatedByName: "Admin",
+        initiatedAs: "admin",
+      },
+      {
+        id: "open-new",
+        registrationId: candidate.row.id,
+        amountCents: 12000,
+        status: "creating",
+        checkoutUrl: "https://checkout.infinitepay.io/new",
+        createdAt: "2026-09-03T12:00:00Z",
+        paidAt: null,
+        initiatedByName: "Admin",
+        initiatedAs: "admin",
+      },
+    ]);
+
+    expect(row.financialState).toEqual({
+      status: "partially_paid",
+      pendingCents: 12000,
+      confirmedPrincipalCents: 18000,
+    });
+    expect(row.openComplementPayment?.id).toBe("open-new");
+    expect(row.participantAccess?.label).toBe("Ativo");
   });
 });
