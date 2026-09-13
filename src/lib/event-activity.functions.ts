@@ -45,6 +45,7 @@ export function createEventActivityFunctionHandlers(service: EventActivityServic
       service.generateQr(activityIdInputSchema.parse(input).activityId, publicOrigin),
     regenerateQr: (input: unknown, publicOrigin: string) =>
       service.regenerateQr(activityIdInputSchema.parse(input).activityId, publicOrigin),
+    generateQrPdf: (publicOrigin: string) => service.generateQrPdf(publicOrigin),
     prepareCheckIn: (input: unknown) =>
       service.prepareCheckIn(attendanceTokenInputSchema.parse(input).token),
     checkIn: (input: unknown, access: AuthorizedParticipant) =>
@@ -102,6 +103,16 @@ export const getAdminActivityAttendances = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(activityIdInputSchema)
   .handler(async ({ data }) => (await handlers()).listAttendances(data));
+
+export const downloadAdminActivityQrPdf = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const file = await (await handlers()).generateQrPdf(requestOrigin());
+    return {
+      filename: file.filename,
+      base64: Buffer.from(file.bytes).toString("base64"),
+    };
+  });
 
 export const getParticipantEventActivities = createServerFn({ method: "GET" })
   .middleware([requireParticipantAccess])

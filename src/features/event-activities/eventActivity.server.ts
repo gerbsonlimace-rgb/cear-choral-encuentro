@@ -13,6 +13,7 @@ import {
 } from "./eventActivity.domain";
 import { createAttendanceTokenCodec, type AttendanceTokenCodec } from "./eventAttendanceToken.server";
 import { validateAttendanceLocation } from "./eventGeofence";
+import type { QrPdfInput } from "./eventActivityQrPdf.server";
 
 export type AttendanceCheckInResult = {
   status: "recorded" | "already_recorded";
@@ -54,6 +55,12 @@ export type AttendancePreparation = {
   verifyLocation: boolean;
 };
 
+type QrPdfDependencies = {
+  renderQrPng(value: string): Promise<string>;
+  readLogo(): Promise<Uint8Array>;
+  buildPdf(input: QrPdfInput): Promise<{ bytes: Uint8Array; filename: string }>;
+};
+
 export function createEnvironmentAttendanceTokenCodec(
   readSecret: () => string | undefined = () => process.env.ATTENDANCE_QR_SECRET,
 ): AttendanceTokenCodec {
@@ -73,6 +80,7 @@ export function createEventActivityService(
   tokens: AttendanceTokenCodec,
   renderQrSvg: (value: string) => Promise<string>,
   clock: () => Date = () => new Date(),
+  pdf?: QrPdfDependencies,
 ) {
   async function requiredQrActivity(token: string) {
     const payload = tokens.verify(token);
@@ -171,6 +179,33 @@ export function createEventActivityService(
       );
       return { ...summary, activities };
     },
+
+    async generateQrPdf(publicOrigin: string) {
+      if (!pdf) throw new Error("A geração do PDF ainda não está disponível.");
+      const activities = (await repository.listAdminActivities()).filter(
+        (activity) => activity.isActive && activity.requiresQr,
+      );
+      const pdfActivities = await Promise.all(
+        activities.map(async (activity) => {
+          const issued = tokens.issue(activity.id, activity.qrVersion);
+          const scanUrl = new URL("/participante/presenca", publicOrigin);
+          scanUrl.searchParams.set("token", issued.token);
+          return {
+            title: activity.title,
+            activityDate: activity.activityDate,
+            startsAt: activity.startsAt,
+            endsAt: activity.endsAt,
+            location: activity.location,
+            qrPngDataUrl: await pdf.renderQrPng(scanUrl.toString()),
+          };
+        }),
+      );
+      return pdf.buildPdf({
+        generatedAt: clock(),
+        logoBytes: await pdf.readLogo(),
+        activities: pdfActivities,
+      });
+    },
   };
 }
 
@@ -178,9 +213,12 @@ let singleton: ReturnType<typeof createEventActivityService> | undefined;
 
 export async function getEventActivityService() {
   if (!singleton) {
-    const [{ createSupabaseEventActivityRepository }, qrcode] = await Promise.all([
+    const [{ createSupabaseEventActivityRepository }, { buildEventActivityQrPdf }, qrcode, fs, path] = await Promise.all([
       import("./eventActivity.repository.server"),
+      import("./eventActivityQrPdf.server"),
       import("qrcode"),
+      import("node:fs/promises"),
+      import("node:path"),
     ]);
     singleton = createEventActivityService(
       createSupabaseEventActivityRepository(),
@@ -193,6 +231,20 @@ export async function getEventActivityService() {
           width: 360,
           color: { dark: "#18181b", light: "#ffffff" },
         }),
+      () => new Date(),
+      {
+        renderQrPng: (value) =>
+          qrcode.toDataURL(value, {
+            type: "image/png",
+            errorCorrectionLevel: "M",
+            margin: 2,
+            width: 900,
+            color: { dark: "#18181b", light: "#ffffff" },
+          }),
+        readLogo: async () =>
+          new Uint8Array(await fs.readFile(path.resolve(process.cwd(), "src/assets/logo-coros-preto.png"))),
+        buildPdf: buildEventActivityQrPdf,
+      },
     );
   }
   return singleton;

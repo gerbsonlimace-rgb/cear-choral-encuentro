@@ -170,4 +170,35 @@ describe("event activity service", () => {
     await service.checkIn({ token: "signed-token", location }, participantAccess);
     expect(recordAttendance).toHaveBeenCalledWith(expect.objectContaining({ location: null }));
   });
+
+  it("generates one printable QR payload for every active QR activity", async () => {
+    const listAdminActivities = vi.fn().mockResolvedValue([
+      activity,
+      { ...activity, id: "55555555-5555-4555-8555-555555555555", isActive: false },
+      { ...activity, id: "66666666-6666-4666-8666-666666666666", requiresQr: false },
+    ]);
+    const buildPdf = vi.fn().mockResolvedValue({
+      bytes: new Uint8Array([1, 2, 3]),
+      filename: "qrcodes-programacao-2026-09-13.pdf",
+    });
+    const service = createEventActivityService(
+      repository({ listAdminActivities }),
+      { issue: vi.fn().mockReturnValue({ token: "signed-token" }), verify: vi.fn() },
+      vi.fn(),
+      () => new Date("2026-09-13T12:00:00Z"),
+      {
+        renderQrPng: vi.fn().mockResolvedValue("data:image/png;base64,AA=="),
+        readLogo: vi.fn().mockResolvedValue(new Uint8Array([9])),
+        buildPdf,
+      },
+    );
+
+    await expect(service.generateQrPdf("https://evento.test")).resolves.toEqual({
+      bytes: new Uint8Array([1, 2, 3]),
+      filename: "qrcodes-programacao-2026-09-13.pdf",
+    });
+    expect(buildPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ activities: [expect.objectContaining({ title: activity.title })] }),
+    );
+  });
 });
