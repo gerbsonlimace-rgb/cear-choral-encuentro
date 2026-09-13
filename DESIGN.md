@@ -116,7 +116,8 @@ A paleta é curta e hierárquica: tinta preta para estrutura, ouro litúrgico pa
 
 ## Typography
 
-**Display Font:** Cinzel (com Georgia)  
+**Display Font:** Cinzel (com Georgia)
+
 **Body Font:** Manrope (com ui-sans-serif e system-ui)
 
 **Character:** Cinzel pertence aos momentos cerimoniais da campanha pública. Manrope conduz todos os fluxos operacionais por ser compacto, claro e estável em dados, formulários e navegação.
