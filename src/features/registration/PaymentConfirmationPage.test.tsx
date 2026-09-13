@@ -41,6 +41,44 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
   });
 
+  it("shows an honest paid promotional pre-registration confirmation", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      pricingType: "promotional" as const,
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
+    expect(screen.getByText("Acesso ao app liberado")).toBeVisible();
+    expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
+    expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+    expect(screen.queryByText("Vaga confirmada")).not.toBeInTheDocument();
+  });
+
+  it("shows a settled standard registration without a remaining-value message", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      pricingType: "standard" as const,
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(screen.getByText("Vaga confirmada")).toBeVisible();
+    expect(screen.queryByText(/Valor restante:/)).not.toBeInTheDocument();
+  });
+
   it("shows a branded confirmation with registration details, export, and Coralista access", async () => {
     const downloadReceipt = vi.fn().mockResolvedValue(undefined);
     const verifyPayment = vi.fn().mockResolvedValue({
@@ -83,6 +121,9 @@ describe("PaymentConfirmationPage", () => {
       paymentMethod: "pix";
       installments: 1;
       participantAccessStatus: "active";
+      pricingType: "standard";
+      standardPriceCents: 30000;
+      registrationPriceCents: 30000;
     }) => void;
     const verifyPayment = vi.fn(
       () =>
@@ -91,6 +132,9 @@ describe("PaymentConfirmationPage", () => {
           paymentMethod: "pix";
           installments: 1;
           participantAccessStatus: "active";
+          pricingType: "standard";
+          standardPriceCents: 30000;
+          registrationPriceCents: 30000;
         }>((resolve) => {
           resolvePayment = resolve;
         }),
@@ -105,6 +149,9 @@ describe("PaymentConfirmationPage", () => {
       paymentMethod: "pix",
       installments: 1,
       participantAccessStatus: "active",
+      pricingType: "standard",
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
     });
 
     await waitFor(() => expect(shell).toHaveAttribute("data-confirmation-state", "paid"));

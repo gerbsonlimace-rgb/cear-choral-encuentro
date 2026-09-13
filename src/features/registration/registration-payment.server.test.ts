@@ -112,6 +112,9 @@ function pendingRecord(): RegistrationPaymentRecord {
     paymentMethod: null,
     installments: null,
     receiptUrl: null,
+    pricingType: "promotional",
+    standardPriceCents: 30000,
+    registrationPriceCents: 10000,
   };
 }
 
@@ -134,7 +137,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
 const identityColumns = "id";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -147,6 +150,9 @@ function paymentRow(overrides: Record<string, unknown> = {}) {
     payment_method: null,
     installments: null,
     receipt_url: null,
+    pricing_type: "promotional",
+    standard_price_cents: 30000,
+    registration_price_cents: 10000,
     ...overrides,
   };
 }
@@ -228,9 +234,8 @@ function createFixture() {
     markPaid: vi.fn(async (orderNsu, confirmation) => {
       calls.push("markPaid");
       record = {
-        id: "registration-1",
+        ...pendingRecord(),
         orderNsu,
-        amountCents: 10000,
         paymentStatus: "paid",
         transactionNsu: confirmation.transactionNsu,
         paymentMethod: confirmation.paymentMethod,
@@ -484,7 +489,12 @@ describe("registration payment service", () => {
 
     const result = await fixture.service.reconcilePayment(lookup);
 
-    expect(result.status).toBe("paid");
+    expect(result).toMatchObject({
+      status: "paid",
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+    });
     expect(fixture.repository.markPaid).toHaveBeenCalledOnce();
     expect(fixture.repository.markPaid).toHaveBeenCalledWith(fixedOrderNsu, {
       transactionNsu: "transaction-1",
@@ -614,7 +624,7 @@ describe("registration payment service", () => {
     });
   });
 
-  it("returns only receipt data from the public status", async () => {
+  it("returns trusted pricing snapshots rather than provider-paid amount in the public status", async () => {
     fixture.setRecord({
       ...pendingRecord(),
       paymentStatus: "paid",
@@ -625,6 +635,10 @@ describe("registration payment service", () => {
       participantName: "Maria da Silva",
       participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
+      paidAmountCents: 10420,
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
     } as RegistrationPaymentRecord);
 
     const status = await fixture.service.getPublicStatus(fixedOrderNsu);
@@ -638,6 +652,9 @@ describe("registration payment service", () => {
       participantName: "Maria da Silva",
       participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
     });
     expect(JSON.stringify(status)).not.toContain("transaction-1");
     expect(JSON.stringify(status)).not.toContain('"M"');
@@ -878,6 +895,9 @@ describe("Supabase registration repository", () => {
             payment_method: "pix",
             installments: 1,
             receipt_url: "https://receipts.infinitepay.io/receipt/abc",
+            pricing_type: "promotional",
+            standard_price_cents: 30000,
+            registration_price_cents: 10000,
           }),
           error: null,
         },
@@ -899,6 +919,9 @@ describe("Supabase registration repository", () => {
       choirName: null,
       paidAmountCents: null,
       paidAt: null,
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
     });
 
     expect(database.trace).toEqual([

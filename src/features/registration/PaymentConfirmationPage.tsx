@@ -192,6 +192,14 @@ function ConfirmedPayment({
 }) {
   const [downloading, setDownloading] = useState(false);
   const rows = buildReceiptRows(payment);
+  const isPreRegistration =
+    payment.pricingType === "promotional" &&
+    payment.registrationPriceCents < payment.standardPriceCents;
+  const remainingCents = payment.standardPriceCents - payment.registrationPriceCents;
+  const remainingValue = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(remainingCents / 100);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -236,12 +244,21 @@ function ConfirmedPayment({
                   Pagamento aprovado pela InfinitePay
                 </p>
                 <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                  Inscrição confirmada
+                  {isPreRegistration ? "Pré-inscrição confirmada" : "Inscrição confirmada"}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  Sua vaga está garantida. Confira abaixo os dados da sua inscrição e guarde este
-                  comprovante.
+                  {isPreRegistration ? (
+                    <>
+                      <span>Acesso ao app liberado</span>. Sua vaga será confirmada após a quitação do valor
+                      restante.
+                    </>
+                  ) : (
+                    <><span>Vaga confirmada</span>. Confira abaixo os dados da sua inscrição e guarde este comprovante.</>
+                  )}
                 </p>
+                {isPreRegistration && (
+                  <p className="mt-3 font-bold text-foreground">Valor restante: {remainingValue}</p>
+                )}
               </div>
             </div>
           </div>
@@ -263,7 +280,7 @@ function ConfirmedPayment({
                   </h2>
                 </div>
                 <span className="rounded-full bg-emerald/15 px-3 py-1 text-xs font-bold text-emerald-foreground">
-                  Confirmada
+                  {isPreRegistration ? "Pré-inscrição" : "Confirmada"}
                 </span>
               </div>
               <dl className="mt-5 grid gap-3 sm:grid-cols-2">

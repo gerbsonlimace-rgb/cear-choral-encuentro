@@ -91,10 +91,18 @@ describe("participant authorizer", () => {
     ["without a link", null],
     ["with pending access", { ...activePaidAccount, accessStatus: "pending" as const }],
     ["with conflicting access", { ...activePaidAccount, accessStatus: "conflict" as const }],
-    ["with an unpaid registration", { ...activePaidAccount, paymentStatus: "pending" as const }],
     ["with a mismatched user", { ...activePaidAccount, userId: "other-user" }],
   ])("returns a neutral unavailable state %s", async (_case, row) => {
     const authorizer = createParticipantAuthorizer(repository(row));
+
+    await expect(authorizer.findAccess("user-1")).resolves.toEqual({ status: "unavailable" });
+    await expect(authorizer.requireActive("user-1")).rejects.toThrow("Acesso não autorizado.");
+  });
+
+  it("denies app access when the raw initial payment_status is pending", async () => {
+    const authorizer = createParticipantAuthorizer(
+      repository({ ...activePaidAccount, paymentStatus: "pending" }),
+    );
 
     await expect(authorizer.findAccess("user-1")).resolves.toEqual({ status: "unavailable" });
     await expect(authorizer.requireActive("user-1")).rejects.toThrow("Acesso não autorizado.");
@@ -108,6 +116,15 @@ describe("participant authorizer", () => {
       accountId: "account-1",
       registrationId: activePaidAccount.registrationId,
       userId: "user-1",
+    });
+  });
+
+  it("authorizes app access for a paid promotional initial registration before balance settlement", async () => {
+    const authorizer = createParticipantAuthorizer(repository(activePaidAccount));
+
+    await expect(authorizer.findAccess("user-1")).resolves.toMatchObject({
+      status: "authorized",
+      registrationId: activePaidAccount.registrationId,
     });
   });
 });

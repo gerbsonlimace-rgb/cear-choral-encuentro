@@ -37,6 +37,9 @@ export type RegistrationPaymentRecord = {
   paidAmountCents?: number | null;
   paidAt?: string | null;
   participantEmail?: string | null;
+  pricingType: "standard" | "promotional" | null;
+  standardPriceCents: number | null;
+  registrationPriceCents: number | null;
 };
 
 export type PublicPaymentStatus =
@@ -54,6 +57,9 @@ export type PublicPaymentStatus =
       participantName?: string;
       participantEmail?: string;
       choirName?: string;
+      pricingType: "standard" | "promotional";
+      standardPriceCents: number;
+      registrationPriceCents: number;
     };
 
 export type RegistrationIdentityRecord = {
@@ -225,7 +231,16 @@ function toPublicPaymentStatus(
   record: RegistrationPaymentRecord,
   participantAccessStatus: ParticipantAccessStatus = "pending",
 ): PublicPaymentStatus {
-  if (record.paymentStatus !== "paid" || !record.paymentMethod || !record.installments) {
+  if (
+    record.paymentStatus !== "paid" ||
+    !record.paymentMethod ||
+    !record.installments ||
+    !record.pricingType ||
+    typeof record.standardPriceCents !== "number" ||
+    typeof record.registrationPriceCents !== "number" ||
+    !Number.isSafeInteger(record.standardPriceCents) ||
+    !Number.isSafeInteger(record.registrationPriceCents)
+  ) {
     return { status: "pending" };
   }
 
@@ -234,6 +249,9 @@ function toPublicPaymentStatus(
     paymentMethod: record.paymentMethod,
     installments: record.installments,
     participantAccessStatus,
+    pricingType: record.pricingType,
+    standardPriceCents: record.standardPriceCents,
+    registrationPriceCents: record.registrationPriceCents,
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
     ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
     ...(record.paidAt ? { paidAt: record.paidAt } : {}),
@@ -244,7 +262,7 @@ function toPublicPaymentStatus(
 }
 
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at" as const;
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents" as const;
 const identityColumns = "id" as const;
 
 function mapPaymentRow(row: {
@@ -261,6 +279,9 @@ function mapPaymentRow(row: {
   choir_name?: string | null;
   paid_amount_cents?: number | null;
   paid_at?: string | null;
+  pricing_type?: string | null;
+  standard_price_cents?: number | null;
+  registration_price_cents?: number | null;
 }): RegistrationPaymentRecord {
   if (!row.order_nsu || !row.amount_cents || !["pending", "paid"].includes(row.payment_status)) {
     throw new Error("Registro de pagamento inválido.");
@@ -280,6 +301,12 @@ function mapPaymentRow(row: {
     choirName: row.choir_name ?? null,
     paidAmountCents: row.paid_amount_cents ?? null,
     paidAt: row.paid_at ?? null,
+    pricingType:
+      row.pricing_type === "standard" || row.pricing_type === "promotional"
+        ? row.pricing_type
+        : null,
+    standardPriceCents: row.standard_price_cents ?? null,
+    registrationPriceCents: row.registration_price_cents ?? null,
   };
 }
 
