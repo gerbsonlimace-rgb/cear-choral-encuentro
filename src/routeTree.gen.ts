@@ -17,6 +17,7 @@ import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegenteIndexRouteImport } from './routes/regente.index'
 import { Route as ParticipanteIndexRouteImport } from './routes/participante.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento'
 import { Route as RegenteLoginRouteImport } from './routes/regente.login'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
@@ -71,6 +72,11 @@ const ParticipanteIndexRoute = ParticipanteIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ParticipanteRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
   id: '/pagamento',
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/admin/': typeof AdminIndexRoute
   '/participante/': typeof ParticipanteIndexRoute
   '/regente/': typeof RegenteIndexRoute
 }
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/admin': typeof AdminIndexRoute
   '/participante': typeof ParticipanteIndexRoute
   '/regente': typeof RegenteIndexRoute
 }
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
+  '/admin/': typeof AdminIndexRoute
   '/participante/': typeof ParticipanteIndexRoute
   '/regente/': typeof RegenteIndexRoute
 }
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/admin/'
     | '/participante/'
     | '/regente/'
   fileRoutesByTo: FileRoutesByTo
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/admin'
     | '/participante'
     | '/regente'
   id:
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
+    | '/admin/'
     | '/participante/'
     | '/regente/'
   fileRoutesById: FileRoutesById
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   AdminPatrocinadoresRoute: typeof AdminPatrocinadoresRoute
   AdminResumoRoute: typeof AdminResumoRoute
   ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -362,6 +375,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/participante/'
       preLoaderRoute: typeof ParticipanteIndexRouteImport
       parentRoute: typeof ParticipanteRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/regente/pagamento': {
       id: '/regente/pagamento'
@@ -513,6 +533,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPatrocinadoresRoute: AdminPatrocinadoresRoute,
   AdminResumoRoute: AdminResumoRoute,
   ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

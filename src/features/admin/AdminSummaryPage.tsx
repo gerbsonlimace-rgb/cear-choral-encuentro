@@ -140,7 +140,7 @@ export function AdminSummaryPage({
     : [];
 
   return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <main className="internal-app min-h-svh min-w-0 bg-background px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <header>
           <h1 className="font-display text-3xl tracking-[-0.02em]">Resumo</h1>

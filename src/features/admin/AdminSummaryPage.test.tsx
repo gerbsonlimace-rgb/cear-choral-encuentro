@@ -36,6 +36,11 @@ describe("AdminSummaryPage", () => {
     expect(within(overview).getByText("Coro de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("R$ 250,00")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("main")).toHaveClass(
+      "internal-app",
+      "pt-20",
+      "md:pl-[calc(15rem+1.5rem)]",
+    );
     expect(checkAccess).toHaveBeenCalledOnce();
     expect(loadSummary).toHaveBeenCalledOnce();
   });
