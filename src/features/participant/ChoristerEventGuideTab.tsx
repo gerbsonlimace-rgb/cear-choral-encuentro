@@ -5,8 +5,10 @@ import type { ChoristerPortalCollection } from "@/features/chorister-app/chorist
 import type { ParticipantGuideActivity } from "@/features/event-activities/eventActivity.domain";
 import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
-// Additional agenda entries can be supplied when the agenda service is available.
-// The published portal remains compatible with the existing signed event feed.
+export type { ParticipantGuideActivity } from "@/features/event-activities/eventActivity.domain";
+
+// Additional agenda entries come from the configurable programme while the
+// existing signed CoroApp feed keeps its published celebrations visible.
 
 type Event = ChoristerPortalCollection["events"][number];
 type GuideDay = { date: string; day: string; weekday: string };
@@ -161,7 +163,7 @@ export function ChoristerEventGuideTab({ events, loadActivities = getParticipant
 
         {loading && (
           <p role="status" className="px-4 py-6 text-sm text-muted-foreground">
-            Carregando programação…
+            Atualizando programação…
           </p>
         )}
         {error && (
@@ -175,7 +177,7 @@ export function ChoristerEventGuideTab({ events, loadActivities = getParticipant
           </p>
         )}
 
-        {!loading && selectedActivities.length > 0 && (
+        {selectedActivities.length > 0 && (
           <ol className="divide-y divide-border/70 px-3">
             {selectedActivities.map((activity) => (
               <li key={activity.id} className="flex items-start gap-2.5 py-3">

@@ -39,6 +39,17 @@ describe("ChoristerEventGuideTab", () => {
     await screen.findByText("Nenhuma atividade publicada para este dia.");
     expect(getParticipantEventActivities).toHaveBeenCalled();
   });
+
+  it("shows known event activities while the configurable agenda is still loading", async () => {
+    const user = userEvent.setup();
+    render(<ChoristerEventGuideTab events={events} loadActivities={() => new Promise(() => {})} />);
+
+    await user.click(screen.getByRole("tab", { name: /21 de novembro/i }));
+
+    expect(screen.getByText("Grande Concerto")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Atualizando programação");
+  });
+
   it("keeps the official guide notes compact without rendering CoroApp event cards", async () => {
     render(
       <ChoristerEventGuideTab events={events} loadActivities={vi.fn().mockResolvedValue([])} />,

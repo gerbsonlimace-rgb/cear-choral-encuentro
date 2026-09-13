@@ -6,11 +6,10 @@ import {
   Files,
   Home,
   MapPin,
-  MapPinned,
   Music2,
   UserRound,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import type {
 } from "@/features/chorister-app/choristerApp.domain";
 import { cn } from "@/lib/utils";
 
-import { ChoristerEventGuideTab } from "./ChoristerEventGuideTab";
+import { ChoristerEventGuideTab, type ParticipantGuideActivity } from "./ChoristerEventGuideTab";
 import { ChoristerHomeTab } from "./ChoristerHomeTab";
 import { ChoristerProfileTab } from "./ChoristerProfileTab";
 import { ChoristerSongsTab } from "./ChoristerSongsTab";
@@ -51,13 +50,16 @@ export type ChoristerAppShellProps = {
   onTabChange?: (tab: ChoristerTab) => void;
   initialEventId?: string;
   onEventChange?: (eventId: string | null) => void;
+  loadGuideActivities?: () => Promise<ParticipantGuideActivity[]>;
 };
+
+const loadPublishedGuideOnly = async (): Promise<ParticipantGuideActivity[]> => [];
 
 const tabs = [
   { id: "home", label: "Home", icon: Home },
-  { id: "cantos", label: "Cantos", icon: Music2 },
+  { id: "guia", label: "Programação", icon: CalendarDays },
+  { id: "cantos", label: "Kit Ensaio", icon: Music2 },
   { id: "documentos", label: "Documentos", icon: Files },
-  { id: "guia", label: "Guia", icon: MapPinned },
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ] as const satisfies ReadonlyArray<{ id: ChoristerTab; label: string; icon: typeof Home }>;
 
@@ -93,6 +95,7 @@ export function ChoristerAppShell({
   onTabChange,
   initialEventId,
   onEventChange,
+  loadGuideActivities,
 }: ChoristerAppShellProps) {
   const [portalFeed, setPortalFeed] = useState<ChoristerPortalFeed | null>(feed);
   const [portalEvents, setPortalEvents] = useState<ChoristerPortalCollection["events"]>(
@@ -117,6 +120,18 @@ export function ChoristerAppShell({
   const audioActionRef = useRef(0);
   const audioRecoveryIdsRef = useRef(new Set<string>());
   const pendingAudioPositionRef = useRef<number | null>(null);
+  const guideActivitiesPromiseRef = useRef<Promise<ParticipantGuideActivity[]> | null>(null);
+  const guideActivitiesLoader = loadGuideActivities ?? loadPublishedGuideOnly;
+  const loadGuideActivitiesOnce = useCallback(() => {
+    if (!guideActivitiesPromiseRef.current) {
+      guideActivitiesPromiseRef.current = guideActivitiesLoader();
+    }
+    return guideActivitiesPromiseRef.current;
+  }, [guideActivitiesLoader]);
+
+  useEffect(() => {
+    void loadGuideActivitiesOnce().catch(() => undefined);
+  }, [loadGuideActivitiesOnce]);
 
   useEffect(() => {
     if (!leaving) {
@@ -214,7 +229,6 @@ export function ChoristerAppShell({
     if (tab !== "documentos") setRequestedScoreAsset(null);
     if (tab !== "cantos") {
       setSelectedEventId(null);
-      onEventChange?.(null);
     } else if (portalEvents.length === 1) {
       setSelectedEventId(portalEvents[0].id);
       onEventChange?.(portalEvents[0].id);
@@ -688,7 +702,12 @@ export function ChoristerAppShell({
               ) : null}
             </section>
           )}
-          {selectedTab === "guia" && <ChoristerEventGuideTab events={portalEvents} />}
+          {selectedTab === "guia" && (
+            <ChoristerEventGuideTab
+              events={portalEvents}
+              loadActivities={loadGuideActivitiesOnce}
+            />
+          )}
           {selectedTab === "perfil" && (
             <ChoristerProfileTab
               participant={participant}
