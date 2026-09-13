@@ -41,25 +41,22 @@ function setup(overrides: Partial<React.ComponentProps<typeof ComplementPaymentD
 }
 
 describe("ComplementPaymentDialog", () => {
-  it("shows the exact maximum and blocks an amount one cent above the balance", async () => {
-    const { user, props } = setup();
-    expect(screen.getByText(/Máximo disponível: R\$ 150,00/)).toBeInTheDocument();
+  it("shows the full pending balance without an editable amount", () => {
+    setup();
 
-    await user.type(screen.getByLabelText("Valor do complemento"), "150,01");
-    await user.click(screen.getByRole("button", { name: "Pagar complemento" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("O valor máximo é R$ 150,00.");
-    expect(props.startCheckout).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/pagará o saldo pendente integral de R\$\s*150,00/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Valor do complemento")).not.toBeInTheDocument();
   });
 
-  it("converts Brazilian currency to cents and navigates only to the returned safe checkout", async () => {
+  it("starts checkout with only the registration ID and navigates only to the returned safe checkout", async () => {
     const { user, props } = setup();
-    await user.type(screen.getByLabelText("Valor do complemento"), "75,09");
     await user.click(screen.getByRole("button", { name: "Pagar complemento" }));
 
     await waitFor(() =>
       expect(props.startCheckout).toHaveBeenCalledExactlyOnceWith({
-        data: { registrationId: participant.id, amountCents: 7_509 },
+        data: { registrationId: participant.id },
       }),
     );
     expect(props.navigateToCheckout).toHaveBeenCalledExactlyOnceWith(
@@ -76,7 +73,6 @@ describe("ComplementPaymentDialog", () => {
         }),
     );
     const { user } = setup({ startCheckout });
-    await user.type(screen.getByLabelText("Valor do complemento"), "50,00");
     const submit = screen.getByRole("button", { name: "Pagar complemento" });
     await user.dblClick(submit);
 
@@ -99,12 +95,23 @@ describe("ComplementPaymentDialog", () => {
         orderNsu: "order-1",
       }),
     });
-    await user.type(screen.getByLabelText("Valor do complemento"), "50,00");
     await user.click(screen.getByRole("button", { name: "Pagar complemento" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível abrir o pagamento. Tente novamente.",
     );
     expect(navigateToCheckout).not.toHaveBeenCalled();
+  });
+
+  it("disables checkout for an ineligible participant without calling the server", () => {
+    const ineligibleParticipant: PortalParticipant = {
+      ...participant,
+      complement: { eligible: false, reason: "settled" },
+    };
+    const { props } = setup({ participant: ineligibleParticipant });
+
+    expect(screen.getByText("Selecione um participante elegível.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pagar complemento" })).toBeDisabled();
+    expect(props.startCheckout).not.toHaveBeenCalled();
   });
 });
