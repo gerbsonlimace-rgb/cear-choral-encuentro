@@ -109,10 +109,11 @@ export function AdminCoroAppIntegrationPage({
       className={
         embedded
           ? "space-y-5"
-          : "mx-auto w-full max-w-4xl space-y-5 p-4 pb-24 sm:p-6 md:pb-6"
+          : "internal-app min-h-svh w-full bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6"
       }
     >
-      {!embedded && <AdminNavigation current="settings" navigateTo={navigateTo} />}
+      {!embedded && <AdminNavigation current="integrations" navigateTo={navigateTo} />}
+      <div className={embedded ? "contents" : "mx-auto max-w-4xl space-y-5"}>
       <div>
         <Badge variant="secondary" className="mb-2 gap-1">
           <RefreshCw className="size-3.5" aria-hidden="true" />
@@ -197,6 +198,7 @@ export function AdminCoroAppIntegrationPage({
           </ol>
         )}
       </section>
+      </div>
     </Container>
   );
 }

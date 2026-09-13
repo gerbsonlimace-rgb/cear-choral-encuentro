@@ -317,7 +317,7 @@ export function AdminChoirsPage({
   };
 
   return (
-    <main className="min-h-svh bg-background px-4 pb-24 pt-6 sm:px-6 md:pb-6">
+    <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
