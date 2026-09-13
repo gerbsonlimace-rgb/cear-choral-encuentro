@@ -2,9 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/event-activity.functions", () => ({
+  getParticipantEventActivities: vi.fn().mockResolvedValue([]),
+}));
+
 import type { ChoristerPortalCollection } from "@/features/chorister-app/choristerApp.domain";
 
 import { ChoristerEventGuideTab } from "./ChoristerEventGuideTab";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
 const events: ChoristerPortalCollection["events"] = [
   {
@@ -29,6 +34,11 @@ const events: ChoristerPortalCollection["events"] = [
 ];
 
 describe("ChoristerEventGuideTab", () => {
+  it("loads the real configurable programme by default", async () => {
+    render(<ChoristerEventGuideTab events={events} />);
+    await screen.findByText("Nenhuma atividade publicada para este dia.");
+    expect(getParticipantEventActivities).toHaveBeenCalled();
+  });
   it("keeps the official guide notes compact without rendering CoroApp event cards", async () => {
     render(
       <ChoristerEventGuideTab events={events} loadActivities={vi.fn().mockResolvedValue([])} />,

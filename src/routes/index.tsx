@@ -19,25 +19,23 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
+import { PublicProgramme } from "@/features/event-activities/PublicProgramme";
+import { getPublicEventProgramme } from "@/lib/event-activity.functions";
 import {
   ArrowRight,
-  BadgeCheck,
   BookOpen,
   Calendar,
   Church,
   MapPin,
-  MapPinned,
   Mic2,
   Music2,
-  Presentation,
   Users,
-  Utensils,
-  type LucideIcon,
 } from "lucide-react";
 const SITE_URL = "https://encontrocorosce.lovable.app";
 const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
 
 export const Route = createFileRoute("/")({
+  loader: () => getPublicEventProgramme(),
   component: Index,
   head: () => ({
     meta: [
@@ -114,6 +112,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const programme = Route.useLoaderData();
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -121,7 +120,7 @@ function Index() {
         <HeroSection />
         <AboutSection />
         <QuixadaSection />
-        <ProgramSection />
+        <PublicProgramme result={programme} />
         <RegistrationSection />
         <SponsorsSection />
       </main>
@@ -602,296 +601,6 @@ function QuixadaSection() {
   );
 }
 
-type ScheduleCategory = "welcome" | "celebration" | "meal" | "conference" | "music" | "visit";
-
-type ScheduleDay = {
-  date: string;
-  weekday: string;
-  items: Array<{
-    time?: string;
-    title: string;
-    category: ScheduleCategory;
-  }>;
-};
-
-const scheduleCategoryPresentation: Record<
-  ScheduleCategory,
-  { label: string; icon: LucideIcon; className: string }
-> = {
-  welcome: {
-    label: "Acolhimento",
-    icon: BadgeCheck,
-    className: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
-  },
-  celebration: {
-    label: "Celebração",
-    icon: Church,
-    className: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
-  },
-  meal: {
-    label: "Refeição",
-    icon: Utensils,
-    className: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300",
-  },
-  conference: {
-    label: "Conferência",
-    icon: Presentation,
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-  },
-  music: {
-    label: "Música",
-    icon: Music2,
-    className: "bg-emerald/10 text-emerald",
-  },
-  visit: {
-    label: "Visita",
-    icon: MapPinned,
-    className: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-  },
-};
-
-const schedule: ScheduleDay[] = [
-  {
-    date: "20 de novembro",
-    weekday: "Sexta-feira",
-    items: [
-      {
-        time: "16h–18h",
-        title: "Credenciamento",
-        category: "welcome",
-      },
-      {
-        time: "18h",
-        title: "Vésperas",
-        category: "celebration",
-      },
-      {
-        time: "18h30",
-        title: "Jantar",
-        category: "meal",
-      },
-      {
-        time: "19h30",
-        title: "Abertura oficial",
-        category: "welcome",
-      },
-      {
-        time: "20h–21h",
-        title: "1ª Conferência",
-        category: "conference",
-      },
-      {
-        title: "Completas",
-        category: "celebration",
-      },
-    ],
-  },
-  {
-    date: "21 de novembro",
-    weekday: "Sábado",
-    items: [
-      {
-        time: "07h",
-        title: "Santa Missa",
-        category: "celebration",
-      },
-      {
-        time: "08h",
-        title: "Café da manhã",
-        category: "meal",
-      },
-      {
-        time: "09h",
-        title: "2ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "10h",
-        title: "Coffee break",
-        category: "meal",
-      },
-      {
-        time: "10h30",
-        title: "3ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "11h30",
-        title: "Ensaio 1",
-        category: "music",
-      },
-      {
-        time: "12h30",
-        title: "Almoço",
-        category: "meal",
-      },
-      {
-        time: "14h",
-        title: "4ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "15h",
-        title: "Ensaio 2",
-        category: "music",
-      },
-      {
-        time: "16h",
-        title: "Coffee break",
-        category: "meal",
-      },
-      {
-        title: "Visita ao Santuário",
-        category: "visit",
-      },
-      {
-        time: "20h",
-        title: "Concerto na Catedral",
-        category: "music",
-      },
-      {
-        title: "Jantar",
-        category: "meal",
-      },
-    ],
-  },
-  {
-    date: "22 de novembro",
-    weekday: "Domingo",
-    items: [
-      {
-        time: "07h30",
-        title: "Laudes",
-        category: "celebration",
-      },
-      {
-        time: "08h",
-        title: "Café da manhã",
-        category: "meal",
-      },
-      {
-        time: "09h",
-        title: "Ensaio 3",
-        category: "music",
-      },
-      {
-        time: "10h",
-        title: "Missa Solene na Catedral",
-        category: "celebration",
-      },
-      {
-        time: "12h",
-        title: "Almoço e despedida",
-        category: "meal",
-      },
-    ],
-  },
-];
-
-function ProgramSection() {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [carouselHeight, setCarouselHeight] = useState<number>();
-
-  useEffect(() => {
-    if (!carouselApi) return;
-
-    const updateCarouselHeight = () => {
-      const selectedSlide = carouselApi.slideNodes()[carouselApi.selectedScrollSnap()];
-      setCarouselHeight(selectedSlide?.offsetHeight);
-    };
-
-    updateCarouselHeight();
-    carouselApi.on("select", updateCarouselHeight);
-    carouselApi.on("reInit", updateCarouselHeight);
-
-    return () => {
-      carouselApi.off("select", updateCarouselHeight);
-      carouselApi.off("reInit", updateCarouselHeight);
-    };
-  }, [carouselApi]);
-
-  return (
-    <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16">
-      <div className="container-event px-4 lg:px-0">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald">
-            <Calendar aria-hidden="true" className="h-4 w-4" />
-            20–22 NOV 2026
-          </span>
-          <h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Programação
-          </h2>
-          <p className="mt-2 text-base text-muted-foreground sm:text-lg">
-            Confira as atividades do encontro de 20 a 22 de novembro de 2026.
-          </p>
-        </div>
-        <Carousel
-          opts={{ align: "start", loop: false }}
-          setApi={setCarouselApi}
-          style={{ height: carouselHeight }}
-          className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"
-        >
-          <CarouselContent className="items-start">
-            {schedule.map((day, index) => (
-              <CarouselItem key={index} className="basis-[92%] sm:basis-[88%]">
-                <ProgramDayCard day={day} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-
-        <div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">
-          {schedule.map((day, index) => (
-            <ProgramDayCard key={index} day={day} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
-  return (
-    <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
-      <div className="bg-teal px-5 py-3.5">
-        <p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p>
-        <h3 className="mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">
-          {day.date}
-        </h3>
-      </div>
-      <CardContent className="p-4 sm:p-5">
-        <div className="divide-y divide-border/70">
-          {day.items.map((item, itemIndex) => {
-            const category = scheduleCategoryPresentation[item.category];
-            const ActivityIcon = category.icon;
-
-            return (
-              <div
-                key={itemIndex}
-                className="grid grid-cols-[3.75rem_1.55rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
-              >
-                <span className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">
-                  {item.time ?? "Na sequência"}
-                </span>
-                <span
-                  role="img"
-                  aria-label={category.label}
-                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${category.className}`}
-                >
-                  <ActivityIcon aria-hidden="true" className="h-4 w-4" strokeWidth={2.25} />
-                </span>
-                <h4 className="min-w-0 font-body text-sm font-semibold leading-snug text-card-foreground sm:text-[0.95rem]">
-                  {item.title}
-                </h4>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
@@ -1014,3 +723,4 @@ function Footer() {
     </footer>
   );
 }
+

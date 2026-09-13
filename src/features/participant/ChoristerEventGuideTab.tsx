@@ -2,21 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, MapPin, ScanLine } from "lucide-react";
 
 import type { ChoristerPortalCollection } from "@/features/chorister-app/choristerApp.domain";
+import type { ParticipantGuideActivity } from "@/features/event-activities/eventActivity.domain";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
 // Additional agenda entries can be supplied when the agenda service is available.
 // The published portal remains compatible with the existing signed event feed.
-type ParticipantGuideActivity = {
-  id: string;
-  title: string;
-  activityDate: string;
-  startsAt: string | null;
-  endsAt: string | null;
-  location: string | null;
-  description: string | null;
-  sortOrder: number;
-  requiresQr: boolean;
-};
-const loadPublishedFeedOnly = async (): Promise<ParticipantGuideActivity[]> => [];
 
 type Event = ChoristerPortalCollection["events"][number];
 type GuideDay = { date: string; day: string; weekday: string };
@@ -37,7 +27,7 @@ function activityTime(activity: ParticipantGuideActivity) {
   return activity.endsAt ? `${activity.startsAt}–${activity.endsAt}` : activity.startsAt;
 }
 
-export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedFeedOnly }: Props) {
+export function ChoristerEventGuideTab({ events, loadActivities = getParticipantEventActivities }: Props) {
   const [selectedDate, setSelectedDate] = useState(GUIDE_DAYS[0].date);
   const dayButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const [activities, setActivities] = useState<ParticipantGuideActivity[]>([]);
@@ -86,6 +76,7 @@ export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedF
         endsAt: null,
         location: event.location,
         description: null,
+        category: "music",
         sortOrder: 900 + index,
         requiresQr: false,
       }));
