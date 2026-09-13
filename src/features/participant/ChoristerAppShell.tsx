@@ -472,7 +472,7 @@ export function ChoristerAppShell({
                       Escolha uma celebração para abrir o repertório publicado.
                     </p>
                   </header>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2.5 md:gap-3">
                     {portalEvents.map((event) => {
                       const audioCount = event.songs.reduce(
                         (total, song) => total + song.audios.length,
@@ -488,33 +488,41 @@ export function ChoristerAppShell({
                           type="button"
                           aria-label={`Abrir evento ${event.name}`}
                           onClick={() => openEvent(event.id)}
-                          className="group w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                          className="group relative aspect-square w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 md:aspect-auto"
                         >
                           {event.coverImageUrl ? (
                             <img
                               src={event.coverImageUrl}
                               alt=""
                               loading="lazy"
-                              className="h-24 w-full object-cover"
+                              className="absolute inset-0 size-full object-cover md:static md:h-24 md:w-full"
                             />
                           ) : (
                             <div
                               aria-hidden="true"
-                              className="h-10 bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500"
+                              className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-700 to-zinc-500 md:static md:h-10"
                             />
                           )}
-                          <div className="flex w-full items-start justify-between gap-3 px-4 pt-3">
+                          <div
+                            aria-hidden="true"
+                            className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent md:hidden"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 z-10 flex w-full items-end justify-between gap-2 p-3 text-white md:static md:items-start md:gap-3 md:px-4 md:pt-3 md:pb-0 md:text-zinc-950">
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                              <p className="hidden text-xs font-semibold tracking-wide text-zinc-500 uppercase md:block">
                                 Celebração
                               </p>
-                              <h2 className="mt-1 text-base font-semibold leading-snug text-zinc-950">
+                              <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-white md:mt-1 md:text-base md:text-zinc-950">
                                 {event.name}
                               </h2>
+                              <p className="mt-1 flex items-center gap-1 text-[11px] leading-none text-zinc-200 md:hidden">
+                                <CalendarDays className="size-3" />
+                                {eventDateFormatter.format(new Date(`${event.date}T12:00:00.000Z`))}
+                              </p>
                             </div>
-                            <ChevronRight className="mt-1 size-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5" />
+                            <ChevronRight className="mb-0.5 size-4 shrink-0 text-white transition-transform group-hover:translate-x-0.5 md:mt-1 md:mb-0 md:size-5 md:text-zinc-400" />
                           </div>
-                          <div className="w-full space-y-2 px-4 pt-3 pb-4 text-xs text-zinc-600">
+                          <div className="hidden w-full space-y-2 px-4 pt-3 pb-4 text-xs text-zinc-600 md:block">
                             <p className="flex items-center gap-2">
                               <CalendarDays className="size-4" />
                               {eventDateFormatter.format(new Date(`${event.date}T12:00:00.000Z`))}

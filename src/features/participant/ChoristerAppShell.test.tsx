@@ -230,7 +230,7 @@ describe("ChoristerAppShell", () => {
     expect(screen.getByRole("button", { name: "Cantos" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("uses the validated CoroApp cover on the event card and compact detail header", async () => {
+  it("renders the mobile event chooser as two-column image tiles", async () => {
     const coveredEvent = {
       ...feed.event,
       coverImageUrl: "https://assets.example.test/event-cover.jpg",
@@ -244,7 +244,11 @@ describe("ChoristerAppShell", () => {
 
     await user.click(screen.getByRole("button", { name: "Cantos" }));
     const card = screen.getByRole("button", { name: `Abrir evento ${coveredEvent.name}` });
-    expect(card.querySelector("img")).toHaveAttribute("src", coveredEvent.coverImageUrl);
+    const cover = card.querySelector("img");
+    expect(card.parentElement).toHaveClass("grid-cols-2");
+    expect(card).toHaveClass("aspect-square");
+    expect(cover).toHaveAttribute("src", coveredEvent.coverImageUrl);
+    expect(cover).toHaveClass("absolute", "inset-0", "size-full", "object-cover");
 
     await user.click(card);
     const detail = screen.getByRole("region", { name: coveredEvent.name });
