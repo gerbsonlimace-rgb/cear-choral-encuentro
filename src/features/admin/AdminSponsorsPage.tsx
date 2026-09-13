@@ -42,7 +42,7 @@ import {
   setAdminSponsorActive,
   updateAdminSponsor,
 } from "@/lib/sponsor.functions";
-import { AdminNavigation } from "./AdminNavigation";
+import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type ServerMutation<TInput> = (input: { data: TInput }) => Promise<AdminSponsor>;
 
@@ -57,9 +57,7 @@ export type AdminSponsorsPageProps = {
   setSponsorActive?: ServerMutation<{ id: string; isActive: boolean }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
-  navigateTo?: (
-    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
-  ) => void;
+  navigateTo?: (to: AdminNavigationPath | "/regente") => void;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";

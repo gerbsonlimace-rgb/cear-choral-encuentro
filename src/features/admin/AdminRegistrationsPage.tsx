@@ -50,7 +50,7 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
-import { AdminNavigation } from "./AdminNavigation";
+import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type Props = {
   onSignedOut: () => void;
@@ -67,9 +67,7 @@ type Props = {
   }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
-  navigateTo?: (
-    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
-  ) => void;
+  navigateTo?: (to: AdminNavigationPath | "/regente") => void;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();

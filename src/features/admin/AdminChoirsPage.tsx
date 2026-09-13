@@ -45,7 +45,7 @@ import {
 } from "@/features/choirs/choir-pricing.domain";
 import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
 import { getAdminAccess } from "@/lib/admin.functions";
-import { AdminNavigation } from "./AdminNavigation";
+import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 import { AdminRegentsPanel } from "./AdminRegentsPanel";
 
 type ServerMutation<TInput, TOutput> = (input: { data: TInput }) => Promise<TOutput>;
@@ -62,7 +62,7 @@ export type AdminChoirsPageProps = {
   setChoirActive?: ServerMutation<{ id: string; isActive: boolean }, AdminChoir>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
-  navigateTo?: (to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores") => void;
+  navigateTo?: (to: AdminNavigationPath) => void;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
