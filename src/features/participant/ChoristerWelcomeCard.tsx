@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleHelp, Clock3 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ParticipantRegistrationView } from "./participant.domain";
 
@@ -106,11 +107,20 @@ export function ChoristerWelcomeCard({
       >
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="shrink-0 text-[11px] text-zinc-500">Valor pendente</span>
-          {known && (
-            <span className="app-metric truncate text-sm font-semibold leading-5 text-zinc-700 tabular-nums">
-              {money.format(financial.pendingCents / 100)}
-            </span>
-          )}
+          {known &&
+            (financial.pendingCents > 0 ? (
+              <Link
+                to="/participante/pagamento"
+                aria-label={`Pagar saldo restante de ${money.format(financial.pendingCents / 100)}`}
+                className="app-metric truncate rounded-sm text-sm font-semibold leading-5 text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 tabular-nums"
+              >
+                {money.format(financial.pendingCents / 100)}
+              </Link>
+            ) : (
+              <span className="app-metric truncate text-sm font-semibold leading-5 text-zinc-700 tabular-nums">
+                {money.format(financial.pendingCents / 100)}
+              </span>
+            ))}
         </div>
         <span
           role="status"
