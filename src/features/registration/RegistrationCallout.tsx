@@ -98,7 +98,7 @@ export function RegistrationCallout() {
                 type="button"
                 role="radio"
                 aria-checked={selectedOption === "integral"}
-                aria-label="Opção A: inscrição integral"
+                aria-label="Inscrição integral"
                 onClick={() => setSelectedOption("integral")}
                 className={`relative flex min-h-[280px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
                   selectedOption === "integral"
@@ -120,12 +120,7 @@ export function RegistrationCallout() {
                   <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
                     <CreditCard className="size-5" strokeWidth={2.25} aria-hidden="true" />
                   </span>
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffc400]">
-                      Opção A
-                    </p>
-                    <p className="mt-0.5 text-base font-bold">Inscrição integral</p>
-                  </div>
+                  <p className="text-base font-bold">Inscrição integral</p>
                 </div>
                 <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
                   R$ 300,00
@@ -143,7 +138,7 @@ export function RegistrationCallout() {
                 type="button"
                 role="radio"
                 aria-checked={selectedOption === "raffles"}
-                aria-label="Opção B: programa de rifas"
+                aria-label="Programa de rifas"
                 onClick={() => setSelectedOption("raffles")}
                 className={`relative flex min-h-[280px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
                   selectedOption === "raffles"
@@ -165,12 +160,7 @@ export function RegistrationCallout() {
                   <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
                     <Ticket className="size-5" strokeWidth={2.25} aria-hidden="true" />
                   </span>
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffc400]">
-                      Opção B
-                    </p>
-                    <p className="mt-0.5 text-base font-bold">Programa de rifas</p>
-                  </div>
+                  <p className="text-base font-bold">Programa de rifas</p>
                 </div>
                 <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
                   R$ 100,00

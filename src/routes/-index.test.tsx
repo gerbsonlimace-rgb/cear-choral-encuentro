@@ -224,10 +224,10 @@ describe("landing page access", () => {
       name: "Opções de inscrição",
     });
     const integralOption = within(options).getByRole("radio", {
-      name: "Opção A: inscrição integral",
+      name: "Inscrição integral",
     });
     const raffleOption = within(options).getByRole("radio", {
-      name: "Opção B: programa de rifas",
+      name: "Programa de rifas",
     });
     expect(integralOption).toBeVisible();
     expect(raffleOption).toBeVisible();
@@ -245,6 +245,8 @@ describe("landing page access", () => {
       within(options).getByText("+ valor restante com a venda de rifas até 30/10."),
     ).toBeVisible();
     expect(within(options).getByText(/Exclusivo para membros de coros/)).toBeVisible();
+    expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
+    expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
   });
 
   it("gives both registration choices strong and responsive visual prominence", () => {
@@ -258,10 +260,10 @@ describe("landing page access", () => {
       name: "Opções de inscrição",
     });
     const integralOption = within(options).getByRole("radio", {
-      name: "Opção A: inscrição integral",
+      name: "Inscrição integral",
     });
     const raffleOption = within(options).getByRole("radio", {
-      name: "Opção B: programa de rifas",
+      name: "Programa de rifas",
     });
 
     expect(options).toHaveClass("grid-cols-1", "sm:grid-cols-2");
