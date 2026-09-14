@@ -35,6 +35,10 @@ describe("AdminNavigation", () => {
     ).toHaveLength(7);
     expect(screen.getByTestId("admin-topbar")).toHaveClass("bg-brand-ink");
     expect(screen.getByTestId("admin-sidebar")).toHaveClass("md:flex");
+    expect(screen.getByTestId("admin-sidebar")).toHaveClass("bg-brand-ink");
+    expect(screen.getByRole("navigation", { name: "Navegação móvel administrativa" })).toHaveClass(
+      "bg-brand-ink",
+    );
     expect(screen.getAllByTestId("mobile-admin-navigation-item")).toHaveLength(4);
     await user.click(link);
 
