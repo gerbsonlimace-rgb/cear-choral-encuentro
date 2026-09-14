@@ -29,7 +29,7 @@ export function RegistrationCallout() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="grid items-center gap-8 lg:grid-cols-[1.5fr_1fr] lg:gap-12">
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_1.15fr] lg:gap-10">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[#ffc400]">
               <Sparkles className="size-4" aria-hidden="true" />
@@ -44,7 +44,7 @@ export function RegistrationCallout() {
             <p className="mt-4 max-w-2xl text-base font-medium leading-relaxed text-black/70">
               Três dias de música, formação e partilha. Sua inscrição inclui:
             </p>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
               {[
                 {
                   icon: Award,
@@ -70,13 +70,13 @@ export function RegistrationCallout() {
               ].map(({ icon: Icon, label, description }) => (
                 <li
                   key={label}
-                  className="rounded-2xl border-2 border-black/10 bg-white p-4 shadow-[5px_5px_0_rgba(0,0,0,0.14)] transition-transform hover:-translate-y-1 sm:p-5"
+                  className="rounded-2xl border-2 border-black/10 bg-white p-3 shadow-[4px_4px_0_rgba(0,0,0,0.14)] transition-transform hover:-translate-y-1 sm:p-4"
                 >
-                  <span className="mb-3 inline-flex size-12 items-center justify-center rounded-2xl bg-[#ffc400] text-black">
-                    <Icon className="size-6" strokeWidth={2} aria-hidden="true" />
+                  <span className="mb-2 inline-flex size-10 items-center justify-center rounded-xl bg-[#ffc400] text-black">
+                    <Icon className="size-5" strokeWidth={2} aria-hidden="true" />
                   </span>
-                  <h3 className="text-base font-extrabold">{label}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-black/65">{description}</p>
+                  <h3 className="text-sm font-extrabold">{label}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-black/65">{description}</p>
                 </li>
               ))}
             </ul>
@@ -133,21 +133,21 @@ export function RegistrationCallout() {
             <div
               role="group"
               aria-label="Formas de pagamento"
-              className="mt-6 grid grid-cols-2 gap-3"
+              className="mt-4 grid grid-cols-2 gap-2"
             >
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-left">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[#ffc400] text-black">
-                  <QrCode className="size-5" aria-hidden="true" />
+              <div className="rounded-xl border border-white/15 bg-white/10 p-3 text-left">
+                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#ffc400] text-black">
+                  <QrCode className="size-4" aria-hidden="true" />
                 </span>
-                <p className="mt-3 font-extrabold">Pix</p>
-                <p className="mt-0.5 text-sm text-white/65">À vista</p>
+                <p className="mt-2 text-sm font-extrabold">Pix</p>
+                <p className="mt-0.5 text-xs text-white/65">À vista</p>
               </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-left">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[#ffc400] text-black">
-                  <CreditCard className="size-5" aria-hidden="true" />
+              <div className="rounded-xl border border-white/15 bg-white/10 p-3 text-left">
+                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#ffc400] text-black">
+                  <CreditCard className="size-4" aria-hidden="true" />
                 </span>
-                <p className="mt-3 font-extrabold">Cartão</p>
-                <p className="mt-0.5 text-sm text-white/65">Em até 5x</p>
+                <p className="mt-2 text-sm font-extrabold">Cartão</p>
+                <p className="mt-0.5 text-xs text-white/65">Em até 5x</p>
               </div>
             </div>
 
