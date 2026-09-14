@@ -18,7 +18,8 @@ export type PdfAsset = {
 export type PdfAssetAction = (asset: PdfAsset) => PdfAsset | void | Promise<PdfAsset | void>;
 
 type ChoristerScoresTabProps = {
-  event: ChoristerPortalFeed["event"];
+  event?: ChoristerPortalFeed["event"];
+  documents?: ChoristerPortalFeed["event"]["documents"];
   headingId?: string;
   onOpen: PdfAssetAction;
   onDownload: PdfAssetAction;
@@ -49,6 +50,7 @@ function orderedDocuments(event: ChoristerPortalFeed["event"]) {
 
 export function ChoristerScoresTab({
   event,
+  documents: standaloneDocuments = [],
   headingId = "chorister-scores-title",
   onOpen,
   onDownload,
@@ -254,10 +256,12 @@ export function ChoristerScoresTab({
     setViewerStatus("ready");
   }
 
-  const songsWithScores = showSongScores
+  const songsWithScores = showSongScores && event
     ? orderedSongs(event).filter((song) => song.sheetMusic.length > 0)
     : [];
-  const documents = orderedDocuments(event);
+  const documents = event
+    ? orderedDocuments(event)
+    : [...standaloneDocuments].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <section

@@ -38,6 +38,7 @@ async function pdfUpload() {
 function createRepository(): EventDocumentRepository {
   return {
     list: vi.fn(async () => []),
+    listGeneral: vi.fn(async () => []),
     listByEventIds: vi.fn(async () => []),
     find: vi.fn(async () => null),
     create: vi.fn(async (input) => ({ ...input, eventName: "", createdAt: now, updatedAt: now })),
@@ -87,6 +88,54 @@ describe("event document service", () => {
       clock: () => new Date(now),
     });
   }
+
+  it("creates and opens a general PDF without loading any event configuration", async () => {
+    const independentService = createEventDocumentService({
+      repository,
+      storage,
+      listSources: async () => {
+        throw new Error("No event configuration available");
+      },
+      isEventPublished: async () => false,
+      createId: () => documentId,
+    });
+    const saved = await independentService.create({
+      title: "Orientações",
+      file: await pdfUpload(),
+      adminUserId: adminId,
+    });
+    expect(saved).toMatchObject({ title: "Orientações", eventId: null, category: "Documentos" });
+    expect(saved.storagePath).toBe(`general/${documentId}/${documentId}.pdf`);
+    vi.mocked(repository.find).mockResolvedValue(saved);
+    await expect(
+      independentService.createParticipantSignedUrl({ id: saved.id }),
+    ).resolves.toMatchObject({ expiresIn: 120 });
+    vi.mocked(repository.listGeneral).mockResolvedValue([saved]);
+    await expect(independentService.listGeneralAssets()).resolves.toEqual([
+      expect.objectContaining({
+        id: saved.id,
+        title: "Orientações",
+        kind: "document",
+        sortOrder: 0,
+      }),
+    ]);
+    const updated = await independentService.update({
+      id: saved.id,
+      title: "Orientações atualizadas",
+      adminUserId: adminId,
+    });
+    expect(updated).toMatchObject({ eventId: null, title: "Orientações atualizadas" });
+    const replaced = await independentService.update({
+      id: saved.id,
+      title: "Novo PDF",
+      file: await pdfUpload(),
+      adminUserId: adminId,
+    });
+    expect(replaced).toMatchObject({
+      eventId: null,
+      storagePath: `general/${documentId}/${documentId}.pdf`,
+    });
+  });
 
   it("uploads a validated PDF to a server-generated path only for a configured event", async () => {
     const upload = await pdfUpload();

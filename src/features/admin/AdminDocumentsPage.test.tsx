@@ -25,15 +25,6 @@ const document: EventDocument = {
 };
 const bootstrap: AdminEventDocumentBootstrap = {
   documents: [document],
-  events: [
-    {
-      eventId,
-      eventName: "Grande Concerto",
-      publicUrl: `https://coroapp.example.com/e/${eventId}`,
-      sortOrder: 0,
-      updatedAt: now,
-    },
-  ],
 };
 
 function setup(overrides: Partial<React.ComponentProps<typeof AdminDocumentsPage>> = {}) {
@@ -56,7 +47,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof AdminDocumentsPage
 }
 
 describe("AdminDocumentsPage", () => {
-  it("lists event-level PDFs with their real configured event and category", async () => {
+  it("lists documents by name and file", async () => {
     setup();
 
     expect(await screen.findByRole("heading", { name: "Documentos" })).toBeInTheDocument();
@@ -65,24 +56,23 @@ describe("AdminDocumentsPage", () => {
       "page",
     );
     expect(screen.getByText("Livro de partituras")).toBeInTheDocument();
-    expect(screen.getByText("Grande Concerto")).toBeInTheDocument();
     expect(screen.getByText("2 KB")).toBeInTheDocument();
   });
 
-  it("creates a document with an extensible category and the selected PDF", async () => {
+  it("creates a document with only a name and PDF even without configured events", async () => {
     const createDocument = vi.fn(async () => ({
       ...document,
       title: "Orientações de hospedagem",
       category: "Hospedagem",
       originalFileName: "hospedagem.pdf",
     }));
-    const { user } = setup({ createDocument });
+    const { user } = setup({ createDocument, loadBootstrap: async () => ({ documents: [] }) });
 
     await screen.findByRole("heading", { name: "Documentos" });
     await user.click(screen.getByRole("button", { name: "Cadastrar documento" }));
-    await user.selectOptions(screen.getByLabelText("Evento"), eventId);
-    await user.type(screen.getByLabelText("Título"), "Orientações de hospedagem");
-    await user.type(screen.getByLabelText("Categoria"), "Hospedagem");
+    expect(screen.queryByLabelText("Evento")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Categoria")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nome"), "Orientações de hospedagem");
     await user.upload(
       screen.getByLabelText("Arquivo PDF"),
       new File(["%PDF-1.4\n%%EOF"], "hospedagem.pdf", { type: "application/pdf" }),
@@ -92,9 +82,7 @@ describe("AdminDocumentsPage", () => {
     await waitFor(() =>
       expect(createDocument).toHaveBeenCalledWith({
         data: {
-          eventId,
           title: "Orientações de hospedagem",
-          category: "Hospedagem",
           file: {
             base64: expect.any(String),
             mimeType: "application/pdf",

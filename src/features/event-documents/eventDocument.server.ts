@@ -22,6 +22,7 @@ export type EventDocumentPersistence = Omit<
 
 export type EventDocumentRepository = {
   list(): Promise<EventDocument[]>;
+  listGeneral(): Promise<EventDocument[]>;
   listByEventIds(eventIds: string[]): Promise<EventDocument[]>;
   find(id: string): Promise<EventDocument | null>;
   create(input: EventDocumentPersistence): Promise<EventDocument>;
@@ -62,8 +63,10 @@ function withEventName(document: EventDocument, sources: readonly CoroAppEventSo
   return {
     ...document,
     eventName:
-      sources.find(({ eventId }) => eventId === document.eventId)?.eventName ??
-      "Evento não configurado",
+      document.eventId === null
+        ? ""
+        : (sources.find(({ eventId }) => eventId === document.eventId)?.eventName ??
+          "Evento não configurado"),
   };
 }
 
@@ -115,8 +118,22 @@ export function createEventDocumentService({
 
   return {
     async listAdmin() {
-      const [documents, sources] = await Promise.all([repository.list(), configuredSources()]);
-      return documents.map((document) => withEventName(document, sources));
+      return repository.list();
+    },
+
+    async listGeneralAssets() {
+      const documents = await repository.listGeneral();
+      const expiresAt = new Date(clock().getTime() + 120_000).toISOString();
+      return Promise.all(
+        documents.map(async (document, sortOrder) => ({
+          id: document.id,
+          title: document.title,
+          kind: "document" as const,
+          sortOrder,
+          signedUrl: await storage.createSignedUrl(document.storagePath, 120),
+          expiresAt,
+        })),
+      );
     },
 
     listParticipant: listParticipantDocuments,
@@ -127,7 +144,9 @@ export function createEventDocumentService({
         asset: ChoristerPortalCollection["events"][number]["documents"][number];
       }>
     > {
-      const documents = await listParticipantDocuments(knownPublishedEventIds);
+      const documents = (await listParticipantDocuments(knownPublishedEventIds)).filter(
+        (document): document is EventDocument & { eventId: string } => document.eventId !== null,
+      );
       const sortOrders = new Map<string, number>();
       const expiresAt = new Date(clock().getTime() + 120_000).toISOString();
       return Promise.all(
@@ -157,11 +176,11 @@ export function createEventDocumentService({
         category: input.category,
         file: input.file,
       });
-      const sources = await configuredSources();
-      requireConfiguredEvent(parsed.eventId, sources);
+      const sources = parsed.eventId ? await configuredSources() : [];
+      if (parsed.eventId) requireConfiguredEvent(parsed.eventId, sources);
       const bytes = await prepareFile(parsed.file);
       const id = createId();
-      const storagePath = `${parsed.eventId}/${id}/${createId()}.pdf`;
+      const storagePath = `${parsed.eventId ?? "general"}/${id}/${createId()}.pdf`;
 
       await storage.upload({ path: storagePath, bytes, contentType: "application/pdf" });
       try {
@@ -192,8 +211,8 @@ export function createEventDocumentService({
         category: input.category,
         ...(input.file ? { file: input.file } : {}),
       });
-      const sources = await configuredSources();
-      requireConfiguredEvent(parsed.eventId, sources);
+      const sources = parsed.eventId ? await configuredSources() : [];
+      if (parsed.eventId) requireConfiguredEvent(parsed.eventId, sources);
       const current = await repository.find(parsed.id);
       if (!current) throw new Error("Documento não encontrado.");
 
@@ -210,7 +229,7 @@ export function createEventDocumentService({
       }
 
       const bytes = await prepareFile(parsed.file);
-      const storagePath = `${parsed.eventId}/${parsed.id}/${createId()}.pdf`;
+      const storagePath = `${parsed.eventId ?? "general"}/${parsed.id}/${createId()}.pdf`;
       await storage.upload({ path: storagePath, bytes, contentType: "application/pdf" });
       let saved: EventDocument;
       try {
@@ -266,7 +285,15 @@ export function createEventDocumentService({
 
     async createParticipantSignedUrl(input: { id: string }) {
       const { id } = eventDocumentActionSchema.parse(input);
-      const [document, sources] = await Promise.all([repository.find(id), configuredSources()]);
+      const document = await repository.find(id);
+      if (!document) throw new Error("Documento não disponível.");
+      if (document.eventId === null) {
+        return {
+          signedUrl: await storage.createSignedUrl(document.storagePath, 120),
+          expiresIn: 120 as const,
+        };
+      }
+      const sources = await configuredSources();
       const configured = document
         ? sources.some(({ eventId }) => eventId === document.eventId)
         : false;

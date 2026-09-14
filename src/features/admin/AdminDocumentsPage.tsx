@@ -12,7 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -60,14 +59,6 @@ export type AdminDocumentsPageProps = {
 
 type Gate = "checking" | "authorized" | "error";
 type FileDraft = EventDocumentCreate["file"];
-
-const categorySuggestions = [
-  "Livro de partituras",
-  "Guia do evento",
-  "Laudes / liturgia",
-  "Orientações",
-  "Outros",
-];
 
 function defaultOpenUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
@@ -121,9 +112,7 @@ export function AdminDocumentsPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EventDocument | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EventDocument | null>(null);
-  const [eventId, setEventId] = useState("");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
   const [file, setFile] = useState<FileDraft | null>(null);
 
   useEffect(() => {
@@ -154,9 +143,7 @@ export function AdminDocumentsPage({
 
   const openCreate = () => {
     setEditing(null);
-    setEventId(data?.events[0]?.eventId ?? "");
     setTitle("");
-    setCategory("");
     setFile(null);
     setDialogError("");
     setDialogOpen(true);
@@ -164,9 +151,7 @@ export function AdminDocumentsPage({
 
   const openEdit = (document: EventDocument) => {
     setEditing(document);
-    setEventId(document.eventId);
     setTitle(document.title);
-    setCategory(document.category);
     setFile(null);
     setDialogError("");
     setDialogOpen(true);
@@ -206,13 +191,11 @@ export function AdminDocumentsPage({
         ? await updateDocument({
             data: {
               id: editing.id,
-              eventId,
               title,
-              category,
               ...(file ? { file } : {}),
             },
           })
-        : await createDocument({ data: { eventId, title, category, file: file! } });
+        : await createDocument({ data: { title, file: file! } });
       setData((previous) =>
         previous
           ? {
@@ -288,7 +271,7 @@ export function AdminDocumentsPage({
           </p>
           <h1 className="mt-2 font-display text-2xl">Documentos</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Publique materiais gerais em PDF para cada evento, sem duplicar partituras de faixas.
+            Publique documentos em PDF para os participantes.
           </p>
         </header>
 
@@ -312,20 +295,15 @@ export function AdminDocumentsPage({
                   Materiais publicados
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  O participante recebe acesso por uma URL privada com validade curta.
+                  Envie um PDF e informe o nome do documento.
                 </p>
               </div>
-              <Button onClick={openCreate} disabled={data.events.length === 0}>
+              <Button onClick={openCreate}>
                 <Plus aria-hidden="true" />
                 Cadastrar documento
               </Button>
             </div>
 
-            {data.events.length === 0 && (
-              <p role="alert" className="rounded-xl border border-dashed p-4 text-sm">
-                Configure primeiro um evento em Eventos do CoroApp.
-              </p>
-            )}
             {data.documents.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-sm text-muted-foreground">
@@ -347,13 +325,9 @@ export function AdminDocumentsPage({
                       <div className="flex gap-3">
                         <div className="min-w-0">
                           <h3 className="font-semibold leading-tight">{document.title}</h3>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {document.eventName}
-                          </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="secondary">Categoria: {document.category}</Badge>
                         <span>{formatBytes(document.sizeBytes)}</span>
                         <span className="truncate">{document.originalFileName}</span>
                       </div>
@@ -411,27 +385,7 @@ export function AdminDocumentsPage({
           </DialogHeader>
           <form className="space-y-4" onSubmit={submit}>
             <div className="space-y-2">
-              <Label htmlFor="document-event">Evento</Label>
-              <select
-                id="document-event"
-                required
-                value={eventId}
-                onChange={(event) => setEventId(event.target.value)}
-                disabled={saving}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="" disabled>
-                  Selecione o evento
-                </option>
-                {data?.events.map((event) => (
-                  <option key={event.eventId} value={event.eventId}>
-                    {event.eventName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-title">Título</Label>
+              <Label htmlFor="document-title">Nome</Label>
               <Input
                 id="document-title"
                 required
@@ -440,26 +394,6 @@ export function AdminDocumentsPage({
                 onChange={(event) => setTitle(event.target.value)}
                 disabled={saving}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-category">Categoria</Label>
-              <Input
-                id="document-category"
-                list="document-category-suggestions"
-                required
-                maxLength={60}
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                disabled={saving}
-              />
-              <datalist id="document-category-suggestions">
-                {categorySuggestions.map((suggestion) => (
-                  <option key={suggestion} value={suggestion} />
-                ))}
-              </datalist>
-              <p className="text-xs text-muted-foreground">
-                Escolha uma sugestão ou digite uma categoria nova.
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="document-file">Arquivo PDF</Label>

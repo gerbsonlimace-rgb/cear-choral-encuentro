@@ -13,6 +13,11 @@ vi.mock("@/lib/event-activity.functions", () => ({
   getParticipantEventActivities: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/lib/event-document.functions", () => ({
+  getParticipantGeneralDocuments: vi.fn().mockResolvedValue([]),
+  getParticipantEventDocumentUrl: vi.fn(),
+}));
+
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
 import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 

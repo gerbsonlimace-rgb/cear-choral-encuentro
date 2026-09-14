@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 import { ChoristerEventGuideTab, type ParticipantGuideActivity } from "./ChoristerEventGuideTab";
 import { ChoristerHomeTab } from "./ChoristerHomeTab";
+import { ChoristerGeneralDocuments } from "./ChoristerGeneralDocuments";
 import { ChoristerProfileTab } from "./ChoristerProfileTab";
 import { ChoristerSongsTab } from "./ChoristerSongsTab";
 import { ChoristerSongPlayer } from "./ChoristerSongPlayer";
@@ -641,9 +642,15 @@ export function ChoristerAppShell({
                   Documentos
                 </h1>
                 <p className="mt-1 text-sm text-zinc-600">
-                  Guias, livros e materiais gerais publicados por evento.
+                  Guias, livros e materiais gerais.
                 </p>
               </header>
+              <ChoristerGeneralDocuments
+                showEmpty={
+                  portalEvents.every((event) => event.documents.length === 0) &&
+                  !requestedScoreAsset
+                }
+              />
               {portalEvents.map((event) => {
                 const requestedSongScoreBelongsToEvent = requestedScoreAsset
                   ? event.songs.some((song) =>
@@ -685,12 +692,6 @@ export function ChoristerAppShell({
                   </section>
                 );
               })}
-              {portalEvents.every((event) => event.documents.length === 0) &&
-              !requestedScoreAsset ? (
-                <p className="rounded-xl border border-dashed border-zinc-300 bg-white p-5 text-sm text-zinc-600">
-                  Nenhum documento geral foi publicado ainda.
-                </p>
-              ) : null}
             </section>
           )}
           {selectedTab === "guia" && (

@@ -53,6 +53,7 @@ import {
   getAdminEventDocumentBootstrap,
   getAdminEventDocumentUrl,
   getParticipantEventDocuments,
+  getParticipantGeneralDocuments,
   getParticipantEventDocumentUrl,
   updateAdminEventDocument,
 } from "./event-document.functions";
@@ -97,10 +98,11 @@ describe("event document server-function boundaries", () => {
   it("protects participant listing and signed access with requireParticipantAccess", () => {
     const functions = [
       getParticipantEventDocuments,
+      getParticipantGeneralDocuments,
       getParticipantEventDocumentUrl,
     ] as unknown as ServerFunction[];
 
-    expect(functions.map((fn) => fn.method)).toEqual(["GET", "POST"]);
+    expect(functions.map((fn) => fn.method)).toEqual(["GET", "GET", "POST"]);
     for (const fn of functions) expect(fn.middlewares).toContain(requireParticipantAccess);
   });
 });
