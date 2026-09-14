@@ -1,34 +1,13 @@
-import { useEffect, useRef } from "react";
-
-import { drawQuixadaFrameArtwork } from "@/features/photo-art/quixada-style/drawQuixadaFrameArtwork";
-
-/** Uses the photo frame's original drawing, with its complete landscape in view. */
+/** Displays the original Quixadá landscape supplied for the photo frame. */
 export function QuixadaRegistrationArtwork() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(0, -630);
-    drawQuixadaFrameArtwork(ctx, {
-      width: 1080,
-      height: 1350,
-      frame: { x: 105, y: 228, width: 870, height: 735 },
-    });
-    ctx.restore();
-  }, []);
-
   return (
-    <canvas
-      ref={canvasRef}
-      width={1080}
-      height={360}
-      aria-hidden="true"
-      className="pointer-events-none mx-auto mt-4 block h-auto w-full max-w-6xl"
-    />
+    <div aria-hidden="true" className="relative mt-4 h-44 overflow-hidden sm:h-56 lg:h-72">
+      <img
+        src="/photo-art/quixada-story-original.png"
+        alt=""
+        className="absolute inset-0 size-full object-cover object-[center_68%]"
+      />
+      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#fcf6e9] to-transparent sm:h-16" />
+    </div>
   );
 }
