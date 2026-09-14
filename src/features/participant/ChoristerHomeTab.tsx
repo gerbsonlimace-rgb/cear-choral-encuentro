@@ -113,7 +113,7 @@ export function ChoristerHomeTab({
       <ChoristerNotices loadNotices={loadNotices} />
 
       <a
-        href="/minha-foto"
+        href="/participante/minha-foto"
         className="flex min-h-20 items-center gap-3 rounded-2xl bg-[#ffc400] p-4 text-left text-black transition-colors hover:bg-[#f2ba00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
       >
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-black text-[#ffc400]">

@@ -141,7 +141,7 @@ export function downloadPhotoFile(file: File) {
 
 export function canvasToPhotoFile(
   canvas: HTMLCanvasElement,
-  style: ArtStyle,
+  style: string,
   format: ArtFormat,
 ): Promise<File> {
   return new Promise((resolve, reject) => {

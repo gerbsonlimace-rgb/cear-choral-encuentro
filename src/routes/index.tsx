@@ -33,7 +33,6 @@ import {
   ArrowRight,
   BookOpen,
   Calendar,
-  Camera,
   Church,
   MapPin,
   Menu,
@@ -128,7 +127,6 @@ function Index() {
       <Header />
       <main>
         <HeroSection />
-        <PhotoArtCallout />
         <AboutSection />
         <QuixadaSection />
         <PublicProgramme result={programme} />
@@ -395,49 +393,6 @@ function HeroSection() {
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
-    </section>
-  );
-}
-
-function PhotoArtCallout() {
-  return (
-    <section aria-labelledby="minha-foto-title" className="bg-white px-4 py-6 sm:px-6 sm:py-8">
-      <div className="container-event overflow-hidden rounded-[1.75rem] bg-[#ffc400] shadow-sm">
-        <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div
-            aria-hidden="true"
-            className="absolute -right-10 -top-20 size-52 rounded-full border-[28px] border-black/10"
-          />
-          <div className="relative flex min-w-0 items-start gap-4">
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-black text-[#ffc400] sm:size-14">
-              <Camera className="size-6" />
-            </span>
-            <div>
-              <p className="text-xs font-extrabold tracking-[0.14em] uppercase">
-                Compartilhe sua presença
-              </p>
-              <h2
-                id="minha-foto-title"
-                className="mt-1 font-display text-2xl font-extrabold leading-tight sm:text-3xl"
-              >
-                Crie sua foto do encontro
-              </h2>
-              <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-black/75">
-                Escolha sua moldura e frase, ajuste a foto e publique nas redes sociais.
-              </p>
-            </div>
-          </div>
-          <Button
-            asChild
-            className="relative min-h-12 shrink-0 rounded-full bg-black px-6 font-extrabold text-white hover:bg-zinc-800"
-          >
-            <Link to="/minha-foto">
-              Criar minha foto
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
     </section>
   );
 }

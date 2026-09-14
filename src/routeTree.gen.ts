@@ -13,7 +13,6 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
-import { Route as MinhaFotoRouteImport } from './routes/minha-foto'
 import { Route as InscricaoRouteImport } from './routes/inscricao'
 import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,6 +23,7 @@ import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento
 import { Route as RegenteLoginRouteImport } from './routes/regente.login'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
 import { Route as ParticipantePresencaRouteImport } from './routes/participante.presenca'
+import { Route as ParticipanteMinhaFotoRouteImport } from './routes/participante.minha-foto'
 import { Route as ParticipanteLoginRouteImport } from './routes/participante.login'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as AdminResumoRouteImport } from './routes/admin.resumo'
@@ -55,11 +55,6 @@ const ParticipanteRoute = ParticipanteRouteImport.update({
 const PagamentoRoute = PagamentoRouteImport.update({
   id: '/pagamento',
   path: '/pagamento',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MinhaFotoRoute = MinhaFotoRouteImport.update({
-  id: '/minha-foto',
-  path: '/minha-foto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InscricaoRoute = InscricaoRouteImport.update({
@@ -110,6 +105,11 @@ const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
 const ParticipantePresencaRoute = ParticipantePresencaRouteImport.update({
   id: '/presenca',
   path: '/presenca',
+  getParentRoute: () => ParticipanteRoute,
+} as any)
+const ParticipanteMinhaFotoRoute = ParticipanteMinhaFotoRouteImport.update({
+  id: '/minha-foto',
+  path: '/minha-foto',
   getParentRoute: () => ParticipanteRoute,
 } as any)
 const ParticipanteLoginRoute = ParticipanteLoginRouteImport.update({
@@ -177,7 +177,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
   '/inscricao': typeof InscricaoRoute
-  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
@@ -194,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
+  '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -206,7 +206,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
   '/inscricao': typeof InscricaoRoute
-  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
@@ -221,6 +220,7 @@ export interface FileRoutesByTo {
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
+  '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -234,7 +234,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
   '/inscricao': typeof InscricaoRoute
-  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
@@ -251,6 +250,7 @@ export interface FileRoutesById {
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
+  '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -265,7 +265,6 @@ export interface FileRouteTypes {
     | '/'
     | '/acessar'
     | '/inscricao'
-    | '/minha-foto'
     | '/pagamento'
     | '/participante'
     | '/regente'
@@ -282,6 +281,7 @@ export interface FileRouteTypes {
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
     | '/participante/login'
+    | '/participante/minha-foto'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -294,7 +294,6 @@ export interface FileRouteTypes {
     | '/'
     | '/acessar'
     | '/inscricao'
-    | '/minha-foto'
     | '/pagamento'
     | '/sitemap.xml'
     | '/admin/atividades'
@@ -309,6 +308,7 @@ export interface FileRouteTypes {
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
     | '/participante/login'
+    | '/participante/minha-foto'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -321,7 +321,6 @@ export interface FileRouteTypes {
     | '/'
     | '/acessar'
     | '/inscricao'
-    | '/minha-foto'
     | '/pagamento'
     | '/participante'
     | '/regente'
@@ -338,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
     | '/participante/login'
+    | '/participante/minha-foto'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -351,7 +351,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
   InscricaoRoute: typeof InscricaoRoute
-  MinhaFotoRoute: typeof MinhaFotoRoute
   PagamentoRoute: typeof PagamentoRoute
   ParticipanteRoute: typeof ParticipanteRouteWithChildren
   RegenteRoute: typeof RegenteRouteWithChildren
@@ -398,13 +397,6 @@ declare module '@tanstack/react-router' {
       path: '/pagamento'
       fullPath: '/pagamento'
       preLoaderRoute: typeof PagamentoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/minha-foto': {
-      id: '/minha-foto'
-      path: '/minha-foto'
-      fullPath: '/minha-foto'
-      preLoaderRoute: typeof MinhaFotoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inscricao': {
@@ -475,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/presenca'
       fullPath: '/participante/presenca'
       preLoaderRoute: typeof ParticipantePresencaRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
+    '/participante/minha-foto': {
+      id: '/participante/minha-foto'
+      path: '/minha-foto'
+      fullPath: '/participante/minha-foto'
+      preLoaderRoute: typeof ParticipanteMinhaFotoRouteImport
       parentRoute: typeof ParticipanteRoute
     }
     '/participante/login': {
@@ -566,12 +565,14 @@ declare module '@tanstack/react-router' {
 
 interface ParticipanteRouteChildren {
   ParticipanteLoginRoute: typeof ParticipanteLoginRoute
+  ParticipanteMinhaFotoRoute: typeof ParticipanteMinhaFotoRoute
   ParticipantePresencaRoute: typeof ParticipantePresencaRoute
   ParticipanteIndexRoute: typeof ParticipanteIndexRoute
 }
 
 const ParticipanteRouteChildren: ParticipanteRouteChildren = {
   ParticipanteLoginRoute: ParticipanteLoginRoute,
+  ParticipanteMinhaFotoRoute: ParticipanteMinhaFotoRoute,
   ParticipantePresencaRoute: ParticipantePresencaRoute,
   ParticipanteIndexRoute: ParticipanteIndexRoute,
 }
@@ -601,7 +602,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
   InscricaoRoute: InscricaoRoute,
-  MinhaFotoRoute: MinhaFotoRoute,
   PagamentoRoute: PagamentoRoute,
   ParticipanteRoute: ParticipanteRouteWithChildren,
   RegenteRoute: RegenteRouteWithChildren,
