@@ -151,7 +151,7 @@ export function InternalAppShell({
         <aside
           data-testid="internal-sidebar"
           className={cn(
-            "top-12 hidden h-[calc(100svh-3rem)] shrink-0 flex-col border-r border-white/10 bg-brand-ink text-primary-foreground shadow-[4px_0_18px_rgba(24,24,27,0.08)] transition-[width] duration-200 md:flex",
+            "top-12 hidden h-[calc(100svh-3rem)] shrink-0 flex-col border-r border-white/10 bg-zinc-700 text-primary-foreground shadow-[4px_0_18px_rgba(24,24,27,0.08)] transition-[width] duration-200 md:flex",
             layout === "page" ? "sticky" : "fixed bottom-0 left-0 z-40",
             collapsed ? "w-[4.5rem]" : "w-60",
           )}
@@ -224,7 +224,7 @@ export function InternalAppShell({
 
       <nav
         aria-label={`Navegação móvel de ${moduleLabel}`}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-brand-ink px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(24,24,27,0.16)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-zinc-700 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(24,24,27,0.10)] md:hidden"
       >
         <div className="mx-auto flex h-[4.5rem] max-w-lg items-stretch">
           {primaryItems.map((item) => {
