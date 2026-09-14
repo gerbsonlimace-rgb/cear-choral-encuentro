@@ -85,7 +85,7 @@ function registrationSearchFilter(search: string): string {
 
 export type AdminExportAuditEvent = {
   adminUserId: string;
-  paymentStatusFilter: "pending" | "partially_paid" | "paid" | "legacy" | null;
+  paymentStatusFilter: "pending" | "paid" | "legacy" | null;
   searchUsed: boolean;
   resultCount: number;
 };
@@ -322,7 +322,14 @@ export function createAdminRegistrationService(
       const file = buildRegistrationsCsv(rows, now());
       await repository.recordExport({
         adminUserId,
-        paymentStatusFilter: query.paymentStatus === "all" ? null : query.paymentStatus,
+        // The audit table predates the derived partial state and only accepts raw
+        // registration statuses. A partially paid registration is still raw `paid`.
+        paymentStatusFilter:
+          query.paymentStatus === "all"
+            ? null
+            : query.paymentStatus === "partially_paid"
+              ? "paid"
+              : query.paymentStatus,
         searchUsed: query.search.length > 0,
         resultCount: rows.length,
       });

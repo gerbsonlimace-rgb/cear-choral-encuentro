@@ -244,6 +244,53 @@ describe("registration summary", () => {
 });
 
 describe("derived registration listing", () => {
+  it("exports partial registrations while recording a database-compatible audit filter", async () => {
+    const base = {
+      ...selectedRow,
+      amount_cents: 10000,
+      paid_amount_cents: 10000,
+      pricing_type: "promotional",
+      standard_price_cents: 30000,
+      registration_price_cents: 10000,
+    } satisfies Partial<RegistrationDatabaseRow>;
+    const recordExport = vi.fn(async (event: { paymentStatusFilter: string | null }) => {
+      if (event.paymentStatusFilter !== "paid") {
+        throw new Error("incompatible audit filter");
+      }
+    });
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue([
+        { row: { ...base, id: "partial-export" }, accountStatus: null, regentName: null },
+      ]),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "partial-export-complement",
+          registrationId: "partial-export",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-08T00:00:00Z",
+          paidAt: "2026-09-08T01:00:00Z",
+          initiatedByName: "Admin",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      recordExport,
+      list: vi.fn(),
+      listAll: vi.fn(),
+    };
+
+    await expect(
+      createAdminRegistrationService(repository, () => new Date()).export(
+        { search: "", paymentStatus: "partially_paid" },
+        "admin-1",
+      ),
+    ).resolves.toMatchObject({ fileName: expect.stringContaining("inscricoes-") });
+    expect(recordExport).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentStatusFilter: "paid", resultCount: 1 }),
+    );
+  });
+
   it("filters derived states before pagination and signs only the final page", async () => {
     const base = {
       ...selectedRow,
