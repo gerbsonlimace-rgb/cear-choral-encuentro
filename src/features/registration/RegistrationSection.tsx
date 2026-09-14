@@ -584,8 +584,8 @@ export function RegistrationSection({
 
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
-                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
-                <fieldset className="space-y-4">
+                <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
+                <fieldset className="min-w-0 space-y-4">
                   <legend className="flex items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-foreground text-background">
                       <UserRound className="size-5" aria-hidden="true" />
@@ -736,7 +736,7 @@ export function RegistrationSection({
 
                     <div className="space-y-1.5 md:col-span-2">
                       <Label htmlFor="photo" className="font-semibold">Foto do participante</Label>
-                      <label htmlFor="photo" className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 text-sm transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30">
+                      <label htmlFor="photo" className="flex min-h-12 min-w-0 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 text-sm transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30">
                         <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
                           <Camera className="size-5 shrink-0 text-foreground" aria-hidden="true" />
                           <span className="truncate">{photoFileName || "JPG, PNG ou WebP • até 5 MB"}</span>

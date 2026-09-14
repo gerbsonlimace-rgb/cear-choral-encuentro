@@ -84,6 +84,12 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
 
+  it("allows the personal-data fieldset to shrink inside a narrow card", () => {
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+
+    expect(screen.getByLabelText("Nome completo").closest("fieldset")).toHaveClass("min-w-0");
+  });
+
   it("validates the current step before advancing", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
