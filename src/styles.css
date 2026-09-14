@@ -294,7 +294,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.internal-app :is(h1, h2, h3, h4, h5, h6) {
+/* Keep app controls and portaled overlays on the welcome card's typeface.
+ * The body scope also covers menus/dialogs rendered outside the app shell. */
+.photo-art-editor,
+body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
+  :is(h1, h2, h3, h4, h5, h6, button, input, select, textarea, .font-display, .font-sans) {
   font-family: var(--font-body);
 }
 
