@@ -5,9 +5,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 import type { ParticipantRegistrationView } from "./participant.domain";
+import { ChoristerNotices } from "./ChoristerNotices";
+import type { EventNotice } from "@/features/event-notices/eventNotice.domain";
 
 type ChoristerHomeTabProps = {
   participant: ParticipantRegistrationView;
+  loadNotices?: () => Promise<EventNotice[]>;
   recentPlayback?: {
     songName: string;
     audioTitle: string;
@@ -31,6 +34,7 @@ function getInitials(name: string) {
 
 export function ChoristerHomeTab({
   participant,
+  loadNotices,
   recentPlayback,
   onContinuePlayback,
   onNavigate,
@@ -97,6 +101,8 @@ export function ChoristerHomeTab({
           </div>
         ))}
       </section>
+
+      <ChoristerNotices loadNotices={loadNotices} />
 
       {onNavigate && (
         <section aria-labelledby="home-shortcuts-title" className="space-y-3">
