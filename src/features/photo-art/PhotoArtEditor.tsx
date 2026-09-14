@@ -34,7 +34,6 @@ type DragState = {
 };
 
 type TemplateAssets = {
-  example: HTMLImageElement;
   overlay: HTMLImageElement;
 };
 
@@ -85,9 +84,9 @@ export function PhotoArtEditor() {
     let cancelled = false;
     setLoadingArt(true);
     setError(null);
-    Promise.all([loadImage(selectedArt.exampleUrl), loadImage(selectedArt.overlayUrl)])
-      .then(([example, overlay]) => {
-        if (!cancelled) setAssets({ example, overlay });
+    loadImage(selectedArt.overlayUrl)
+      .then((overlay) => {
+        if (!cancelled) setAssets({ overlay });
       })
       .catch(() => {
         if (!cancelled) setError("Não foi possível carregar esta arte. Tente novamente.");

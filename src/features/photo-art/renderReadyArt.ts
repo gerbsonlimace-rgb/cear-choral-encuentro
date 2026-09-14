@@ -1,11 +1,11 @@
 import { getPhotoPlacement, type PhotoAdjustment } from "./photoArt";
 import type { ReadyArt } from "./readyArts";
+import { appendPhotoOpening } from "./photoOpenings";
 
 export const STORY_WIDTH = 1080;
 export const STORY_HEIGHT = 1920;
 
 type ReadyArtAssets = {
-  example: HTMLImageElement;
   overlay: HTMLImageElement;
 };
 
@@ -27,17 +27,36 @@ export function renderReadyArt(canvas: HTMLCanvasElement, options: RenderReadyAr
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
 
-  if (!options.photo) {
-    context.drawImage(options.example, 0, 0, STORY_WIDTH, STORY_HEIGHT);
-    return;
+  if (options.photo) {
+    context.save();
+    context.beginPath();
+    appendPhotoOpening(context, options.art.id);
+    context.clip();
+    const placement = getPhotoPlacement(
+      options.photo.naturalWidth,
+      options.photo.naturalHeight,
+      options.art.photoFrame,
+      options.adjustment,
+    );
+    context.drawImage(options.photo, placement.x, placement.y, placement.width, placement.height);
+    context.restore();
   }
 
-  const placement = getPhotoPlacement(
-    options.photo.naturalWidth,
-    options.photo.naturalHeight,
-    options.art.photoFrame,
-    options.adjustment,
-  );
-  context.drawImage(options.photo, placement.x, placement.y, placement.width, placement.height);
+  // Exclude the entire photo opening, including sample pixels left in the asset.
+  context.save();
+  context.beginPath();
+  context.rect(0, 0, STORY_WIDTH, STORY_HEIGHT);
+  appendPhotoOpening(context, options.art.id);
+  context.clip("evenodd");
   context.drawImage(options.overlay, 0, 0, STORY_WIDTH, STORY_HEIGHT);
+  context.restore();
+
+  // A clean inner border also covers the antialiased sample pixels at the cut edge.
+  context.save();
+  context.beginPath();
+  appendPhotoOpening(context, options.art.id);
+  context.strokeStyle = "#ffffff";
+  context.lineWidth = options.art.id === "quixada" ? 4 : 10;
+  context.stroke();
+  context.restore();
 }

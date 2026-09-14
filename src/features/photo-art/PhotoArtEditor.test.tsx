@@ -55,14 +55,21 @@ describe("PhotoArtEditor", () => {
     expect(screen.getByText("Story 9:16")).toBeInTheDocument();
     expect(screen.getByLabelText("Tamanho da foto")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Continuar para compartilhar" })).toBeDisabled();
-    await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(1));
+    expect(mocks.loadImage).toHaveBeenCalledWith("/photo-art-templates/eu-vou-overlay.webp");
+    await waitFor(() =>
+      expect(mocks.renderReadyArt).toHaveBeenLastCalledWith(
+        expect.any(HTMLCanvasElement),
+        expect.objectContaining({ photo: null }),
+      ),
+    );
   });
 
   it("inserts the photo and lets the participant adjust it before finishing", async () => {
     render(<PhotoArtEditor />);
     fireEvent.click(screen.getByRole("radio", { name: /Canto novo/ }));
     fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
-    await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(2));
 
     const file = new File(["photo"], "pessoa.jpg", { type: "image/jpeg" });
     fireEvent.change(screen.getByLabelText("Inserir minha foto"), { target: { files: [file] } });
