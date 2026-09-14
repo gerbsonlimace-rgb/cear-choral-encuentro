@@ -198,10 +198,9 @@ describe("landing page access", () => {
       expect(link).toHaveAttribute("href", "/inscricao");
     }
     expect(screen.queryByLabelText("CPF")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Falar com a coordenação pelo WhatsApp/ })).toHaveAttribute(
-      "href",
-      "https://wa.me/5585999033232",
-    );
+    expect(
+      screen.getByRole("link", { name: /Falar com a coordenação pelo WhatsApp/ }),
+    ).toHaveAttribute("href", "https://wa.me/5585999033232");
   });
 
   it("presents Pix and card as distinct payment options without landscape artwork", () => {
@@ -344,9 +343,7 @@ describe("landing page sponsors", () => {
     expect(section).not.toBeNull();
     const content = within(section!);
 
-    expect(
-      content.getByRole("heading", { name: "Quem realiza o encontro" }),
-    ).toBeInTheDocument();
+    expect(content.getByRole("heading", { name: "Quem realiza o encontro" })).toBeInTheDocument();
     expect(content.getByRole("img", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
     expect(content.getByRole("img", { name: "Diocese de Quixadá" })).toBeInTheDocument();
     expect(content.queryByRole("img", { name: "Unicatolica" })).not.toBeInTheDocument();
