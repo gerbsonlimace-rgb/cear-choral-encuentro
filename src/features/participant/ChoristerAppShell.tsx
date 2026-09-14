@@ -57,7 +57,7 @@ export type ChoristerAppShellProps = {
 
 const tabs = [
   { id: "home", label: "Home", description: "Visão geral do seu encontro", icon: Home },
-  { id: "guia", label: "Programação", description: "Agenda completa do encontro", icon: CalendarDays },
+  { id: "guia", label: "Agenda", description: "Agenda completa do encontro", icon: CalendarDays },
   { id: "cantos", label: "Kit Ensaio", description: "Áudios, letras e partituras", icon: Music2 },
   { id: "documentos", label: "Documentos", description: "Guias e materiais publicados", icon: Files },
   { id: "perfil", label: "Meu Perfil", description: "Conta, acesso e segurança", icon: UserRound },

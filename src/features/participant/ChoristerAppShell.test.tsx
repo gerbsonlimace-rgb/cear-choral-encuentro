@@ -102,7 +102,7 @@ describe("ChoristerAppShell", () => {
   it.each([
     ["Explorar cantos", "Kit Ensaio"],
     ["Ver documentos", "Documentos"],
-    ["Consultar programação", "Programação"],
+    ["Consultar programação", "Agenda"],
   ])("opens the corresponding tab from the home shortcut %s", async (shortcut, tab) => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: shortcut }));
@@ -163,7 +163,7 @@ describe("ChoristerAppShell", () => {
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos", "Meu Perfil"]);
+    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos", "Meu Perfil"]);
     expect(within(navigation).getByRole("button", { name: "Home" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -176,7 +176,7 @@ describe("ChoristerAppShell", () => {
       within(mobileNavigation)
         .getAllByTestId("internal-mobile-primary-item")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos"]);
+    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos"]);
     expect(within(mobileNavigation).getByRole("button", { name: /mais/i })).toBeInTheDocument();
   });
 
@@ -188,14 +188,14 @@ describe("ChoristerAppShell", () => {
       name: "Navegação móvel de Participante",
     });
     expect(
-      within(mobileNavigation).getByRole("button", { name: "Abrir Programação" }),
+      within(mobileNavigation).getByRole("button", { name: "Abrir Agenda" }),
     ).toBeInTheDocument();
-    await user.click(within(mobileNavigation).getByRole("button", { name: "Abrir Programação" }));
+    await user.click(within(mobileNavigation).getByRole("button", { name: "Abrir Agenda" }));
     expect(onTabChange).toHaveBeenCalledWith("guia");
 
     await user.click(screen.getByRole("button", { name: "Mais opções" }));
     const sheet = await screen.findByRole("dialog", { name: "Mais opções de Participante" });
-    expect(within(sheet).queryByRole("button", { name: "Programação" })).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole("button", { name: "Agenda" })).not.toBeInTheDocument();
     await user.click(within(sheet).getByRole("button", { name: "Meu Perfil" }));
     expect(onTabChange).toHaveBeenCalledWith("perfil");
   });
@@ -223,9 +223,9 @@ describe("ChoristerAppShell", () => {
     } as Partial<ChoristerAppShellProps>);
 
     await waitFor(() => expect(loadGuideActivities).toHaveBeenCalledOnce());
-    await user.click(screen.getByRole("button", { name: "Programação" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
     await user.click(screen.getByRole("button", { name: "Home" }));
-    await user.click(screen.getByRole("button", { name: "Programação" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
 
     expect(loadGuideActivities).toHaveBeenCalledOnce();
   });
@@ -258,10 +258,10 @@ describe("ChoristerAppShell", () => {
     } as Partial<ChoristerAppShellProps>);
 
     await waitFor(() => expect(loadGuideActivities).toHaveBeenCalledOnce());
-    await user.click(screen.getByRole("button", { name: "Programação" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
     expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Home" }));
-    await user.click(screen.getByRole("button", { name: "Programação" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
     expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
 
     expect(loadGuideActivities).toHaveBeenCalledTimes(2);

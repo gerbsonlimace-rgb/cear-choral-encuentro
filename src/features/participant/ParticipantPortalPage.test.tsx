@@ -464,14 +464,14 @@ describe("ParticipantPortalPage", () => {
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos", "Meu Perfil"]);
+    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos", "Meu Perfil"]);
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Documentos" }));
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Programação" }));
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
     expect(screen.getByRole("heading", { name: "Guia do evento" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
