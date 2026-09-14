@@ -35,6 +35,7 @@ describe("InternalAppShell", () => {
       "page",
     );
     expect(screen.getByTestId("internal-topbar")).toHaveClass("bg-brand-ink");
+    expect(desktopNavigation.closest("aside")).toHaveClass("bg-brand-ink");
   });
 
   it("shows three primary mobile destinations and opens secondary destinations in Mais", async () => {
@@ -55,6 +56,7 @@ describe("InternalAppShell", () => {
       name: "Navegação móvel de Participante",
     });
     expect(within(mobileNavigation).getAllByTestId("internal-mobile-primary-item")).toHaveLength(3);
+    expect(mobileNavigation).toHaveClass("bg-brand-ink");
     expect(within(mobileNavigation).getByRole("button", { name: /mais/i })).toBeInTheDocument();
     expect(within(mobileNavigation).queryByRole("button", { name: /meu perfil/i })).not.toBeInTheDocument();
 

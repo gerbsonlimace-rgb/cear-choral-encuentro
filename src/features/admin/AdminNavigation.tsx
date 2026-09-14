@@ -100,7 +100,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
       <aside
         data-testid="admin-sidebar"
         className={cn(
-          "fixed bottom-0 left-0 top-12 z-40 hidden flex-col border-r border-zinc-200 bg-white transition-[width] duration-200 md:flex",
+          "fixed bottom-0 left-0 top-12 z-40 hidden flex-col border-r border-white/10 bg-brand-ink text-primary-foreground shadow-[4px_0_18px_rgba(24,24,27,0.08)] transition-[width] duration-200 md:flex",
           collapsed ? "w-[4.5rem]" : "w-60",
         )}
       >
@@ -109,7 +109,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-9 text-zinc-500 hover:bg-brand-gold-soft hover:text-brand-ink"
+            className="size-9 text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-brand-gold"
             aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
             onClick={() => setCollapsed((value) => !value)}
           >
@@ -133,8 +133,8 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
                   "group relative flex min-h-11 items-center rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold",
                   collapsed ? "justify-center px-2" : "gap-3 px-3",
                   active
-                    ? "bg-brand-gold-soft text-brand-ink"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-brand-ink",
+                    ? "bg-brand-gold text-brand-ink"
+                    : "text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground",
                 )}
                 onClick={(event) => handleNavigation(event, href)}
               >
@@ -148,7 +148,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
                   aria-hidden="true"
                   className={cn(
                     "size-[18px] shrink-0",
-                    active ? "text-amber-700" : "text-zinc-500",
+                    active ? "text-brand-ink" : "text-primary-foreground/70 group-hover:text-brand-gold",
                   )}
                 />
                 {!collapsed && <span className="truncate">{label}</span>}
@@ -160,7 +160,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
 
       <nav
         aria-label="Navegação móvel administrativa"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(24,24,27,0.06)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-brand-ink px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(24,24,27,0.16)] md:hidden"
       >
         <div className="mx-auto flex h-[4.5rem] max-w-lg items-stretch">
           {links.slice(0, 3).map(({ key, href, label, icon: Icon }) => {
@@ -174,7 +174,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold",
-                  active ? "text-amber-700" : "text-zinc-500",
+                  active ? "text-brand-gold" : "text-primary-foreground/75 hover:text-primary-foreground",
                 )}
                 onClick={(event) => handleNavigation(event, href)}
               >
@@ -196,7 +196,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
             aria-current={secondaryActive ? "page" : undefined}
             className={cn(
               "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold",
-              secondaryActive ? "text-amber-700" : "text-zinc-500",
+              secondaryActive ? "text-brand-gold" : "text-primary-foreground/75 hover:text-primary-foreground",
             )}
             onClick={() => setMoreOpen(true)}
           >
