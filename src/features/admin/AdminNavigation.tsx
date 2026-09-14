@@ -6,6 +6,7 @@ import {
   Files,
   HeartHandshake,
   LayoutDashboard,
+  Megaphone,
   MoreHorizontal,
   Music2,
   Settings,
@@ -29,6 +30,7 @@ export type AdminNavigationKey =
   | "choirs"
   | "sponsors"
   | "documents"
+  | "notices"
   | "activities"
   | "integrations"
   | "settings";
@@ -46,6 +48,7 @@ export type AdminNavigationPath =
   | "/admin/coros"
   | "/admin/patrocinadores"
   | "/admin/documentos"
+  | "/admin/avisos"
   | "/admin/atividades"
   | "/admin/configuracoes"
   | "/participante";
@@ -57,6 +60,7 @@ const links = [
   { key: "activities", href: "/admin/atividades", label: "Programação", icon: CalendarCheck2 },
   { key: "sponsors", href: "/admin/patrocinadores", label: "Patrocinadores", icon: HeartHandshake },
   { key: "documents", href: "/admin/documentos", label: "Documentos", icon: Files },
+  { key: "notices", href: "/admin/avisos", label: "Avisos", icon: Megaphone },
   { key: "settings", href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ] as const satisfies ReadonlyArray<{
   key: AdminNavigationKey;

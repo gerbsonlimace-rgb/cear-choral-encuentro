@@ -32,6 +32,7 @@ import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminDocumentosRouteImport } from './routes/admin.documentos'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
 import { Route as AdminAtividadesRouteImport } from './routes/admin.atividades'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -149,6 +150,11 @@ const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
   path: '/admin/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAvisosRoute = AdminAvisosRouteImport.update({
+  id: '/admin/avisos',
+  path: '/admin/avisos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAtividadesRoute = AdminAtividadesRouteImport.update({
   id: '/admin/atividades',
   path: '/admin/atividades',
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/regente'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/pagamento'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/regente'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
@@ -319,6 +331,7 @@ export interface RootRouteChildren {
   RegenteRoute: typeof RegenteRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminAtividadesRoute: typeof AdminAtividadesRoute
+  AdminAvisosRoute: typeof AdminAvisosRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCorosRoute: typeof AdminCorosRoute
   AdminDocumentosRoute: typeof AdminDocumentosRoute
@@ -494,6 +507,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/avisos': {
+      id: '/admin/avisos'
+      path: '/admin/avisos'
+      fullPath: '/admin/avisos'
+      preLoaderRoute: typeof AdminAvisosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/atividades': {
       id: '/admin/atividades'
       path: '/admin/atividades'
@@ -545,6 +565,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegenteRoute: RegenteRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminAtividadesRoute: AdminAtividadesRoute,
+  AdminAvisosRoute: AdminAvisosRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCorosRoute: AdminCorosRoute,
   AdminDocumentosRoute: AdminDocumentosRoute,

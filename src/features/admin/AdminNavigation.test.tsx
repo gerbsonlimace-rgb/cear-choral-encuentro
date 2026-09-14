@@ -30,9 +30,7 @@ describe("AdminNavigation", () => {
       "/admin/atividades",
     );
     expect(screen.queryByRole("link", { name: "Integrações" })).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("navigation", { name: "Navegação administrativa" }).querySelectorAll("a"),
-    ).toHaveLength(7);
+    expect(screen.getByRole("link", { name: "Avisos" })).toHaveAttribute("href", "/admin/avisos");
     expect(screen.getByTestId("admin-topbar")).toHaveClass("bg-brand-ink");
     expect(screen.getByTestId("admin-sidebar")).toHaveClass("md:flex");
     expect(screen.getByTestId("admin-sidebar")).toHaveClass("bg-brand-ink");
