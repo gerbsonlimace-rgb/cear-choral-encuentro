@@ -25,6 +25,35 @@ describe("PaymentConfirmationPage", () => {
     window.localStorage.clear();
   });
 
+  it("offers portal and WhatsApp shortcuts after payment verification", async () => {
+    const whatsappGroupUrl = "https://chat.whatsapp.com/example-invite";
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      participantAccessStatus: "active",
+      whatsappGroupUrl,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Acessar portal" })).toHaveAttribute("href", "/acessar");
+    const groupLink = screen.getByRole("link", { name: "Entrar no grupo do WhatsApp" });
+    expect(groupLink).toHaveAttribute("href", whatsappGroupUrl);
+    expect(groupLink).toHaveAttribute("target", "_blank");
+    expect(groupLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not invent a group invitation when the server returns none", async () => {
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={vi.fn().mockResolvedValue({
+      status: "paid", paymentMethod: "pix", installments: 1, participantAccessStatus: "active",
+    })} />);
+
+    await screen.findByText("Inscrição confirmada");
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+  });
+
   it("explains when the payment lookup is missing and offers a way home", () => {
     render(<PaymentConfirmationPage lookup={null} verifyPayment={vi.fn()} />);
 

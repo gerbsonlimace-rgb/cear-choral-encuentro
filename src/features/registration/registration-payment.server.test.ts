@@ -608,6 +608,21 @@ describe("registration payment service", () => {
     expect(fixture.repository.markPaid).not.toHaveBeenCalled();
   });
 
+  it("releases the group invitation only through verified payment reconciliation", async () => {
+    fixture.setRecord(pendingRecord());
+    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty("whatsappGroupUrl");
+
+    const confirmed = await fixture.service.reconcilePayment(lookup);
+    expect(confirmed).toMatchObject({
+      status: "paid",
+      whatsappGroupUrl: "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw",
+    });
+    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty("whatsappGroupUrl");
+    expect(await fixture.service.reconcilePayment(lookup)).toMatchObject({
+      whatsappGroupUrl: "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw",
+    });
+  });
+
   it("drops an unsafe receipt URL from the public paid status", async () => {
     fixture.setRecord(pendingRecord());
 
