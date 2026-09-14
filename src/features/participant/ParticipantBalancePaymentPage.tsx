@@ -28,6 +28,7 @@ export function ParticipantBalancePaymentPage({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [openPayment, setOpenPayment] = useState(false);
   const [revision, setRevision] = useState(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
@@ -43,6 +44,7 @@ export function ParticipantBalancePaymentPage({
     let cancelled = false;
     setLoading(true);
     setError("");
+    setOpenPayment(false);
     void loadRegistration()
       .then((view) => {
         if (!cancelled) setParticipant(view);
@@ -75,7 +77,11 @@ export function ParticipantBalancePaymentPage({
       const result = await startCheckout();
       if (!mounted.current) return;
       if (!result.ok) {
-        setError(result.message);
+        if (result.code === "open_payment") {
+          setOpenPayment(true);
+        } else {
+          setError(result.message);
+        }
         return;
       }
       openCheckout(result.checkoutUrl);
@@ -141,6 +147,10 @@ export function ParticipantBalancePaymentPage({
                   >
                     <CheckCircle2 aria-hidden="true" className="size-5" />
                     Inscrição quitada
+                  </p>
+                ) : openPayment ? (
+                  <p role="status" className="text-sm text-zinc-600">
+                    Há um pagamento em andamento. Aguarde a confirmação ou consulte seu regente.
                   </p>
                 ) : canPay ? (
                   <>

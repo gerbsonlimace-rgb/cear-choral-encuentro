@@ -188,7 +188,7 @@ describe("regent complement checkout service", () => {
     expect(repository.markPaid).not.toHaveBeenCalled();
   });
 
-  it("keeps a regent's open checkout reserved without returning a regent-only redirect", async () => {
+  it("lets the participant continue a safe checkout opened by the regent", async () => {
     const { service, repository, infinitePay } = setup();
     vi.mocked(repository.listAccountingPayments).mockResolvedValue([
       {
@@ -200,9 +200,10 @@ describe("regent complement checkout service", () => {
         initiatedAs: "regent",
       },
     ]);
-    await expect(service.startCheckout({ registrationId }, participant)).rejects.toThrow(
-      "Já existe um pagamento complementar em aberto",
-    );
+    await expect(service.startCheckout({ registrationId }, participant)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu,
+    });
     expect(repository.reserve).not.toHaveBeenCalled();
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();
   });

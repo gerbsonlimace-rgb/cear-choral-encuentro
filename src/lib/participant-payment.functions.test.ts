@@ -87,4 +87,16 @@ describe("participant payment boundaries", () => {
       }),
     );
   });
+
+  it("classifies an existing checkout as a payment-in-progress state", async () => {
+    load.mockResolvedValue({ identity: { name: "Maria" } });
+    startCheckout.mockRejectedValue(new Error("Já existe um pagamento complementar em aberto."));
+
+    const fn = startParticipantBalanceCheckout as unknown as Fn;
+    await expect(fn({ context: { participantAccess: access }, data: {} })).resolves.toEqual({
+      ok: false,
+      code: "open_payment",
+      message: "Já existe um pagamento em aberto. Aguarde a confirmação ou consulte seu regente.",
+    });
+  });
 });

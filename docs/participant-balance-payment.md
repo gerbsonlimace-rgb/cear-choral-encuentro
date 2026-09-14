@@ -6,7 +6,7 @@ O card financeiro da Home abre `/participante/pagamento` quando há saldo restan
 
 - As funções exigem sessão e conta de participante ativa. O identificador da inscrição vem do middleware; o navegador não escolhe inscrição, usuário ou valor.
 - O serviço compartilhado calcula o saldo a partir dos preços salvos na inscrição e dos complementos confirmados. O banco repete a validação sob bloqueio da inscrição e mantém o índice de um único pedido aberto.
-- Um checkout pendente iniciado pelo participante pode ser retomado se ainda corresponder ao saldo. Pedidos em criação, URLs inválidas e pedidos iniciados por regente/admin bloqueiam nova cobrança. Estes últimos conservam o retorno aos respectivos portais.
+- Um checkout pendente pode ser retomado pelo participante se ainda corresponder ao saldo e tiver uma URL segura da InfinitePay, mesmo quando foi iniciado pelo regente. Pedidos em criação, URLs inválidas ou valores divergentes continuam reservados até serem reconciliados, evitando uma segunda cobrança.
 - A quitação depende da consulta ao provedor, com verificação de valor e transação. O retorno do navegador sozinho não confirma pagamento. O webhook existente também reconhece o novo iniciador.
 - Os históricos administrativo e do regente aceitam o iniciador `participant` e continuam contabilizando esses pagamentos.
 

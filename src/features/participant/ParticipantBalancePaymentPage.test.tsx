@@ -74,14 +74,18 @@ describe("ParticipantBalancePaymentPage", () => {
     render(
       <ParticipantBalancePaymentPage
         loadRegistration={vi.fn().mockResolvedValue(view)}
-        startCheckout={vi
-          .fn()
-          .mockResolvedValue({ ok: false, message: "Já existe um pagamento em aberto." })}
+        startCheckout={vi.fn().mockResolvedValue({
+          ok: false,
+          code: "open_payment",
+          message: "Já existe um pagamento em aberto.",
+        })}
         openCheckout={open}
       />,
     );
     fireEvent.click(await screen.findByRole("button", { name: "Pagar saldo restante" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Já existe um pagamento em aberto.");
+    expect(await screen.findByRole("status")).toHaveTextContent("pagamento em andamento");
+    expect(screen.queryByRole("button", { name: "Pagar saldo restante" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(open).not.toHaveBeenCalled();
   });
 });

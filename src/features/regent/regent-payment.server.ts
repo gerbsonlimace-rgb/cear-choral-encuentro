@@ -275,7 +275,6 @@ export function createRegentPaymentService({
 
       if (openPayment) {
         if (
-          openPayment.initiatedAs === "participant" &&
           openPayment.status === "pending" &&
           openPayment.amountCents === amountCents &&
           openPayment.checkoutUrl &&

@@ -5,7 +5,11 @@ import { paymentLookupSchema } from "@/features/registration/registration.domain
 
 export type ParticipantBalanceCheckoutResult =
   | { ok: true; checkoutUrl: string; orderNsu: string }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      code: "open_payment" | "already_paid" | "unavailable";
+      message: string;
+    };
 
 export const startParticipantBalanceCheckout = createServerFn({ method: "POST" })
   .middleware([requireParticipantAccess])
@@ -31,6 +35,12 @@ export const startParticipantBalanceCheckout = createServerFn({ method: "POST" }
       const message = caught instanceof Error ? caught.message : "";
       return {
         ok: false,
+        code:
+          message === "Já existe um pagamento complementar em aberto."
+            ? "open_payment"
+            : message === "O complemento desta inscrição já está quitado."
+              ? "already_paid"
+              : "unavailable",
         message:
           message === "Já existe um pagamento complementar em aberto."
             ? "Já existe um pagamento em aberto. Aguarde a confirmação ou consulte seu regente."
