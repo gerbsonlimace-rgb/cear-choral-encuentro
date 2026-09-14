@@ -34,35 +34,30 @@ const participant: ParticipantRegistrationView = {
 };
 
 describe("ChoristerHomeTab welcome", () => {
-  it("makes the outstanding balance card a link to participant payment", () => {
+  it("keeps only the outstanding balance and current status in a compact row", () => {
     render(<ChoristerHomeTab participant={participant} />);
     const card = screen.getByRole("region", { name: "Situação da inscrição" });
-    expect(within(card).getByRole("link", { name: /Pagar saldo restante/ })).toHaveAttribute(
-      "href",
-      "/participante/pagamento",
-    );
+    expect(within(card).getByText("Valor pendente")).toBeInTheDocument();
+    expect(within(card).getByText("R$ 80,00")).toBeInTheDocument();
+    expect(within(card).getByRole("status")).toHaveTextContent("Parcialmente pago");
+    expect(within(card).queryByRole("link")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Programa de rifas")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Pago")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Total")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Vaga confirmada após a quitação.")).not.toBeInTheDocument();
   });
 
-  it("groups identity and partial raffle balance in the welcome card", () => {
+  it("keeps identity details in the welcome card", () => {
     render(<ChoristerHomeTab participant={participant} />);
     const welcome = screen.getByRole("region", { name: "Boas-vindas e inscrição" });
-    for (const text of [
-      "Maria da Silva",
-      "Coral Santa Cecília",
-      "Parcialmente pago",
-      "Programa de rifas",
-    ]) {
+    for (const text of ["Maria da Silva", "Coral Santa Cecília"]) {
       expect(within(welcome).getByText(text)).toBeInTheDocument();
     }
     expect(within(welcome).queryByText("João de Souza")).not.toBeInTheDocument();
     expect(within(welcome).queryByText("Soprano")).not.toBeInTheDocument();
     expect(within(welcome).queryByText("Regente")).not.toBeInTheDocument();
     expect(within(welcome).queryByText("Meu naipe")).not.toBeInTheDocument();
-    expect(within(welcome).getByText(/80,00/)).toBeInTheDocument();
-    expect(
-      within(welcome).getByRole("progressbar", { name: "Pagamento da inscrição" }),
-    ).toHaveAttribute("aria-valuenow", "80");
-    expect(within(welcome).queryByText("Inscrição confirmada")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Crie sua foto do encontro/ })).toHaveAttribute(
       "href",
       "/participante/minha-foto",
@@ -83,9 +78,8 @@ describe("ChoristerHomeTab welcome", () => {
     expect(
       within(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).getByRole("status"),
     ).toHaveTextContent("Pago");
-    expect(screen.getByText("Rifas quitadas")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Pagar saldo restante/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.queryByText("Rifas quitadas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
   it("does not label standard registrations as raffles", () => {
     render(
@@ -100,7 +94,7 @@ describe("ChoristerHomeTab welcome", () => {
         }}
       />,
     );
-    expect(screen.getByText("Inscrição integral")).toBeInTheDocument();
+    expect(screen.queryByText("Inscrição integral")).not.toBeInTheDocument();
     expect(screen.queryByText("Programa de rifas")).not.toBeInTheDocument();
   });
   it("does not invent missing financial or profile data", () => {

@@ -1,6 +1,5 @@
-import { CheckCircle2, CircleHelp, Clock3, Ticket } from "lucide-react";
+import { CheckCircle2, CircleHelp, Clock3 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ParticipantRegistrationView } from "./participant.domain";
 
@@ -16,19 +15,14 @@ export function ChoristerWelcomeCard({
   const financial = payment.financialState;
   const known = financial != null && financial.status !== "legacy";
   const paid = known && financial.status === "paid";
-  const partial = known && financial.status === "partially_paid";
-  const raffles = registration.pricingType === "promotional";
-  const total = known ? financial.confirmedPrincipalCents + financial.pendingCents : 0;
-  const progress =
-    known && total > 0 ? Math.round((financial.confirmedPrincipalCents / total) * 100) : 0;
   const StatusIcon = paid ? CheckCircle2 : known ? Clock3 : CircleHelp;
   const status = paid
     ? "Pago"
-    : partial
-      ? "Parcialmente pago"
-      : known
-        ? "Pendente"
-        : "Saldo indisponível";
+    : known
+      ? financial.status === "partially_paid"
+        ? "Parcialmente pago"
+        : "Pendente"
+      : "Saldo indisponível";
   const tone = paid
     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
     : known
@@ -36,7 +30,7 @@ export function ChoristerWelcomeCard({
       : "border-zinc-200 bg-zinc-50 text-zinc-600";
 
   return (
-    <section aria-label="Boas-vindas e inscrição" className="space-y-2">
+    <section aria-label="Boas-vindas e inscrição">
       <header className="relative isolate flex items-center gap-3 overflow-hidden rounded-2xl bg-[#ffd43b] px-4 py-4 sm:px-5">
         <svg
           aria-hidden="true"
@@ -108,85 +102,23 @@ export function ChoristerWelcomeCard({
       </header>
       <section
         aria-label="Situação da inscrição"
-        className="relative space-y-2 rounded-xl border border-zinc-200/70 bg-zinc-50/70 px-3 py-2.5"
+        className="flex min-h-10 items-center justify-between gap-3 rounded-b-2xl border-x border-b border-zinc-200/70 bg-zinc-50/70 px-3 py-2"
       >
-        {known && financial.pendingCents > 0 && (
-          <Link
-            to="/participante/pagamento"
-            aria-label={`Pagar saldo restante de ${money.format(financial.pendingCents / 100)}`}
-            className="absolute inset-0 z-10 rounded-xl transition-colors hover:bg-amber-100/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-          >
-            <span className="sr-only">Pagar saldo restante</span>
-          </Link>
-        )}
-        <h2 className="sr-only">Minha inscrição</h2>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-            {raffles && <Ticket aria-hidden="true" className="size-3.5 shrink-0 text-zinc-400" />}
-            {raffles
-              ? "Programa de rifas"
-              : registration.pricingType === "standard"
-                ? "Inscrição integral"
-                : "Pagamento da inscrição"}
-          </p>
-          <span
-            role="status"
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${tone}`}
-          >
-            <StatusIcon aria-hidden="true" className="size-3" />
-            {status}
-          </span>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 text-[11px] text-zinc-500">Valor pendente</span>
+          {known && (
+            <span className="app-metric truncate text-sm font-semibold leading-5 text-zinc-700 tabular-nums">
+              {money.format(financial.pendingCents / 100)}
+            </span>
+          )}
         </div>
-        {known ? (
-          <>
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <p className="app-metric order-2 break-words text-base font-semibold leading-5 text-zinc-700 tabular-nums">
-                {money.format(financial.pendingCents / 100)}
-              </p>
-              <p
-                className={`text-[11px] font-medium ${paid ? "text-emerald-700" : "text-zinc-500"}`}
-              >
-                {paid ? (raffles ? "Rifas quitadas" : "Inscrição quitada") : "Valor pendente"}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-zinc-500">
-                <span>
-                  Pago{" "}
-                  <strong className="font-medium text-zinc-700">
-                    {money.format(financial.confirmedPrincipalCents / 100)}
-                  </strong>
-                </span>
-                <span>Total {money.format(total / 100)}</span>
-              </div>
-              <div
-                role="progressbar"
-                aria-label="Pagamento da inscrição"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={progress}
-                className="h-0.5 overflow-hidden rounded-full bg-zinc-200/60"
-              >
-                <div
-                  className={`h-full rounded-full ${paid ? "bg-emerald-400" : "bg-amber-300"}`}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-            {financial.pendingCents > 0 && (
-              <p className="text-xs font-semibold text-amber-800">Pagar saldo restante →</p>
-            )}
-            {partial && (
-              <p className="text-[11px] leading-4 text-zinc-500">
-                Vaga confirmada após a quitação.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="text-xs leading-4 text-zinc-500">
-            Consulte seu regente para conferir o saldo.
-          </p>
-        )}
+        <span
+          role="status"
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${tone}`}
+        >
+          <StatusIcon aria-hidden="true" className="size-3" />
+          {status}
+        </span>
       </section>
     </section>
   );
