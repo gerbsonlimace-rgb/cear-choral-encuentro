@@ -269,6 +269,7 @@ export function RegistrationSection({
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const mounted = useRef(false);
+  const paymentButtonClick = useRef(false);
 
   const refreshConfiguration = useCallback(
     async (clearSelection = false) => {
@@ -439,6 +440,11 @@ export function RegistrationSection({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
+    if (currentStep === 3) {
+      const wasPaymentButtonClicked = paymentButtonClick.current;
+      paymentButtonClick.current = false;
+      if (!wasPaymentButtonClicked) return;
+    }
     if (currentStep < 3) {
       void goToNextStep();
       return;
@@ -975,7 +981,13 @@ export function RegistrationSection({
                     )}
                   <Button
                     type={currentStep === 3 ? "submit" : "button"}
-                    onClick={currentStep === 3 ? undefined : () => void goToNextStep()}
+                    onClick={
+                      currentStep === 3
+                        ? () => {
+                            paymentButtonClick.current = true;
+                          }
+                        : () => void goToNextStep()
+                    }
                     disabled={
                       isSubmitting ||
                       isCheckingAvailability ||

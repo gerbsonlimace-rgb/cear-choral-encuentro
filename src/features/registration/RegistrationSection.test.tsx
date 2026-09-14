@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -246,6 +246,35 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(
       screen.getByText("Você será direcionado ao ambiente seguro da InfinitePay."),
     ).toBeInTheDocument();
+  });
+
+  it("does not open InfinitePay on an unclicked form submission", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({
+      ok: true,
+      checkoutUrl: safeUrl,
+      orderNsu: fixedOrderNsu,
+    });
+    const navigateToCheckout = vi.fn();
+    render(
+      <RegistrationSection
+        checkAvailability={available}
+        loadConfiguration={loadConfiguration}
+        startCheckout={startCheckout}
+        navigateToCheckout={navigateToCheckout}
+      />,
+    );
+    await goToReview(user);
+
+    const paymentButton = screen.getByRole("button", {
+      name: "Pagar com segurança na InfinitePay",
+    });
+    const form = paymentButton.closest("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
+
+    await waitFor(() => expect(startCheckout).not.toHaveBeenCalled());
+    expect(navigateToCheckout).not.toHaveBeenCalled();
   });
 
   it("shows that the participant payment is being prepared before redirecting", async () => {
