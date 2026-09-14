@@ -359,6 +359,42 @@ export type Database = {
         }
         Relationships: []
       }
+      event_notices: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          is_published?: boolean
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       event_registration_settings: {
         Row: {
           created_at: string
