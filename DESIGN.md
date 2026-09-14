@@ -77,7 +77,7 @@ components:
 
 O sistema combina a solenidade musical da marca com a objetividade de uma mesa de regência: estrutura escura e precisa, superfícies claras para trabalho e sinais dourados usados somente onde orientam a ação. O resultado deve parecer contemporâneo, comunitário e confiável, sem transformar o tema sacro em ornamentação institucional pesada.
 
-Há duas expressões coordenadas. O portal público pode usar a voz cerimonial de Cinzel e a energia visual da campanha. Participante, Regente e Administração são superfícies operacionais light, densas e legíveis, com Manrope em toda a hierarquia, topbar preta, navegação branca e dourado como sinal de estado.
+Há duas expressões coordenadas. O portal público pode usar a voz cerimonial de Cinzel e a energia visual da campanha. Participante, Regente e Administração são superfícies operacionais light, densas e legíveis, com Manrope em toda a hierarquia, moldura de navegação preta e dourado como sinal de estado.
 
 **Key Characteristics:**
 
@@ -103,7 +103,7 @@ A paleta é curta e hierárquica: tinta preta para estrutura, ouro litúrgico pa
 ### Neutral
 
 - **Papel de Ensaio**: canvas dos módulos autenticados.
-- **Branco de Superfície**: cards, sidebars, sheets e campos.
+- **Branco de Superfície**: cards, sheets e campos.
 - **Grafite de Apoio**: metadados e texto secundário com contraste legível.
 - **Linha de Pauta**: bordas e divisores finos.
 - **Vermelho de Alerta**: erros e ações destrutivas, sempre acompanhado por texto.
@@ -136,7 +136,7 @@ A paleta é curta e hierárquica: tinta preta para estrutura, ouro litúrgico pa
 
 ## Layout
 
-Os módulos autenticados usam uma topbar fixa de 48px. A partir de 768px, uma sidebar branca de 240px apresenta todos os destinos e pode ser recolhida para 72px; o conteúdo recebe o mesmo recuo estrutural. Abaixo desse ponto, a sidebar sai e uma barra inferior com 72px apresenta três destinos principais e “Mais”, respeitando a safe area.
+Os módulos autenticados usam uma topbar fixa de 48px. A partir de 768px, uma sidebar preta de 240px apresenta todos os destinos e pode ser recolhida para 72px; o conteúdo recebe o mesmo recuo estrutural. Abaixo desse ponto, a sidebar sai e uma barra inferior preta com 72px apresenta três destinos principais e “Mais”, respeitando a safe area.
 
 O conteúdo usa largura legível por módulo e ritmo de 4, 8, 12, 16, 24 e 32px. Cards de métricas formam grids responsivos; tabelas e listas preservam cartões móveis e semântica. Alvos interativos têm pelo menos 44px.
 
@@ -188,8 +188,8 @@ Controles e superfícies usam cantos moderadamente curvos de 8 a 16px. Navegaç�
 
 ### Navigation
 
-- Desktop usa sidebar branca, ícones de 18px e item ativo em luz dourada com marcador dourado.
-- Mobile mostra três destinos primários com ícones de 20px; destinos secundários abrem um bottom sheet com descrição.
+- Desktop usa sidebar preta, ícones de 18px, rótulos brancos e item ativo preenchido em dourado com texto preto.
+- Mobile usa barra preta com três destinos primários em branco suave; o destino ativo fica dourado, e os secundários abrem um bottom sheet claro com descrição.
 - A topbar preta identifica produto e módulo; perfil e saída ficam contextuais, sem disputar atenção.
 
 ### Metric Card
