@@ -145,7 +145,7 @@ export function ChoristerScoresTab({
     renewalUsedAssetIdsRef.current.clear();
     setViewerAsset(asset);
     setViewerStatus("ready");
-    void renew(asset, { required: isSignedUrlExpired(asset.expiresAt) });
+    if (isSignedUrlExpired(asset.expiresAt)) void renew(asset, { required: true });
   }
 
   useEffect(() => {

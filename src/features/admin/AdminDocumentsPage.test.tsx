@@ -6,6 +6,11 @@ import type { EventDocument } from "@/features/event-documents/eventDocument.dom
 import type { AdminEventDocumentBootstrap } from "@/lib/event-document.functions";
 
 import { AdminDocumentsPage } from "./AdminDocumentsPage";
+import { supabase } from "@/integrations/supabase/client";
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { auth: { getSession: vi.fn() } },
+}));
 
 const eventId = "22222222-2222-4222-8222-222222222222";
 const documentId = "44444444-4444-4444-8444-444444444444";
@@ -47,6 +52,24 @@ function setup(overrides: Partial<React.ComponentProps<typeof AdminDocumentsPage
 }
 
 describe("AdminDocumentsPage", () => {
+  it("loads once with the default session reader, including after opening the form", async () => {
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: {} },
+      error: null,
+    } as never);
+    // Leave an unexpected second call pending to expose the loop without starving the test runner.
+    const loadBootstrap = vi
+      .fn<() => Promise<AdminEventDocumentBootstrap>>()
+      .mockResolvedValueOnce({ documents: [] })
+      .mockImplementation(() => new Promise(() => undefined));
+    const { user } = setup({ getSession: undefined, loadBootstrap });
+    await screen.findByRole("heading", { name: "Documentos" });
+    expect(loadBootstrap).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Cadastrar documento" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(loadBootstrap).toHaveBeenCalledTimes(1);
+  });
+
   it("lists documents by name and file", async () => {
     setup();
 

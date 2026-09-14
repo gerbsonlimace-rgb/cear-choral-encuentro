@@ -14,28 +14,37 @@ const document = {
 };
 
 describe("general participant documents", () => {
-  it("shows and opens a document without any event, renewing its private URL", async () => {
-    const user = userEvent.setup();
-    const getDocumentUrl = vi.fn(async () => ({
-      signedUrl: "https://assets.example.test/fresh.pdf",
-      expiresIn: 120,
-    }));
-    render(
-      <ChoristerGeneralDocuments
-        loadDocuments={async () => [document]}
-        getDocumentUrl={getDocumentUrl}
-      />,
-    );
-    expect(await screen.findByRole("heading", { name: "Orientações gerais" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^Abrir$/ }));
-    await waitFor(() =>
-      expect(screen.getByTitle("PDF Orientações gerais")).toHaveAttribute(
-        "src",
-        expect.stringContaining("fresh.pdf"),
-      ),
-    );
-    expect(getDocumentUrl).toHaveBeenCalledWith({ data: { id: document.id } });
-  });
+  it.each([
+    { expiresAt: "2099-01-01T00:00:00.000Z", expectedUrl: "old.pdf", renews: false },
+    { expiresAt: "2020-01-01T00:00:00.000Z", expectedUrl: "fresh.pdf", renews: true },
+  ])(
+    "opens a general document and renews only when needed ($renews)",
+    async ({ expiresAt, expectedUrl, renews }) => {
+      const user = userEvent.setup();
+      const getDocumentUrl = vi.fn(async () => ({
+        signedUrl: "https://assets.example.test/fresh.pdf",
+        expiresIn: 120,
+      }));
+      render(
+        <ChoristerGeneralDocuments
+          loadDocuments={async () => [{ ...document, expiresAt }]}
+          getDocumentUrl={getDocumentUrl}
+        />,
+      );
+      expect(
+        await screen.findByRole("heading", { name: "Orientações gerais" }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /^Abrir$/ }));
+      await waitFor(() =>
+        expect(screen.getByTitle("PDF Orientações gerais")).toHaveAttribute(
+          "src",
+          expect.stringContaining(expectedUrl),
+        ),
+      );
+      if (renews) expect(getDocumentUrl).toHaveBeenCalledWith({ data: { id: document.id } });
+      else expect(getDocumentUrl).not.toHaveBeenCalled();
+    },
+  );
 
   it("allows retry after a failed document load", async () => {
     const user = userEvent.setup();

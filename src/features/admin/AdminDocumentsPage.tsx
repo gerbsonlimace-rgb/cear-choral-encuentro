@@ -60,6 +60,8 @@ export type AdminDocumentsPageProps = {
 type Gate = "checking" | "authorized" | "error";
 type FileDraft = EventDocumentCreate["file"];
 
+const defaultGetSession = () => supabase.auth.getSession();
+
 function defaultOpenUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -97,7 +99,7 @@ export function AdminDocumentsPage({
   updateDocument = updateAdminEventDocument,
   deleteDocument = deleteAdminEventDocument,
   getDocumentUrl = getAdminEventDocumentUrl,
-  getSession = () => supabase.auth.getSession(),
+  getSession = defaultGetSession,
   openUrl = defaultOpenUrl,
   onMissingSession,
   navigateTo,

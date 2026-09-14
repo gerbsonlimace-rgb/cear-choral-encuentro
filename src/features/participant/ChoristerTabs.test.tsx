@@ -295,6 +295,18 @@ describe("ChoristerSongsTab", () => {
 });
 
 describe("ChoristerScoresTab", () => {
+  it("opens a valid PDF immediately without renewing and reloading its iframe", async () => {
+    const onOpen = vi.fn();
+    const user = userEvent.setup();
+    render(<ChoristerScoresTab event={scoreFeed.event} onOpen={onOpen} onDownload={vi.fn()} />);
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    expect(screen.getByTitle("PDF Partitura")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/score.pdf",
+    );
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it("groups published scores by song and documents by their feed order", () => {
     const onOpen = vi.fn();
     const onDownload = vi.fn();
@@ -395,12 +407,9 @@ describe("ChoristerScoresTab", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps one renewal per viewer when an iframe fails before its initial request resolves", async () => {
+  it("ignores a failed viewer's pending renewal after switching to another valid PDF", async () => {
     const firstAsset = scoreFeed.event.songs[1].sheetMusic[0];
-    const newerAsset = {
-      ...scoreFeed.event.songs[2].sheetMusic[0],
-      signedUrl: "https://assets.example.test/newer-score.pdf",
-    };
+    const newerAsset = scoreFeed.event.songs[2].sheetMusic[0];
     let resolveFirst: (asset: typeof firstAsset) => void = () => undefined;
     const firstRequest = new Promise<typeof firstAsset>((resolve) => {
       resolveFirst = resolve;
@@ -418,9 +427,7 @@ describe("ChoristerScoresTab", () => {
     const firstViewer = await within(view.container).findByTitle("PDF Partitura");
     fireEvent(firstViewer, new Event("error", { bubbles: true }));
 
-    expect(await within(view.container).findByRole("alert")).toHaveTextContent(
-      "Não foi possível abrir este PDF",
-    );
+    expect(within(view.container).getByText("Atualizando acesso ao PDF…")).toBeInTheDocument();
     expect(onOpen.mock.calls.filter(([asset]) => asset.id === firstAsset.id)).toHaveLength(1);
 
     await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[1]);

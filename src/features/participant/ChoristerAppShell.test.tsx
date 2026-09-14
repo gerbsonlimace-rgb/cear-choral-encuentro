@@ -162,9 +162,11 @@ describe("ChoristerAppShell", () => {
 
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Visualizador de Partitura" })).toBeInTheDocument();
-    expect(onOpenScore).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "44444444-4444-4444-8444-444444444444" }),
+    expect(screen.getByTitle("PDF Partitura")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/score.pdf",
     );
+    expect(onOpenScore).not.toHaveBeenCalled();
   });
 
   it("uses the approved DetraPay-style participant shell", () => {
@@ -381,9 +383,8 @@ describe("ChoristerAppShell", () => {
       screen.getByRole("heading", { name: "Manual do encontro", level: 3 }),
     ).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
-    expect(onOpenScore).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "55555555-5555-4555-8555-555555555555" }),
-    );
+    expect(screen.getByTitle("PDF Manual do encontro")).toBeInTheDocument();
+    expect(onOpenScore).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByText("***.***.***-25")).toBeInTheDocument();

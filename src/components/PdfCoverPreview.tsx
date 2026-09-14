@@ -28,9 +28,10 @@ export function PdfCoverPreview({ sourceKey, title, getUrl }: PdfCoverPreviewPro
       if (started) return;
       started = true;
       try {
-        const url = await resolveUrl.current();
-        controller.signal.throwIfAborted();
-        const { renderPdfCover } = await loadPdfRenderer();
+        const [url, { renderPdfCover }] = await Promise.all([
+          resolveUrl.current(),
+          loadPdfRenderer(),
+        ]);
         controller.signal.throwIfAborted();
         const blob = await renderPdfCover(url, controller.signal);
         if (controller.signal.aborted) return;
