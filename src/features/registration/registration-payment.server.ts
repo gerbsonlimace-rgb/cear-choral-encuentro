@@ -20,6 +20,8 @@ import {
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
+// Keep the invitation out of public client bundles and unverified status lookups.
+const REGISTRATION_WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw";
 const REGISTRATION_CPF_CONFLICT_MESSAGE =
   "Já existe uma inscrição para este CPF. Use Retomar pagamento.";
 
@@ -49,6 +51,7 @@ export type PublicPaymentStatus =
       paymentMethod: "pix" | "credit_card";
       installments: number;
       participantAccessStatus: ParticipantAccessStatus;
+      whatsappGroupUrl?: string;
       receiptUrl?: string;
       orderNsu?: string;
       amountCents?: number;
@@ -122,7 +125,10 @@ export function createRegistrationPaymentService(deps: {
     } catch {
       // Payment truth is durable and must remain independent from delayed access preparation.
     }
-    return toPublicPaymentStatus(registration, participantAccessStatus);
+    const payment = toPublicPaymentStatus(registration, participantAccessStatus);
+    return payment.status === "paid"
+      ? { ...payment, whatsappGroupUrl: REGISTRATION_WHATSAPP_GROUP_URL }
+      : payment;
   };
 
   return {
