@@ -68,7 +68,7 @@ function expectSharedHeroContent(hero: HTMLElement) {
   expect(heroQueries.getByText("20 a 22 de novembro de 2026")).toBeInTheDocument();
   expect(heroQueries.getByText("Quixadá, CE")).toBeInTheDocument();
   expect(heroQueries.getByText("Coralistas, Instrumentistas e Regentes")).toBeInTheDocument();
-  expect(heroQueries.getByRole("link", { name: /faça sua inscrição/i })).toBeInTheDocument();
+  expect(heroQueries.getByRole("link", { name: /inscrever-se agora/i })).toBeInTheDocument();
   expect(heroQueries.getByRole("link", { name: "Programação" })).toBeInTheDocument();
   expect(
     heroQueries.getByRole("img", {
@@ -111,7 +111,7 @@ describe("landing page hero", () => {
 
     expect(copy).not.toContainElement(visuals);
     expect(visuals).toContainElement(actions);
-    expect(within(visuals!).getByRole("link", { name: /faça sua inscrição/i })).toBeInTheDocument();
+    expect(within(visuals!).getByRole("link", { name: /inscrever-se agora/i })).toBeInTheDocument();
     expect(within(visuals!).getByRole("link", { name: "Programação" })).toBeInTheDocument();
     expect(visuals).not.toHaveClass("lg:border-l");
   });

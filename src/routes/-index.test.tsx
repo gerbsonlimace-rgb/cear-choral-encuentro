@@ -192,7 +192,16 @@ describe("landing page access", () => {
       "/acessar",
     );
     expect(screen.getAllByRole("link", { name: "Acessar portal" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Inscrever" })).toHaveAttribute("href", "#inscricao");
+    const registrationLinks = screen.getAllByRole("link", { name: "Inscrever-se agora" });
+    expect(registrationLinks).toHaveLength(3);
+    for (const link of registrationLinks) {
+      expect(link).toHaveAttribute("href", "/inscricao");
+    }
+    expect(screen.queryByLabelText("CPF")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Falar com a coordenação pelo WhatsApp/ })).toHaveAttribute(
+      "href",
+      "https://wa.me/5585999033232",
+    );
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {

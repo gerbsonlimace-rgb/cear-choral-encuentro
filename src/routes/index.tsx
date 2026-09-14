@@ -26,7 +26,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { RegistrationSection } from "@/features/registration/RegistrationSection";
+import { RegistrationCallout } from "@/features/registration/RegistrationCallout";
 import { PublicProgramme } from "@/features/event-activities/PublicProgramme";
 import { getPublicEventProgramme } from "@/lib/event-activity.functions";
 import {
@@ -132,7 +132,7 @@ function Index() {
         <AboutSection />
         <QuixadaSection />
         <PublicProgramme result={programme} />
-        <RegistrationSection />
+        <RegistrationCallout />
         <SponsorsSection />
       </main>
       <Footer />
@@ -188,7 +188,7 @@ function Header() {
             size="sm"
             className="h-10 min-h-10 rounded-full bg-amber px-3 text-xs font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 sm:text-sm lg:h-10"
           >
-            <a href="#inscricao">Inscrever</a>
+            <Link to="/inscricao">Inscrever-se agora</Link>
           </Button>
           <Sheet>
             <SheetTrigger asChild>
@@ -259,10 +259,10 @@ function HeroSection() {
         size="lg"
         className="h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
       >
-        <a href="#inscricao" className="justify-center">
-          Faça sua inscrição
+        <Link to="/inscricao" className="justify-center">
+          Inscrever-se agora
           <ArrowRight className="ml-2 h-5 w-5" />
-        </a>
+        </Link>
       </Button>
       <Button
         asChild
