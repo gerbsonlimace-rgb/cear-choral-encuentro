@@ -2,7 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/event-activity.functions", () => ({
+  getParticipantEventActivities: vi.fn().mockResolvedValue([]),
+}));
+
 import type { ChoristerPortalFeed } from "@/features/chorister-app/choristerApp.domain";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
 import { ChoristerAppShell, type ChoristerAppShellProps } from "./ChoristerAppShell";
@@ -95,13 +100,13 @@ describe("ChoristerAppShell", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
-    ["Explorar cantos", "Kit Ensaio"],
+    ["Explorar cantos", "Cantos"],
     ["Ver documentos", "Documentos"],
     ["Consultar programação", "Programação"],
   ])("opens the corresponding tab from the home shortcut %s", async (shortcut, tab) => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: shortcut }));
-    const navigation = screen.getByRole("navigation", { name: "Navegação principal do app" });
+    const navigation = screen.getByRole("navigation", { name: "Navegação de Participante" });
     expect(within(navigation).getByRole("button", { name: tab })).toHaveAttribute(
       "aria-current",
       "page",
@@ -124,7 +129,7 @@ describe("ChoristerAppShell", () => {
     };
     const { user } = setup({ feed: detailedFeed });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Abrir canto Canto de entrada" }));
 
     const detail = screen.getByRole("dialog", { name: "Canto de entrada" });
@@ -140,7 +145,7 @@ describe("ChoristerAppShell", () => {
     const onOpenScore = vi.fn().mockImplementation((asset) => asset);
     const { user } = setup({ onOpenScore });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
 
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
@@ -150,20 +155,38 @@ describe("ChoristerAppShell", () => {
     );
   });
 
-  it("puts Programação second and names the rehearsal area Kit Ensaio", () => {
+  it("uses the approved DetraPay-style participant shell", () => {
     setup();
 
-    const navigation = screen.getByRole("navigation", { name: "Navegação principal do app" });
+    const navigation = screen.getByRole("navigation", { name: "Navegação de Participante" });
     expect(
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos", "Meu Perfil"]);
-    expect(within(navigation).getByRole("button", { name: "Home" })).toHaveAttribute(
+    ).toEqual(["Início", "Cantos", "Documentos", "Programação", "Meu Perfil"]);
+    expect(within(navigation).getByRole("button", { name: "Início" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(navigation).toHaveClass("pb-[max(0.5rem,env(safe-area-inset-bottom))]");
+    expect(screen.getByTestId("internal-topbar")).toHaveClass("bg-brand-ink");
+    const mobileNavigation = screen.getByRole("navigation", {
+      name: "Navegação móvel de Participante",
+    });
+    expect(within(mobileNavigation).getAllByTestId("internal-mobile-primary-item")).toHaveLength(3);
+    expect(within(mobileNavigation).getByRole("button", { name: /mais/i })).toBeInTheDocument();
+  });
+
+  it("opens secondary participant destinations from Mais on mobile", async () => {
+    const onTabChange = vi.fn();
+    const { user } = setup({ onTabChange });
+
+    await user.click(screen.getByRole("button", { name: "Mais opções" }));
+    await user.click(screen.getByRole("button", { name: "Programação" }));
+    expect(onTabChange).toHaveBeenCalledWith("guia");
+
+    await user.click(screen.getByRole("button", { name: "Mais opções" }));
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(onTabChange).toHaveBeenCalledWith("perfil");
   });
 
   it("uses one route update when changing tabs with an event selected", async () => {
@@ -190,26 +213,47 @@ describe("ChoristerAppShell", () => {
 
     await waitFor(() => expect(loadGuideActivities).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: "Programação" }));
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Início" }));
     await user.click(screen.getByRole("button", { name: "Programação" }));
 
     expect(loadGuideActivities).toHaveBeenCalledOnce();
   });
 
-  it("does not repeat a failed guide request on every tab visit", async () => {
-    const loadGuideActivities = vi.fn().mockRejectedValue(new Error("unavailable"));
+  it("loads the participant programme from the activities CRUD by default", async () => {
+    setup();
+
+    await waitFor(() => expect(getParticipantEventActivities).toHaveBeenCalledOnce());
+  });
+
+  it("retries a failed guide preload when the programme is opened", async () => {
+    const loadGuideActivities = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("unavailable"))
+      .mockResolvedValueOnce([
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          title: "Programação recuperada",
+          activityDate: "2026-11-20",
+          startsAt: "09:00",
+          endsAt: "10:00",
+          location: null,
+          description: null,
+          sortOrder: 1,
+          requiresQr: false,
+        },
+      ]);
     const { user } = setup({
       loadGuideActivities,
     } as Partial<ChoristerAppShellProps>);
 
     await waitFor(() => expect(loadGuideActivities).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: "Programação" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("programação completa");
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Início" }));
     await user.click(screen.getByRole("button", { name: "Programação" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("programação completa");
+    expect(await screen.findByText("Programação recuperada")).toBeInTheDocument();
 
-    expect(loadGuideActivities).toHaveBeenCalledOnce();
+    expect(loadGuideActivities).toHaveBeenCalledTimes(2);
   });
 
   it("lists event summaries before opening one dedicated repertoire", async () => {
@@ -225,7 +269,7 @@ describe("ChoristerAppShell", () => {
     };
     const { user } = setup({ events: [feed.event, secondEvent], onEventChange });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
 
     expect(
       screen.getByRole("button", { name: `Abrir evento ${feed.event.name}` }),
@@ -269,11 +313,11 @@ describe("ChoristerAppShell", () => {
       screen.queryByRole("button", { name: "Abrir cantos e partituras" }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     expect(
       screen.getByRole("button", { name: "Abrir evento Grande Concerto" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kit Ensaio" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Cantos" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -291,7 +335,7 @@ describe("ChoristerAppShell", () => {
       ],
     });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     const card = screen.getByRole("button", { name: `Abrir evento ${coveredEvent.name}` });
     const cover = card.querySelector("img");
     expect(card.parentElement).toHaveClass("grid-cols-2");
@@ -339,7 +383,7 @@ describe("ChoristerAppShell", () => {
     const load = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
@@ -349,7 +393,7 @@ describe("ChoristerAppShell", () => {
     );
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
 
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Início" }));
     expect(screen.queryByRole("region", { name: "Player persistente" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Reprodutor de áudio")).toBeInTheDocument();
     expect(
@@ -396,7 +440,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup({ feed: expiredFeed, onRenewAudio });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     await waitFor(() =>
@@ -413,7 +457,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
     Object.defineProperty(audio, "duration", { configurable: true, value: 120 });
@@ -442,7 +486,7 @@ describe("ChoristerAppShell", () => {
     });
     const { user } = setup({ onLogout });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
       "src",
@@ -487,7 +531,7 @@ describe("ChoristerAppShell", () => {
     const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const { user } = setup({ feed: expiredFeed, onOpenScore });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
     await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
     expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
@@ -511,7 +555,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     const audio = screen.getByLabelText("Reprodutor de áudio");
 
@@ -540,7 +584,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("radio", { name: "Tenor" }));
@@ -567,7 +611,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: "Pausar Soprano de Canto de entrada" }));
@@ -590,7 +634,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     await waitFor(() =>
@@ -606,7 +650,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(

@@ -6,6 +6,10 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
+    createFileRoute: () => (options: Record<string, unknown>) => ({
+      options,
+      useLoaderData: () => ({ status: "unavailable", activities: [] }),
+    }),
     Link: ({
       children,
       to,

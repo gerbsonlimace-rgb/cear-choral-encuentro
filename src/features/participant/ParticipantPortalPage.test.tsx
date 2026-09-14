@@ -143,7 +143,7 @@ describe("ParticipantPortalPage", () => {
     );
 
     await screen.findByRole("heading", { name: "Maria" });
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     expect(screen.getByText(publishedFeed.event.name)).toBeInTheDocument();
     expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
   });
@@ -221,8 +221,9 @@ describe("ParticipantPortalPage", () => {
       await screen.findByText("Os materiais do encontro ainda não foram publicados."),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
-    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
-    expect(screen.getByText("Coral Santa Cecília")).toBeInTheDocument();
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
+    expect(within(profile).getByText("Maria da Silva")).toBeInTheDocument();
+    expect(within(profile).getByText("Coral Santa Cecília")).toBeInTheDocument();
   });
 
   it("shows a retryable neutral state when the authorized feed is unavailable", async () => {
@@ -236,7 +237,8 @@ describe("ParticipantPortalPage", () => {
       "Não foi possível carregar os materiais do encontro. Tente novamente.",
     );
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
-    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
+    expect(within(profile).getByText("Maria da Silva")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
@@ -292,7 +294,7 @@ describe("ParticipantPortalPage", () => {
     const { user } = setup({ loadFeed });
 
     await screen.findByRole("heading", { name: "Maria" });
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
 
     expect(await screen.findByTitle("PDF Partitura")).toHaveAttribute(
@@ -310,7 +312,8 @@ describe("ParticipantPortalPage", () => {
     await screen.findByRole("heading", { name: "Maria" });
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
-    expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
+    const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
+    expect(within(profile).getByText("Maria da Silva")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Sair" }));
 
@@ -456,15 +459,15 @@ describe("ParticipantPortalPage", () => {
     const { user } = setup();
     await screen.findByRole("heading", { name: "Maria" });
 
-    const navigation = screen.getByRole("navigation", { name: "Navegação principal do app" });
+    const navigation = screen.getByRole("navigation", { name: "Navegação de Participante" });
     expect(
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Programação", "Kit Ensaio", "Documentos", "Meu Perfil"]);
+    ).toEqual(["Início", "Cantos", "Documentos", "Programação", "Meu Perfil"]);
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Cantos" }));
     expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Documentos" }));
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();

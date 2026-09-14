@@ -1,7 +1,11 @@
+import { Banknote, CircleCheckBig, Home, UserRound, UsersRound, WalletCards } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
+import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
+import { InternalPageHeader } from "@/components/internal-app/InternalPageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,7 +28,6 @@ import { BalancePaymentDialog } from "./BalancePaymentDialog";
 import {
   formatComplementCents,
   type BalancePaymentTarget,
-  type PortalParticipant,
   type PortalSummary,
 } from "./regent-payments.domain";
 import type { RegentAccess } from "./regent.domain";
@@ -46,18 +49,14 @@ type Props = {
 };
 
 const PAGE_SIZE = 20;
+type RegentMobileTab = "summary" | "participants" | "profile";
 const defaultLoadAdminChoirs = async () => (await getAdminChoirPricing()).choirs;
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="shadow-sm">
-      <CardContent className="p-4 sm:p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
+const regentNavigation = [
+  { id: "summary", label: "Resumo", description: "Indicadores da inscrição", icon: Home },
+  { id: "participants", label: "Coralistas", description: "Participantes e pagamentos", icon: UsersRound },
+  { id: "profile", label: "Meu perfil", description: "Conta e coro ativo", icon: UserRound },
+] as const;
 
 export function RegentPortalPage({
   access,
@@ -84,6 +83,7 @@ export function RegentPortalPage({
   const [query, setQuery] = useState({ search: "", page: 1 });
   const [paymentTarget, setPaymentTarget] = useState<BalancePaymentTarget | null>(null);
   const [portalRefresh, setPortalRefresh] = useState(0);
+  const [mobileTab, setMobileTab] = useState<RegentMobileTab>("summary");
   const skipInitialSummary = useRef(Boolean(initialData));
   const skipInitialList = useRef(Boolean(initialData));
 
@@ -191,19 +191,33 @@ export function RegentPortalPage({
     access.role === "regent"
       ? access.choirName
       : choirs.find((choir) => choir.id === selectedChoirId)?.name;
+  const mobileModuleClass = (tab: RegentMobileTab) =>
+    mobileTab === tab ? "block" : "hidden md:block";
 
   return (
-    <main className="min-h-svh bg-muted/20 px-4 py-6 sm:px-6 lg:py-8">
+    <InternalAppShell
+      moduleLabel="Regente"
+      navItems={[...regentNavigation]}
+      activeId={mobileTab}
+      onNavigate={(id) => setMobileTab(id as RegentMobileTab)}
+      profileName={
+        access.role === "regent"
+          ? access.name
+          : `Administrador · ${access.email ?? "e-mail não informado"}`
+      }
+      profileDetail={activeChoirName}
+    >
       <div className="mx-auto max-w-7xl space-y-5">
-        <header>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Encontro de Coros Diocesanos
-          </p>
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Área do regente</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Acompanhe participantes e complementos da inscrição.
-          </p>
-          <div className="mt-3 space-y-0.5 text-sm">
+        <InternalPageHeader
+          title="Área do regente"
+          description="Acompanhe participantes e complementos da inscrição."
+        />
+
+        <section
+          aria-label="Perfil do regente"
+          className={`${mobileModuleClass("profile")} rounded-xl border bg-card p-4 text-sm md:border-0 md:bg-transparent md:p-0`}
+        >
+          <div className="space-y-0.5">
             <p className="font-medium text-foreground">
               {access.role === "regent"
                 ? access.name
@@ -214,10 +228,10 @@ export function RegentPortalPage({
               <p className="text-muted-foreground">Coro ativo: {activeChoirName}</p>
             )}
           </div>
-        </header>
+        </section>
 
         {access.role === "admin" && (
-          <Card>
+          <Card className={mobileModuleClass("summary")}>
             <CardContent className="space-y-2 p-4 sm:max-w-md">
               <Label htmlFor="regent-choir">Coro</Label>
               <Select
@@ -257,127 +271,138 @@ export function RegentPortalPage({
         ) : summary ? (
           <section
             aria-label="Resumo dos complementos"
-            className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+            className={`${mobileModuleClass("summary")} grid-cols-2 gap-3 md:grid lg:grid-cols-4`}
           >
-            <SummaryCard label="Total de participantes" value={String(summary.totalParticipants)} />
-            <SummaryCard
+            <InternalMetricCard
+              label="Total de participantes"
+              value={String(summary.totalParticipants)}
+              icon={UsersRound}
+            />
+            <InternalMetricCard
               label="Complemento total"
               value={formatComplementCents(summary.eligibleComplementCents)}
+              icon={Banknote}
             />
-            <SummaryCard
+            <InternalMetricCard
               label="Complemento confirmado"
               value={formatComplementCents(summary.confirmedComplementCents)}
+              icon={CircleCheckBig}
             />
-            <SummaryCard
+            <InternalMetricCard
               label="Saldo a receber"
               value={formatComplementCents(summary.outstandingComplementCents)}
+              icon={WalletCards}
             />
           </section>
         ) : null}
 
-        <form
-          onSubmit={search}
-          className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"
+        <section
+          aria-label="Participantes do coro"
+          className={`${mobileModuleClass("participants")} space-y-5`}
         >
-          <div className="min-w-0 flex-1 space-y-2">
-            <Label htmlFor="participant-search">Pesquisar participantes</Label>
-            <Input
-              id="participant-search"
-              type="search"
-              maxLength={100}
-              placeholder="Nome ou CPF"
-              value={searchDraft}
-              disabled={!ready || loading}
-              onChange={(event) => setSearchDraft(event.target.value)}
-            />
-          </div>
-          <Button type="submit" disabled={!ready || loading}>
-            Pesquisar
-          </Button>
-        </form>
-
-        {loading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : listError ? (
-          <Card>
-            <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p role="alert" className="text-sm text-destructive">
-                {listError}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setListRetry((value) => value + 1)}
-              >
-                Tentar novamente
-              </Button>
-            </CardContent>
-          </Card>
-        ) : result?.rows.length ? (
-          <RegentParticipantList
-            participants={result.rows}
-            onPay={(participant) => {
-              if (
-                participant.financialState.status !== "partially_paid" ||
-                !participant.complement.eligible
-              ) {
-                return;
-              }
-              setPaymentTarget({
-                id: participant.id,
-                name: participant.name,
-                balanceCents: participant.complement.balanceCents,
-              });
-            }}
-          />
-        ) : result ? (
-          <Card>
-            <CardContent className="p-6 text-center text-sm">
-              Nenhum participante encontrado.
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {result && (
-          <nav
-            aria-label="Paginação de participantes"
-            className="flex items-center justify-between gap-3"
+          <form
+            onSubmit={search}
+            className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"
           >
-            <p className="text-xs text-muted-foreground">
-              Página {result.page} de {pages}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={loading || result.page <= 1}
-                onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
-              >
-                Anterior
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={loading || result.page >= pages}
-                onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
-              >
-                Próxima
-              </Button>
+            <div className="min-w-0 flex-1 space-y-2">
+              <Label htmlFor="participant-search">Pesquisar participantes</Label>
+              <Input
+                id="participant-search"
+                type="search"
+                maxLength={100}
+                placeholder="Nome ou CPF"
+                value={searchDraft}
+                disabled={!ready || loading}
+                onChange={(event) => setSearchDraft(event.target.value)}
+              />
             </div>
-          </nav>
-        )}
-      </div>
+            <Button type="submit" disabled={!ready || loading}>
+              Pesquisar
+            </Button>
+          </form>
 
-      <BalancePaymentDialog
-        target={paymentTarget}
-        open={paymentTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setPaymentTarget(null);
-        }}
-      />
-    </main>
+          {loading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : listError ? (
+            <Card>
+              <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p role="alert" className="text-sm text-destructive">
+                  {listError}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setListRetry((value) => value + 1)}
+                >
+                  Tentar novamente
+                </Button>
+              </CardContent>
+            </Card>
+          ) : result?.rows.length ? (
+            <RegentParticipantList
+              participants={result.rows}
+              onPay={(participant) => {
+                if (
+                  participant.financialState.status !== "partially_paid" ||
+                  !participant.complement.eligible
+                ) {
+                  return;
+                }
+                setPaymentTarget({
+                  id: participant.id,
+                  name: participant.name,
+                  balanceCents: participant.complement.balanceCents,
+                });
+              }}
+            />
+          ) : result ? (
+            <Card>
+              <CardContent className="p-6 text-center text-sm">
+                Nenhum participante encontrado.
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {result && (
+            <nav
+              aria-label="Paginação de participantes"
+              className="flex items-center justify-between gap-3"
+            >
+              <p className="text-xs text-muted-foreground">
+                Página {result.page} de {pages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={loading || result.page <= 1}
+                  onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={loading || result.page >= pages}
+                  onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </nav>
+          )}
+        </section>
+        <BalancePaymentDialog
+          target={paymentTarget}
+          open={paymentTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setPaymentTarget(null);
+          }}
+        />
+      </div>
+    </InternalAppShell>
   );
 }

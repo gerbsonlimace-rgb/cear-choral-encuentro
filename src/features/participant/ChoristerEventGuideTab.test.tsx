@@ -2,9 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/event-activity.functions", () => ({
+  getParticipantEventActivities: vi.fn().mockResolvedValue([]),
+}));
+
 import type { ChoristerPortalCollection } from "@/features/chorister-app/choristerApp.domain";
 
 import { ChoristerEventGuideTab } from "./ChoristerEventGuideTab";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
 const events: ChoristerPortalCollection["events"] = [
   {
@@ -29,14 +34,18 @@ const events: ChoristerPortalCollection["events"] = [
 ];
 
 describe("ChoristerEventGuideTab", () => {
-  it("shows known event activities while the configurable agenda is still loading", async () => {
-    const user = userEvent.setup();
+  it("loads the real configurable programme by default", async () => {
+    render(<ChoristerEventGuideTab events={events} />);
+    await screen.findByText("Nenhuma atividade publicada para este dia.");
+    expect(getParticipantEventActivities).toHaveBeenCalled();
+  });
+
+  it("does not use CoroApp events as programme entries while the CRUD is loading", async () => {
     render(<ChoristerEventGuideTab events={events} loadActivities={() => new Promise(() => {})} />);
 
-    await user.click(screen.getByRole("tab", { name: /21 de novembro/i }));
-
-    expect(screen.getByText("Grande Concerto")).toBeInTheDocument();
+    expect(screen.queryByText("Grande Concerto")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Atualizando programação");
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   it("keeps the official guide notes compact without rendering CoroApp event cards", async () => {
@@ -112,7 +121,7 @@ describe("ChoristerEventGuideTab", () => {
 
     await user.click(screen.getByRole("tab", { name: /21 de novembro/i }));
 
-    expect(screen.getByText("Grande Concerto")).toBeInTheDocument();
+    expect(screen.queryByText("Grande Concerto")).not.toBeInTheDocument();
     expect(screen.getByText("Chegue com antecedência.")).toBeInTheDocument();
     expect(screen.getByText("2ª Conferência")).toBeInTheDocument();
     const attendanceAction = screen.getByRole("link", {
@@ -124,12 +133,51 @@ describe("ChoristerEventGuideTab", () => {
 
     await user.click(screen.getByRole("tab", { name: /22 de novembro/i }));
     expect(screen.getByText("Missa de encerramento")).toBeInTheDocument();
-    expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
+    expect(screen.queryByText("Solenidade de Cristo Rei")).not.toBeInTheDocument();
     expect(screen.getAllByText("Na sequência")).not.toHaveLength(0);
   });
 
-  it("keeps CoroApp celebrations visible when the configurable agenda is temporarily unavailable", async () => {
+  it("derives programme days from CRUD activities without restricting their dates", async () => {
     const user = userEvent.setup();
+    render(
+      <ChoristerEventGuideTab
+        events={events}
+        loadActivities={vi.fn().mockResolvedValue([
+          {
+            id: "34444444-4444-4444-8444-444444444444",
+            title: "Ensaio extraordinário",
+            activityDate: "2027-01-03",
+            startsAt: "09:00",
+            endsAt: "10:30",
+            location: "Auditório",
+            description: null,
+            sortOrder: 1,
+            requiresQr: false,
+          },
+          {
+            id: "35555555-5555-4555-8555-555555555555",
+            title: "Recepção complementar",
+            activityDate: "2027-01-04",
+            startsAt: "08:00",
+            endsAt: null,
+            location: null,
+            description: null,
+            sortOrder: 1,
+            requiresQr: false,
+          },
+        ])}
+      />,
+    );
+
+    expect(await screen.findByRole("tab", { name: /3 de janeiro, domingo/i })).toBeInTheDocument();
+    expect(screen.getByText("Ensaio extraordinário")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /4 de janeiro, segunda/i }));
+    expect(screen.getByText("Recepção complementar")).toBeInTheDocument();
+    expect(screen.queryByText("Ensaio extraordinário")).not.toBeInTheDocument();
+  });
+
+  it("reports an unavailable CRUD without falling back to CoroApp events", async () => {
     render(
       <ChoristerEventGuideTab
         events={events}
@@ -137,9 +185,9 @@ describe("ChoristerEventGuideTab", () => {
       />,
     );
 
-    await user.click(screen.getByRole("tab", { name: /21 de novembro/i }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("a programação completa");
-    expect(screen.getByText("Grande Concerto")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar a programação agora",
+    );
+    expect(screen.queryByText("Grande Concerto")).not.toBeInTheDocument();
   });
 });

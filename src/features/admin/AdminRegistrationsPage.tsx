@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Banknote, ChartNoAxesCombined, Clock3 } from "lucide-react";
+import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +55,7 @@ import type {
   AdminRegistrationSummary,
 } from "./admin.domain";
 import { getAdminFinancialState } from "./admin.domain";
-import { AdminNavigation } from "./AdminNavigation";
+import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type Props = {
   onSignedOut: () => void;
@@ -80,9 +82,7 @@ type Props = {
     orderNsu: string;
   }>;
   navigateToCheckout?: (url: string) => void;
-  navigateTo?: (
-    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
-  ) => void;
+  navigateTo?: (to: AdminNavigationPath | "/regente") => void;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();
@@ -351,126 +351,39 @@ function BalanceAction({
   );
 }
 
-function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
+function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
   const financial = [
     {
       label: "Recebido",
       value: money(summary.receivedCents),
       hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
-      valueClass: "text-primary",
+      icon: Banknote,
     },
     {
       label: "Pendente",
       value: money(summary.pendingCents),
       hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
-      valueClass: "text-foreground",
+      icon: Clock3,
     },
     {
       label: "Total previsto",
       value: money(summary.expectedCents),
       hint: "Recebido + pendente + regente",
-      valueClass: "text-foreground",
+      icon: ChartNoAxesCombined,
     },
   ];
-  const counts = [
-    { label: "Total", value: String(summary.total) },
-    { label: "Pagas", value: String(summary.paid) },
-    { label: "Parcialmente pagas", value: String(summary.partiallyPaid ?? 0) },
-    { label: "Pendentes", value: String(summary.pending) },
-    { label: "Históricas", value: String(summary.legacy) },
-    { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
-  ];
-
   return (
-    <section aria-label="Visão geral das inscrições" className="space-y-4">
-      <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
-        {financial.map((metric) => (
-          <div key={metric.label} className="rounded-xl border bg-card p-4 sm:p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {metric.label}
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold tabular-nums sm:text-3xl ${metric.valueClass}`}
-            >
-              {metric.value}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
-          </div>
-        ))}
-      </div>
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="p-4 sm:p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold text-foreground">Inscrições</h2>
-            <p className="text-xs text-muted-foreground">Todos os registros</p>
-          </div>
-          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
-            {counts.map((metric) => (
-              <div key={metric.label}>
-                <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">
-                  {metric.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div className="border-t bg-muted/30 p-4 sm:p-5">
-          <h3 className="text-sm font-semibold text-foreground">Financeiro por coro/diocese</h3>
-          {summary.byChoir.length ? (
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {summary.byChoir.map((item) => (
-                <li
-                  key={item.choirName}
-                  className="min-w-0 rounded-lg border bg-card p-4 shadow-none"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 break-words text-sm font-medium text-foreground">
-                      {item.choirName}
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                      {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
-                    </span>
-                  </div>
-                  <dl className="mt-3 space-y-1.5 text-xs">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-muted-foreground">Recebido</dt>
-                      <dd className="font-semibold tabular-nums text-foreground">
-                        {money(item.receivedCents)}
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-muted-foreground">Pendente</dt>
-                      <dd className="font-semibold tabular-nums text-foreground">
-                        {money(item.pendingCents)}
-                      </dd>
-                    </div>
-                    {item.pendingRegentCents > 0 && (
-                      <div className="flex items-baseline justify-between gap-2">
-                        <dt className="text-muted-foreground">Pendente do regente</dt>
-                        <dd className="font-semibold tabular-nums text-foreground">
-                          {money(item.pendingRegentCents)}
-                        </dd>
-                      </div>
-                    )}
-                    <div className="flex items-baseline justify-between gap-2 border-t border-border/70 pt-1.5">
-                      <dt className="text-muted-foreground">Total previsto</dt>
-                      <dd className="font-semibold tabular-nums text-primary">
-                        {money(item.expectedCents)}
-                      </dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Nenhum coro/diocese com inscrições.
-            </p>
-          )}
-        </div>
-      </div>
-    </section>
+    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
+      {financial.map((metric) => (
+        <InternalMetricCard
+          key={metric.label}
+          label={metric.label}
+          value={metric.value}
+          detail={metric.hint}
+          icon={metric.icon}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -774,7 +687,7 @@ export function AdminRegistrationsPage({
             : "";
 
   return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -857,7 +770,7 @@ export function AdminRegistrationsPage({
                 </CardContent>
               </Card>
             ) : (
-              summary && <RegistrationSummary summary={summary} />
+              summary && <RegistrationFinancialSummary summary={summary} />
             )}
             <form
               onSubmit={search}

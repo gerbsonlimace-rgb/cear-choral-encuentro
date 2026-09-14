@@ -2,30 +2,54 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, MapPin, ScanLine } from "lucide-react";
 
 import type { ChoristerPortalCollection } from "@/features/chorister-app/choristerApp.domain";
+import type { ParticipantGuideActivity } from "@/features/event-activities/eventActivity.domain";
+import { getParticipantEventActivities } from "@/lib/event-activity.functions";
 
-// Additional agenda entries can be supplied when the agenda service is available.
-// The published portal remains compatible with the existing signed event feed.
-export type ParticipantGuideActivity = {
-  id: string;
-  title: string;
-  activityDate: string;
-  startsAt: string | null;
-  endsAt: string | null;
-  location: string | null;
-  description: string | null;
-  sortOrder: number;
-  requiresQr: boolean;
-};
-const loadPublishedFeedOnly = async (): Promise<ParticipantGuideActivity[]> => [];
+export type { ParticipantGuideActivity } from "@/features/event-activities/eventActivity.domain";
 
 type Event = ChoristerPortalCollection["events"][number];
-type GuideDay = { date: string; day: string; weekday: string };
+type GuideDay = { date: string; day: string; month: string; weekday: string; year: string };
 
-const GUIDE_DAYS: GuideDay[] = [
-  { date: "2026-11-20", day: "20", weekday: "sexta" },
-  { date: "2026-11-21", day: "21", weekday: "sábado" },
-  { date: "2026-11-22", day: "22", weekday: "domingo" },
-];
+const weekdayFormatter = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  timeZone: "UTC",
+});
+const monthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  timeZone: "UTC",
+});
+const shortMonthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "short",
+  timeZone: "UTC",
+});
+
+function toGuideDay(date: string): GuideDay {
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  return {
+    date,
+    day: String(parsed.getUTCDate()),
+    month: monthFormatter.format(parsed),
+    weekday: weekdayFormatter.format(parsed).replace("-feira", ""),
+    year: String(parsed.getUTCFullYear()),
+  };
+}
+
+function programmePeriod(days: GuideDay[]) {
+  if (days.length === 0) return "Programação do encontro";
+  const first = days[0];
+  const last = days.at(-1) ?? first;
+  const firstMonth = shortMonthFormatter
+    .format(new Date(`${first.date}T12:00:00.000Z`))
+    .replace(".", "");
+  const lastMonth = shortMonthFormatter
+    .format(new Date(`${last.date}T12:00:00.000Z`))
+    .replace(".", "");
+  if (first.date === last.date) return `${first.day} ${firstMonth} ${first.year}`;
+  if (firstMonth === lastMonth && first.year === last.year) {
+    return `${first.day}–${last.day} ${firstMonth} ${first.year}`;
+  }
+  return `${first.day} ${firstMonth} ${first.year} – ${last.day} ${lastMonth} ${last.year}`;
+}
 
 type Props = {
   events: Event[];
@@ -37,8 +61,11 @@ function activityTime(activity: ParticipantGuideActivity) {
   return activity.endsAt ? `${activity.startsAt}–${activity.endsAt}` : activity.startsAt;
 }
 
-export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedFeedOnly }: Props) {
-  const [selectedDate, setSelectedDate] = useState(GUIDE_DAYS[0].date);
+export function ChoristerEventGuideTab({
+  events,
+  loadActivities = getParticipantEventActivities,
+}: Props) {
+  const [selectedDate, setSelectedDate] = useState("");
   const dayButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const [activities, setActivities] = useState<ParticipantGuideActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,13 +75,15 @@ export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedF
     let active = true;
     void loadActivities()
       .then((loaded) => {
-        if (active) setActivities(loaded);
+        if (active) {
+          setActivities(loaded);
+          const dates = [...new Set(loaded.map((activity) => activity.activityDate))].sort();
+          setSelectedDate((current) => (dates.includes(current) ? current : (dates[0] ?? "")));
+        }
       })
       .catch(() => {
         if (active) {
-          setError(
-            "Não foi possível carregar a programação completa. As celebrações publicadas continuam disponíveis.",
-          );
+          setError("Não foi possível carregar a programação agora. Tente novamente em instantes.");
         }
       })
       .finally(() => {
@@ -65,40 +94,21 @@ export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedF
     };
   }, [loadActivities]);
 
-  const selectedActivities = useMemo(() => {
-    const activityKeys = new Set(
-      activities.map(
-        (activity) =>
-          `${activity.activityDate}:${activity.title.trim().toLocaleLowerCase("pt-BR")}`,
-      ),
-    );
-    const coroAppActivities: ParticipantGuideActivity[] = events
-      .filter(
-        (event) =>
-          GUIDE_DAYS.some((day) => day.date === event.date) &&
-          !activityKeys.has(`${event.date}:${event.name.trim().toLocaleLowerCase("pt-BR")}`),
-      )
-      .map((event, index) => ({
-        id: `coroapp-${event.id}`,
-        title: event.name,
-        activityDate: event.date,
-        startsAt: null,
-        endsAt: null,
-        location: event.location,
-        description: null,
-        sortOrder: 900 + index,
-        requiresQr: false,
-      }));
+  const guideDays = useMemo(
+    () => [...new Set(activities.map((activity) => activity.activityDate))].sort().map(toGuideDay),
+    [activities],
+  );
 
-    return [...activities, ...coroAppActivities]
+  const selectedActivities = useMemo(() => {
+    return activities
       .filter((activity) => activity.activityDate === selectedDate)
       .sort(
         (left, right) =>
           left.sortOrder - right.sortOrder ||
           (left.startsAt ?? "99:99").localeCompare(right.startsAt ?? "99:99"),
       );
-  }, [activities, events, selectedDate]);
-  const selectedDay = GUIDE_DAYS.find((day) => day.date === selectedDate) ?? GUIDE_DAYS[0];
+  }, [activities, selectedDate]);
+  const selectedDay = guideDays.find((day) => day.date === selectedDate);
   const guideNotes = events.flatMap((event) =>
     event.guide?.notes ? [{ id: event.id, name: event.name, notes: event.guide.notes }] : [],
   );
@@ -107,66 +117,82 @@ export function ChoristerEventGuideTab({ events, loadActivities = loadPublishedF
     <section aria-labelledby="event-guide-title" className="space-y-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          20–22 nov 2026
+          {programmePeriod(guideDays)}
         </p>
         <h1 id="event-guide-title" className="mt-1 text-2xl font-semibold tracking-tight">
           Guia do evento
         </h1>
       </div>
 
-      <div role="tablist" aria-label="Dias da programação" className="grid grid-cols-3 gap-2">
-        {GUIDE_DAYS.map((day, index) => {
-          const selected = day.date === selectedDate;
-          return (
-            <button
-              key={day.date}
-              type="button"
-              role="tab"
-              ref={(element) => {
-                dayButtons.current[index] = element;
-              }}
-              tabIndex={selected ? 0 : -1}
-              aria-selected={selected}
-              aria-controls="event-day-agenda"
-              aria-label={`${day.day} de novembro, ${day.weekday}`}
-              onClick={() => setSelectedDate(day.date)}
-              onKeyDown={(event) => {
-                let nextIndex: number;
-                if (event.key === "ArrowRight") nextIndex = (index + 1) % GUIDE_DAYS.length;
-                else if (event.key === "ArrowLeft")
-                  nextIndex = (index + GUIDE_DAYS.length - 1) % GUIDE_DAYS.length;
-                else if (event.key === "Home") nextIndex = 0;
-                else if (event.key === "End") nextIndex = GUIDE_DAYS.length - 1;
-                else return;
-                event.preventDefault();
-                setSelectedDate(GUIDE_DAYS[nextIndex].date);
-                dayButtons.current[nextIndex]?.focus();
-              }}
-              className={`min-h-20 rounded-2xl border px-2 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 ${
-                selected
-                  ? "border-zinc-400 bg-zinc-50 font-semibold text-zinc-950 ring-1 ring-zinc-400"
-                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
-              }`}
-            >
-              <span className="block text-3xl font-semibold leading-none">{day.day}</span>
-              <span className="mt-1 block text-[11px] font-bold uppercase tracking-wide">
-                {day.weekday}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {guideDays.length > 0 && (
+        <div
+          role="tablist"
+          aria-label="Dias da programação"
+          className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2"
+        >
+          {guideDays.map((day, index) => {
+            const selected = day.date === selectedDate;
+            return (
+              <button
+                key={day.date}
+                type="button"
+                role="tab"
+                ref={(element) => {
+                  dayButtons.current[index] = element;
+                }}
+                tabIndex={selected ? 0 : -1}
+                aria-selected={selected}
+                aria-controls="event-day-agenda"
+                aria-label={`${day.day} de ${day.month}, ${day.weekday}`}
+                onClick={() => setSelectedDate(day.date)}
+                onKeyDown={(event) => {
+                  let nextIndex: number;
+                  if (event.key === "ArrowRight") nextIndex = (index + 1) % guideDays.length;
+                  else if (event.key === "ArrowLeft")
+                    nextIndex = (index + guideDays.length - 1) % guideDays.length;
+                  else if (event.key === "Home") nextIndex = 0;
+                  else if (event.key === "End") nextIndex = guideDays.length - 1;
+                  else return;
+                  event.preventDefault();
+                  setSelectedDate(guideDays[nextIndex].date);
+                  dayButtons.current[nextIndex]?.focus();
+                }}
+                className={`min-h-20 rounded-2xl border px-2 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 ${
+                  selected
+                    ? "border-zinc-400 bg-zinc-50 font-semibold text-zinc-950 ring-1 ring-zinc-400"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                }`}
+              >
+                <span className="block text-3xl font-semibold leading-none">{day.day}</span>
+                <span className="mt-1 block text-[11px] font-bold uppercase tracking-wide">
+                  {day.weekday}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <section
         id="event-day-agenda"
-        role="tabpanel"
-        aria-label={`Programação de ${selectedDay.day} de novembro`}
+        role={selectedDay ? "tabpanel" : undefined}
+        aria-label={
+          selectedDay
+            ? `Programação de ${selectedDay.day} de ${selectedDay.month}`
+            : "Programação do evento"
+        }
         className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
       >
-        <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-950">
-          <p className="text-xs font-semibold tracking-wide text-zinc-500">{selectedDay.weekday}</p>
-          <h2 className="text-lg font-bold">{selectedDay.day} de novembro</h2>
-        </div>
+        {selectedDay && (
+          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-950">
+            <p className="text-xs font-semibold tracking-wide text-zinc-500">
+              {selectedDay.weekday}
+            </p>
+            <h2 className="text-lg font-bold">
+              {selectedDay.day} de {selectedDay.month}
+            </h2>
+          </div>
+        )}
 
         {loading && (
           <p role="status" className="px-4 py-6 text-sm text-muted-foreground">

@@ -3,10 +3,36 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
+const { getPublicEventProgrammeMock, programmeFixture } = vi.hoisted(() => {
+  const programmeFixture = {
+    status: "ready" as const,
+    activities: [
+      { id: "1", title: "Credenciamento", activityDate: "2026-11-20", startsAt: "16:00", endsAt: "18:00", location: null, description: null, category: "welcome" as const, sortOrder: 10 },
+      { id: "2", title: "Completas", activityDate: "2026-11-20", startsAt: null, endsAt: null, location: null, description: null, category: "celebration" as const, sortOrder: 20 },
+      { id: "3", title: "Jantar", activityDate: "2026-11-20", startsAt: "18:30", endsAt: null, location: null, description: null, category: "meal" as const, sortOrder: 30 },
+      { id: "4", title: "Conferência", activityDate: "2026-11-21", startsAt: "09:00", endsAt: "10:00", location: null, description: null, category: "conference" as const, sortOrder: 10 },
+      { id: "5", title: "Ensaio", activityDate: "2026-11-21", startsAt: "11:30", endsAt: null, location: null, description: null, category: "music" as const, sortOrder: 20 },
+      { id: "6", title: "Visita", activityDate: "2026-11-21", startsAt: "16:00", endsAt: null, location: null, description: null, category: "visit" as const, sortOrder: 30 },
+    ],
+  };
+  return {
+    getPublicEventProgrammeMock: vi.fn().mockResolvedValue(programmeFixture),
+    programmeFixture,
+  };
+});
+
+vi.mock("@/lib/event-activity.functions", () => ({
+  getPublicEventProgramme: getPublicEventProgrammeMock,
+}));
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
+    createFileRoute: () => (options: Record<string, unknown>) => ({
+      options,
+      useLoaderData: () => programmeFixture,
+    }),
     Link: ({
       children,
       to,
@@ -47,6 +73,13 @@ beforeAll(() => {
 });
 
 describe("landing page program", () => {
+  it("loads the public programme endpoint without requiring a portal session", async () => {
+    await expect(
+      (Route.options.loader as () => Promise<typeof programmeFixture>)(),
+    ).resolves.toBe(programmeFixture);
+    expect(getPublicEventProgrammeMock).toHaveBeenCalledOnce();
+  });
+
   it("presents Programação as the section heading", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
@@ -67,11 +100,11 @@ describe("landing page program", () => {
     expect(program).not.toBeNull();
     const content = within(program!);
 
-    expect(content.getAllByRole("img", { name: "Acolhimento" })).toHaveLength(4);
-    expect(content.getAllByRole("img", { name: "Celebração" })).toHaveLength(10);
-    expect(content.getAllByRole("img", { name: "Refeição" })).toHaveLength(16);
-    expect(content.getAllByRole("img", { name: "Conferência" })).toHaveLength(8);
-    expect(content.getAllByRole("img", { name: "Música" })).toHaveLength(8);
+    expect(content.getAllByRole("img", { name: "Acolhimento" })).toHaveLength(2);
+    expect(content.getAllByRole("img", { name: "Celebração" })).toHaveLength(2);
+    expect(content.getAllByRole("img", { name: "Refeição" })).toHaveLength(2);
+    expect(content.getAllByRole("img", { name: "Conferência" })).toHaveLength(2);
+    expect(content.getAllByRole("img", { name: "Música" })).toHaveLength(2);
     expect(content.getAllByRole("img", { name: "Visita" })).toHaveLength(2);
   });
 
@@ -84,9 +117,7 @@ describe("landing page program", () => {
     const content = within(program!);
 
     expect(content.getAllByText("Completas")).toHaveLength(2);
-    expect(content.getAllByText("Visita ao Santuário")).toHaveLength(2);
-    expect(content.getAllByText("Jantar", { selector: "h4" })).toHaveLength(4);
-    expect(content.getAllByText("Na sequência")).toHaveLength(6);
+    expect(content.getAllByText("Na sequência")).toHaveLength(2);
   });
 });
 

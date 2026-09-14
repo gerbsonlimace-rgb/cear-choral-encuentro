@@ -243,46 +243,19 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).not.toHaveBeenCalled();
   });
 
-  it("shows complete totals and the registration count for each diocese above the filters", async () => {
+  it("keeps financial totals above the filters without repeating the summary breakdown", async () => {
     const { loadSummary, user } = setup();
 
-    const overview = await screen.findByRole(
-      "region",
-      { name: "Visão geral das inscrições" },
-      { timeout: 3000 },
-    );
-    expect(within(overview).getByText("14")).toBeInTheDocument();
-    expect(within(overview).getByText("8")).toBeInTheDocument();
-    expect(within(overview).getByText("4")).toBeInTheDocument();
-    expect(within(overview).getByText("2")).toBeInTheDocument();
-    const financial = within(overview).getByRole("group", { name: "Resumo financeiro" });
+    const financial = await screen.findByRole("group", { name: "Resumo financeiro" });
     expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
     expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 1.100,00",
     );
-    expect(within(overview).getAllByText("Pendente do regente")[0].parentElement).toHaveTextContent(
-      "R$ 400,00",
-    );
-    expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
-    expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
-    const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
-    expect(quixada).not.toBeNull();
-    expect(within(quixada!).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(quixada!).getByText(/^Pendente$/).parentElement).toHaveTextContent("R$ 500,00");
-    expect(within(quixada!).getByText("Pendente do regente").parentElement).toHaveTextContent(
-      "R$ 400,00",
-    );
-    expect(within(quixada!).getByText("Total previsto").parentElement).toHaveTextContent(
-      "R$ 1.100,00",
-    );
-    expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
-    expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
-    expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();
-    expect(within(overview).getByText("3 inscritos")).toBeInTheDocument();
-    expect(overview.compareDocumentPosition(screen.getByLabelText("Pesquisar inscrições"))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(
+      screen.queryByRole("region", { name: "Visão geral das inscrições" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Financeiro por coro/diocese")).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Pesquisar inscrições"), "Clara");
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
@@ -290,12 +263,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).toHaveBeenCalledOnce();
   });
 
-  it("links to choir and event-value administration", async () => {
+  it("links separately to choir and event-value administration", async () => {
     setup();
 
-    expect(await screen.findByRole("link", { name: "Coros e valores" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Coros" })).toHaveAttribute(
       "href",
       "/admin/coros",
+    );
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/admin/configuracoes",
     );
   });
 
