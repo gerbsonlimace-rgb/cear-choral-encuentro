@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Award,
   BedDouble,
+  Check,
   CreditCard,
   MessageCircle,
   Music2,
@@ -32,7 +33,7 @@ export function RegistrationCallout() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="grid items-center gap-8 lg:grid-cols-[1fr_1.15fr] lg:gap-10">
+        <div className="grid items-center gap-8 lg:grid-cols-[0.88fr_1.3fr] lg:gap-10">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-black/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#ffc400]">
               <Sparkles className="size-4" aria-hidden="true" />
@@ -84,14 +85,14 @@ export function RegistrationCallout() {
               ))}
             </ul>
           </div>
-          <div className="rounded-3xl border border-black/90 bg-[#11100e] p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.16)] sm:p-8">
-            <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-[#ffc400]">
+          <div className="rounded-3xl border border-black/90 bg-[#11100e] p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.16)] sm:p-8 lg:p-10">
+            <p className="text-center text-sm font-bold uppercase tracking-[0.16em] text-[#ffc400]">
               Escolha sua forma de inscrição
             </p>
             <div
               role="radiogroup"
               aria-label="Opções de inscrição"
-              className="mt-6 grid grid-cols-2 items-stretch gap-3"
+              className="mt-7 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2"
             >
               <button
                 type="button"
@@ -99,24 +100,42 @@ export function RegistrationCallout() {
                 aria-checked={selectedOption === "integral"}
                 aria-label="Opção A: inscrição integral"
                 onClick={() => setSelectedOption("integral")}
-                className={`flex h-full flex-col rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] ${
+                className={`relative flex min-h-[280px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
                   selectedOption === "integral"
-                    ? "border-[#ffc400] bg-[#ffc400]/10 shadow-[0_0_0_2px_rgba(255,196,0,0.14)]"
-                    : "border-white/15 bg-white/[0.04] hover:border-white/35"
+                    ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.16),rgba(255,196,0,0.05))] shadow-[0_0_0_1px_rgba(255,196,0,0.28),0_16px_30px_rgba(0,0,0,0.22)]"
+                    : "border-white/15 bg-white/[0.05] hover:border-[#ffc400]/55 hover:bg-white/[0.07]"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex size-7 items-center justify-center rounded-md bg-[#ffc400] text-xs font-bold text-black">
-                    A
+                <span
+                  aria-hidden="true"
+                  className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
+                    selectedOption === "integral"
+                      ? "border-[#ffc400] bg-[#ffc400] text-black"
+                      : "border-white/30 text-transparent"
+                  }`}
+                >
+                  <Check className="size-4" strokeWidth={3} />
+                </span>
+                <div className="flex items-center gap-3 pr-8">
+                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
+                    <CreditCard className="size-5" strokeWidth={2.25} aria-hidden="true" />
                   </span>
-                  <CreditCard className="size-4 text-[#ffc400]" aria-hidden="true" />
-                  <p className="text-sm font-bold">Inscrição integral</p>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffc400]">
+                      Opção A
+                    </p>
+                    <p className="mt-0.5 text-base font-bold">Inscrição integral</p>
+                  </div>
                 </div>
-                <p className="mt-4 font-display text-3xl font-bold tracking-tight">
+                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
                   R$ 300,00
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-white/65">
-                  Pague agora via Pix ou cartão em até <strong className="text-white">5x</strong>.
+                <p className="mt-4 text-sm leading-relaxed text-white/70">
+                  Pague à vista no Pix ou em até <strong className="text-white">5x no cartão</strong>.
+                </p>
+                <p className="mt-auto flex items-center gap-2 pt-6 text-xs font-semibold text-white/60">
+                  <Check className="size-4 text-[#ffc400]" aria-hidden="true" />
+                  Inscrição quitada na hora
                 </p>
               </button>
 
@@ -126,26 +145,43 @@ export function RegistrationCallout() {
                 aria-checked={selectedOption === "raffles"}
                 aria-label="Opção B: programa de rifas"
                 onClick={() => setSelectedOption("raffles")}
-                className={`flex h-full flex-col rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] ${
+                className={`relative flex min-h-[280px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
                   selectedOption === "raffles"
-                    ? "border-[#ffc400] bg-[#ffc400]/10 shadow-[0_0_0_2px_rgba(255,196,0,0.14)]"
-                    : "border-white/15 bg-white/[0.04] hover:border-white/35"
+                    ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.16),rgba(255,196,0,0.05))] shadow-[0_0_0_1px_rgba(255,196,0,0.28),0_16px_30px_rgba(0,0,0,0.22)]"
+                    : "border-white/15 bg-white/[0.05] hover:border-[#ffc400]/55 hover:bg-white/[0.07]"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex size-7 items-center justify-center rounded-md bg-[#ffc400] text-xs font-bold text-black">
-                    B
+                <span
+                  aria-hidden="true"
+                  className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
+                    selectedOption === "raffles"
+                      ? "border-[#ffc400] bg-[#ffc400] text-black"
+                      : "border-white/30 text-transparent"
+                  }`}
+                >
+                  <Check className="size-4" strokeWidth={3} />
+                </span>
+                <div className="flex items-center gap-3 pr-8">
+                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
+                    <Ticket className="size-5" strokeWidth={2.25} aria-hidden="true" />
                   </span>
-                  <Ticket className="size-4 text-[#ffc400]" aria-hidden="true" />
-                  <p className="text-sm font-bold">Programa de rifas</p>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffc400]">
+                      Opção B
+                    </p>
+                    <p className="mt-0.5 text-base font-bold">Programa de rifas</p>
+                  </div>
                 </div>
-                <p className="mt-4 font-display text-3xl font-bold tracking-tight">
-                  R$ 100,00 agora
+                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
+                  R$ 100,00
                 </p>
-                <p className="mt-2 text-xs font-semibold leading-relaxed text-white/65">
+                <p className="mt-2 text-sm font-bold uppercase tracking-[0.16em] text-[#ffc400]">
+                  Agora
+                </p>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-white/70">
                   + valor restante com a venda de rifas até 30/10.
                 </p>
-                <p className="mt-auto pt-3 text-[11px] font-semibold leading-relaxed text-white/55">
+                <p className="mt-auto pt-5 text-xs font-semibold leading-relaxed text-white/55">
                   Exclusivo para membros de coros que aderiram ao programa. Procure seu regente.
                 </p>
               </button>
@@ -154,7 +190,7 @@ export function RegistrationCallout() {
             <Button
               asChild
               size="lg"
-              className="mt-6 min-h-12 w-full rounded-xl bg-[#ffc400] text-base font-bold text-black hover:bg-[#ffd336] focus-visible:ring-white"
+              className="mt-7 min-h-14 w-full rounded-xl bg-[#ffc400] text-lg font-bold text-black hover:bg-[#ffd336] focus-visible:ring-white"
             >
               <Link to="/inscricao">
                 Inscrever-se agora

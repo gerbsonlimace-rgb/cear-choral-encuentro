@@ -237,14 +237,45 @@ describe("landing page access", () => {
     expect(integralOption).toHaveAttribute("aria-checked", "false");
     expect(raffleOption).toHaveAttribute("aria-checked", "true");
     expect(within(options).getByText("R$ 300,00")).toBeVisible();
-    expect(within(options).getByText("R$ 100,00 agora")).toBeVisible();
-    expect(within(options).getByLabelText("Opção A: inscrição integral")).toHaveTextContent(
-      "Pague agora via Pix ou cartão em até 5x.",
-    );
+    expect(within(options).getByText("R$ 100,00")).toBeVisible();
+    expect(within(options).getByText("Agora")).toBeVisible();
+    expect(integralOption).toHaveTextContent("Pix");
+    expect(integralOption).toHaveTextContent("5x no cartão");
     expect(
       within(options).getByText("+ valor restante com a venda de rifas até 30/10."),
     ).toBeVisible();
     expect(within(options).getByText(/Exclusivo para membros de coros/)).toBeVisible();
+  });
+
+  it("gives both registration choices strong and responsive visual prominence", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+
+    const options = within(registration!).getByRole("radiogroup", {
+      name: "Opções de inscrição",
+    });
+    const integralOption = within(options).getByRole("radio", {
+      name: "Opção A: inscrição integral",
+    });
+    const raffleOption = within(options).getByRole("radio", {
+      name: "Opção B: programa de rifas",
+    });
+
+    expect(options).toHaveClass("grid-cols-1", "sm:grid-cols-2");
+    expect(integralOption).toHaveClass("min-h-[280px]");
+    expect(raffleOption).toHaveClass("min-h-[280px]");
+    expect(within(integralOption).getByText("R$ 300,00")).toHaveClass(
+      "text-4xl",
+      "sm:text-5xl",
+    );
+    expect(within(raffleOption).getByText("R$ 100,00")).toHaveClass(
+      "text-4xl",
+      "sm:text-5xl",
+    );
+    expect(within(raffleOption).getByText("Agora")).toBeVisible();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
