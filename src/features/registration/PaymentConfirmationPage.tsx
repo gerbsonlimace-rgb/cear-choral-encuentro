@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2, Download, ExternalLink, LogIn, LoaderCircle } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, LogIn, LoaderCircle, MessageCircle } from "lucide-react";
 
 import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
+import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 import type { PaymentLookup } from "./registration.domain";
 
@@ -93,6 +94,7 @@ function PaymentConfirmationCycle({
         if (disposed) return;
 
         if (payment.status === "paid") {
+          clearRegistrationDraft();
           setState({ kind: "paid", payment });
           return;
         }
@@ -268,6 +270,31 @@ function ConfirmedPayment({
           </div>
 
           <CardContent className="px-5 py-7 sm:px-10 sm:py-9">
+            {(payment.participantAccessStatus === "active" || payment.whatsappGroupUrl) && (
+              <nav aria-label="Próximos passos" className="mb-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                {payment.participantAccessStatus === "active" && (
+                  <a
+                    href="/acessar"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <LogIn className="size-5 shrink-0" aria-hidden="true" />
+                    Acessar portal
+                  </a>
+                )}
+                {payment.whatsappGroupUrl && (
+                  <a
+                    href={payment.whatsappGroupUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#166534] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#14532d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
+                    Entrar no grupo do WhatsApp
+                    <ExternalLink className="size-4 shrink-0" aria-hidden="true" />
+                  </a>
+                )}
+              </nav>
+            )}
             <div data-testid="confirmation-columns" className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-7">
                 <section aria-labelledby="registration-details-title">

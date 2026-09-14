@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useLayoutEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PaymentLookup } from "./registration.domain";
+import { REGISTRATION_DRAFT_STORAGE_KEY } from "./registration-draft";
 import { PaymentConfirmationPage } from "./PaymentConfirmationPage";
 
 const lookup: PaymentLookup = {
@@ -20,6 +21,39 @@ const nextLookup: PaymentLookup = {
 };
 
 describe("PaymentConfirmationPage", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("offers portal and WhatsApp shortcuts after payment verification", async () => {
+    const whatsappGroupUrl = "https://chat.whatsapp.com/example-invite";
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      participantAccessStatus: "active",
+      whatsappGroupUrl,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Acessar portal" })).toHaveAttribute("href", "/acessar");
+    const groupLink = screen.getByRole("link", { name: "Entrar no grupo do WhatsApp" });
+    expect(groupLink).toHaveAttribute("href", whatsappGroupUrl);
+    expect(groupLink).toHaveAttribute("target", "_blank");
+    expect(groupLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not invent a group invitation when the server returns none", async () => {
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={vi.fn().mockResolvedValue({
+      status: "paid", paymentMethod: "pix", installments: 1, participantAccessStatus: "active",
+    })} />);
+
+    await screen.findByText("Inscrição confirmada");
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+  });
+
   it("explains when the payment lookup is missing and offers a way home", () => {
     render(<PaymentConfirmationPage lookup={null} verifyPayment={vi.fn()} />);
 
@@ -39,6 +73,20 @@ describe("PaymentConfirmationPage", () => {
     expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Pix")).toBeVisible();
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
+  });
+
+  it("clears the saved registration draft after payment is confirmed", async () => {
+    window.localStorage.setItem(REGISTRATION_DRAFT_STORAGE_KEY, "saved draft");
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(window.localStorage.getItem(REGISTRATION_DRAFT_STORAGE_KEY)).toBeNull();
   });
 
   it("shows an honest paid promotional pre-registration confirmation", async () => {
