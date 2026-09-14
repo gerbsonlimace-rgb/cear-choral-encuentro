@@ -33,61 +33,85 @@ describe("PhotoArtEditor", () => {
     mocks.sharePhotoFile.mockResolvedValue("shared");
   });
 
-  it("offers seven complete Story arts and no independent phrase or format controls", async () => {
+  it("starts a four-step mobile wizard with the seven approved Story arts", async () => {
     render(<PhotoArtEditor />);
 
-    expect(screen.getByRole("heading", { name: "Escolha uma arte pronta" })).toBeInTheDocument();
-    expect(screen.getByText("Story 9:16")).toBeInTheDocument();
+    expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(7);
-    expect(screen.queryByRole("radiogroup", { name: "Frase" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: "Formato" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /homem pardo/i })).not.toHaveLength(0);
     expect(screen.getAllByRole("img", { name: /mulher parda/i })).not.toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Baixar imagem" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Compartilhar imagem" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Baixar imagem" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Compartilhar no Instagram" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
+    expect(screen.getByText("Etapa 2 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Insira sua foto" })).toBeInTheDocument();
+    expect(screen.getByText("Story 9:16")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuar para ajuste" })).toBeDisabled();
     await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(2));
   });
 
-  it("loads the selected fixed artwork and inserts only the participant photo", async () => {
+  it("inserts the photo and lets the participant adjust it before finishing", async () => {
     render(<PhotoArtEditor />);
-    await waitFor(() => expect(mocks.renderReadyArt).toHaveBeenCalled());
-
     fireEvent.click(screen.getByRole("radio", { name: /Canto novo/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
     await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(4));
 
     const file = new File(["photo"], "pessoa.jpg", { type: "image/jpeg" });
     fireEvent.change(screen.getByLabelText("Inserir minha foto"), { target: { files: [file] } });
 
-    await waitFor(() =>
-      expect(mocks.renderReadyArt).toHaveBeenLastCalledWith(
-        expect.any(HTMLCanvasElement),
-        expect.objectContaining({
-          art: expect.objectContaining({ id: "canto-novo" }),
-          photo: expect.anything(),
-        }),
-      ),
-    );
+    const continueButton = screen.getByRole("button", { name: "Continuar para ajuste" });
+    await waitFor(() => expect(continueButton).toBeEnabled());
+    fireEvent.click(continueButton);
+
+    expect(screen.getByText("Etapa 3 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ajuste o enquadramento" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tamanho da foto")).toBeInTheDocument();
     expect(screen.getByText(/Arraste a foto na prévia/)).toBeInTheDocument();
+    expect(mocks.renderReadyArt).toHaveBeenLastCalledWith(
+      expect.any(HTMLCanvasElement),
+      expect.objectContaining({
+        art: expect.objectContaining({ id: "canto-novo" }),
+        photo: expect.anything(),
+      }),
+    );
   });
 
-  it("downloads the prepared Story and explains when native sharing is unavailable", async () => {
+  it("finishes with download, Instagram sharing and the diocesan profile tag", async () => {
     mocks.sharePhotoFile.mockResolvedValue("unsupported");
     render(<PhotoArtEditor />);
-    await waitFor(() => expect(mocks.renderReadyArt).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
     fireEvent.change(screen.getByLabelText("Inserir minha foto"), {
       target: { files: [new File(["photo"], "pessoa.jpg", { type: "image/jpeg" })] },
     });
 
-    const download = screen.getByRole("button", { name: "Baixar imagem" });
-    const share = screen.getByRole("button", { name: "Compartilhar imagem" });
-    await waitFor(() => expect(download).toBeEnabled());
-    fireEvent.click(download);
+    const continueToAdjust = screen.getByRole("button", { name: "Continuar para ajuste" });
+    await waitFor(() => expect(continueToAdjust).toBeEnabled());
+    fireEvent.click(continueToAdjust);
+    fireEvent.click(screen.getByRole("button", { name: "Continuar para compartilhar" }));
+
+    expect(screen.getByText("Etapa 4 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sua arte está pronta" })).toBeInTheDocument();
+    expect(screen.getByText("@corodiocesanoqxd")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Baixar imagem" }));
     expect(mocks.downloadPhotoFile).toHaveBeenCalledWith(expect.any(File));
 
-    fireEvent.click(share);
+    fireEvent.click(screen.getByRole("button", { name: "Compartilhar no Instagram" }));
     expect(
-      await screen.findByText(/seu navegador não oferece o compartilhamento direto/i),
+      await screen.findByText(/baixe a imagem, abra o Instagram e marque @corodiocesanoqxd/i),
     ).toBeInTheDocument();
+  });
+
+  it("allows returning to the previous wizard step", () => {
+    render(<PhotoArtEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+
+    expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
   });
 });
