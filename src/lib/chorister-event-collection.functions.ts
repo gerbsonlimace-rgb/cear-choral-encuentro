@@ -10,10 +10,14 @@ export const getChoristerPortalCollection = createServerFn({ method: "GET" })
     const { loadCoroAppFeed } = await import("@/features/chorister-app/choristerApp.server");
     const { getCoroAppEventSourceService } =
       await import("@/features/coroapp-integration/coroAppEventSource.service.server");
+    const { getEventDocumentService } =
+      await import("@/features/event-documents/eventDocument.service.server");
 
     return createChoristerEventCollectionServer({
       participantAccess: context.participantAccess,
       listSources: getCoroAppEventSourceService().list,
+      loadDocuments: (publishedEventIds) =>
+        getEventDocumentService().listParticipantAssets(publishedEventIds),
       loadEvent: (eventId) =>
         loadCoroAppFeed({
           eventId,

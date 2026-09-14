@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { collectionLoad, createCollectionServer, listSources, loadCoroAppFeed } =
+const { collectionLoad, createCollectionServer, listSources, loadCoroAppFeed, loadDocuments } =
   vi.hoisted(() => ({
     collectionLoad: vi.fn(),
     createCollectionServer: vi.fn(),
     listSources: vi.fn(),
     loadCoroAppFeed: vi.fn(),
+    loadDocuments: vi.fn(async () => []),
   }));
 
 vi.mock("@/features/chorister-app/choristerEventCollection.server", () => ({
@@ -14,6 +15,9 @@ vi.mock("@/features/chorister-app/choristerEventCollection.server", () => ({
 vi.mock("@/features/chorister-app/choristerApp.server", () => ({ loadCoroAppFeed }));
 vi.mock("@/features/coroapp-integration/coroAppEventSource.service.server", () => ({
   getCoroAppEventSourceService: () => ({ list: listSources }),
+}));
+vi.mock("@/features/event-documents/eventDocument.service.server", () => ({
+  getEventDocumentService: () => ({ listParticipantAssets: loadDocuments }),
 }));
 vi.mock("@tanstack/react-start", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-start")>();
@@ -69,5 +73,10 @@ describe("participant event collection server-function boundary", () => {
     expect(loadCoroAppFeed).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: "22222222-2222-4222-8222-222222222222" }),
     );
+
+    const loadConfiguredDocuments = createCollectionServer.mock.calls[0][0].loadDocuments;
+    const publishedEventIds = ["22222222-2222-4222-8222-222222222222"];
+    await expect(loadConfiguredDocuments(publishedEventIds)).resolves.toEqual([]);
+    expect(loadDocuments).toHaveBeenCalledExactlyOnceWith(publishedEventIds);
   });
 });
