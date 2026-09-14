@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Camera,
   Check,
+  CreditCard,
   LockKeyhole,
   Mail,
   Music2,
@@ -160,8 +161,11 @@ function RegistrationPriceSummary({
                   </div>
                 </div>
                 <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90">
-                  Você está aderindo ao Programa de Venda de Rifas do seu coro. Com essa escolha,
-                  você realiza agora sua pré-inscrição no valor de {formatCurrency(appliedQuote.registrationPriceCents)} e participa da mobilização do grupo com a venda de 25 rifas. Assim que o valor restante de {formatCurrency(remainingCents)} for pago, sua inscrição será concluída e sua vaga estará confirmada.
+                  Você está aderindo ao Programa de Venda de Rifas do seu coro e realizando sua pré-inscrição
+                  no valor de <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong>. O valor
+                  restante de <strong>{formatCurrency(remainingCents)}</strong> deve ser enviado até
+                  30 de outubro, e assim que ele for pago sua inscrição será concluída e sua vaga confirmada.
+                  Você pode quitar esse restante em <strong>até 5x no cartão</strong> ou via Pix.
                 </p>
               </div>
             ) : (
@@ -184,9 +188,18 @@ function RegistrationPriceSummary({
           </div>
         )}
 
-        <div className="mt-5 flex items-center gap-2 border-t border-background/15 pt-4 text-xs text-background/65">
-          <img src={pixLogo} alt="" className="h-4 w-auto brightness-0 invert" aria-hidden="true" />
-          Pix sem taxa • cartão em até 12x
+        <div className="mt-5 border-t border-background/15 pt-4 text-xs text-background/65">
+          <p className="mb-2 font-semibold text-amber">Formas de pagamento</p>
+          <ul className="space-y-1.5">
+            <li className="flex items-center gap-2">
+              <img src={pixLogo} alt="" className="h-4 w-auto brightness-0 invert" aria-hidden="true" />
+              Pix sem taxa • cobrança imediata
+            </li>
+            <li className="flex items-center gap-2">
+              <CreditCard className="size-4" aria-hidden="true" />
+              Cartão em até 5x (ou até 12x para pagamento integral)
+            </li>
+          </ul>
         </div>
       </div>
     </aside>
