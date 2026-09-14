@@ -14,7 +14,7 @@ export interface ComplementPaymentRow {
   createdAt: string;
   paidAt: string | null;
   initiatedByName: string;
-  initiatedAs: "regent" | "admin";
+  initiatedAs: "regent" | "admin" | "participant";
 }
 
 export type ComplementIneligibilityReason =

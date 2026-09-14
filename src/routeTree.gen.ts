@@ -23,6 +23,7 @@ import { Route as RegentePagamentoRouteImport } from './routes/regente.pagamento
 import { Route as RegenteLoginRouteImport } from './routes/regente.login'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
 import { Route as ParticipantePresencaRouteImport } from './routes/participante.presenca'
+import { Route as ParticipantePagamentoRouteImport } from './routes/participante.pagamento'
 import { Route as ParticipanteMinhaFotoRouteImport } from './routes/participante.minha-foto'
 import { Route as ParticipanteLoginRouteImport } from './routes/participante.login'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
@@ -105,6 +106,11 @@ const RegenteAlterarSenhaRoute = RegenteAlterarSenhaRouteImport.update({
 const ParticipantePresencaRoute = ParticipantePresencaRouteImport.update({
   id: '/presenca',
   path: '/presenca',
+  getParentRoute: () => ParticipanteRoute,
+} as any)
+const ParticipantePagamentoRoute = ParticipantePagamentoRouteImport.update({
+  id: '/pagamento',
+  path: '/pagamento',
   getParentRoute: () => ParticipanteRoute,
 } as any)
 const ParticipanteMinhaFotoRoute = ParticipanteMinhaFotoRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
+  '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
+  '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
+  '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/infinitepay-webhook'
     | '/participante/login'
     | '/participante/minha-foto'
+    | '/participante/pagamento'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/infinitepay-webhook'
     | '/participante/login'
     | '/participante/minha-foto'
+    | '/participante/pagamento'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/infinitepay-webhook'
     | '/participante/login'
     | '/participante/minha-foto'
+    | '/participante/pagamento'
     | '/participante/presenca'
     | '/regente/alterar-senha'
     | '/regente/login'
@@ -469,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParticipantePresencaRouteImport
       parentRoute: typeof ParticipanteRoute
     }
+    '/participante/pagamento': {
+      id: '/participante/pagamento'
+      path: '/pagamento'
+      fullPath: '/participante/pagamento'
+      preLoaderRoute: typeof ParticipantePagamentoRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
     '/participante/minha-foto': {
       id: '/participante/minha-foto'
       path: '/minha-foto'
@@ -566,6 +585,7 @@ declare module '@tanstack/react-router' {
 interface ParticipanteRouteChildren {
   ParticipanteLoginRoute: typeof ParticipanteLoginRoute
   ParticipanteMinhaFotoRoute: typeof ParticipanteMinhaFotoRoute
+  ParticipantePagamentoRoute: typeof ParticipantePagamentoRoute
   ParticipantePresencaRoute: typeof ParticipantePresencaRoute
   ParticipanteIndexRoute: typeof ParticipanteIndexRoute
 }
@@ -573,6 +593,7 @@ interface ParticipanteRouteChildren {
 const ParticipanteRouteChildren: ParticipanteRouteChildren = {
   ParticipanteLoginRoute: ParticipanteLoginRoute,
   ParticipanteMinhaFotoRoute: ParticipanteMinhaFotoRoute,
+  ParticipantePagamentoRoute: ParticipantePagamentoRoute,
   ParticipantePresencaRoute: ParticipantePresencaRoute,
   ParticipanteIndexRoute: ParticipanteIndexRoute,
 }

@@ -259,9 +259,11 @@ describe("derived registration listing", () => {
       }
     });
     const repository = {
-      listCandidates: vi.fn().mockResolvedValue([
-        { row: { ...base, id: "partial-export" }, accountStatus: null, regentName: null },
-      ]),
+      listCandidates: vi
+        .fn()
+        .mockResolvedValue([
+          { row: { ...base, id: "partial-export" }, accountStatus: null, regentName: null },
+        ]),
       listComplementPayments: vi.fn().mockResolvedValue([
         {
           id: "partial-export-complement",
@@ -457,6 +459,24 @@ describe("derived registration listing", () => {
     expect(inCalls).toHaveLength(2);
     expect((inCalls[0]?.[2] as string[]).length).toBe(1000);
     expect((inCalls[1]?.[2] as string[]).length).toBe(1);
+  });
+
+  it("includes participant-initiated payments in administrative accounting", async () => {
+    const row = {
+      id: "payment",
+      registration_id: "registration",
+      amount_cents: 8000,
+      status: "paid",
+      checkout_url: null,
+      created_at: "2026-09-14T00:00:00Z",
+      paid_at: "2026-09-14T00:01:00Z",
+      initiated_by_name: "Maria",
+      initiated_as: "participant",
+    };
+    databaseHarness([success([row as unknown as ResultRow])]);
+    await expect(
+      createSupabaseAdminRegistrationRepository().listComplementPayments!(["registration"]),
+    ).resolves.toMatchObject([{ initiatedAs: "participant", amountCents: 8000 }]);
   });
 });
 const failure: DatabaseResult = {

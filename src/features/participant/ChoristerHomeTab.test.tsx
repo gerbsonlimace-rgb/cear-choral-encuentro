@@ -34,6 +34,15 @@ const participant: ParticipantRegistrationView = {
 };
 
 describe("ChoristerHomeTab welcome", () => {
+  it("makes the outstanding balance card a link to participant payment", () => {
+    render(<ChoristerHomeTab participant={participant} />);
+    const card = screen.getByRole("region", { name: "Situação da inscrição" });
+    expect(within(card).getByRole("link", { name: /Pagar saldo restante/ })).toHaveAttribute(
+      "href",
+      "/participante/pagamento",
+    );
+  });
+
   it("groups identity and partial raffle balance in the welcome card", () => {
     render(<ChoristerHomeTab participant={participant} />);
     const welcome = screen.getByRole("region", { name: "Boas-vindas e inscrição" });
@@ -75,6 +84,7 @@ describe("ChoristerHomeTab welcome", () => {
       within(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).getByRole("status"),
     ).toHaveTextContent("Pago");
     expect(screen.getByText("Rifas quitadas")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Pagar saldo restante/ })).not.toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
   });
   it("does not label standard registrations as raffles", () => {

@@ -11,6 +11,16 @@ import type { ComplementCheckoutInput, ComplementPaymentStatus } from "./regent-
 import { calculateComplementState } from "./regent-payments.domain";
 import type { PortalAccess } from "./regent.domain";
 
+// Participant access is derived from the authenticated account, never request IDs.
+export type PaymentAccess =
+  | PortalAccess
+  | {
+      role: "participant";
+      userId: string;
+      registrationId: string;
+      name: string;
+    };
+
 const OPEN_PAYMENT_MESSAGE = "Já existe um pagamento complementar em aberto.";
 const BALANCE_MESSAGE = "O valor informado excede o saldo complementar disponível.";
 const CHOIR_MESSAGE = "A inscrição não pertence ao coro autorizado.";
@@ -35,6 +45,7 @@ export type RegentAccountingPayment = {
   amountCents: number;
   status: ComplementPaymentStatus;
   checkoutUrl: string | null;
+  initiatedAs?: "regent" | "admin" | "participant";
 };
 
 export type RegentPaymentReservation = {
@@ -45,7 +56,7 @@ export type RegentPaymentReservation = {
   orderNsu: string;
   initiatedBy: string;
   initiatedByName: string;
-  initiatedAs: "regent" | "admin";
+  initiatedAs: "regent" | "admin" | "participant";
 };
 
 export type RegentPaymentRecord = Omit<RegentPaymentReservation, "status"> & {
@@ -93,7 +104,13 @@ export type RegentPaymentRepository = {
 class RegentPaymentConflict extends Error {}
 class RegentPaymentRepositoryOutcomeUnknown extends Error {}
 
-function actorSnapshot(access: PortalAccess) {
+function actorSnapshot(access: PaymentAccess) {
+  if (access.role === "participant") {
+    return {
+      initiatedByName: access.name.trim().slice(0, 254),
+      initiatedAs: "participant" as const,
+    };
+  }
   if (access.role === "regent") {
     return { initiatedByName: access.name, initiatedAs: "regent" as const };
   }
@@ -147,7 +164,10 @@ function safePaidTotal(payments: RegentAccountingPayment[]) {
   return total;
 }
 
-function requirePaymentAccess(payment: RegentPaymentRecord, access: PortalAccess) {
+function requirePaymentAccess(payment: RegentPaymentRecord, access: PaymentAccess) {
+  if (access.role === "participant" && payment.registrationId !== access.registrationId) {
+    throw new Error("Acesso não autorizado.");
+  }
   if (access.role === "regent" && payment.choirId !== access.choirId) {
     throw new Error(CHOIR_MESSAGE);
   }
@@ -179,7 +199,7 @@ export function createRegentPaymentService({
 }) {
   const reconcile = async (
     lookup: PaymentLookup,
-    access?: PortalAccess,
+    access?: PaymentAccess,
   ): Promise<ComplementPaymentPublicStatus> => {
     const payment = await repository.findByOrderNsu(lookup.orderNsu);
     if (!payment) throw new Error("Pedido não encontrado.");
@@ -217,12 +237,17 @@ export function createRegentPaymentService({
 
   return {
     findByOrderNsu: repository.findByOrderNsu,
-    async startCheckout(input: ComplementCheckoutInput, access: PortalAccess) {
+    async startCheckout(input: ComplementCheckoutInput, access: PaymentAccess) {
+      if (access.role === "participant" && input.registrationId !== access.registrationId) {
+        throw new Error("Acesso não autorizado.");
+      }
       if (access.role === "regent" && access.passwordChangeRequired) {
         throw new Error("Altere sua senha antes de acessar a área do regente.");
       }
       const registration = await repository.findRegistration(input.registrationId);
-      if (!registration?.choirId) throw new Error("Inscrição indisponível para pagamento.");
+      if (!registration?.choirId || registration.id !== input.registrationId) {
+        throw new Error("Inscrição indisponível para pagamento.");
+      }
       if (access.role === "regent" && registration.choirId !== access.choirId) {
         throw new Error(CHOIR_MESSAGE);
       }
@@ -231,9 +256,10 @@ export function createRegentPaymentService({
       // This is deliberately the final application-side read before reserve.
       // The database trigger repeats the calculation under the registration lock.
       const payments = await repository.listAccountingPayments(registration.id);
-      if (
-        payments.some((payment) => payment.status === "creating" || payment.status === "pending")
-      ) {
+      const openPayment = payments.find(
+        (payment) => payment.status === "creating" || payment.status === "pending",
+      );
+      if (openPayment && access.role !== "participant") {
         throw new Error(OPEN_PAYMENT_MESSAGE);
       }
       const state = calculateComplementState({
@@ -246,6 +272,19 @@ export function createRegentPaymentService({
       });
       if (!state.eligible) throw new Error(eligibilityMessage(state.reason));
       const amountCents = state.balanceCents;
+
+      if (openPayment) {
+        if (
+          openPayment.initiatedAs === "participant" &&
+          openPayment.status === "pending" &&
+          openPayment.amountCents === amountCents &&
+          openPayment.checkoutUrl &&
+          isSafeInfinitePayCheckoutUrl(openPayment.checkoutUrl)
+        ) {
+          return { checkoutUrl: openPayment.checkoutUrl, orderNsu: openPayment.orderNsu };
+        }
+        throw new Error(OPEN_PAYMENT_MESSAGE);
+      }
 
       const orderNsu = randomUUID();
       const reservation: RegentPaymentReservation = {
@@ -281,7 +320,12 @@ export function createRegentPaymentService({
               description: "Saldo da inscrição — II Encontro de Coros",
             },
           ],
-          redirectPath: access.role === "admin" ? "/admin/pagamento" : "/regente/pagamento",
+          redirectPath:
+            access.role === "participant"
+              ? "/participante/pagamento"
+              : access.role === "admin"
+                ? "/admin/pagamento"
+                : "/regente/pagamento",
         });
       } catch (caught) {
         if (
@@ -312,7 +356,7 @@ export function createRegentPaymentService({
 
     reconcilePayment: (lookup: PaymentLookup) => reconcile(lookup),
 
-    reconcilePaymentForAccess: (lookup: PaymentLookup, access: PortalAccess) =>
+    reconcilePaymentForAccess: (lookup: PaymentLookup, access: PaymentAccess) =>
       reconcile(lookup, access),
 
     async getComplementPaymentStatus(
@@ -322,7 +366,7 @@ export function createRegentPaymentService({
       return payment ? toComplementPaymentPublicStatus(payment) : null;
     },
 
-    async getComplementPaymentStatusForAccess(orderNsu: string, access: PortalAccess) {
+    async getComplementPaymentStatusForAccess(orderNsu: string, access: PaymentAccess) {
       const payment = await repository.findByOrderNsu(orderNsu);
       if (!payment) return null;
       requirePaymentAccess(payment, access);
@@ -386,7 +430,9 @@ function mapPaymentRow(row: PaymentDatabaseRow): RegentPaymentRecord {
     !isPaymentStatus(row.status) ||
     !Number.isSafeInteger(row.amount_cents) ||
     row.amount_cents <= 0 ||
-    (row.initiated_as !== "regent" && row.initiated_as !== "admin")
+    (row.initiated_as !== "regent" &&
+      row.initiated_as !== "admin" &&
+      row.initiated_as !== "participant")
   ) {
     throw new Error("Registro de pagamento complementar inválido.");
   }
@@ -513,6 +559,7 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
           amountCents: payment.amountCents,
           status: payment.status,
           checkoutUrl: payment.checkoutUrl,
+          initiatedAs: payment.initiatedAs,
         };
       });
     },

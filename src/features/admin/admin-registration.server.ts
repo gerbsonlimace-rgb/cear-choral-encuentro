@@ -153,7 +153,9 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
             !["creating", "pending", "paid", "failed", "expired"].includes(String(value.status)) ||
             !Number.isSafeInteger(value.amount_cents) ||
             Number(value.amount_cents) <= 0 ||
-            (value.initiated_as !== "regent" && value.initiated_as !== "admin") ||
+            (value.initiated_as !== "regent" &&
+              value.initiated_as !== "admin" &&
+              value.initiated_as !== "participant") ||
             typeof value.created_at !== "string" ||
             typeof value.initiated_by_name !== "string"
           ) {

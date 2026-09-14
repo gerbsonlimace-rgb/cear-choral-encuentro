@@ -146,7 +146,9 @@ function isComplementStatus(value: string): value is ComplementPaymentStatus {
 function mapPaymentRow(row: PaymentDatabaseRow): PortalComplementLedgerRow {
   if (
     !isComplementStatus(row.status) ||
-    (row.initiated_as !== "regent" && row.initiated_as !== "admin") ||
+    (row.initiated_as !== "regent" &&
+      row.initiated_as !== "admin" &&
+      row.initiated_as !== "participant") ||
     !Number.isSafeInteger(row.amount_cents) ||
     row.amount_cents <= 0
   ) {

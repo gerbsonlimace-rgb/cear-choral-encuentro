@@ -180,6 +180,27 @@ describe("Supabase regent portal repository", () => {
     ]);
   });
 
+  it("includes payments initiated by participants in the regent history", async () => {
+    queueQueryResponse([
+      {
+        id: "payment",
+        registration_id: registrationId,
+        amount_cents: 8000,
+        status: "paid",
+        checkout_url: null,
+        created_at: "2026-09-14T00:00:00Z",
+        paid_at: "2026-09-14T00:01:00Z",
+        initiated_by_name: "Maria",
+        initiated_as: "participant",
+      },
+    ]);
+    await expect(
+      createSupabaseRegentPortalRepository().listParticipantPayments(authorizedChoirId, [
+        registrationId,
+      ]),
+    ).resolves.toMatchObject([{ initiatedAs: "participant", amountCents: 8000 }]);
+  });
+
   it("keeps both all-choir summary queries scoped and counts only paid principal", async () => {
     queueQueryResponse([]);
     queueQueryResponse([]);

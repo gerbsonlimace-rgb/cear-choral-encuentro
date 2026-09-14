@@ -10,7 +10,7 @@ type Props = {
   lookup: PaymentLookup | null;
   verifyPayment?: (lookup: PaymentLookup) => Promise<ComplementPaymentPublicStatus>;
   retryDelayMs?: number;
-  returnTo?: "/regente" | "/admin/inscricoes";
+  returnTo?: "/regente" | "/admin/inscricoes" | "/participante";
   returnLabel?: string;
 };
 
@@ -154,11 +154,13 @@ function Message({
 }: {
   children?: ReactNode;
   title: string;
-  returnTo: "/regente" | "/admin/inscricoes";
+  returnTo: "/regente" | "/admin/inscricoes" | "/participante";
   returnLabel: string;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <main
+      className={`${returnTo === "/participante" ? "internal-app " : ""}flex min-h-screen items-center justify-center bg-background px-4 py-12`}
+    >
       <Card className="w-full max-w-lg border-border bg-card shadow-sm shadow-teal/10">
         <CardContent className="p-6 text-center sm:p-8">
           <h1 className="font-display text-3xl font-extrabold text-foreground">{title}</h1>

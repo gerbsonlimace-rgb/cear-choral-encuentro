@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleHelp, Clock3, Ticket } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ParticipantRegistrationView } from "./participant.domain";
 
@@ -107,8 +108,17 @@ export function ChoristerWelcomeCard({
       </header>
       <section
         aria-label="Situação da inscrição"
-        className="space-y-2 rounded-xl border border-zinc-200/70 bg-zinc-50/70 px-3 py-2.5"
+        className="relative space-y-2 rounded-xl border border-zinc-200/70 bg-zinc-50/70 px-3 py-2.5"
       >
+        {known && financial.pendingCents > 0 && (
+          <Link
+            to="/participante/pagamento"
+            aria-label={`Pagar saldo restante de ${money.format(financial.pendingCents / 100)}`}
+            className="absolute inset-0 z-10 rounded-xl transition-colors hover:bg-amber-100/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          >
+            <span className="sr-only">Pagar saldo restante</span>
+          </Link>
+        )}
         <h2 className="sr-only">Minha inscrição</h2>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
@@ -163,6 +173,9 @@ export function ChoristerWelcomeCard({
                 />
               </div>
             </div>
+            {financial.pendingCents > 0 && (
+              <p className="text-xs font-semibold text-amber-800">Pagar saldo restante →</p>
+            )}
             {partial && (
               <p className="text-[11px] leading-4 text-zinc-500">
                 Vaga confirmada após a quitação.
