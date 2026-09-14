@@ -204,6 +204,23 @@ describe("landing page access", () => {
     );
   });
 
+  it("presents Pix and card as distinct payment options without landscape artwork", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+    expect(registration!.querySelector("img")).toBeNull();
+
+    const paymentOptions = within(registration!).getByRole("group", {
+      name: "Formas de pagamento",
+    });
+    expect(within(paymentOptions).getByText("Pix")).toBeVisible();
+    expect(within(paymentOptions).getByText("À vista")).toBeVisible();
+    expect(within(paymentOptions).getByText("Cartão")).toBeVisible();
+    expect(within(paymentOptions).getByText("Em até 6x")).toBeVisible();
+  });
+
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
