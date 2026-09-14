@@ -224,6 +224,20 @@
   }
 }
 
+/* Match administrative content to the participant shell on small screens. */
+@media (max-width: 767px) {
+  main.internal-app:has(.admin-navigation) {
+    padding-top: 4.25rem;
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
+
+  main.internal-app:has(.admin-navigation) h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+  }
+}
+
 /* The participant portal uses one contemporary app typeface throughout.
  * Keep the ceremonial display face restricted to the public event site. */
 .chorister-app {

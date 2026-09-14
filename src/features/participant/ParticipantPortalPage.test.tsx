@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +12,14 @@ import type {
 import type { ParticipantAccess } from "./participant-auth.server";
 import type { MaskedCpf, ParticipantRegistrationView } from "./participant.domain";
 import { ParticipantPortalPage } from "./ParticipantPortalPage";
+import { getPortalModes } from "@/lib/portal-access.functions";
+
+vi.mock("@/lib/portal-access.functions", () => ({ getPortalModes: vi.fn() }));
+
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ to, ...props }: ComponentProps<"a"> & { to: string }) => <a href={to} {...props} />,
+}));
 
 vi.mock("@/lib/participant.functions", () => ({
   getParticipantAccess: vi.fn(),
@@ -48,6 +57,7 @@ const fullView: ParticipantRegistrationView = {
   },
   payment: {
     status: "paid",
+    financialState: { status: "paid", confirmedPrincipalCents: 12500, pendingCents: 0 },
     amountCents: 12500,
     paidAmountCents: 12500,
     paymentMethod: "credit_card",
@@ -72,6 +82,7 @@ const publishedFeed: ChoristerPortalFeed = {
 };
 
 type PortalOverrides = Partial<{
+  onOpenAdmin: () => void;
   checkAccess: () => Promise<ParticipantAccess>;
   loadRegistration: () => Promise<ParticipantRegistrationView>;
   loadFeed: () => Promise<ChoristerPortalFeedState>;
@@ -116,6 +127,24 @@ function deferred<T>() {
 }
 
 describe("ParticipantPortalPage", () => {
+  it("does not expose admin shortcuts to an ordinary participant even with a navigation callback", async () => {
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: false, participant: true });
+    const { user } = setup({ onOpenAdmin: vi.fn() });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
+    expect(screen.queryByRole("link", { name: "Ir para admin" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.queryByRole("button", { name: "Ir para administração" })).not.toBeInTheDocument();
+  });
+  it("opens admin mode from the topbar without signing out", async () => {
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true });
+    const onOpenAdmin = vi.fn();
+    const { user, signOut } = setup({ onOpenAdmin });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
+    const topbar = screen.getByTestId("internal-topbar");
+    await user.click(await within(topbar).findByRole("link", { name: "Ir para admin" }));
+    expect(onOpenAdmin).toHaveBeenCalledOnce();
+    expect(signOut).not.toHaveBeenCalled();
+  });
   it("renders every configured CoroApp event without mixing their repertoires", async () => {
     const collection: ChoristerPortalCollectionState = {
       status: "published",
@@ -142,7 +171,7 @@ describe("ParticipantPortalPage", () => {
       />,
     );
 
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     expect(screen.getByText(publishedFeed.event.name)).toBeInTheDocument();
     expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
@@ -163,7 +192,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Maria",
+        name: "Maria da Silva",
       }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledOnce();
@@ -207,7 +236,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Maria",
+        name: "Maria da Silva",
       }),
     ).toBeInTheDocument();
     expect(loadRegistration).toHaveBeenCalledTimes(2);
@@ -244,7 +273,7 @@ describe("ParticipantPortalPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Maria",
+        name: "Maria da Silva",
       }),
     ).toBeInTheDocument();
     expect(loadFeed).toHaveBeenCalledTimes(2);
@@ -293,7 +322,7 @@ describe("ParticipantPortalPage", () => {
     const loadFeed = vi.fn().mockResolvedValueOnce(expiredFeed).mockResolvedValueOnce(renewedFeed);
     const { user } = setup({ loadFeed });
 
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
     await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
 
@@ -309,7 +338,7 @@ describe("ParticipantPortalPage", () => {
     const signOut = deferred<{ error: null }>();
     const onSignedOut = vi.fn();
     const { user } = setup({ signOut: () => signOut.promise, onSignedOut });
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
 
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
@@ -330,7 +359,7 @@ describe("ParticipantPortalPage", () => {
 
   it("shows every available safe identification, registration, and payment field", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
@@ -408,7 +437,7 @@ describe("ParticipantPortalPage", () => {
       },
     };
     const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(sparseView) });
-    await screen.findByRole("heading", { name: "João" });
+    await screen.findByRole("heading", { name: "João Lima" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
 
@@ -442,7 +471,7 @@ describe("ParticipantPortalPage", () => {
 
   it("replaces a failed signed photo with the neutral avatar fallback", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     fireEvent.error(within(profile).getByRole("img", { name: "Foto de Maria da Silva" }));
@@ -457,7 +486,7 @@ describe("ParticipantPortalPage", () => {
 
   it("replaces participant placeholders with the approved five-tab Coralista navigation", async () => {
     const { user } = setup();
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
 
     const navigation = screen.getByRole("navigation", { name: "Navegação de Participante" });
     expect(
@@ -479,7 +508,7 @@ describe("ParticipantPortalPage", () => {
 
   it("opens a functional voluntary password-change dialog from the header", async () => {
     const { user, getSignedInEmail, reauthenticateForPasswordChange, updatePassword } = setup();
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
 
     expect(screen.queryByText(/obrigat[oó]ri[ao].*senha/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /recuperar|esqueci/i })).not.toBeInTheDocument();
@@ -509,7 +538,7 @@ describe("ParticipantPortalPage", () => {
       .mockRejectedValueOnce(new Error("PRIVATE_PDF_DETAIL"))
       .mockResolvedValueOnce(undefined);
     const { user } = setup({ downloadReceipt });
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     const downloadButton = within(profile).getByRole("button", {
@@ -541,7 +570,7 @@ describe("ParticipantPortalPage", () => {
       payment: { ...fullView.payment, ...paymentOverride },
     };
     const { user } = setup({ loadRegistration: vi.fn().mockResolvedValue(incompleteView) });
-    await screen.findByRole("heading", { name: "Maria" });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     const profile = screen.getByRole("heading", { name: "Meu Perfil" }).closest("section")!;
     expect(

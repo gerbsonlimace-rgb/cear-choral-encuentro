@@ -23,6 +23,7 @@ import { downloadParticipantReceipt } from "./participant-receipt";
 import { ParticipantPasswordDialog } from "./ParticipantPasswordDialog";
 
 type Props = {
+  onOpenAdmin?: () => void;
   onMissingAccess: () => void;
   onSignedOut: () => void;
   checkAccess?: () => Promise<ParticipantAccess>;
@@ -92,6 +93,7 @@ function findAudioAsset(events: PortalEvent[], assetId: string): AudioAsset | un
 }
 
 export function ParticipantPortalPage({
+  onOpenAdmin,
   onMissingAccess,
   onSignedOut,
   checkAccess = getParticipantAccess,
@@ -264,6 +266,7 @@ export function ParticipantPortalPage({
           onChangePassword={() => setPasswordDialogOpen(true)}
           onDownloadReceipt={() => downloadReceipt(view)}
           onLogout={logout}
+          onOpenAdmin={onOpenAdmin}
           onPlay={() => undefined}
           onOpenSong={() => undefined}
           onOpenScore={renewScoreAsset}

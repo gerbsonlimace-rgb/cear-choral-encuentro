@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, LogOut, MoreHorizontal, UserRound } from "lucide-react";
-import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, useState, type ComponentType, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ export type InternalNavItem = {
   label: string;
   description?: string;
   icon: NavigationIcon;
+  href?: string;
 };
 
 export type InternalAppShellProps = {
@@ -31,8 +32,9 @@ export type InternalAppShellProps = {
   navItems: readonly InternalNavItem[];
   mobilePrimaryCount?: number;
   activeId: string;
-  onNavigate: (id: string) => void;
-  children: ReactNode;
+  onNavigate?: (id: string) => void;
+  children?: ReactNode;
+  layout?: "page" | "navigation";
   profileName?: string;
   profileDetail?: string;
   onSignOut?: () => void;
@@ -55,6 +57,7 @@ export function InternalAppShell({
   signingOut = false,
   topbarActions,
   className,
+  layout = "page",
 }: InternalAppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -68,19 +71,33 @@ export function InternalAppShell({
   );
   const secondaryActive = secondaryItems.some((item) => item.id === activeId);
 
-  const navigate = (id: string) => {
-    onNavigate(id);
+  const navigate = (event: MouseEvent, item: InternalNavItem) => {
+    if (
+      item.href &&
+      (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+    )
+      return;
+    if (onNavigate) {
+      event.preventDefault();
+      onNavigate(item.id);
+    }
     setMoreOpen(false);
   };
 
   return (
-    <div className={cn("internal-app min-h-svh bg-background text-foreground", className)}>
+    <div
+      className={cn(
+        "internal-app text-foreground",
+        layout === "page" ? "min-h-svh bg-background" : "contents",
+        className,
+      )}
+    >
       <header
         data-testid="internal-topbar"
         className="fixed inset-x-0 top-0 z-50 flex h-12 items-center gap-3 border-b border-white/10 bg-brand-ink px-3 text-white shadow-[0_2px_12px_rgba(24,24,27,0.12)] sm:px-4"
       >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-[5.5rem] shrink-0 items-center overflow-hidden rounded-md bg-white/[0.06] px-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="flex h-8 w-14 shrink-0 items-center overflow-hidden rounded-md bg-white/[0.06] px-1 sm:w-[5.5rem]">
             <img
               src={eventLogo}
               alt="Logo do II Encontro de Coros"
@@ -93,7 +110,7 @@ export function InternalAppShell({
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {topbarActions}
           {(profileName || onSignOut) && (
             <div className="flex items-center gap-2 rounded-lg bg-white/[0.07] p-1">
@@ -105,7 +122,9 @@ export function InternalAppShell({
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-xs font-semibold">{profileName}</span>
                     {profileDetail && (
-                      <span className="block truncate text-[11px] text-white/70">{profileDetail}</span>
+                      <span className="block truncate text-[11px] text-white/70">
+                        {profileDetail}
+                      </span>
                     )}
                   </span>
                 </div>
@@ -128,10 +147,12 @@ export function InternalAppShell({
         </div>
       </header>
 
-      <div className="flex min-h-svh pt-12">
+      <div className={layout === "page" ? "flex min-h-svh pt-12" : "contents"}>
         <aside
+          data-testid="internal-sidebar"
           className={cn(
-            "sticky top-12 hidden h-[calc(100svh-3rem)] shrink-0 flex-col border-r border-white/10 bg-brand-ink text-primary-foreground shadow-[4px_0_18px_rgba(24,24,27,0.08)] transition-[width] duration-200 md:flex",
+            "top-12 hidden h-[calc(100svh-3rem)] shrink-0 flex-col border-r border-white/10 bg-brand-ink text-primary-foreground shadow-[4px_0_18px_rgba(24,24,27,0.08)] transition-[width] duration-200 md:flex",
+            layout === "page" ? "sticky" : "fixed bottom-0 left-0 z-40",
             collapsed ? "w-[4.5rem]" : "w-60",
           )}
         >
@@ -153,11 +174,13 @@ export function InternalAppShell({
           >
             {navItems.map((item) => {
               const Icon = item.icon;
+              const Control = item.href ? "a" : "button";
               const active = item.id === activeId;
               return (
-                <button
+                <Control
                   key={item.id}
-                  type="button"
+                  type={item.href ? undefined : "button"}
+                  href={item.href}
                   aria-current={active ? "page" : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   title={collapsed ? item.label : undefined}
@@ -168,23 +191,35 @@ export function InternalAppShell({
                       ? "bg-brand-gold text-brand-ink"
                       : "text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground",
                   )}
-                  onClick={() => navigate(item.id)}
+                  onClick={(event) => navigate(event, item)}
                 >
-                  {active && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand-gold" />}
+                  {active && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand-gold"
+                    />
+                  )}
                   <Icon
                     aria-hidden="true"
-                    className={cn("size-[18px] shrink-0", active ? "text-brand-ink" : "text-primary-foreground/70 group-hover:text-brand-gold")}
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active
+                        ? "text-brand-ink"
+                        : "text-primary-foreground/70 group-hover:text-brand-gold",
+                    )}
                   />
                   {!collapsed && <span className="truncate">{item.label}</span>}
-                </button>
+                </Control>
               );
             })}
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 md:pb-8 md:pt-6 lg:px-8">
-          {children}
-        </main>
+        {layout === "page" && (
+          <main className="min-w-0 flex-1 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 md:pb-8 md:pt-6 lg:px-8">
+            {children}
+          </main>
+        )}
       </div>
 
       <nav
@@ -194,24 +229,33 @@ export function InternalAppShell({
         <div className="mx-auto flex h-[4.5rem] max-w-lg items-stretch">
           {primaryItems.map((item) => {
             const Icon = item.icon;
+            const Control = item.href ? "a" : "button";
             const active = item.id === activeId;
             return (
-              <button
+              <Control
                 key={item.id}
-                type="button"
+                type={item.href ? undefined : "button"}
+                href={item.href}
                 data-testid="internal-mobile-primary-item"
                 aria-label={`Abrir ${item.label}`}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold",
-                  active ? "text-brand-gold" : "text-primary-foreground/75 hover:text-primary-foreground",
+                  active
+                    ? "text-brand-gold"
+                    : "text-primary-foreground/75 hover:text-primary-foreground",
                 )}
-                onClick={() => navigate(item.id)}
+                onClick={(event) => navigate(event, item)}
               >
-                {active && <span aria-hidden="true" className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-gold" />}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-gold"
+                  />
+                )}
                 <Icon aria-hidden="true" className="size-5" />
                 <span className="max-w-full truncate">{item.label}</span>
-              </button>
+              </Control>
             );
           })}
           {secondaryItems.length > 0 && (
@@ -221,11 +265,18 @@ export function InternalAppShell({
               aria-current={secondaryActive ? "page" : undefined}
               className={cn(
                 "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold",
-                secondaryActive ? "text-brand-gold" : "text-primary-foreground/75 hover:text-primary-foreground",
+                secondaryActive
+                  ? "text-brand-gold"
+                  : "text-primary-foreground/75 hover:text-primary-foreground",
               )}
               onClick={() => setMoreOpen(true)}
             >
-              {secondaryActive && <span aria-hidden="true" className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-gold" />}
+              {secondaryActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-gold"
+                />
+              )}
               <MoreHorizontal aria-hidden="true" className="size-5" />
               <span>Mais</span>
             </button>
@@ -237,22 +288,26 @@ export function InternalAppShell({
         <SheetContent
           side="bottom"
           aria-label={`Mais opções de ${moduleLabel}`}
-          className="internal-app rounded-t-2xl border-zinc-200 bg-white px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
+          className="internal-app max-h-[85dvh] overflow-y-auto rounded-t-2xl border-zinc-200 bg-white px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
         >
           <SheetHeader className="pr-10 text-left">
             <SheetTitle className="font-body text-lg font-bold">
               Mais opções de {moduleLabel}
             </SheetTitle>
-            <SheetDescription>Acesse as demais áreas de {moduleLabel.toLocaleLowerCase("pt-BR")}.</SheetDescription>
+            <SheetDescription>
+              Acesse as demais áreas de {moduleLabel.toLocaleLowerCase("pt-BR")}.
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-4 grid gap-2">
             {secondaryItems.map((item) => {
               const Icon = item.icon;
+              const Control = item.href ? "a" : "button";
               const active = item.id === activeId;
               return (
                 <SheetClose key={item.id} asChild>
-                  <button
-                    type="button"
+                  <Control
+                    type={item.href ? undefined : "button"}
+                    href={item.href}
                     aria-label={item.label}
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -261,16 +316,25 @@ export function InternalAppShell({
                         ? "border-brand-gold/60 bg-brand-gold-soft text-brand-ink"
                         : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
                     )}
-                    onClick={() => navigate(item.id)}
+                    onClick={(event) => navigate(event, item)}
                   >
-                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", active ? "bg-brand-gold text-brand-ink" : "bg-zinc-100 text-zinc-600")}>
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-lg",
+                        active ? "bg-brand-gold text-brand-ink" : "bg-zinc-100 text-zinc-600",
+                      )}
+                    >
                       <Icon aria-hidden="true" className="size-[18px]" />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-bold">{item.label}</span>
-                      {item.description && <span className="block truncate text-xs text-zinc-500">{item.description}</span>}
+                      {item.description && (
+                        <span className="block truncate text-xs text-zinc-500">
+                          {item.description}
+                        </span>
+                      )}
                     </span>
-                  </button>
+                  </Control>
                 </SheetClose>
               );
             })}

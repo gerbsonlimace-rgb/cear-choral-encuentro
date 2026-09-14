@@ -159,13 +159,13 @@ export function AdminSummaryPage({
           <>
             <section
               aria-label="Indicadores do encontro"
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+              className="grid grid-cols-2 gap-3 lg:grid-cols-4"
             >
               {metrics.map(({ label, value, icon: Icon }) => (
-                <article key={label} className="rounded-2xl border bg-card p-5">
+                <article key={label} className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5">
                   <Icon aria-hidden="true" className="size-5 text-primary" />
-                  <p className="mt-5 text-sm text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+                  <p className="mt-3 text-sm text-muted-foreground sm:mt-5">{label}</p>
+                  <p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
                 </article>
               ))}
             </section>

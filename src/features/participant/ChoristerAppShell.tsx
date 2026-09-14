@@ -14,6 +14,7 @@ import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
+import { PortalModeSwitch } from "@/features/access/PortalModeSwitch";
 import { isSignedUrlExpired } from "@/features/chorister-app/choristerApp.domain";
 import type {
   ChoristerPortalCollection,
@@ -421,6 +422,7 @@ export function ChoristerAppShell({
       onNavigate={(id) => selectTab(id as ChoristerTab)}
       profileName={participant.identity.name}
       profileDetail={participant.registration.choirName}
+      topbarActions={<PortalModeSwitch mode="participant" onNavigate={onOpenAdmin} />}
     >
       <div className="chorister-app mx-auto w-full max-w-5xl text-zinc-950">
           {contentStatus !== "ready" && (
@@ -706,7 +708,6 @@ export function ChoristerAppShell({
               onChangePassword={_onChangePassword}
               onDownloadReceipt={() => _onDownloadReceipt()}
               onLogout={handleLogout}
-              onOpenAdmin={onOpenAdmin}
             />
           )}
         {selectedAudio && (
