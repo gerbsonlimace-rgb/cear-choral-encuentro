@@ -29,6 +29,7 @@ export type InternalAppShellProps = {
   brandLabel?: string;
   moduleLabel: string;
   navItems: readonly InternalNavItem[];
+  mobilePrimaryCount?: number;
   activeId: string;
   onNavigate: (id: string) => void;
   children: ReactNode;
@@ -44,6 +45,7 @@ export function InternalAppShell({
   brandLabel = "Encontro de Coros",
   moduleLabel,
   navItems,
+  mobilePrimaryCount = 3,
   activeId,
   onNavigate,
   children,
@@ -56,8 +58,14 @@ export function InternalAppShell({
 }: InternalAppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const primaryItems = useMemo(() => navItems.slice(0, 3), [navItems]);
-  const secondaryItems = useMemo(() => navItems.slice(3), [navItems]);
+  const primaryItems = useMemo(
+    () => navItems.slice(0, mobilePrimaryCount),
+    [mobilePrimaryCount, navItems],
+  );
+  const secondaryItems = useMemo(
+    () => navItems.slice(mobilePrimaryCount),
+    [mobilePrimaryCount, navItems],
+  );
   const secondaryActive = secondaryItems.some((item) => item.id === activeId);
 
   const navigate = (id: string) => {
