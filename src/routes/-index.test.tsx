@@ -203,7 +203,8 @@ describe("landing page access", () => {
     ).toHaveAttribute("href", "https://wa.me/5585999033232");
   });
 
-  it("presents Pix and card as distinct payment options without landscape artwork", () => {
+  it("presents Pix and card as distinct payment options without landscape artwork", async () => {
+    const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -219,11 +220,22 @@ describe("landing page access", () => {
     expect(within(paymentOptions).getByText("Cartão")).toBeVisible();
     expect(within(paymentOptions).getByText("Em até 5x")).toBeVisible();
 
-    const options = within(registration!).getByRole("group", {
+    const options = within(registration!).getByRole("radiogroup", {
       name: "Opções de inscrição",
     });
-    expect(within(options).getByLabelText("Opção A: inscrição integral")).toBeVisible();
-    expect(within(options).getByLabelText("Opção B: programa de rifas")).toBeVisible();
+    const integralOption = within(options).getByRole("radio", {
+      name: "Opção A: inscrição integral",
+    });
+    const raffleOption = within(options).getByRole("radio", {
+      name: "Opção B: programa de rifas",
+    });
+    expect(integralOption).toBeVisible();
+    expect(raffleOption).toBeVisible();
+    expect(integralOption).toHaveAttribute("aria-checked", "true");
+    expect(raffleOption).toHaveAttribute("aria-checked", "false");
+    await user.click(raffleOption);
+    expect(integralOption).toHaveAttribute("aria-checked", "false");
+    expect(raffleOption).toHaveAttribute("aria-checked", "true");
     expect(within(options).getByText("R$ 300,00")).toBeVisible();
     expect(within(options).getByText("R$ 100,00 agora")).toBeVisible();
     expect(within(options).getByLabelText("Opção A: inscrição integral")).toHaveTextContent(

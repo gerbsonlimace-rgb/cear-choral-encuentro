@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   ArrowRight,
   Award,
@@ -15,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function RegistrationCallout() {
+  const [selectedOption, setSelectedOption] = useState<"integral" | "raffles">("integral");
+
   return (
     <section
       id="inscricao"
@@ -86,13 +89,21 @@ export function RegistrationCallout() {
               Escolha como participar
             </p>
             <div
-              role="group"
+              role="radiogroup"
               aria-label="Opções de inscrição"
-              className="mt-5 grid items-stretch gap-3 sm:grid-cols-2"
+              className="mt-5 grid grid-cols-2 items-stretch gap-3"
             >
-              <article
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selectedOption === "integral"}
                 aria-label="Opção A: inscrição integral"
-                className="flex h-full flex-col rounded-2xl border-2 border-white/20 bg-white/10 p-4 text-left"
+                onClick={() => setSelectedOption("integral")}
+                className={`flex h-full flex-col rounded-2xl border-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                  selectedOption === "integral"
+                    ? "border-[#ffc400] bg-white/15"
+                    : "border-white/20 bg-white/10 hover:border-white/45"
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#ffc400] text-sm font-extrabold text-black">
@@ -106,11 +117,19 @@ export function RegistrationCallout() {
                 <p className="mt-2 text-sm leading-relaxed text-white/70">
                   Pague agora via Pix ou cartão em até <strong className="text-white">5x</strong>.
                 </p>
-              </article>
+              </button>
 
-              <article
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selectedOption === "raffles"}
                 aria-label="Opção B: programa de rifas"
-                className="flex h-full flex-col rounded-2xl border-2 border-[#ffc400] bg-[#ffc400] p-4 text-left text-black"
+                onClick={() => setSelectedOption("raffles")}
+                className={`flex h-full flex-col rounded-2xl border-2 p-4 text-left text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                  selectedOption === "raffles"
+                    ? "border-white bg-[#ffc400]"
+                    : "border-[#ffc400]/60 bg-[#ffc400]/80 hover:border-white"
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex size-8 items-center justify-center rounded-lg bg-black text-sm font-extrabold text-[#ffc400]">
@@ -127,7 +146,7 @@ export function RegistrationCallout() {
                 <p className="mt-auto pt-3 text-xs font-bold leading-relaxed text-black/70">
                   Exclusivo para membros de coros que aderiram ao programa. Procure seu regente.
                 </p>
-              </article>
+              </button>
             </div>
 
             <div
