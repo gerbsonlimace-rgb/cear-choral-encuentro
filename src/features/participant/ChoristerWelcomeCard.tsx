@@ -21,7 +21,7 @@ export function ChoristerWelcomeCard({
     ? "Pago"
     : known
       ? financial.status === "partially_paid"
-        ? "Parcialmente pago"
+        ? ""
         : "Pendente"
       : "Saldo indisponível";
   const tone = paid
@@ -109,26 +109,32 @@ export function ChoristerWelcomeCard({
           <span className="shrink-0 text-[11px] text-zinc-500">Valor pendente</span>
           {known &&
             (financial.pendingCents > 0 ? (
-              <Link
-                to="/participante/pagamento"
-                aria-label={`Pagar saldo restante de ${money.format(financial.pendingCents / 100)}`}
-                className="app-metric truncate rounded-sm text-sm font-semibold leading-5 text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 tabular-nums"
-              >
-                {money.format(financial.pendingCents / 100)}
-              </Link>
+              <>
+                <span className="app-metric truncate text-[11px] font-semibold leading-4 text-red-600 tabular-nums">
+                  {money.format(financial.pendingCents / 100)}
+                </span>
+                <Link
+                  to="/participante/pagamento"
+                  className="rounded-sm text-[11px] font-semibold leading-4 text-red-600 underline decoration-red-300 underline-offset-2 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
+                >
+                  Pagar
+                </Link>
+              </>
             ) : (
-              <span className="app-metric truncate text-sm font-semibold leading-5 text-zinc-700 tabular-nums">
+              <span className="app-metric truncate text-[11px] font-semibold leading-4 text-zinc-700 tabular-nums">
                 {money.format(financial.pendingCents / 100)}
               </span>
             ))}
         </div>
-        <span
-          role="status"
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${tone}`}
-        >
-          <StatusIcon aria-hidden="true" className="size-3" />
-          {status}
-        </span>
+        {status && (
+          <span
+            role="status"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${tone}`}
+          >
+            <StatusIcon aria-hidden="true" className="size-3" />
+            {status}
+          </span>
+        )}
       </section>
     </section>
   );

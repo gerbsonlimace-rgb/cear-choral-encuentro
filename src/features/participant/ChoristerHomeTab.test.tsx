@@ -39,11 +39,13 @@ describe("ChoristerHomeTab welcome", () => {
     const card = screen.getByRole("region", { name: "Situação da inscrição" });
     expect(within(card).getByText("Valor pendente")).toBeInTheDocument();
     expect(within(card).getByText("R$ 80,00")).toBeInTheDocument();
-    expect(within(card).getByRole("status")).toHaveTextContent("Parcialmente pago");
-    expect(within(card).getByRole("link", { name: /Pagar saldo restante/ })).toHaveAttribute(
+    expect(within(card).queryByRole("status")).not.toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Pagar" })).toHaveAttribute(
       "href",
       "/participante/pagamento",
     );
+    expect(within(card).getByText("R$ 80,00")).toHaveClass("text-red-600");
+    expect(within(card).queryByText("Parcialmente pago")).not.toBeInTheDocument();
     expect(within(card).queryByText("Programa de rifas")).not.toBeInTheDocument();
     expect(within(card).queryByText("Pago")).not.toBeInTheDocument();
     expect(within(card).queryByText("Total")).not.toBeInTheDocument();
