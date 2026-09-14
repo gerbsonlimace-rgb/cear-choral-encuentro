@@ -164,8 +164,23 @@ export function PhotoArtEditor() {
   const actionsDisabled = !photo || !outputFile || preparing || loadingArt;
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-3 pb-28 pt-3 sm:px-5 lg:grid lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-9 lg:pb-10 lg:pt-6">
-      <div className="mx-auto w-full max-w-[28rem] lg:sticky lg:top-20">
+    <section className="photo-art-editor mx-auto w-full max-w-6xl px-3 pb-28 pt-3 sm:px-5 lg:grid lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-9 lg:pb-10 lg:pt-6">
+      <div className="photo-art-intro">
+        <header>
+          <p className="text-xs font-extrabold tracking-[0.15em] text-[#9b7900] uppercase">
+            Minha foto do encontro
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl">
+            Escolha uma arte pronta
+          </h1>
+          <p className="mt-1.5 text-sm leading-5 text-zinc-600">
+            A moldura e a frase já estão prontas. Você só precisa inserir e ajustar sua foto.
+          </p>
+        </header>
+
+      </div>
+
+      <div className="photo-art-preview mx-auto w-full max-w-[28rem] lg:sticky lg:top-20">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-extrabold tracking-[0.15em] text-zinc-500 uppercase">
@@ -189,7 +204,7 @@ export function PhotoArtEditor() {
           )}
         </div>
 
-        <div className="relative flex h-[42svh] min-h-72 max-h-[27rem] items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:h-auto lg:max-h-[72vh] lg:min-h-0 lg:p-2">
+        <div className="relative flex h-auto min-h-0 max-h-[27rem] items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:h-auto lg:max-h-[72vh] lg:min-h-0 lg:p-2">
           <canvas
             ref={canvasRef}
             aria-label="Prévia da arte pronta com sua foto"
@@ -208,19 +223,7 @@ export function PhotoArtEditor() {
         </div>
       </div>
 
-      <div className="mt-4 min-w-0 space-y-5 lg:mt-0">
-        <header>
-          <p className="text-xs font-extrabold tracking-[0.15em] text-[#9b7900] uppercase">
-            Minha foto do encontro
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl">
-            Escolha uma arte pronta
-          </h1>
-          <p className="mt-1.5 text-sm leading-5 text-zinc-600">
-            A moldura e a frase já estão prontas. Você só precisa inserir e ajustar sua foto.
-          </p>
-        </header>
-
+      <div className="photo-art-options mt-4 min-w-0 space-y-5 lg:mt-0">
         <fieldset>
           <legend className="text-sm font-extrabold text-zinc-950">1. Arte do encontro</legend>
           <div
@@ -324,7 +327,7 @@ export function PhotoArtEditor() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur lg:static lg:col-start-2 lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
+      <div className="photo-art-actions fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur lg:static lg:col-start-2 lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0">
         <div className="mx-auto grid max-w-md grid-cols-2 gap-2 lg:max-w-none">
           <Button
             type="button"

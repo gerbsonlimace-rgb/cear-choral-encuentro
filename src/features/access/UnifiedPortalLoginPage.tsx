@@ -186,7 +186,7 @@ export function UnifiedPortalLoginPage({
   }
 
   return (
-    <main className="chorister-app relative isolate min-h-svh bg-white text-zinc-950">
+    <main className="portal-login chorister-app relative isolate min-h-svh bg-white text-zinc-950">
       <MobileEventSplash />
       <div className="relative mx-auto grid min-h-svh w-full max-w-[88rem] items-center gap-10 px-4 py-5 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1.12fr)_minmax(24rem,0.72fr)] lg:px-12 lg:py-12 xl:gap-20">
         <section
@@ -248,7 +248,7 @@ export function UnifiedPortalLoginPage({
 
         <Card className="relative mx-auto w-full max-w-[27rem] overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white text-zinc-950 shadow-[0_12px_48px_rgba(24,24,27,0.06)] sm:rounded-[2rem]">
           <div aria-hidden="true" className="h-1 bg-zinc-100" />
-          <CardHeader className="space-y-0 px-5 pb-4 pt-5 text-center sm:px-8 sm:pb-5 sm:pt-7">
+          <CardHeader className="portal-login-header space-y-0 px-5 pb-4 pt-5 text-center sm:px-8 sm:pb-5 sm:pt-7">
             <div className="mx-auto mb-4 w-full max-w-[15.5rem] overflow-hidden rounded-2xl bg-white px-3 py-2 sm:mb-5 sm:max-w-[17rem]">
               <img
                 src={eventLogo}
@@ -274,7 +274,7 @@ export function UnifiedPortalLoginPage({
               <span>Quixadá, CE</span>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
+          <CardContent className="portal-login-content space-y-4 px-5 pb-5 pt-2 sm:px-8 sm:pb-7">
             {error && (
               <p
                 role="alert"
@@ -340,8 +340,7 @@ export function UnifiedPortalLoginPage({
                   className="mt-0.5 size-4 shrink-0 text-amber-foreground"
                 />
                 <p>
-                  No primeiro acesso como participante, use os dígitos do CPF seguidos do ano de
-                  nascimento com quatro dígitos (AAAA).
+                  Primeiro acesso do participante: CPF sem pontuação + ano de nascimento (AAAA).
                 </p>
               </div>
               <Button

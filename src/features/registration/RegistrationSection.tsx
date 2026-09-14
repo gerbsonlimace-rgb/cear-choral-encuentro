@@ -107,7 +107,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
 const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 
 const inputClassName =
-  "min-h-11 rounded-lg border-border bg-background pl-10 text-sm shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
+  "min-h-11 rounded-lg border-border bg-background pl-10 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
   1: ["name", "cpf", "email", "phone", "birthDate", "photo"],
@@ -272,6 +272,25 @@ export function RegistrationSection({
   const [draftReady, setDraftReady] = useState(false);
   const mounted = useRef(false);
   const paymentButtonClick = useRef(false);
+
+  const actionBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const bar = actionBarRef.current;
+    const formElement = bar?.closest("form");
+    if (!bar || !formElement) return;
+    const measure = () => {
+      formElement.style.setProperty("--registration-actions-height", `${bar.getBoundingClientRect().height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(bar);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   const refreshConfiguration = useCallback(
     async (clearSelection = false) => {
@@ -990,7 +1009,7 @@ export function RegistrationSection({
                   </p>
                 )}
 
-                <div className="registration-actions mt-5 space-y-2 border-t border-border pt-4">
+                <div ref={actionBarRef} className="registration-actions mt-5 space-y-2 border-t border-border pt-4">
                   <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
                     {currentStep > 1 && (
                       <Button type="button" variant="outline" onClick={goToPreviousStep} className="min-h-14 rounded-xl px-7 text-base font-bold">
@@ -1014,13 +1033,13 @@ export function RegistrationSection({
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
-                    {isSubmitting
+                    <span className="min-w-0 break-words">{isSubmitting
                       ? "Preparando seu pagamento…"
                       : isCheckingAvailability
                         ? "Verificando seus dados…"
                         : currentStep === 3
                           ? "Pagar com segurança na InfinitePay"
-                          : "Continuar"}
+                          : "Continuar"}</span>
                     {!isSubmitting && !isCheckingAvailability && (
                       <ArrowRight className="ml-2 size-5" aria-hidden="true" />
                     )}

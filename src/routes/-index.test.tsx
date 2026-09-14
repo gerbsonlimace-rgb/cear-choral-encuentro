@@ -328,7 +328,7 @@ describe("landing page sponsors", () => {
     const content = within(section!);
 
     expect(
-      content.getByRole("heading", { name: "Instituições que conduzem o encontro" }),
+      content.getByRole("heading", { name: "Quem realiza o encontro" }),
     ).toBeInTheDocument();
     expect(content.getByRole("img", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
     expect(content.getByRole("img", { name: "Diocese de Quixadá" })).toBeInTheDocument();

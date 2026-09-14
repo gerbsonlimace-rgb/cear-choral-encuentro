@@ -123,7 +123,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const programme = Route.useLoaderData();
   return (
-    <div className="min-h-screen bg-background">
+    <div className="public-event-page min-h-screen bg-background">
       <Header />
       <main>
         <HeroSection />
@@ -406,29 +406,24 @@ function AboutSection() {
             Sobre o encontro
           </span>
           <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
-            Uma celebração da tradição musical sacra
+            Fé, música e comunhão
           </h2>
           <div className="mt-5 space-y-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             <p>
-              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu para fortalecer a
-              música litúrgica e promover a comunhão entre os coros diocesanos. A iniciativa partiu
-              de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da
-              Comissão Episcopal para a Liturgia do Regional Nordeste 1, e foi idealizada e
-              organizada pelo Pe. Michael Johnny da Silva Souza.
+              O Encontro de Coros do Regional Nordeste 1 – CNBB reúne coralistas, regentes e
+              instrumentistas para celebrar a fé e fortalecer a música litúrgica. Após Viçosa do
+              Ceará, em 2025, a segunda edição acontece em Quixadá, em 2026.
             </p>
             <p>
-              Realizada pela primeira vez em 2025, em Viçosa do Ceará, a iniciativa reuniu regentes,
-              coralistas e instrumentistas em uma experiência de formação, partilha e fraternidade.
-              Em 2026, essa caminhada continua em Quixadá com o II Encontro, fortalecendo a
-              integração entre as dioceses e valorizando a música como parte essencial da liturgia e
-              instrumento de evangelização.
+              Uma iniciativa de Dom Francisco Edimilson Neves Ferreira, idealizada e organizada
+              pelo Pe. Michael Johnny da Silva Souza.
             </p>
           </div>
         </div>
 
-        <div className="mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
                 <BookOpen className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
               </div>
@@ -439,7 +434,7 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10 sm:h-14 sm:w-14">
                 <Church className="h-6 w-6 text-emerald sm:h-7 sm:w-7" />
               </div>
@@ -452,7 +447,7 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber/10 sm:h-14 sm:w-14">
                 <Mic2 className="h-6 w-6 text-amber sm:h-7 sm:w-7" />
               </div>
@@ -463,7 +458,7 @@ function AboutSection() {
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
                 <Users className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
               </div>
@@ -477,7 +472,7 @@ function AboutSection() {
           </Card>
         </div>
 
-        <div className="mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
+        <div className="about-speaker mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
           <img
             src={claytonImage}
             alt="Clayton Dias em interior de igreja"
@@ -491,12 +486,10 @@ function AboutSection() {
               Palestrante Principal
             </span>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
-              Clayton Dias aprofunda o eixo formativo do encontro
+              Clayton Dias
             </h3>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Maestro, pesquisador e professor, Clayton atua em música sacra, canto gregoriano,
-              regência, história da música sacra e musicologia litúrgica. Sua presença conecta
-              prática coral, tradição litúrgica e pesquisa musical.
+              Maestro, pesquisador e professor, une prática coral e formação em música sacra.
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-sm font-bold text-teal">
               <span className="rounded-full bg-teal/10 px-3 py-1">Canto gregoriano</span>
@@ -568,18 +561,13 @@ function QuixadaSection() {
               Quixadá, Ceará
             </span>
             <h2 className="mt-5 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-tight text-foreground md:text-5xl">
-              Uma cidade histórica cercada por monólitos
+              Conheça Quixadá
             </h2>
           </div>
           <div className="space-y-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             <p>
-              Fundada e emancipada em 27 de outubro de 1870, Quixadá chega aos 155 anos como uma das
-              paisagens mais reconhecíveis do sertão cearense.
-            </p>
-            <p>
-              A cidade mistura fé, música, literatura, natureza e aventura: entre o Açude Cedro, a
-              Pedra da Galinha Choca, o Santuário Rainha do Sertão e seus grandes monólitos, cada
-              visita tem um cenário próprio.
+              Entre igrejas, o Açude Cedro e os monólitos, Quixadá reúne fé, cultura e paisagens
+              marcantes do sertão cearense.
             </p>
           </div>
         </div>
@@ -628,11 +616,11 @@ function SponsorsSection() {
               Apoio, organização e patrocínio
             </span>
             <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.75rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
-              Instituições que conduzem o encontro
+              Quem realiza o encontro
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
-              A realização nasce do trabalho conjunto entre o Coro Diocesano de Quixadá e a Diocese
-              de Quixadá, com parceiros que valorizam cultura, formação e vida comunitária.
+              Uma realização do Coro Diocesano de Quixadá e da Diocese de Quixadá, com o apoio de
+              nossos parceiros.
             </p>
           </div>
 
