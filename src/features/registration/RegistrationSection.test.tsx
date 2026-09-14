@@ -115,6 +115,23 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     }
   });
 
+  it("explains both payment choices before the participant continues", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+    await goToParticipation(user);
+    await user.selectOptions(screen.getByLabelText("Coro/Diocese"), quixadaId);
+
+    const choices = screen.getByRole("radiogroup", {
+      name: "Como deseja realizar sua inscrição?",
+    });
+    expect(choices).toHaveTextContent(/Pague R\$ 100,00 agora/);
+    expect(choices).toHaveTextContent(/25 rifas/);
+    expect(choices).toHaveTextContent(/restante de R\$ 200,00 até 30 de outubro/);
+    expect(choices).toHaveTextContent(/vaga será confirmada após esse pagamento/);
+    expect(choices).toHaveTextContent(/Pague R\$ 300,00 agora/);
+    expect(choices).toHaveTextContent(/Pix ou em até 5x no cartão/);
+  });
+
   it("requires an explicit raffle choice before advancing and focuses the group", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
@@ -139,7 +156,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(summary).toHaveTextContent(/Pré-inscrição agora:\s*R\$ 100,00/);
     expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 200,00/);
     expect(summary).toHaveTextContent(/25 rifas/);
-    expect(summary).toHaveTextContent(/sua vaga estará confirmada/);
+    expect(summary).toHaveTextContent(/Sua vaga será confirmada após o pagamento do valor restante/);
     expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent("Participarei");
   });
 

@@ -12,6 +12,7 @@ import {
   Music2,
   Phone,
   ShieldCheck,
+  Ticket,
   UserRound,
 } from "lucide-react";
 
@@ -161,11 +162,12 @@ function RegistrationPriceSummary({
                   </div>
                 </div>
                 <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90">
-                  Você está aderindo ao Programa de Venda de Rifas do seu coro e realizando sua pré-inscrição
-                  no valor de <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong>. O valor
-                  restante de <strong>{formatCurrency(remainingCents)}</strong> deve ser enviado até
-                  30 de outubro, e assim que ele for pago sua inscrição será concluída e sua vaga confirmada.
-                  Você pode quitar esse restante em <strong>até 5x no cartão</strong> ou via Pix.
+                  Você está aderindo ao Programa de Venda de Rifas do seu coro, participando da venda de
+                  <strong> 25 rifas</strong> e realizando sua pré-inscrição no valor de{" "}
+                  <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong>. O valor restante de{" "}
+                  <strong>{formatCurrency(remainingCents)}</strong> deve ser enviado até 30 de outubro. Sua vaga
+                  será confirmada após o pagamento do valor restante, que pode ser feito via Pix ou em até{" "}
+                  <strong>5x no cartão</strong>.
                 </p>
               </div>
             ) : (
@@ -197,7 +199,7 @@ function RegistrationPriceSummary({
             </li>
             <li className="flex items-center gap-2">
               <CreditCard className="size-4" aria-hidden="true" />
-              Cartão em até 5x (ou até 12x para pagamento integral)
+              Cartão em até 5x
             </li>
           </ul>
         </div>
@@ -808,8 +810,9 @@ export function RegistrationSection({
                         <legend className="font-semibold text-foreground">
                           Como deseja realizar sua inscrição?
                         </legend>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Escolha entre aderir ao programa de rifas ou pagar o valor integral agora.
+                        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                          Escolha a opção que funciona melhor para você. Confira abaixo quanto pagar agora e
+                          quando sua vaga será confirmada.
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           <label className="cursor-pointer">
@@ -822,8 +825,25 @@ export function RegistrationSection({
                               onChange={(event) => handleChange("raffleChoice", event.target.value)}
                               className="peer sr-only"
                             />
-                            <span className="flex min-h-28 rounded-xl border border-border bg-background p-4 text-sm font-semibold text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
-                              Quero participar do Programa de Venda de Rifas
+                            <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                              <span className="flex items-start gap-3">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
+                                  <Ticket className="size-5" aria-hidden="true" />
+                                </span>
+                                <span className="font-bold leading-snug">
+                                  Participar do Programa de Venda de Rifas
+                                </span>
+                              </span>
+                              <strong className="mt-4 block font-display text-xl font-extrabold">
+                                Pague {formatCurrency(selectedChoir.registrationPriceCents)} agora
+                              </strong>
+                              <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
+                                Você faz sua pré-inscrição, participa da venda de 25 rifas e envia o restante de{" "}
+                                {formatCurrency(
+                                  selectedChoir.standardPriceCents - selectedChoir.registrationPriceCents,
+                                )}{" "}
+                                até 30 de outubro. Sua vaga será confirmada após esse pagamento.
+                              </span>
                             </span>
                           </label>
                           <label className="cursor-pointer">
@@ -836,8 +856,20 @@ export function RegistrationSection({
                               onChange={(event) => handleChange("raffleChoice", event.target.value)}
                               className="peer sr-only"
                             />
-                            <span className="flex min-h-28 rounded-xl border border-border bg-background p-4 text-sm font-semibold text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
-                              Prefiro pagar a inscrição integral
+                            <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                              <span className="flex items-start gap-3">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
+                                  <CreditCard className="size-5" aria-hidden="true" />
+                                </span>
+                                <span className="font-bold leading-snug">Pagar a inscrição integral</span>
+                              </span>
+                              <strong className="mt-4 block font-display text-xl font-extrabold">
+                                Pague {formatCurrency(selectedChoir.standardPriceCents)} agora
+                              </strong>
+                              <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
+                                Conclua sua inscrição em um único pagamento via Pix ou em até 5x no cartão. Sua
+                                vaga será confirmada após a aprovação do pagamento.
+                              </span>
                             </span>
                           </label>
                         </div>
