@@ -35,11 +35,8 @@ export function ChoristerWelcomeCard({
       : "border-zinc-200 bg-zinc-50 text-zinc-600";
 
   return (
-    <section
-      aria-label="Boas-vindas e inscrição"
-      className="rounded-2xl bg-zinc-50 pb-2 ring-1 ring-zinc-200/80"
-    >
-      <header className="relative isolate flex items-center gap-3 overflow-hidden rounded-2xl bg-[#ffd43b] px-4 pt-4 pb-8 sm:px-5">
+    <section aria-label="Boas-vindas e inscrição" className="space-y-2">
+      <header className="relative isolate flex items-center gap-3 overflow-hidden rounded-2xl bg-[#ffd43b] px-4 py-4 sm:px-5">
         <svg
           aria-hidden="true"
           focusable="false"
@@ -110,7 +107,7 @@ export function ChoristerWelcomeCard({
       </header>
       <section
         aria-label="Situação da inscrição"
-        className="relative mx-2 -mt-4 space-y-2.5 rounded-xl bg-white px-3 py-3 shadow-sm ring-1 ring-zinc-950/5 sm:mx-3 sm:px-4"
+        className="space-y-2 rounded-xl border border-zinc-200/70 bg-zinc-50/70 px-3 py-2.5"
       >
         <h2 className="sr-only">Minha inscrição</h2>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -133,7 +130,7 @@ export function ChoristerWelcomeCard({
         {known ? (
           <>
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <p className="break-words text-2xl font-semibold leading-7 tracking-tight text-zinc-950 tabular-nums">
+              <p className="order-2 break-words text-base font-semibold leading-5 text-zinc-700 tabular-nums">
                 {money.format(financial.pendingCents / 100)}
               </p>
               <p
@@ -158,10 +155,10 @@ export function ChoristerWelcomeCard({
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={progress}
-                className="h-1 overflow-hidden rounded-full bg-zinc-100"
+                className="h-0.5 overflow-hidden rounded-full bg-zinc-200/60"
               >
                 <div
-                  className={`h-full rounded-full ${paid ? "bg-emerald-500" : "bg-amber-400"}`}
+                  className={`h-full rounded-full ${paid ? "bg-emerald-400" : "bg-amber-300"}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>

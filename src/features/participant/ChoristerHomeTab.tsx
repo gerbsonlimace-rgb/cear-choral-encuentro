@@ -1,4 +1,12 @@
-import { CalendarDays, Camera, ChevronRight, Files, Music2, Play } from "lucide-react";
+import {
+  CalendarDays,
+  Camera,
+  ChevronRight,
+  Files,
+  Music2,
+  Play,
+  type LucideIcon,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +27,46 @@ type ChoristerHomeTabProps = {
   onNavigate?: (tab: "cantos" | "documentos" | "guia") => void;
 };
 
+function ShortcutIllustration({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 96 64" className="mb-2 h-14 w-20">
+      <ellipse cx="46" cy="57" rx="29" ry="4" fill="currentColor" opacity=".08" />
+      <circle cx="46" cy="30" r="27" fill="currentColor" opacity=".08" />
+      <rect
+        x="23"
+        y="12"
+        width="43"
+        height="42"
+        rx="10"
+        fill="currentColor"
+        opacity=".15"
+        transform="rotate(-12 44 33)"
+      />
+      <rect
+        x="29"
+        y="10"
+        width="43"
+        height="42"
+        rx="10"
+        fill="white"
+        fillOpacity=".85"
+        transform="rotate(7 50 31)"
+      />
+      <Icon x="35" y="16" width="30" height="30" strokeWidth="1.6" />
+      <path
+        d="m79 8 1.5 4.5L85 14l-4.5 1.5L79 20l-1.5-4.5L73 14l4.5-1.5Z"
+        fill="currentColor"
+        opacity=".55"
+      />
+      <circle cx="15" cy="38" r="3" fill="currentColor" opacity=".3" />
+      <circle cx="78" cy="46" r="2" fill="currentColor" opacity=".3" />
+    </svg>
+  );
+}
+
+const shortcutClassName =
+  "group relative flex min-h-36 min-w-0 flex-col items-start rounded-2xl p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-4";
+
 export function ChoristerHomeTab({
   participant,
   loadNotices,
@@ -30,68 +78,70 @@ export function ChoristerHomeTab({
     <section aria-labelledby="chorister-home-title" className="space-y-6">
       <ChoristerWelcomeCard participant={participant} />
 
-      <ChoristerNotices loadNotices={loadNotices} />
-
-      <Link
-        to="/participante/minha-foto"
-        className="flex min-h-20 items-center gap-3 rounded-2xl bg-[#ffc400] p-4 text-left text-black transition-colors hover:bg-[#f2ba00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-      >
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-black text-[#ffc400]">
-          <Camera aria-hidden="true" className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-extrabold">Crie sua foto do encontro</span>
-          <span className="mt-0.5 block text-xs font-medium text-black/70">
-            Escolha a arte e compartilhe
-          </span>
-        </span>
-        <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
-      </Link>
-
-      {onNavigate && (
-        <section aria-labelledby="home-shortcuts-title" className="space-y-3">
-          <h2 id="home-shortcuts-title" className="text-sm font-semibold text-zinc-900">
-            Seu encontro, à mão
-          </h2>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {[
+      <section aria-labelledby="home-shortcuts-title" className="space-y-3">
+        <h2 id="home-shortcuts-title" className="text-sm font-semibold text-zinc-900">
+          Seu encontro, à mão
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Link
+            to="/participante/minha-foto"
+            aria-label="Crie sua foto do encontro"
+            className={`${shortcutClassName} bg-amber-50 text-amber-700 hover:bg-amber-100`}
+          >
+            <ShortcutIllustration icon={Camera} />
+            <ChevronRight aria-hidden="true" className="absolute right-3 top-3 size-4 opacity-50" />
+            <span className="text-sm font-bold text-zinc-900">Minha foto</span>
+            <span className="mt-1 text-xs leading-5 text-zinc-600">
+              Personalize sua foto com a arte do encontro e compartilhe.
+            </span>
+          </Link>
+          {onNavigate &&
+            [
               {
                 tab: "cantos",
-                title: "Explorar cantos",
-                description: "Áudios e partituras",
+                label: "Explorar cantos",
+                title: "Kit ensaio",
+                description: "Ouça os áudios, baixe as partituras e imprima para estudar.",
                 icon: Music2,
-              },
-              {
-                tab: "documentos",
-                title: "Ver documentos",
-                description: "Guias e materiais",
-                icon: Files,
+                tone: "bg-violet-50 text-violet-600 hover:bg-violet-100",
               },
               {
                 tab: "guia",
-                title: "Consultar programação",
-                description: "Horários e locais",
+                label: "Consultar programação",
+                title: "Agenda",
+                description: "Consulte os horários e os locais das atividades do encontro.",
                 icon: CalendarDays,
+                tone: "bg-sky-50 text-sky-700 hover:bg-sky-100",
               },
-            ].map(({ tab, title, description, icon: Icon }) => (
+              {
+                tab: "documentos",
+                label: "Ver documentos",
+                title: "Documentos",
+                description: "Abra e baixe os guias e materiais disponibilizados para você.",
+                icon: Files,
+                tone: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+              },
+            ].map(({ tab, label, title, description, icon, tone }) => (
               <button
                 key={tab}
                 type="button"
-                aria-label={title}
+                aria-label={label}
                 onClick={() => onNavigate(tab as "cantos" | "documentos" | "guia")}
-                className="flex min-h-20 items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+                className={`${shortcutClassName} ${tone}`}
               >
-                <Icon aria-hidden="true" className="size-5 shrink-0 text-zinc-500" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-zinc-900">{title}</span>
-                  <span className="mt-0.5 block text-xs text-zinc-500">{description}</span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-zinc-400" />
+                <ShortcutIllustration icon={icon} />
+                <ChevronRight
+                  aria-hidden="true"
+                  className="absolute right-3 top-3 size-4 opacity-50"
+                />
+                <span className="text-sm font-bold text-zinc-900">{title}</span>
+                <span className="mt-1 text-xs leading-5 text-zinc-600">{description}</span>
               </button>
             ))}
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
+
+      <ChoristerNotices loadNotices={loadNotices} />
 
       {recentPlayback && onContinuePlayback ? (
         <section
