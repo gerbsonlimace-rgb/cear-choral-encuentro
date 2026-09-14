@@ -55,6 +55,7 @@ import {
   type VoicePart,
 } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
+import { loadRegistrationDraft, saveRegistrationDraft } from "./registration-draft";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -268,6 +269,7 @@ export function RegistrationSection({
   const [identityConflict, setIdentityConflict] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [draftReady, setDraftReady] = useState(false);
   const mounted = useRef(false);
   const paymentButtonClick = useRef(false);
 
@@ -300,11 +302,24 @@ export function RegistrationSection({
 
   useEffect(() => {
     mounted.current = true;
+    const draft = loadRegistrationDraft();
+    if (draft) {
+      setForm(draft.form);
+      setPhoto(draft.photo);
+      setPhotoFileName(draft.photoFileName);
+      setCurrentStep(draft.currentStep);
+    }
+    setDraftReady(true);
     void refreshConfiguration();
     return () => {
       mounted.current = false;
     };
   }, [refreshConfiguration]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    saveRegistrationDraft({ form, photo, photoFileName, currentStep });
+  }, [currentStep, draftReady, form, photo, photoFileName]);
 
   const selectedChoir = useMemo(
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,

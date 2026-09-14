@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { RegistrationSection } from "./RegistrationSection";
@@ -63,9 +63,14 @@ async function goToReview(
 }
 
 describe("RegistrationSection", { timeout: 10_000 }, () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("starts with a compact three-step form and participant badge header", async () => {
@@ -220,6 +225,52 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
     expect(screen.getByText("maria.jpg")).toBeInTheDocument();
+  });
+
+  it("restores partially entered personal data after the page reloads", async () => {
+    const user = userEvent.setup();
+    const firstPage = render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
+    await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
+    firstPage.unmount();
+
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("E-mail")).toHaveValue("maria@example.com");
+  });
+
+  it("returns to the completed review with its photo after leaving for InfinitePay", async () => {
+    const user = userEvent.setup();
+    const startCheckout = vi.fn().mockResolvedValue({
+      ok: true,
+      checkoutUrl: safeUrl,
+      orderNsu: fixedOrderNsu,
+    });
+    const navigateToCheckout = vi.fn();
+    const firstPage = render(
+      <RegistrationSection
+        checkAvailability={available}
+        loadConfiguration={loadConfiguration}
+        startCheckout={startCheckout}
+        navigateToCheckout={navigateToCheckout}
+      />,
+    );
+    await goToReview(user);
+
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await waitFor(() => expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl));
+    firstPage.unmount();
+
+    render(<RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />);
+
+    expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
+    expect(screen.getByText("Maria da Silva")).toBeVisible();
+    expect(screen.getByText("maria.jpg")).toBeVisible();
+    expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
   });
 
   it("limits birth dates to the current day in Fortaleza", () => {

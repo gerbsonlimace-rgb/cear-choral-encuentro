@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useLayoutEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PaymentLookup } from "./registration.domain";
+import { REGISTRATION_DRAFT_STORAGE_KEY } from "./registration-draft";
 import { PaymentConfirmationPage } from "./PaymentConfirmationPage";
 
 const lookup: PaymentLookup = {
@@ -20,6 +21,10 @@ const nextLookup: PaymentLookup = {
 };
 
 describe("PaymentConfirmationPage", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it("explains when the payment lookup is missing and offers a way home", () => {
     render(<PaymentConfirmationPage lookup={null} verifyPayment={vi.fn()} />);
 
@@ -39,6 +44,20 @@ describe("PaymentConfirmationPage", () => {
     expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Pix")).toBeVisible();
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
+  });
+
+  it("clears the saved registration draft after payment is confirmed", async () => {
+    window.localStorage.setItem(REGISTRATION_DRAFT_STORAGE_KEY, "saved draft");
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(window.localStorage.getItem(REGISTRATION_DRAFT_STORAGE_KEY)).toBeNull();
   });
 
   it("shows an honest paid promotional pre-registration confirmation", async () => {

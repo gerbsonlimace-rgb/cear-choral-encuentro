@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
+import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 import type { PaymentLookup } from "./registration.domain";
 
@@ -93,6 +94,7 @@ function PaymentConfirmationCycle({
         if (disposed) return;
 
         if (payment.status === "paid") {
+          clearRegistrationDraft();
           setState({ kind: "paid", payment });
           return;
         }
