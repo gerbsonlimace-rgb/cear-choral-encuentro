@@ -10,7 +10,7 @@ const columns =
 
 type EventDocumentRow = {
   id: string;
-  event_id: string;
+  event_id: string | null;
   title: string;
   category: string;
   storage_path: string;
@@ -61,6 +61,19 @@ export function createSupabaseEventDocumentRepository(): EventDocumentRepository
       const { data, error } = (await supabaseAdmin
         .from("event_documents" as never)
         .select(columns)
+        .order("created_at", { ascending: false })) as unknown as {
+        data: EventDocumentRow[] | null;
+        error: QueryError;
+      };
+      checkQuery(error, "Não foi possível carregar os documentos.");
+      return (data ?? []).map(mapRow);
+    },
+
+    async listGeneral() {
+      const { data, error } = (await supabaseAdmin
+        .from("event_documents" as never)
+        .select(columns)
+        .is("event_id", null)
         .order("created_at", { ascending: false })) as unknown as {
         data: EventDocumentRow[] | null;
         error: QueryError;

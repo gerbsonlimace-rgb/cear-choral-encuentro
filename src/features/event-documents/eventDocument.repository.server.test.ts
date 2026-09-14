@@ -35,6 +35,16 @@ describe("Supabase event document repository", () => {
     supabaseAdminMock.storage.from.mockReset();
   });
 
+  it("loads general documents using a NULL event filter", async () => {
+    const order = vi.fn(async () => ({ data: [{ ...row, event_id: null }], error: null }));
+    const isFilter = vi.fn(() => ({ order }));
+    supabaseAdminMock.from.mockReturnValue({ select: () => ({ is: isFilter }) });
+    await expect(createSupabaseEventDocumentRepository().listGeneral()).resolves.toEqual([
+      expect.objectContaining({ id: row.id, eventId: null, title: row.title }),
+    ]);
+    expect(isFilter).toHaveBeenCalledWith("event_id", null);
+  });
+
   it("lists only documents from the requested configured events", async () => {
     const order = vi.fn(async () => ({ data: [row], error: null }));
     const inFilter = vi.fn(() => ({ order }));

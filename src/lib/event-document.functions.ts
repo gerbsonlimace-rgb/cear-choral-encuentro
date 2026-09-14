@@ -8,11 +8,9 @@ import {
   type EventDocument,
 } from "@/features/event-documents/eventDocument.domain";
 import { requireParticipantAccess } from "@/features/participant/participant-auth.middleware";
-import type { CoroAppEventSource } from "@/features/coroapp-integration/coroAppEventSource.domain";
 
 export type AdminEventDocumentBootstrap = {
   documents: EventDocument[];
-  events: CoroAppEventSource[];
 };
 
 async function loadService() {
@@ -24,15 +22,7 @@ async function loadService() {
 export const getAdminEventDocumentBootstrap = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async (): Promise<AdminEventDocumentBootstrap> => {
-    const [{ getCoroAppEventSourceService }, service] = await Promise.all([
-      import("@/features/coroapp-integration/coroAppEventSource.service.server"),
-      loadService(),
-    ]);
-    const [documents, events] = await Promise.all([
-      service.listAdmin(),
-      getCoroAppEventSourceService().list(),
-    ]);
-    return { documents, events };
+    return { documents: await (await loadService()).listAdmin() };
   });
 
 export const createAdminEventDocument = createServerFn({ method: "POST" })
@@ -62,6 +52,10 @@ export const getAdminEventDocumentUrl = createServerFn({ method: "POST" })
 export const getParticipantEventDocuments = createServerFn({ method: "GET" })
   .middleware([requireParticipantAccess])
   .handler(async () => (await loadService()).listParticipant());
+
+export const getParticipantGeneralDocuments = createServerFn({ method: "GET" })
+  .middleware([requireParticipantAccess])
+  .handler(async () => (await loadService()).listGeneralAssets());
 
 export const getParticipantEventDocumentUrl = createServerFn({ method: "POST" })
   .middleware([requireParticipantAccess])

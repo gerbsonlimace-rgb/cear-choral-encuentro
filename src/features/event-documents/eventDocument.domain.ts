@@ -17,9 +17,9 @@ function isSafePdfFileName(value: string) {
 
 export const eventDocumentMetadataSchema = z
   .object({
-    eventId: z.string().uuid(),
+    eventId: z.string().uuid().nullable().default(null),
     title: z.string().trim().min(2).max(160),
-    category: z.string().trim().min(2).max(60),
+    category: z.string().trim().min(2).max(60).default("Documentos"),
   })
   .strict();
 
@@ -52,12 +52,12 @@ export const eventDocumentUpdateSchema = eventDocumentMetadataSchema.extend({
 
 export const eventDocumentActionSchema = z.object({ id: eventDocumentIdSchema }).strict();
 
-export type EventDocumentCreate = z.infer<typeof eventDocumentCreateSchema>;
-export type EventDocumentUpdate = z.infer<typeof eventDocumentUpdateSchema>;
+export type EventDocumentCreate = z.input<typeof eventDocumentCreateSchema>;
+export type EventDocumentUpdate = z.input<typeof eventDocumentUpdateSchema>;
 
 export type EventDocument = {
   id: string;
-  eventId: string;
+  eventId: string | null;
   eventName: string;
   title: string;
   category: string;

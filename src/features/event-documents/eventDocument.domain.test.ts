@@ -19,6 +19,14 @@ async function validPdfBytes() {
 }
 
 describe("event document domain", () => {
+  it("accepts only a name and PDF without an event or category", () => {
+    expect(
+      eventDocumentCreateSchema.parse({
+        title: "  Orientações  ",
+        file: { base64: "JVBERi0xLjQKJSVFT0Y=", mimeType: "application/pdf", fileName: "guia.pdf" },
+      }),
+    ).toMatchObject({ title: "Orientações", eventId: null, category: "Documentos" });
+  });
   it("accepts a real PDF and rejects a disguised or oversized file", async () => {
     const pdf = await validPdfBytes();
 
