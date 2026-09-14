@@ -534,7 +534,7 @@ export function RegistrationSection({
       className="relative isolate overflow-hidden bg-foreground px-4 py-6 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
     >
       <div className="container-event">
-        <div className="mx-auto max-w-4xl text-center">
+        <div className="registration-intro mx-auto max-w-4xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-amber px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground shadow-lg shadow-amber/20">
             <BadgeCheck className="size-4" aria-hidden="true" />
             Inscrição
@@ -563,9 +563,9 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="relative mx-auto mt-5 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
+        <Card className="registration-card relative mx-auto mt-5 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
           <div className="h-1.5 bg-amber" aria-hidden="true" />
-          <CardContent className="p-4 sm:p-6 lg:p-7">
+          <CardContent className="registration-card-content p-4 sm:p-6 lg:p-7">
             <nav aria-label="Etapas da inscrição" className="mb-5">
               <ol className="grid grid-cols-3 gap-2 sm:gap-4">
                 {[
@@ -599,7 +599,7 @@ export function RegistrationSection({
 
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
-                <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
+                <div className="registration-personal-layout grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
                 <fieldset className="min-w-0 space-y-4">
                   <legend className="flex items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-foreground text-background">
@@ -613,7 +613,7 @@ export function RegistrationSection({
                     </span>
                   </legend>
 
-                  <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+                  <div className="registration-personal-fields grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="name" className="font-semibold">
                         Nome completo
@@ -764,7 +764,10 @@ export function RegistrationSection({
 
                   </div>
                 </fieldset>
-                <RegistrationBadgePreview name={form.name} photo={photo} />
+                <details className="registration-badge-preview rounded-xl border border-border p-3">
+                  <summary className="cursor-pointer py-2 text-sm font-semibold">Ver prévia do crachá</summary>
+                  <RegistrationBadgePreview name={form.name} photo={photo} />
+                </details>
                 </div>
               )}
 
@@ -987,7 +990,7 @@ export function RegistrationSection({
                   </p>
                 )}
 
-                <div className="mt-5 space-y-2 border-t border-border pt-4">
+                <div className="registration-actions mt-5 space-y-2 border-t border-border pt-4">
                   <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
                     {currentStep > 1 && (
                       <Button type="button" variant="outline" onClick={goToPreviousStep} className="min-h-14 rounded-xl px-7 text-base font-bold">

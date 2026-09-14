@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 import logo from "@/assets/logo-coros-preto.png";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
+import "@/features/registration/registration-page.css";
 
 export const Route = createFileRoute("/inscricao")({
   component: RegistrationPage,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/inscricao")({
 
 function RegistrationPage() {
   return (
-    <div className="public-event-page min-h-screen bg-foreground">
+    <div className="registration-page public-event-page min-h-screen bg-foreground">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-[4.5rem]">
           <Link
