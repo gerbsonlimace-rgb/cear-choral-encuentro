@@ -33,7 +33,7 @@ export function InternalMetricCard({
         )}
         <div className="min-w-0">
           <p className="text-xs font-semibold text-zinc-500">{label}</p>
-          <p className="mt-1 text-xl font-extrabold tracking-[-0.02em] text-brand-ink tabular-nums sm:text-2xl">{value}</p>
+          <p className="app-metric mt-1 text-xl font-extrabold tracking-[-0.02em] text-brand-ink tabular-nums sm:text-2xl">{value}</p>
           {detail && <p className="mt-1 text-xs leading-5 text-zinc-500">{detail}</p>}
         </div>
       </CardContent>

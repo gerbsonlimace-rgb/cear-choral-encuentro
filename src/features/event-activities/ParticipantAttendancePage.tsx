@@ -83,7 +83,7 @@ export function ParticipantAttendancePage({
   };
 
   return (
-    <main className="min-h-svh bg-white px-4 py-6 text-zinc-950">
+    <main className="chorister-app min-h-svh bg-white px-4 py-6 text-zinc-950">
       <div className="mx-auto max-w-xl space-y-6">
         <header className="flex items-center gap-3">
           <Button size="icon" variant="ghost" aria-label="Voltar ao portal" onClick={onBack}><ArrowLeft className="size-5" /></Button>

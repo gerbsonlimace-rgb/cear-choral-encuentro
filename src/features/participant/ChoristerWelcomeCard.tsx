@@ -130,7 +130,7 @@ export function ChoristerWelcomeCard({
         {known ? (
           <>
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <p className="order-2 break-words text-base font-semibold leading-5 text-zinc-700 tabular-nums">
+              <p className="app-metric order-2 break-words text-base font-semibold leading-5 text-zinc-700 tabular-nums">
                 {money.format(financial.pendingCents / 100)}
               </p>
               <p

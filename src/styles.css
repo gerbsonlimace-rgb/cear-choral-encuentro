@@ -231,11 +231,6 @@
     padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
   }
 
-  main.internal-app:has(.admin-navigation) h1 {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 600;
-  }
 }
 
 /* The participant portal uses one contemporary app typeface throughout.
@@ -587,4 +582,65 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 
 @media (max-width: 379px) {
   .public-event-page > header a:has(> img) > span { display: none; }
+}
+
+/* Mobile app typography follows the welcome/payment cards. The page scope
+ * includes Radix portals (menus, sheets and dialogs) outside the app shell.
+ * Keep rem units so the user's preferred text size still applies. */
+@media (max-width: 767px) {
+  body:has(:is(.internal-app, .chorister-app, .photo-art-editor)) {
+    --app-text-caption: .6875rem;
+    --app-text-body: .75rem;
+    --app-text-section: .875rem;
+    --app-text-title: 1rem;
+    --app-text-metric: 1.5rem;
+    font-family: var(--font-body);
+    font-size: var(--app-text-body);
+    line-height: 1.5;
+
+    & :where(.text-\[10px\], .text-\[11px\]) {
+      font-size: var(--app-text-caption);
+      line-height: 1rem;
+    }
+
+    & :where(.text-xs, .text-\[13px\], .text-sm, .text-base) {
+      font-size: var(--app-text-body);
+      line-height: 1.125rem;
+    }
+
+    & :where(.text-lg, .text-xl, .text-2xl) {
+      font-size: var(--app-text-title);
+      line-height: 1.25rem;
+    }
+
+    & :where(.font-extrabold, .font-black) {
+      font-weight: 700;
+    }
+
+    & :is(h2, h3, h4, h5, h6) {
+      font-size: var(--app-text-section);
+      font-weight: 600;
+      line-height: 1.25rem;
+      letter-spacing: normal;
+    }
+
+    & h1 {
+      font-size: var(--app-text-title);
+      font-weight: 700;
+      line-height: 1.25rem;
+      letter-spacing: -.025em;
+    }
+
+    & :is(.app-metric, .text-3xl, .text-4xl) {
+      font-size: var(--app-text-metric);
+      font-weight: 600;
+      line-height: 1.75rem;
+    }
+
+    /* Form fields retain 16px to avoid focus zoom on mobile browsers. */
+    & :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+  }
 }
