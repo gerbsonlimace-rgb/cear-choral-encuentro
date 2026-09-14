@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, LogOut, MoreHorizontal, Music2, UserRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, MoreHorizontal, UserRound } from "lucide-react";
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import eventLogo from "@/assets/logo-coros-preto.png";
 import { cn } from "@/lib/utils";
 
 type NavigationIcon = ComponentType<{
@@ -71,8 +72,12 @@ export function InternalAppShell({
         className="fixed inset-x-0 top-0 z-50 flex h-12 items-center gap-3 border-b border-white/10 bg-brand-ink px-3 text-white shadow-[0_2px_12px_rgba(24,24,27,0.12)] sm:px-4"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-gold text-brand-ink">
-            <Music2 aria-hidden="true" className="size-4" />
+          <span className="flex h-8 w-[5.5rem] shrink-0 items-center overflow-hidden rounded-md bg-white/[0.06] px-1">
+            <img
+              src={eventLogo}
+              alt="Logo do II Encontro de Coros"
+              className="h-7 w-full object-contain object-left"
+            />
           </span>
           <div className="min-w-0 leading-tight">
             <p className="truncate text-[13px] font-bold tracking-tight sm:text-sm">{brandLabel}</p>

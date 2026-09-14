@@ -34,6 +34,9 @@ describe("InternalAppShell", () => {
       "aria-current",
       "page",
     );
+    expect(
+      screen.getByRole("img", { name: "Logo do II Encontro de Coros" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("internal-topbar")).toHaveClass("bg-brand-ink");
     expect(desktopNavigation.closest("aside")).toHaveClass("bg-brand-ink");
   });
