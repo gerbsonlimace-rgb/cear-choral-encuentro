@@ -9,7 +9,6 @@ import {
   QrCode,
   ShoppingBag,
   Sparkles,
-  Ticket,
   Utensils,
 } from "lucide-react";
 
@@ -84,36 +83,51 @@ export function RegistrationCallout() {
           </div>
           <div className="rounded-[2rem] border-2 border-black bg-black p-6 text-white shadow-[10px_10px_0_rgba(255,255,255,0.45)] sm:p-8">
             <p className="text-center text-xs font-extrabold uppercase tracking-[0.18em] text-[#ffc400]">
-              Garanta sua participação
+              Escolha como participar
             </p>
-            <p className="mt-4 text-center font-display text-5xl font-extrabold tracking-tight sm:text-6xl">
-              <span className="mr-2 text-2xl font-semibold">R$</span>300,00
-            </p>
-
             <div
-              role="region"
-              aria-label="Programa de venda de rifas"
-              className="mt-5 rounded-2xl border-2 border-[#ffc400] bg-[#ffc400] p-4 text-black"
+              role="group"
+              aria-label="Opções de inscrição"
+              className="mt-5 grid items-stretch gap-3 sm:grid-cols-2"
             >
-              <div className="flex items-start gap-3">
-                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-black text-[#ffc400]">
-                  <Ticket className="size-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-sm font-extrabold uppercase tracking-wide">
-                    Programa de venda de rifas
-                  </p>
-                  <p className="mt-2 text-sm font-semibold leading-relaxed">
-                    Pague R$ 100,00 agora para fazer sua pré-inscrição.
-                  </p>
-                  <p className="mt-1 text-sm leading-relaxed text-black/70">
-                    Envie o valor restante arrecadado com as rifas até 30/10.
-                  </p>
+              <article
+                aria-label="Opção A: inscrição integral"
+                className="flex h-full flex-col rounded-2xl border-2 border-white/20 bg-white/10 p-4 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#ffc400] text-sm font-extrabold text-black">
+                    A
+                  </span>
+                  <p className="text-sm font-extrabold">Inscrição integral</p>
                 </div>
-              </div>
-              <p className="mt-3 border-t border-black/15 pt-3 text-xs font-bold leading-relaxed text-black/70">
-                Exclusivo para membros de coros que aderiram ao programa. Procure seu regente.
-              </p>
+                <p className="mt-4 font-display text-3xl font-extrabold tracking-tight">
+                  R$ 300,00
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-white/70">
+                  Pague agora via Pix ou cartão em até <strong className="text-white">5x</strong>.
+                </p>
+              </article>
+
+              <article
+                aria-label="Opção B: programa de rifas"
+                className="flex h-full flex-col rounded-2xl border-2 border-[#ffc400] bg-[#ffc400] p-4 text-left text-black"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex size-8 items-center justify-center rounded-lg bg-black text-sm font-extrabold text-[#ffc400]">
+                    B
+                  </span>
+                  <p className="text-sm font-extrabold">Programa de rifas</p>
+                </div>
+                <p className="mt-4 font-display text-3xl font-extrabold tracking-tight">
+                  R$ 100,00 agora
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-black/70">
+                  + valor restante com a venda de rifas até 30/10.
+                </p>
+                <p className="mt-auto pt-3 text-xs font-bold leading-relaxed text-black/70">
+                  Exclusivo para membros de coros que aderiram ao programa. Procure seu regente.
+                </p>
+              </article>
             </div>
 
             <div
@@ -133,7 +147,7 @@ export function RegistrationCallout() {
                   <CreditCard className="size-5" aria-hidden="true" />
                 </span>
                 <p className="mt-3 font-extrabold">Cartão</p>
-                <p className="mt-0.5 text-sm text-white/65">Em até 6x</p>
+                <p className="mt-0.5 text-sm text-white/65">Em até 5x</p>
               </div>
             </div>
 
