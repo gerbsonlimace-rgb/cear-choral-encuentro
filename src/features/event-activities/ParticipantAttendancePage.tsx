@@ -39,9 +39,14 @@ export function ParticipantAttendancePage({
   const [dashboard, setDashboard] = useState<ParticipantAttendanceDashboard | null>(null);
   const video = useRef<HTMLVideoElement>(null);
   const abort = useRef<AbortController | null>(null);
+  const dashboardRequest = useRef(0);
 
   const refreshDashboard = useCallback(async () => {
-    try { setDashboard(await loadDashboard()); } catch { /* Check-in stays usable if the summary is temporarily unavailable. */ }
+    const request = ++dashboardRequest.current;
+    try {
+      const updated = await loadDashboard();
+      if (request === dashboardRequest.current) setDashboard(updated);
+    } catch { /* Check-in stays usable if the summary is temporarily unavailable. */ }
   }, [loadDashboard]);
 
   const confirm = useCallback(async (signedToken: string) => {

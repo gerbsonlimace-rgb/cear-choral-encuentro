@@ -13,6 +13,28 @@ const normalize = (value: string) =>
     .toLowerCase()
     .replace(/\s+/g, " ");
 const migration = existsSync(migrationPath) ? normalize(readFileSync(migrationPath, "utf8")) : "";
+const unrestrictedAttendance = normalize(readFileSync(resolve(
+  process.cwd(), "supabase/migrations/20260914052311_allow_attendance_outside_activity_hours.sql",
+), "utf8"));
+
+describe("attendance outside activity hours", () => {
+  it("replaces the RPC without restricting check-in by activity date or time", () => {
+    expect(unrestrictedAttendance).toContain("create or replace function public.record_event_activity_attendance");
+    expect(unrestrictedAttendance).not.toContain("event_attendance_outside_window");
+    expect(unrestrictedAttendance).not.toContain("window_starts_at");
+    expect(unrestrictedAttendance).not.toContain("window_ends_at");
+  });
+
+  it("preserves access checks, location freshness and duplicate protection", () => {
+    for (const rule of [
+      "activity.requires_qr = false", "activity.qr_version <> p_qr_version",
+      "participant.access_status <> 'active'", "registration.payment_status <> 'paid'",
+      "interval '2 minutes'", "interval '30 seconds'", "p_accuracy_meters > 100",
+      "activity.radius_meters", "on conflict (activity_id, participant_account_id) do nothing",
+      "already_recorded", "from public, anon, authenticated", "to service_role",
+    ]) expect(unrestrictedAttendance).toContain(rule);
+  });
+});
 
 describe("event activity attendance migration", () => {
   it("creates private activity and attendance tables", () => {
