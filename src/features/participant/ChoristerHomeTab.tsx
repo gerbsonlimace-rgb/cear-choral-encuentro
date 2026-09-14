@@ -7,6 +7,7 @@ import {
   Music2,
   Play,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -112,8 +113,8 @@ export function ChoristerHomeTab({
 
       <ChoristerNotices loadNotices={loadNotices} />
 
-      <a
-        href="/participante/minha-foto"
+      <Link
+        to="/participante/minha-foto"
         className="flex min-h-20 items-center gap-3 rounded-2xl bg-[#ffc400] p-4 text-left text-black transition-colors hover:bg-[#f2ba00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
       >
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-black text-[#ffc400]">
@@ -126,7 +127,7 @@ export function ChoristerHomeTab({
           </span>
         </span>
         <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
-      </a>
+      </Link>
 
       {onNavigate && (
         <section aria-labelledby="home-shortcuts-title" className="space-y-3">
