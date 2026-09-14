@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { QuixadaRegistrationArtwork } from "./QuixadaRegistrationArtwork";
 
 export function RegistrationCallout() {
   return (
@@ -118,12 +119,7 @@ export function RegistrationCallout() {
           </a>
         </div>
       </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none relative mt-4 h-44 bg-[url('/photo-art/quixada-sacra.png')] bg-[length:680px_auto] bg-left-bottom bg-no-repeat sm:h-56 sm:bg-[length:100%_auto] lg:h-72"
-      >
-        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#fcf6e9] to-transparent" />
-      </div>
+      <QuixadaRegistrationArtwork />
     </section>
   );
 }
