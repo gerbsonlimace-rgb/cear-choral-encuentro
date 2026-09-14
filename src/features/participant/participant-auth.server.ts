@@ -7,12 +7,13 @@ import {
   type ParticipantRegistrationView,
 } from "@/features/participant/participant.domain";
 import { voicePartSchema } from "@/features/registration/registration.domain";
+import { deriveRegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const registrationPhotoBucket = "registration-photos";
 const participantRegistrationColumns =
-  "id,amount_cents,birth_date,choir_name,city,cpf,diocese,email,installments,institution,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,role,standard_price_cents,voice_part" as const;
+  "id,amount_cents,birth_date,choir_id,choir_name,city,cpf,diocese,email,installments,institution,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,role,standard_price_cents,voice_part" as const;
 
 type RegistrationRow = Database["public"]["Tables"]["registrations"]["Row"];
 type ParticipantRegistrationSource = Pick<
@@ -21,6 +22,7 @@ type ParticipantRegistrationSource = Pick<
   | "amount_cents"
   | "birth_date"
   | "choir_name"
+  | "choir_id"
   | "city"
   | "cpf"
   | "diocese"
@@ -60,6 +62,8 @@ export type ParticipantAccessRepository = {
   findAccessByUserId(userId: string): Promise<ParticipantAccessRecord | null>;
   loadPaidRegistration(registrationId: string): Promise<ParticipantRegistrationSource | null>;
   createPhotoUrl(photoPath: string): Promise<string | null>;
+  loadActiveRegentNames(choirId: string | null): Promise<string[]>;
+  loadConfirmedComplementCents(registrationId: string): Promise<number>;
 };
 
 type ParticipantAuthorizer = {
@@ -117,6 +121,26 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
         throw new Error("Não foi possível carregar os dados da inscrição.");
       }
 
+      const [regentsResult, complementResult] = await Promise.allSettled([
+        repository.loadActiveRegentNames(row.choir_id),
+        repository.loadConfirmedComplementCents(row.id),
+      ]);
+      const regentNames = regentsResult.status === "fulfilled" ? regentsResult.value : [];
+      const financialState =
+        complementResult.status === "fulfilled"
+          ? deriveRegistrationFinancialState({
+              paymentStatus: "paid",
+              initialAmountCents: row.amount_cents,
+              pricingType:
+                row.pricing_type === "standard" || row.pricing_type === "promotional"
+                  ? row.pricing_type
+                  : null,
+              standardPriceCents: row.standard_price_cents,
+              registrationPriceCents: row.registration_price_cents,
+              confirmedComplementCents: complementResult.value,
+            })
+          : null;
+
       let photoUrl: string | null | undefined;
       if (row.photo_path) {
         try {
@@ -138,6 +162,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
           },
           registration: {
             choirName: row.choir_name,
+            regentNames,
             diocese: row.diocese,
             ...(row.city === null ? {} : { city: row.city }),
             ...(row.institution === null ? {} : { institution: row.institution }),
@@ -145,7 +170,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
             ...(row.voice_part === null
               ? {}
               : { voicePart: voicePartSchema.parse(row.voice_part) }),
-            
+
             ...(row.pricing_type === null
               ? {}
               : { pricingType: requirePricingType(row.pricing_type) }),
@@ -158,6 +183,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
           },
           payment: {
             status: "paid",
+            financialState,
             ...(row.amount_cents === null ? {} : { amountCents: row.amount_cents }),
             ...(row.paid_amount_cents === null ? {} : { paidAmountCents: row.paid_amount_cents }),
             ...(row.payment_method === null
@@ -221,6 +247,40 @@ export function createSupabaseParticipantRepository(): ParticipantAccessReposito
       return data;
     },
 
+    async loadActiveRegentNames(choirId) {
+      if (!choirId) return [];
+      const { data, error } = await supabaseAdmin
+        .from("choir_regents")
+        .select("name")
+        .eq("choir_id", choirId)
+        .is("revoked_at", null)
+        .order("name");
+      checkParticipantQuery(error);
+      return [...new Set((data ?? []).map((row) => row.name.trim()).filter(Boolean))];
+    },
+
+    async loadConfirmedComplementCents(registrationId) {
+      let total = 0;
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("registration_complement_payments")
+          .select("amount_cents")
+          .eq("registration_id", registrationId)
+          .eq("status", "paid")
+          .order("id")
+          .range(offset, offset + pageSize - 1);
+        checkParticipantQuery(error);
+        for (const row of data ?? []) {
+          if (!Number.isSafeInteger(row.amount_cents) || row.amount_cents < 0) {
+            throw new Error("Não foi possível consultar o saldo.");
+          }
+          total += row.amount_cents;
+        }
+        if ((data ?? []).length < pageSize) return total;
+      }
+    },
+
     async createPhotoUrl(photoPath) {
       const { data, error } = await supabaseAdmin.storage
         .from(registrationPhotoBucket)
@@ -234,7 +294,8 @@ export function createSupabaseParticipantRepository(): ParticipantAccessReposito
 let participantRepository: ParticipantAccessRepository | undefined;
 let participantAuthorizer: ReturnType<typeof createParticipantAuthorizer> | undefined;
 let participantRegistrationLoader:
-  ReturnType<typeof createParticipantRegistrationLoader> | undefined;
+  | ReturnType<typeof createParticipantRegistrationLoader>
+  | undefined;
 
 function getParticipantRepository() {
   if (!participantRepository) participantRepository = createSupabaseParticipantRepository();

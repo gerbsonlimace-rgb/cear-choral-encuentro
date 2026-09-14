@@ -1,19 +1,10 @@
-import {
-  CalendarDays,
-  Camera,
-  CheckCircle2,
-  ChevronRight,
-  Files,
-  Music2,
-  Play,
-} from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Files, Music2, Play } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 import type { ParticipantRegistrationView } from "./participant.domain";
+import { ChoristerWelcomeCard } from "./ChoristerWelcomeCard";
 import { ChoristerNotices } from "./ChoristerNotices";
 import type { EventNotice } from "@/features/event-notices/eventNotice.domain";
 
@@ -28,19 +19,6 @@ type ChoristerHomeTabProps = {
   onNavigate?: (tab: "cantos" | "documentos" | "guia") => void;
 };
 
-function getFirstName(name: string) {
-  return name.trim().split(/\s+/)[0] || "coralista";
-}
-
-function getInitials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 export function ChoristerHomeTab({
   participant,
   loadNotices,
@@ -48,68 +26,9 @@ export function ChoristerHomeTab({
   onContinuePlayback,
   onNavigate,
 }: ChoristerHomeTabProps) {
-  const [photoFailed, setPhotoFailed] = useState(false);
-
   return (
     <section aria-labelledby="chorister-home-title" className="space-y-6">
-      <header className="flex items-center gap-4 border-b border-zinc-200 pb-5">
-        <Avatar className="size-14 border border-zinc-200 bg-zinc-50 sm:size-16">
-          {participant.identity.photoUrl && !photoFailed ? (
-            <img
-              src={participant.identity.photoUrl}
-              alt={`Foto de ${participant.identity.name}`}
-              className="h-full w-full object-cover"
-              onError={() => setPhotoFailed(true)}
-            />
-          ) : (
-            <AvatarFallback
-              role="img"
-              aria-label="Foto não disponível"
-              className="bg-zinc-100 font-semibold text-zinc-700"
-            >
-              {getInitials(participant.identity.name)}
-            </AvatarFallback>
-          )}
-        </Avatar>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-zinc-500">Bem-vindo</p>
-          <h1
-            id="chorister-home-title"
-            className="truncate text-2xl font-semibold tracking-tight text-zinc-950"
-          >
-            {getFirstName(participant.identity.name)}
-          </h1>
-          <p className="mt-0.5 truncate text-sm text-zinc-600">
-            {participant.registration.choirName}
-          </p>
-        </div>
-      </header>
-
-      <section
-        aria-label="Status do acesso"
-        className="grid grid-cols-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white"
-      >
-        {[
-          ["Inscrição", "Confirmada"],
-          ["Pagamento", participant.payment.status === "paid" ? "Pago" : "Pendente"],
-          ["Acesso", "Liberado"],
-        ].map(([label, value], index) => (
-          <div
-            key={label}
-            className={
-              index > 0 ? "border-l border-zinc-100 px-2.5 py-4 sm:px-4" : "px-2.5 py-4 sm:px-4"
-            }
-          >
-            <p className="text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
-              {label}
-            </p>
-            <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-zinc-900">
-              <CheckCircle2 aria-hidden="true" className="size-3.5 text-emerald-600" />
-              {value}
-            </p>
-          </div>
-        ))}
-      </section>
+      <ChoristerWelcomeCard participant={participant} />
 
       <ChoristerNotices loadNotices={loadNotices} />
 
