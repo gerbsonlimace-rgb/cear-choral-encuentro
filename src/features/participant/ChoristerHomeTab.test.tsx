@@ -40,13 +40,15 @@ describe("ChoristerHomeTab welcome", () => {
     for (const text of [
       "Maria da Silva",
       "Coral Santa Cecília",
-      "João de Souza",
-      "Soprano",
       "Parcialmente pago",
       "Programa de rifas",
     ]) {
       expect(within(welcome).getByText(text)).toBeInTheDocument();
     }
+    expect(within(welcome).queryByText("João de Souza")).not.toBeInTheDocument();
+    expect(within(welcome).queryByText("Soprano")).not.toBeInTheDocument();
+    expect(within(welcome).queryByText("Regente")).not.toBeInTheDocument();
+    expect(within(welcome).queryByText("Meu naipe")).not.toBeInTheDocument();
     expect(within(welcome).getByText(/80,00/)).toBeInTheDocument();
     expect(
       within(welcome).getByRole("progressbar", { name: "Pagamento da inscrição" }),
@@ -102,7 +104,7 @@ describe("ChoristerHomeTab welcome", () => {
       />,
     );
     expect(screen.getByText("Saldo indisponível")).toBeInTheDocument();
-    expect(screen.getAllByText("Não informado")).toHaveLength(2);
+    expect(screen.queryByText("Não informado")).not.toBeInTheDocument();
     expect(screen.queryByText("Pago")).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
