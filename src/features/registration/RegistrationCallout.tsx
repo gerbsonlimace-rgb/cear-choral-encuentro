@@ -7,7 +7,6 @@ import {
   CreditCard,
   MessageCircle,
   Music2,
-  QrCode,
   ShoppingBag,
   Sparkles,
   Ticket,
@@ -43,10 +42,10 @@ export function RegistrationCallout() {
               id="registration-callout-title"
               className="mt-4 max-w-xl font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl"
             >
-              Tudo o que você precisa para viver o encontro
+              Faça agora sua inscrição
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-black/70">
-              Três dias de música, formação e partilha. Sua inscrição inclui:
+              Escolha a melhor forma de participar:
             </p>
             <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
               {[
@@ -85,14 +84,14 @@ export function RegistrationCallout() {
               ))}
             </ul>
           </div>
-          <div className="rounded-3xl border border-black/90 bg-[#11100e] p-5 text-white shadow-[0_18px_40px_rgba(0,0,0,0.16)] sm:p-7">
+          <div className="rounded-3xl border border-black/90 bg-[#11100e] p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.16)] sm:p-8">
             <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-[#ffc400]">
-              Escolha como participar
+              Escolha sua forma de inscrição
             </p>
             <div
               role="radiogroup"
               aria-label="Opções de inscrição"
-              className="mt-5 grid grid-cols-2 items-stretch gap-3"
+              className="mt-6 grid grid-cols-2 items-stretch gap-3"
             >
               <button
                 type="button"
@@ -113,7 +112,7 @@ export function RegistrationCallout() {
                   <CreditCard className="size-4 text-[#ffc400]" aria-hidden="true" />
                   <p className="text-sm font-bold">Inscrição integral</p>
                 </div>
-                <p className="mt-4 font-display text-2xl font-bold tracking-tight">
+                <p className="mt-4 font-display text-3xl font-bold tracking-tight">
                   R$ 300,00
                 </p>
                 <p className="mt-2 text-xs leading-relaxed text-white/65">
@@ -140,7 +139,7 @@ export function RegistrationCallout() {
                   <Ticket className="size-4 text-[#ffc400]" aria-hidden="true" />
                   <p className="text-sm font-bold">Programa de rifas</p>
                 </div>
-                <p className="mt-4 font-display text-2xl font-bold tracking-tight">
+                <p className="mt-4 font-display text-3xl font-bold tracking-tight">
                   R$ 100,00 agora
                 </p>
                 <p className="mt-2 text-xs font-semibold leading-relaxed text-white/65">
@@ -152,35 +151,10 @@ export function RegistrationCallout() {
               </button>
             </div>
 
-            <div
-              role="group"
-              aria-label="Formas de pagamento"
-              className="mt-4 grid grid-cols-2 gap-2"
-            >
-              <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2.5 text-left">
-                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-[#ffc400]/90 text-black">
-                  <QrCode className="size-3.5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold">Pix</p>
-                  <p className="mt-0.5 text-[11px] text-white/55">À vista</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2.5 text-left">
-                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-[#ffc400]/90 text-black">
-                  <CreditCard className="size-3.5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold">Cartão</p>
-                  <p className="mt-0.5 text-[11px] text-white/55">Em até 5x</p>
-                </div>
-              </div>
-            </div>
-
             <Button
               asChild
               size="lg"
-              className="mt-5 min-h-12 w-full rounded-xl bg-[#ffc400] text-base font-bold text-black hover:bg-[#ffd336] focus-visible:ring-white"
+              className="mt-6 min-h-12 w-full rounded-xl bg-[#ffc400] text-base font-bold text-black hover:bg-[#ffd336] focus-visible:ring-white"
             >
               <Link to="/inscricao">
                 Inscrever-se agora

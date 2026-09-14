@@ -203,7 +203,7 @@ describe("landing page access", () => {
     ).toHaveAttribute("href", "https://wa.me/5585999033232");
   });
 
-  it("presents Pix and card as distinct payment options without landscape artwork", async () => {
+  it("presents equal selectable registration options without payment method cards", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
@@ -212,13 +212,13 @@ describe("landing page access", () => {
     expect(registration).not.toBeNull();
     expect(registration!.querySelector("img")).toBeNull();
 
-    const paymentOptions = within(registration!).getByRole("group", {
-      name: "Formas de pagamento",
-    });
-    expect(within(paymentOptions).getByText("Pix")).toBeVisible();
-    expect(within(paymentOptions).getByText("À vista")).toBeVisible();
-    expect(within(paymentOptions).getByText("Cartão")).toBeVisible();
-    expect(within(paymentOptions).getByText("Em até 5x")).toBeVisible();
+    expect(
+      within(registration!).getByRole("heading", { name: "Faça agora sua inscrição" }),
+    ).toBeVisible();
+    expect(within(registration!).getByText("Escolha a melhor forma de participar:")).toBeVisible();
+    expect(
+      within(registration!).queryByRole("group", { name: "Formas de pagamento" }),
+    ).not.toBeInTheDocument();
 
     const options = within(registration!).getByRole("radiogroup", {
       name: "Opções de inscrição",
