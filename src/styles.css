@@ -163,7 +163,7 @@
 
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 7.5rem;
+    scroll-padding-top: 4rem;
   }
 
   body {
@@ -172,6 +172,12 @@
     font-family: var(--font-body);
     line-height: 1.6;
     overflow-x: hidden;
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 4.5rem;
+    }
   }
 
   h1,

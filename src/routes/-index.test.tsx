@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
@@ -7,12 +8,72 @@ const { getPublicEventProgrammeMock, programmeFixture } = vi.hoisted(() => {
   const programmeFixture = {
     status: "ready" as const,
     activities: [
-      { id: "1", title: "Credenciamento", activityDate: "2026-11-20", startsAt: "16:00", endsAt: "18:00", location: null, description: null, category: "welcome" as const, sortOrder: 10 },
-      { id: "2", title: "Completas", activityDate: "2026-11-20", startsAt: null, endsAt: null, location: null, description: null, category: "celebration" as const, sortOrder: 20 },
-      { id: "3", title: "Jantar", activityDate: "2026-11-20", startsAt: "18:30", endsAt: null, location: null, description: null, category: "meal" as const, sortOrder: 30 },
-      { id: "4", title: "Conferência", activityDate: "2026-11-21", startsAt: "09:00", endsAt: "10:00", location: null, description: null, category: "conference" as const, sortOrder: 10 },
-      { id: "5", title: "Ensaio", activityDate: "2026-11-21", startsAt: "11:30", endsAt: null, location: null, description: null, category: "music" as const, sortOrder: 20 },
-      { id: "6", title: "Visita", activityDate: "2026-11-21", startsAt: "16:00", endsAt: null, location: null, description: null, category: "visit" as const, sortOrder: 30 },
+      {
+        id: "1",
+        title: "Credenciamento",
+        activityDate: "2026-11-20",
+        startsAt: "16:00",
+        endsAt: "18:00",
+        location: null,
+        description: null,
+        category: "welcome" as const,
+        sortOrder: 10,
+      },
+      {
+        id: "2",
+        title: "Completas",
+        activityDate: "2026-11-20",
+        startsAt: null,
+        endsAt: null,
+        location: null,
+        description: null,
+        category: "celebration" as const,
+        sortOrder: 20,
+      },
+      {
+        id: "3",
+        title: "Jantar",
+        activityDate: "2026-11-20",
+        startsAt: "18:30",
+        endsAt: null,
+        location: null,
+        description: null,
+        category: "meal" as const,
+        sortOrder: 30,
+      },
+      {
+        id: "4",
+        title: "Conferência",
+        activityDate: "2026-11-21",
+        startsAt: "09:00",
+        endsAt: "10:00",
+        location: null,
+        description: null,
+        category: "conference" as const,
+        sortOrder: 10,
+      },
+      {
+        id: "5",
+        title: "Ensaio",
+        activityDate: "2026-11-21",
+        startsAt: "11:30",
+        endsAt: null,
+        location: null,
+        description: null,
+        category: "music" as const,
+        sortOrder: 20,
+      },
+      {
+        id: "6",
+        title: "Visita",
+        activityDate: "2026-11-21",
+        startsAt: "16:00",
+        endsAt: null,
+        location: null,
+        description: null,
+        category: "visit" as const,
+        sortOrder: 30,
+      },
     ],
   };
   return {
@@ -74,9 +135,9 @@ beforeAll(() => {
 
 describe("landing page program", () => {
   it("loads the public programme endpoint without requiring a portal session", async () => {
-    await expect(
-      (Route.options.loader as () => Promise<typeof programmeFixture>)(),
-    ).resolves.toBe(programmeFixture);
+    await expect((Route.options.loader as () => Promise<typeof programmeFixture>)()).resolves.toBe(
+      programmeFixture,
+    );
     expect(getPublicEventProgrammeMock).toHaveBeenCalledOnce();
   });
 
@@ -132,6 +193,46 @@ describe("landing page access", () => {
     );
     expect(screen.getAllByRole("link", { name: "Acessar portal" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Inscrever" })).toHaveAttribute("href", "#inscricao");
+  });
+
+  it("keeps the mobile header as one navigation surface with a visible brand", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const header = screen.getByRole("banner");
+    const brand = within(header).getByRole("img", {
+      name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
+    });
+
+    expect(brand).not.toHaveClass("opacity-0");
+    expect(within(header).getByRole("button", { name: "Abrir menu" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Atalhos mobile" })).not.toBeInTheDocument();
+  });
+
+  it("opens the mobile menu with section links and portal access", async () => {
+    const user = userEvent.setup();
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    await user.click(
+      within(screen.getByRole("banner")).getByRole("button", { name: "Abrir menu" }),
+    );
+
+    const menu = await screen.findByRole("dialog", { name: "Menu principal" });
+    expect(within(menu).getByRole("link", { name: "Sobre" })).toHaveAttribute("href", "#sobre");
+    expect(within(menu).getByRole("link", { name: "Programação" })).toHaveAttribute(
+      "href",
+      "#programacao",
+    );
+    expect(within(menu).getByRole("link", { name: "Quixadá" })).toHaveAttribute("href", "#quixada");
+    expect(within(menu).getByRole("link", { name: "Inscrição" })).toHaveAttribute(
+      "href",
+      "#inscricao",
+    );
+    expect(within(menu).getByRole("link", { name: "Acessar portal" })).toHaveAttribute(
+      "href",
+      "/acessar",
+    );
   });
 });
 
@@ -232,9 +333,7 @@ describe("landing page sponsors", () => {
     const organisation = screen
       .getByRole("img", { name: "Coro Diocesano de Quixadá" })
       .closest("article");
-    const support = screen
-      .getByRole("img", { name: "Diocese de Quixadá" })
-      .closest("article");
+    const support = screen.getByRole("img", { name: "Diocese de Quixadá" }).closest("article");
 
     expect(organisation).not.toBeNull();
     expect(support).not.toBeNull();

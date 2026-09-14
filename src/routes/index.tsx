@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
 import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
@@ -10,6 +9,15 @@ import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
 import { PublicSponsorsSection } from "@/features/sponsors/PublicSponsorsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Carousel,
   CarouselContent,
@@ -27,6 +35,7 @@ import {
   Calendar,
   Church,
   MapPin,
+  Menu,
   Mic2,
   Music2,
   Users,
@@ -129,17 +138,6 @@ function Index() {
   );
 }
 function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const updateHeader = () => setIsScrolled(window.scrollY > 80);
-
-    updateHeader();
-    window.addEventListener("scroll", updateHeader, { passive: true });
-
-    return () => window.removeEventListener("scroll", updateHeader);
-  }, []);
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
       <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
@@ -150,19 +148,14 @@ function Header() {
           <img
             src={logoImageLight}
             alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-            className={`h-9 w-auto shrink-0 transition-all duration-300 sm:h-11 sm:opacity-100 ${
-              isScrolled ? "scale-100 opacity-100" : "scale-75 opacity-0"
-            }`}
+            className="h-9 w-auto shrink-0 sm:h-11"
           />
-          <span
-            className={`truncate transition-opacity duration-300 sm:opacity-100 ${
-              isScrolled ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            II ECD-NE1
-          </span>
+          <span className="truncate">II ECD-NE1</span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-semibold lg:flex">
+        <nav
+          aria-label="Navegação principal"
+          className="hidden items-center gap-6 text-sm font-semibold lg:flex"
+        >
           <a href="#sobre" className="text-muted-foreground transition-colors hover:text-teal">
             Sobre
           </a>
@@ -184,45 +177,71 @@ function Header() {
             asChild
             variant="outline"
             size="sm"
-            className="h-10 min-h-10 rounded-full px-3 text-xs font-bold sm:h-11 sm:px-4 sm:text-sm lg:h-10"
+            className="hidden h-10 min-h-10 rounded-full px-3 text-xs font-bold sm:px-4 sm:text-sm lg:inline-flex lg:h-10"
           >
             <Link to="/acessar">Acessar portal</Link>
           </Button>
           <Button
             asChild
             size="sm"
-            className="h-10 min-h-10 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
+            className="h-10 min-h-10 rounded-full bg-amber px-3 text-xs font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 sm:text-sm lg:h-10"
           >
             <a href="#inscricao">Inscrever</a>
           </Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Abrir menu"
+                className="size-10 shrink-0 rounded-full border-teal/20 text-teal hover:bg-teal/10 hover:text-teal lg:hidden"
+              >
+                <Menu className="size-5" aria-hidden="true" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              aria-label="Menu principal"
+              className="w-[min(88vw,22rem)] border-teal/10 bg-background px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6"
+            >
+              <SheetHeader className="pr-8 text-left">
+                <SheetTitle className="font-display text-xl font-extrabold">
+                  Menu principal
+                </SheetTitle>
+                <SheetDescription>Explore o encontro ou acesse sua inscrição.</SheetDescription>
+              </SheetHeader>
+              <nav aria-label="Navegação mobile" className="mt-6 grid gap-2">
+                {[
+                  ["Sobre", "#sobre"],
+                  ["Programação", "#programacao"],
+                  ["Quixadá", "#quixada"],
+                  ["Inscrição", "#inscricao"],
+                ].map(([label, href]) => (
+                  <SheetClose key={href} asChild>
+                    <a
+                      href={href}
+                      className="flex min-h-12 items-center rounded-xl border border-border px-4 text-base font-bold text-foreground transition-colors hover:border-teal hover:bg-teal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                    >
+                      {label}
+                    </a>
+                  </SheetClose>
+                ))}
+              </nav>
+              <div className="mt-6 border-t border-border pt-5">
+                <SheetClose asChild>
+                  <Link
+                    to="/acessar"
+                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-teal px-4 text-base font-bold text-teal transition-colors hover:bg-teal hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                  >
+                    Acessar portal
+                  </Link>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-      <nav
-        aria-label="Atalhos mobile"
-        className="scrollbar-none flex gap-1.5 overflow-x-auto border-t border-teal/10 px-4 py-2 text-xs font-bold text-muted-foreground sm:gap-2 lg:hidden"
-      >
-        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10">
-          Sobre
-        </a>
-        <a
-          href="#quixada"
-          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
-        >
-          Quixadá
-        </a>
-        <a
-          href="#programacao"
-          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
-        >
-          Programação
-        </a>
-        <a
-          href="#inscricao"
-          className="shrink-0 rounded-full bg-amber px-4 py-2.5 text-amber-foreground active:bg-amber/80"
-        >
-          Inscrição
-        </a>
-      </nav>
     </header>
   );
 }
@@ -533,7 +552,6 @@ const quixadaSpots = [
     credit: "Foto: deltafrut / Wikimedia Commons",
   },
 ];
-
 
 const institutionalPartners = [
   { role: "Organização", name: "Coro Diocesano de Quixadá", logo: coroLogo },
