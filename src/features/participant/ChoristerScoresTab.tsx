@@ -2,6 +2,7 @@ import { Download, ExternalLink, FileText, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PdfCoverPreview } from "@/components/PdfCoverPreview";
 import {
   isSignedUrlExpired,
   type ChoristerPortalFeed,
@@ -341,8 +342,19 @@ export function ChoristerScoresTab({
                 key={asset.id}
                 className="flex min-h-44 flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4"
               >
-                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-                  <FileText aria-hidden="true" className="size-10 text-zinc-400" />
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 pb-3 text-center">
+                  <PdfCoverPreview
+                    sourceKey={`${asset.id}:${asset.signedUrl}`}
+                    title={asset.title}
+                    getUrl={async () => {
+                      if (!isSignedUrlExpired(asset.expiresAt)) return asset.signedUrl;
+                      const refreshed = await onOpen(asset);
+                      if (!isRefreshedAsset(refreshed) || isSignedUrlExpired(refreshed.expiresAt)) {
+                        throw new Error("Acesso ao PDF expirado.");
+                      }
+                      return refreshed.signedUrl;
+                    }}
+                  />
                   <div>
                     <p className="text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
                       {asset.kind === "manual" ? "Guia / manual" : "Documento"}

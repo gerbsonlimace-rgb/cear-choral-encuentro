@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { ExternalLink, FileText, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { PdfCoverPreview } from "@/components/PdfCoverPreview";
 
 import {
   AlertDialog,
@@ -336,10 +337,14 @@ export function AdminDocumentsPage({
                 {data.documents.map((document) => (
                   <Card key={document.id}>
                     <CardContent className="flex h-full flex-col gap-4 p-4">
+                      <PdfCoverPreview
+                        sourceKey={`${document.id}:${document.storagePath}:${document.updatedAt}`}
+                        title={document.title}
+                        getUrl={async () =>
+                          (await getDocumentUrl({ data: { id: document.id } })).signedUrl
+                        }
+                      />
                       <div className="flex gap-3">
-                        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                          <FileText aria-hidden="true" className="size-5" />
-                        </div>
                         <div className="min-w-0">
                           <h3 className="font-semibold leading-tight">{document.title}</h3>
                           <p className="mt-1 truncate text-xs text-muted-foreground">
