@@ -9,6 +9,7 @@ import {
   QrCode,
   ShoppingBag,
   Sparkles,
+  Ticket,
   Utensils,
 } from "lucide-react";
 
@@ -88,6 +89,32 @@ export function RegistrationCallout() {
             <p className="mt-4 text-center font-display text-5xl font-extrabold tracking-tight sm:text-6xl">
               <span className="mr-2 text-2xl font-semibold">R$</span>300,00
             </p>
+
+            <div
+              role="region"
+              aria-label="Programa de venda de rifas"
+              className="mt-5 rounded-2xl border-2 border-[#ffc400] bg-[#ffc400] p-4 text-black"
+            >
+              <div className="flex items-start gap-3">
+                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-black text-[#ffc400]">
+                  <Ticket className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-wide">
+                    Programa de venda de rifas
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-relaxed">
+                    Pague R$ 100,00 agora para fazer sua pré-inscrição.
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-black/70">
+                    Envie o valor restante arrecadado com as rifas até 30/10.
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 border-t border-black/15 pt-3 text-xs font-bold leading-relaxed text-black/70">
+                Exclusivo para membros de coros que aderiram ao programa. Procure seu regente.
+              </p>
+            </div>
 
             <div
               role="group"

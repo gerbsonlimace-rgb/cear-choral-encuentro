@@ -218,6 +218,19 @@ describe("landing page access", () => {
     expect(within(paymentOptions).getByText("À vista")).toBeVisible();
     expect(within(paymentOptions).getByText("Cartão")).toBeVisible();
     expect(within(paymentOptions).getByText("Em até 6x")).toBeVisible();
+
+    const raffleProgram = within(registration!).getByRole("region", {
+      name: "Programa de venda de rifas",
+    });
+    expect(
+      within(raffleProgram).getByText("Pague R$ 100,00 agora para fazer sua pré-inscrição."),
+    ).toBeVisible();
+    expect(
+      within(raffleProgram).getByText(
+        "Envie o valor restante arrecadado com as rifas até 30/10.",
+      ),
+    ).toBeVisible();
+    expect(within(raffleProgram).getByText(/Exclusivo para membros de coros/)).toBeVisible();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
