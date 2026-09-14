@@ -378,6 +378,16 @@
   max-height: min(42svh, 32rem);
   margin-inline: auto;
 }
+.photo-art-workspace .photo-art-preview { margin-top: .5rem; }
+.photo-art-preview .photo-art-stage {
+  height: clamp(18rem, calc(100svh - 16rem), 42rem);
+}
+.photo-art-preview .photo-art-stage canvas {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
 
 @media (min-width: 1024px) {
   .photo-art-editor { row-gap: 1.5rem; }

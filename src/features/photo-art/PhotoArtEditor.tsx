@@ -37,9 +37,9 @@ type TemplateAssets = {
   overlay: HTMLImageElement;
 };
 
-type WizardStep = 1 | 2 | 3 | 4;
+type WizardStep = 1 | 2 | 3;
 
-const STEP_LABELS = ["Arte", "Foto", "Ajuste", "Publicar"] as const;
+const STEP_LABELS = ["Arte", "Foto e ajuste", "Publicar"] as const;
 
 const STEP_CONTENT: Record<WizardStep, { title: string; description: string }> = {
   1: {
@@ -47,14 +47,10 @@ const STEP_CONTENT: Record<WizardStep, { title: string; description: string }> =
     description: "A moldura, a frase e o formato de Story já estão prontos.",
   },
   2: {
-    title: "Insira sua foto",
-    description: "Escolha uma foto nítida. Ela será usada somente neste dispositivo.",
+    title: "Foto e ajuste",
+    description: "Insira, aumente e arraste sua foto na própria moldura.",
   },
   3: {
-    title: "Ajuste o enquadramento",
-    description: "Aumente e arraste a foto até ficar do jeito que você quer.",
-  },
-  4: {
     title: "Sua arte está pronta",
     description: "Baixe ou publique seu Story pelo menu de compartilhamento do celular.",
   },
@@ -153,7 +149,7 @@ export function PhotoArtEditor() {
   }
 
   function startDrag(event: PointerEvent<HTMLCanvasElement>) {
-    if (!photo || step !== 3) return;
+    if (!photo || step !== 2) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       pointerId: event.pointerId,
@@ -187,7 +183,7 @@ export function PhotoArtEditor() {
   function goForward() {
     setError(null);
     setNotice(null);
-    setStep((current) => Math.min(4, current + 1) as WizardStep);
+    setStep((current) => Math.min(3, current + 1) as WizardStep);
   }
 
   function download() {
@@ -222,14 +218,18 @@ export function PhotoArtEditor() {
           <p className="text-xs font-extrabold tracking-[0.15em] text-[#9b7900] uppercase">
             Minha foto do encontro
           </p>
-          <p className="mt-2 text-xs font-extrabold text-zinc-500">Etapa {step} de 4</p>
+          <p className="mt-2 text-xs font-extrabold text-zinc-500">Etapa {step} de 3</p>
           <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl">
             {stepContent.title}
           </h1>
-          <p className="mt-1.5 text-sm leading-5 text-zinc-600">{stepContent.description}</p>
+          <p
+            className={`mt-1.5 text-sm leading-5 text-zinc-600 ${step > 1 ? "hidden sm:block" : ""}`}
+          >
+            {stepContent.description}
+          </p>
         </header>
 
-        <ol aria-label="Progresso da criação" className="mt-4 grid grid-cols-4 gap-1.5">
+        <ol aria-label="Progresso da criação" className="mt-3 grid grid-cols-3 gap-1.5">
           {STEP_LABELS.map((label, index) => {
             const itemStep = (index + 1) as WizardStep;
             const complete = itemStep < step;
@@ -294,7 +294,7 @@ export function PhotoArtEditor() {
           </fieldset>
         </div>
       ) : (
-        <div className="photo-art-workspace mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-9">
+        <div className="photo-art-workspace mt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-9">
           <div className="photo-art-preview mx-auto w-full max-w-[28rem] lg:sticky lg:top-20">
             <div className="mb-2 flex items-center justify-between gap-3">
               <div>
@@ -302,92 +302,94 @@ export function PhotoArtEditor() {
                   Story 9:16
                 </p>
                 <p className="text-xs text-zinc-600">
-                  {step === 2 && (photo ? "Foto inserida" : "Exemplo pronto da arte")}
-                  {step === 3 && "Arraste para reposicionar"}
-                  {step === 4 && "Pronta para publicar"}
+                  {step === 2 && (photo ? "Arraste para reposicionar" : "Insira sua foto")}
+                  {step === 3 && "Pronta para publicar"}
                 </p>
               </div>
-              {step === 3 && photo && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-10 rounded-full"
-                  onClick={() => setAdjustment(DEFAULT_ADJUSTMENT)}
-                >
-                  <RotateCcw aria-hidden="true" className="size-4" />
-                  Centralizar
-                </Button>
-              )}
             </div>
 
-            <div className="relative flex max-h-[32rem] items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:max-h-[72vh] lg:p-2">
+            <div className="photo-art-stage relative flex items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:p-2">
               <canvas
                 ref={canvasRef}
                 aria-label="Prévia da arte pronta com sua foto"
-                className={`block max-h-full max-w-full rounded-xl bg-white object-contain [aspect-ratio:9/16] ${step === 3 && photo ? "cursor-move touch-none" : ""}`}
+                className={`block max-h-full max-w-full rounded-xl bg-white object-contain [aspect-ratio:9/16] ${step === 2 && photo ? "cursor-move touch-none" : ""}`}
                 onPointerDown={startDrag}
                 onPointerMove={movePhoto}
                 onPointerUp={stopDrag}
                 onPointerCancel={stopDrag}
               />
               {loadingArt && (
-                <div className="absolute inset-1.5 grid place-items-center rounded-xl bg-white/85">
+                <div className="absolute inset-1.5 z-30 grid place-items-center rounded-xl bg-white/85">
                   <LoaderCircle aria-hidden="true" className="size-7 animate-spin text-[#b88e00]" />
                   <span className="sr-only">Carregando arte</span>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="pointer-events-none absolute inset-2 z-20 flex flex-col justify-between">
+                  <div className="flex items-start justify-between gap-2">
+                    <label className="pointer-events-auto inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-[#ffc400] px-4 py-2 text-xs font-extrabold text-black shadow-lg focus-within:ring-2 focus-within:ring-black focus-within:ring-offset-2">
+                      <ImagePlus aria-hidden="true" className="size-4" />
+                      {photo ? "Trocar foto" : "Inserir foto"}
+                      <input
+                        type="file"
+                        aria-label="Inserir minha foto"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        className="sr-only"
+                        onChange={handlePhoto}
+                      />
+                    </label>
+                    {photo && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="pointer-events-auto min-h-11 rounded-full bg-white/95 px-3 font-extrabold shadow-lg"
+                        onClick={() => setAdjustment(DEFAULT_ADJUSTMENT)}
+                      >
+                        <RotateCcw aria-hidden="true" className="size-4" />
+                        Centralizar
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="pointer-events-auto rounded-xl bg-black/80 px-3 py-2.5 text-white shadow-xl backdrop-blur">
+                    <div className="flex items-center justify-between gap-3">
+                      <label
+                        className="flex items-center gap-1.5 text-xs font-extrabold"
+                        htmlFor="photo-zoom"
+                      >
+                        <Move aria-hidden="true" className="size-4" />
+                        Tamanho da foto
+                      </label>
+                      <span className="text-[10px] text-white/75">
+                        {photo ? "Arraste para mover" : "Insira a foto para ajustar"}
+                      </span>
+                    </div>
+                    <input
+                      id="photo-zoom"
+                      type="range"
+                      min="1"
+                      max="2.5"
+                      step="0.05"
+                      value={adjustment.zoom}
+                      disabled={!photo}
+                      className="mt-1 h-7 w-full accent-[#ffc400] disabled:opacity-40"
+                      onChange={(event) =>
+                        setAdjustment((current) => ({
+                          ...current,
+                          zoom: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           <div className="photo-art-options mt-4 min-w-0 space-y-4 lg:mt-0">
-            {step === 2 && (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <label className="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#ffc400] px-5 py-3 text-sm font-extrabold text-black shadow-sm transition hover:bg-[#f2ba00] focus-within:ring-2 focus-within:ring-black focus-within:ring-offset-2">
-                  <ImagePlus aria-hidden="true" className="size-5" />
-                  {photo ? "Trocar foto" : "Inserir minha foto"}
-                  <input
-                    type="file"
-                    aria-label="Inserir minha foto"
-                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                    className="sr-only"
-                    onChange={handlePhoto}
-                  />
-                </label>
-                <p className="mt-2 text-center text-xs text-zinc-500">
-                  Sua foto permanece neste dispositivo.
-                </p>
-              </div>
-            )}
-
             {step === 3 && (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-extrabold text-zinc-950">
-                  <Move aria-hidden="true" className="size-4" />
-                  Ajuste sua foto
-                </div>
-                <label className="mt-4 block text-xs font-bold text-zinc-600" htmlFor="photo-zoom">
-                  Tamanho da foto
-                </label>
-                <input
-                  id="photo-zoom"
-                  type="range"
-                  min="1"
-                  max="2.5"
-                  step="0.05"
-                  value={adjustment.zoom}
-                  className="mt-2 h-7 w-full accent-black"
-                  onChange={(event) =>
-                    setAdjustment((current) => ({ ...current, zoom: Number(event.target.value) }))
-                  }
-                />
-                <p className="mt-2 text-xs leading-5 text-zinc-500">
-                  Arraste a foto na prévia para mover para os lados ou para cima e para baixo.
-                </p>
-              </div>
-            )}
-
-            {step === 4 && (
               <div className="rounded-2xl bg-[#fff4bf] p-4 ring-1 ring-[#e2bd23]">
                 <p className="font-display text-lg font-extrabold text-zinc-950">
                   Compartilhe nos Stories
@@ -440,7 +442,7 @@ export function PhotoArtEditor() {
           </Button>
         )}
 
-        {(step === 2 || step === 3) && (
+        {step === 2 && (
           <div className="mx-auto grid max-w-md grid-cols-[auto_1fr] gap-2">
             <Button
               type="button"
@@ -454,18 +456,18 @@ export function PhotoArtEditor() {
             </Button>
             <Button
               type="button"
-              aria-label={step === 2 ? "Continuar para ajuste" : "Continuar para compartilhar"}
+              aria-label="Continuar para compartilhar"
               className="min-h-12 rounded-xl bg-[#ffc400] font-extrabold text-black hover:bg-[#f2ba00]"
               disabled={outputPending}
               onClick={goForward}
             >
-              {step === 2 ? "Continuar para ajuste" : "Ver resultado"}
+              Ver resultado
               <ArrowRight aria-hidden="true" className="size-4" />
             </Button>
           </div>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
           <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
             <Button
               type="button"

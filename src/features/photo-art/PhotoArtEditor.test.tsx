@@ -33,10 +33,10 @@ describe("PhotoArtEditor", () => {
     mocks.sharePhotoFile.mockResolvedValue("shared");
   });
 
-  it("starts a four-step mobile wizard with the seven approved Story arts", async () => {
+  it("starts a three-step mobile wizard with the seven approved Story arts", async () => {
     render(<PhotoArtEditor />);
 
-    expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Etapa 1 de 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(7);
     expect(screen.getAllByRole("img", { name: /homem pardo/i })).not.toHaveLength(0);
@@ -47,10 +47,11 @@ describe("PhotoArtEditor", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
-    expect(screen.getByText("Etapa 2 de 4")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Insira sua foto" })).toBeInTheDocument();
+    expect(screen.getByText("Etapa 2 de 3")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Foto e ajuste" })).toBeInTheDocument();
     expect(screen.getByText("Story 9:16")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continuar para ajuste" })).toBeDisabled();
+    expect(screen.getByLabelText("Tamanho da foto")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continuar para compartilhar" })).toBeDisabled();
     await waitFor(() => expect(mocks.loadImage).toHaveBeenCalledTimes(2));
   });
 
@@ -63,14 +64,13 @@ describe("PhotoArtEditor", () => {
     const file = new File(["photo"], "pessoa.jpg", { type: "image/jpeg" });
     fireEvent.change(screen.getByLabelText("Inserir minha foto"), { target: { files: [file] } });
 
-    const continueButton = screen.getByRole("button", { name: "Continuar para ajuste" });
+    const continueButton = screen.getByRole("button", { name: "Continuar para compartilhar" });
     await waitFor(() => expect(continueButton).toBeEnabled());
-    fireEvent.click(continueButton);
 
-    expect(screen.getByText("Etapa 3 de 4")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Ajuste o enquadramento" })).toBeInTheDocument();
+    expect(screen.getByText("Etapa 2 de 3")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Foto e ajuste" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tamanho da foto")).toBeInTheDocument();
-    expect(screen.getByText(/Arraste a foto na prévia/)).toBeInTheDocument();
+    expect(screen.getByText(/Arraste para mover/)).toBeInTheDocument();
     expect(mocks.renderReadyArt).toHaveBeenLastCalledWith(
       expect.any(HTMLCanvasElement),
       expect.objectContaining({
@@ -88,12 +88,11 @@ describe("PhotoArtEditor", () => {
       target: { files: [new File(["photo"], "pessoa.jpg", { type: "image/jpeg" })] },
     });
 
-    const continueToAdjust = screen.getByRole("button", { name: "Continuar para ajuste" });
-    await waitFor(() => expect(continueToAdjust).toBeEnabled());
-    fireEvent.click(continueToAdjust);
-    fireEvent.click(screen.getByRole("button", { name: "Continuar para compartilhar" }));
+    const continueToShare = screen.getByRole("button", { name: "Continuar para compartilhar" });
+    await waitFor(() => expect(continueToShare).toBeEnabled());
+    fireEvent.click(continueToShare);
 
-    expect(screen.getByText("Etapa 4 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Etapa 3 de 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Sua arte está pronta" })).toBeInTheDocument();
     expect(screen.getByText("@corodiocesanoqxd")).toBeInTheDocument();
 
@@ -111,7 +110,7 @@ describe("PhotoArtEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continuar para foto" }));
     fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
 
-    expect(screen.getByText("Etapa 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Etapa 1 de 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
   });
 });
