@@ -1,3 +1,10 @@
+import type { ComponentProps } from "react";
+
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ to, ...props }: ComponentProps<"a"> & { to: string }) => <a href={to} {...props} />,
+}));
+
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -312,13 +319,13 @@ describe("ChoristerAppShell", () => {
     };
     const { user } = setup({ events: [grandeConcerto, feed.event] });
 
-    expect(screen.getByRole("heading", { name: "Maria" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Maria da Silva" })).toBeInTheDocument();
     expect(screen.getByText("Bem-vindo")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Foto não disponível" })).toBeInTheDocument();
     expect(screen.queryByText("Evento oficial")).not.toBeInTheDocument();
     expect(screen.queryByText("Grande Concerto")).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Status do acesso" })).toHaveTextContent(
-      "InscriçãoConfirmadaPagamentoPagoAcessoLiberado",
+    expect(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).toHaveTextContent(
+      "Saldo indisponível",
     );
     expect(
       screen.queryByRole("button", { name: "Abrir cantos e partituras" }),

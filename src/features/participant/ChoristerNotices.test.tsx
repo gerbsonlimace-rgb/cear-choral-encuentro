@@ -1,3 +1,10 @@
+import type { ComponentProps } from "react";
+
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ to, ...props }: ComponentProps<"a"> & { to: string }) => <a href={to} {...props} />,
+}));
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -32,7 +39,7 @@ describe("ChoristerNotices", () => {
         loadNotices={async () => [notice]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Maria" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Maria da Silva" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Ensaio geral" })).toBeInTheDocument();
   });
 

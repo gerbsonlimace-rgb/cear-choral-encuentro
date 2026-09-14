@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
 
 import {
   birthDateSchema,
@@ -30,6 +31,7 @@ export type ParticipantRegistrationView = {
   };
   registration: {
     choirName: string;
+    regentNames?: string[];
     diocese: string;
     city?: string | null;
     institution?: string | null;
@@ -41,6 +43,7 @@ export type ParticipantRegistrationView = {
   };
   payment: {
     status: "paid";
+    financialState?: RegistrationFinancialState | null;
     amountCents?: number | null;
     paidAmountCents?: number | null;
     paymentMethod?: "pix" | "credit_card" | null;
