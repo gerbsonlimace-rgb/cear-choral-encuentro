@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
+import { Route as MinhaFotoRouteImport } from './routes/minha-foto'
 import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegenteIndexRouteImport } from './routes/regente.index'
@@ -53,6 +54,11 @@ const ParticipanteRoute = ParticipanteRouteImport.update({
 const PagamentoRoute = PagamentoRouteImport.update({
   id: '/pagamento',
   path: '/pagamento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaFotoRoute = MinhaFotoRouteImport.update({
+  id: '/minha-foto',
+  path: '/minha-foto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcessarRoute = AcessarRouteImport.update({
@@ -164,6 +170,7 @@ const AdminAtividadesRoute = AdminAtividadesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
@@ -191,6 +198,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/minha-foto': typeof MinhaFotoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acessar'
+    | '/minha-foto'
     | '/pagamento'
     | '/participante'
     | '/regente'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acessar'
+    | '/minha-foto'
     | '/pagamento'
     | '/sitemap.xml'
     | '/admin/atividades'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acessar'
+    | '/minha-foto'
     | '/pagamento'
     | '/participante'
     | '/regente'
@@ -326,6 +338,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
+  MinhaFotoRoute: typeof MinhaFotoRoute
   PagamentoRoute: typeof PagamentoRoute
   ParticipanteRoute: typeof ParticipanteRouteWithChildren
   RegenteRoute: typeof RegenteRouteWithChildren
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/pagamento'
       fullPath: '/pagamento'
       preLoaderRoute: typeof PagamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-foto': {
+      id: '/minha-foto'
+      path: '/minha-foto'
+      fullPath: '/minha-foto'
+      preLoaderRoute: typeof MinhaFotoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acessar': {
@@ -560,6 +580,7 @@ const RegenteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
+  MinhaFotoRoute: MinhaFotoRoute,
   PagamentoRoute: PagamentoRoute,
   ParticipanteRoute: ParticipanteRouteWithChildren,
   RegenteRoute: RegenteRouteWithChildren,
