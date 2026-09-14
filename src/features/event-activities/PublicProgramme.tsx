@@ -96,10 +96,10 @@ function ProgrammeDayCard({ day }: { day: ProgrammeDay }) {
   return (
     <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
       <div className="bg-teal px-5 py-3.5"><p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p><h3 className="mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">{day.dateLabel}</h3></div>
-      <CardContent className="p-4 sm:p-5"><div className="divide-y divide-border/70">{day.items.map((activity) => {
+      <CardContent className="programme-day-content p-4 sm:p-5"><div className="divide-y divide-border/70">{day.items.map((activity) => {
         const category = presentation[activity.category];
         const Icon = category.icon;
-        return <article key={activity.id} className="grid grid-cols-[3.75rem_1.55rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 first:pt-0 last:pb-0"><time dateTime={`${activity.activityDate}${activity.startsAt ? `T${activity.startsAt}` : ""}`} className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">{activityTime(activity)}</time><span role="img" aria-label={category.label} className={`flex size-7 items-center justify-center rounded-lg ${category.className}`}><Icon aria-hidden="true" className="size-4" strokeWidth={2.25} /></span><div className="min-w-0"><h4 className="font-body text-sm font-semibold leading-snug text-card-foreground sm:text-[0.95rem]">{activity.title}</h4>{activity.location && <p className="mt-0.5 text-xs text-muted-foreground">{activity.location}</p>}</div></article>;
+        return <article key={activity.id} className="grid grid-cols-[5.25rem_1.75rem_minmax(0,1fr)] items-center gap-2 py-2.5 first:pt-0 last:pb-0"><time dateTime={`${activity.activityDate}${activity.startsAt ? `T${activity.startsAt}` : ""}`} className="whitespace-normal break-words font-body text-xs font-bold tabular-nums text-teal">{activityTime(activity)}</time><span role="img" aria-label={category.label} className={`flex size-7 items-center justify-center rounded-lg ${category.className}`}><Icon aria-hidden="true" className="size-4" strokeWidth={2.25} /></span><div className="min-w-0"><h4 className="font-body text-sm font-semibold leading-snug text-card-foreground sm:text-[0.95rem]">{activity.title}</h4>{activity.location && <p className="mt-0.5 text-xs text-muted-foreground">{activity.location}</p>}</div></article>;
       })}</div></CardContent>
     </Card>
   );
