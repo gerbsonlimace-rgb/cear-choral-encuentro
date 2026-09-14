@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { ART_STYLES, getPhotoPlacement, validatePhoto, sharePhotoFile } from "./photoArt";
+import {
+  ART_STYLES,
+  detectFaceAdjustment,
+  getFaceAwareAdjustment,
+  getPhotoPlacement,
+  validatePhoto,
+  sharePhotoFile,
+} from "./photoArt";
 
 describe("photo art", () => {
   it("offers a Quixadá frame inspired by the event landmarks", () => {
@@ -31,6 +38,37 @@ describe("photo art", () => {
     expect(result.x + result.width).toBeGreaterThanOrEqual(rect.x + rect.width);
     expect(result.y + result.height).toBeGreaterThanOrEqual(rect.y + rect.height);
     expect(result.width / result.height).toBeCloseTo(800 / 1200);
+  });
+
+  it("centers the face without automatically enlarging it", () => {
+    const adjustment = getFaceAwareAdjustment(
+      1200,
+      1600,
+      { x: 0, y: 0, width: 600, height: 900 },
+      { x: 500, y: 300, width: 100, height: 180 },
+    );
+
+    expect(adjustment.zoom).toBe(1);
+    expect(adjustment.x).toBeCloseTo(0.75);
+    expect(adjustment.y).toBe(0);
+  });
+
+  it("uses the largest detected face and falls back safely when detection is unavailable", async () => {
+    const photo = { naturalWidth: 1200, naturalHeight: 1600 } as HTMLImageElement;
+    const detector = {
+      detect: vi
+        .fn()
+        .mockResolvedValue([
+          { boundingBox: { x: 50, y: 50, width: 40, height: 40 } },
+          { boundingBox: { x: 500, y: 300, width: 100, height: 180 } },
+        ]),
+    };
+    const frame = { x: 0, y: 0, width: 600, height: 900 };
+
+    await expect(detectFaceAdjustment(photo, frame, detector)).resolves.toEqual(
+      expect.objectContaining({ zoom: 1, x: expect.closeTo(0.75) }),
+    );
+    await expect(detectFaceAdjustment(photo, frame, null)).resolves.toBeNull();
   });
 
   it("rejects unsupported formats, empty and oversized photos with actionable messages", () => {

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import {
   DEFAULT_ADJUSTMENT,
   canvasToPhotoFile,
+  detectFaceAdjustment,
   downloadPhotoFile,
   loadImage,
   loadPhoto,
@@ -38,6 +39,7 @@ type TemplateAssets = {
 };
 
 type WizardStep = 1 | 2 | 3;
+type FramingStatus = "idle" | "detecting" | "face" | "manual";
 
 const STEP_LABELS = ["Arte", "Foto e ajuste", "Publicar"] as const;
 
@@ -68,6 +70,8 @@ export function PhotoArtEditor() {
   const [assets, setAssets] = useState<TemplateAssets | null>(null);
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [adjustment, setAdjustment] = useState<PhotoAdjustment>(DEFAULT_ADJUSTMENT);
+  const [autoAdjustment, setAutoAdjustment] = useState<PhotoAdjustment | null>(null);
+  const [framingStatus, setFramingStatus] = useState<FramingStatus>("idle");
   const [outputFile, setOutputFile] = useState<File | null>(null);
   const [loadingArt, setLoadingArt] = useState(true);
   const [preparing, setPreparing] = useState(false);
@@ -95,6 +99,20 @@ export function PhotoArtEditor() {
       cancelled = true;
     };
   }, [selectedArt]);
+
+  useEffect(() => {
+    if (!photo) return;
+    let cancelled = false;
+    void detectFaceAdjustment(photo, selectedArt.photoFrame).then((faceAdjustment) => {
+      if (cancelled) return;
+      setAutoAdjustment(faceAdjustment);
+      setAdjustment(faceAdjustment ?? DEFAULT_ADJUSTMENT);
+      setFramingStatus(faceAdjustment ? "face" : "manual");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [photo, selectedArt]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,8 +149,11 @@ export function PhotoArtEditor() {
     setOutputFile(null);
     setPreparing(true);
     try {
-      setPhoto(await loadPhoto(file));
+      const loadedPhoto = await loadPhoto(file);
+      setAutoAdjustment(null);
+      setFramingStatus("detecting");
       setAdjustment(DEFAULT_ADJUSTMENT);
+      setPhoto(loadedPhoto);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível abrir essa foto.");
     } finally {
@@ -144,12 +165,14 @@ export function PhotoArtEditor() {
     setArtId(id);
     setAssets(null);
     setAdjustment(DEFAULT_ADJUSTMENT);
+    setAutoAdjustment(null);
+    if (photo) setFramingStatus("detecting");
     setOutputFile(null);
     setNotice(null);
   }
 
   function startDrag(event: PointerEvent<HTMLCanvasElement>) {
-    if (!photo || step !== 2) return;
+    if (!photo || step !== 2 || framingStatus === "detecting") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       pointerId: event.pointerId,
@@ -209,7 +232,8 @@ export function PhotoArtEditor() {
     }
   }
 
-  const outputPending = !photo || !outputFile || preparing || loadingArt;
+  const outputPending =
+    !photo || !outputFile || preparing || loadingArt || framingStatus === "detecting";
 
   return (
     <section className="photo-art-editor mx-auto w-full max-w-6xl px-3 pb-28 pt-3 sm:px-5 lg:pb-10 lg:pt-6">
@@ -345,7 +369,8 @@ export function PhotoArtEditor() {
                         variant="secondary"
                         size="sm"
                         className="pointer-events-auto min-h-11 rounded-full bg-white/95 px-3 font-extrabold shadow-lg"
-                        onClick={() => setAdjustment(DEFAULT_ADJUSTMENT)}
+                        disabled={framingStatus === "detecting"}
+                        onClick={() => setAdjustment(autoAdjustment ?? DEFAULT_ADJUSTMENT)}
                       >
                         <RotateCcw aria-hidden="true" className="size-4" />
                         Centralizar
@@ -363,7 +388,10 @@ export function PhotoArtEditor() {
                         Tamanho da foto
                       </label>
                       <span className="text-[10px] text-white/75">
-                        {photo ? "Arraste para mover" : "Insira a foto para ajustar"}
+                        {framingStatus === "detecting" && "Localizando rosto…"}
+                        {framingStatus === "face" && "Rosto centralizado • arraste para mover"}
+                        {framingStatus === "manual" && "Arraste para mover"}
+                        {framingStatus === "idle" && "Insira a foto para ajustar"}
                       </span>
                     </div>
                     <input
@@ -373,7 +401,7 @@ export function PhotoArtEditor() {
                       max="2.5"
                       step="0.05"
                       value={adjustment.zoom}
-                      disabled={!photo}
+                      disabled={!photo || framingStatus === "detecting"}
                       className="mt-1 h-7 w-full accent-[#ffc400] disabled:opacity-40"
                       onChange={(event) =>
                         setAdjustment((current) => ({

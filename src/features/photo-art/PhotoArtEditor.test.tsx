@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   canvasToPhotoFile: vi.fn(),
   downloadPhotoFile: vi.fn(),
   sharePhotoFile: vi.fn(),
+  detectFaceAdjustment: vi.fn(),
 }));
 
 vi.mock("./renderReadyArt", () => ({ renderReadyArt: mocks.renderReadyArt }));
@@ -18,6 +19,7 @@ vi.mock("./photoArt", async (importOriginal) => ({
   canvasToPhotoFile: mocks.canvasToPhotoFile,
   downloadPhotoFile: mocks.downloadPhotoFile,
   sharePhotoFile: mocks.sharePhotoFile,
+  detectFaceAdjustment: mocks.detectFaceAdjustment,
 }));
 
 import { PhotoArtEditor } from "./PhotoArtEditor";
@@ -31,6 +33,7 @@ describe("PhotoArtEditor", () => {
       new File(["png"], "encontro-coros-quixada.png", { type: "image/png" }),
     );
     mocks.sharePhotoFile.mockResolvedValue("shared");
+    mocks.detectFaceAdjustment.mockResolvedValue({ zoom: 1, x: 0.35, y: -0.2 });
   });
 
   it("starts a three-step mobile wizard with the seven approved Story arts", async () => {
@@ -70,12 +73,13 @@ describe("PhotoArtEditor", () => {
     expect(screen.getByText("Etapa 2 de 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Foto e ajuste" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tamanho da foto")).toBeInTheDocument();
-    expect(screen.getByText(/Arraste para mover/)).toBeInTheDocument();
+    expect(screen.getByText(/arraste para mover/i)).toBeInTheDocument();
     expect(mocks.renderReadyArt).toHaveBeenLastCalledWith(
       expect.any(HTMLCanvasElement),
       expect.objectContaining({
         art: expect.objectContaining({ id: "canto-novo" }),
         photo: expect.anything(),
+        adjustment: { zoom: 1, x: 0.35, y: -0.2 },
       }),
     );
   });

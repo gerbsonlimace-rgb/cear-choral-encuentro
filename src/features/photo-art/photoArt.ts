@@ -2,6 +2,16 @@ export type ArtStyle = "classica" | "leve" | "criativa" | "amarela" | "melodia" 
 export type ArtFormat = "feed" | "story";
 export type PhotoAdjustment = { zoom: number; x: number; y: number };
 export type PhotoRect = { x: number; y: number; width: number; height: number };
+export type FaceBox = { x: number; y: number; width: number; height: number };
+
+export type FaceDetectorLike = {
+  detect: (image: HTMLImageElement) => Promise<ReadonlyArray<{ boundingBox: FaceBox }>>;
+};
+
+type FaceDetectorConstructor = new (options?: {
+  fastMode?: boolean;
+  maxDetectedFaces?: number;
+}) => FaceDetectorLike;
 
 export const ART_STYLES = [
   { id: "classica", name: "Clássica", description: "Preto e dourado" },
@@ -43,6 +53,84 @@ export const ART_FORMATS = {
   story: { width: 1080, height: 1920, label: "Story / Status", ratio: "9:16" },
 } as const;
 export const DEFAULT_ADJUSTMENT: PhotoAdjustment = { zoom: 1, x: 0, y: 0 };
+
+let browserFaceDetector: FaceDetectorLike | null | undefined;
+
+function getBrowserFaceDetector(): FaceDetectorLike | null {
+  if (browserFaceDetector !== undefined) return browserFaceDetector;
+  const Detector = (globalThis as typeof globalThis & { FaceDetector?: FaceDetectorConstructor })
+    .FaceDetector;
+  if (!Detector) {
+    browserFaceDetector = null;
+    return browserFaceDetector;
+  }
+  try {
+    browserFaceDetector = new Detector({ fastMode: true, maxDetectedFaces: 5 });
+  } catch {
+    browserFaceDetector = null;
+  }
+  return browserFaceDetector;
+}
+
+function getAxisAdjustment(
+  drawnLength: number,
+  frameLength: number,
+  faceCenter: number,
+  target: number,
+): number {
+  const overflow = drawnLength - frameLength;
+  if (overflow <= 0) return 0;
+  const crop = Math.max(0, Math.min(overflow, faceCenter - target));
+  return Math.max(-1, Math.min(1, 1 - (crop / overflow) * 2));
+}
+
+export function getFaceAwareAdjustment(
+  photoWidth: number,
+  photoHeight: number,
+  frame: PhotoRect,
+  face: FaceBox,
+): PhotoAdjustment {
+  const scale = Math.max(frame.width / photoWidth, frame.height / photoHeight);
+  const drawnWidth = photoWidth * scale;
+  const drawnHeight = photoHeight * scale;
+  const faceCenterX = (face.x + face.width / 2) * scale;
+  const faceCenterY = (face.y + face.height / 2) * scale;
+
+  return {
+    // Preserve the minimum cover scale. Automatic framing must not turn a portrait into a close-up.
+    zoom: 1,
+    x: getAxisAdjustment(drawnWidth, frame.width, faceCenterX, frame.width * 0.5),
+    y: getAxisAdjustment(drawnHeight, frame.height, faceCenterY, frame.height * 0.34),
+  };
+}
+
+export async function detectFaceAdjustment(
+  photo: HTMLImageElement,
+  frame: PhotoRect,
+  detector: FaceDetectorLike | null = getBrowserFaceDetector(),
+): Promise<PhotoAdjustment | null> {
+  if (!detector) return null;
+  try {
+    const faces = await detector.detect(photo);
+    const primaryFace = faces
+      .filter(
+        ({ boundingBox }) =>
+          Number.isFinite(boundingBox.x) &&
+          Number.isFinite(boundingBox.y) &&
+          boundingBox.width > 0 &&
+          boundingBox.height > 0,
+      )
+      .sort(
+        (left, right) =>
+          right.boundingBox.width * right.boundingBox.height -
+          left.boundingBox.width * left.boundingBox.height,
+      )[0]?.boundingBox;
+    if (!primaryFace) return null;
+    return getFaceAwareAdjustment(photo.naturalWidth, photo.naturalHeight, frame, primaryFace);
+  } catch {
+    return null;
+  }
+}
 
 export function validatePhoto(file: Pick<File, "type" | "size">): string | null {
   if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type)) {
