@@ -142,14 +142,15 @@ describe("ChoristerAppShell", () => {
     const { user } = setup({ feed: detailedFeed });
 
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
-    await user.click(screen.getByRole("button", { name: "Abrir canto Canto de entrada" }));
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Letra e cifra" }));
 
     const detail = screen.getByRole("dialog", { name: "Canto de entrada" });
     expect(within(detail).getByText("Vem, Senhor, visitar teu povo.")).toBeInTheDocument();
     await user.click(within(detail).getByRole("tab", { name: "Cifra" }));
     expect(within(detail).getByText(/C\s+G\s+Am/)).toBeInTheDocument();
     await user.click(within(detail).getByRole("button", { name: "Fechar player expandido" }));
-    expect(screen.getByRole("button", { name: "Abrir canto Canto de entrada" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Opções de Canto de entrada" })).toHaveFocus();
     expect(screen.queryByRole("dialog", { name: "Canto de entrada" })).not.toBeInTheDocument();
   });
 
@@ -158,10 +159,13 @@ describe("ChoristerAppShell", () => {
     const { user } = setup({ onOpenScore });
 
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
-    await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Abrir partitura" }));
 
     expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Visualizador de Partitura" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Visualizador de Partitura" }),
+    ).toBeInTheDocument();
     expect(screen.getByTitle("PDF Partitura")).toHaveAttribute(
       "src",
       "https://assets.example.test/score.pdf",
@@ -412,9 +416,7 @@ describe("ChoristerAppShell", () => {
 
     const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
     expect(audio).toHaveAttribute("src", "https://assets.example.test/audio.mp3");
-    expect(screen.getByRole("region", { name: "Player de Canto de entrada" })).toHaveTextContent(
-      "Soprano",
-    );
+    expect(screen.getByRole("region", { name: "Player de Canto de entrada" })).toBeInTheDocument();
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
 
     await user.click(screen.getByRole("button", { name: "Home" }));
@@ -556,8 +558,9 @@ describe("ChoristerAppShell", () => {
     const { user } = setup({ feed: expiredFeed, onOpenScore });
 
     await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
-    await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
-    await user.click(screen.getByRole("button", { name: "Abrir em nova guia" }));
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Abrir partitura" }));
+    await user.click(await screen.findByRole("button", { name: "Abrir em nova guia" }));
     expect(openWindow).toHaveBeenCalledExactlyOnceWith("", "_blank");
     expect(popup.opener).toBeNull();
 
@@ -584,7 +587,9 @@ describe("ChoristerAppShell", () => {
     const audio = screen.getByLabelText("Reprodutor de áudio");
 
     fireEvent.ended(audio);
-    expect(screen.getByRole("button", { name: "Reproduzir Canto de entrada" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Concluído")).toBeInTheDocument();
 
     fireEvent.error(audio);
@@ -619,7 +624,9 @@ describe("ChoristerAppShell", () => {
       "src",
       "https://assets.example.test/tenor.mp3",
     );
-    expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pausar Tenor de Canto de entrada" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -647,7 +654,9 @@ describe("ChoristerAppShell", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pausar Soprano de Canto de entrada" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -662,7 +671,9 @@ describe("ChoristerAppShell", () => {
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Pausar Canto de entrada" })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("button", { name: "Pausar Soprano de Canto de entrada" }),
+      ).toBeInTheDocument(),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -680,6 +691,8 @@ describe("ChoristerAppShell", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível reproduzir este áudio. Tente novamente.",
     );
-    expect(screen.getByRole("button", { name: "Reproduzir Canto de entrada" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).toBeInTheDocument();
   });
 });

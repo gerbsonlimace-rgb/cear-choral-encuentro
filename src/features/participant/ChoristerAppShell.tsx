@@ -596,6 +596,7 @@ export function ChoristerAppShell({
                     onPlay={(audioId) => void handlePlay(audioId)}
                     onOpenSong={openSongFromSongs}
                     onOpenScore={openScoreFromSong}
+                    onRenewAudio={onRenewAudio}
                     activeAudioId={selectedAudio?.audio.id}
                     isPlaying={isPlaying}
                     playerStatus={playerStatus}
