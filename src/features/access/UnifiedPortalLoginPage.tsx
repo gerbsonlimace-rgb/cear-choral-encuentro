@@ -23,6 +23,7 @@ import { MobileEventSplash } from "./MobileEventSplash";
 
 type Props = {
   onAuthorized: (destination: PortalDestination) => void;
+  requireSignIn?: boolean;
   signIn?: (credentials: { email: string; password: string }) => Promise<{ error: unknown }>;
   checkAccess?: () => Promise<UnifiedPortalAccess>;
   signOut?: () => Promise<{ error: unknown }>;
@@ -46,6 +47,7 @@ const defaultGetSession: NonNullable<Props["getSession"]> = () => supabase.auth.
 
 export function UnifiedPortalLoginPage({
   onAuthorized,
+  requireSignIn = false,
   signIn = defaultSignIn,
   checkAccess = defaultCheckAccess,
   signOut = defaultSignOut,
@@ -55,7 +57,9 @@ export function UnifiedPortalLoginPage({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    requireSignIn ? "Não foi possível acessar o portal. Entre novamente para tentar." : "",
+  );
   const busy = useRef(false);
   const currentSubmit = useRef<CurrentOperation | null>(null);
   const onAuthorizedRef = useRef(onAuthorized);
@@ -104,6 +108,14 @@ export function UnifiedPortalLoginPage({
     const gate = startupGate.current;
     if (!gate) return;
 
+    // A portal rejection must stop automatic re-entry, even if a local session remains.
+    if (requireSignIn) {
+      gate.resolve(false);
+      return () => {
+        if (currentSubmit.current) currentSubmit.current.cancelled = true;
+      };
+    }
+
     async function resolveExistingSession(activeGate: StartupGate) {
       let sessionResult: Awaited<ReturnType<NonNullable<Props["getSession"]>>>;
       try {
@@ -138,7 +150,7 @@ export function UnifiedPortalLoginPage({
       cancelled = true;
       if (currentSubmit.current) currentSubmit.current.cancelled = true;
     };
-  }, [closeRejectedSession, routeAuthorizedAccess]);
+  }, [closeRejectedSession, routeAuthorizedAccess, requireSignIn]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

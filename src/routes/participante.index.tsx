@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
 
 import { ParticipantPortalPage } from "@/features/participant/ParticipantPortalPage";
 
@@ -14,9 +15,13 @@ export const Route = createFileRoute("/participante/")({
 
 function ParticipantPortalRoute() {
   const navigate = useNavigate();
+  const onMissingAccess = useCallback(
+    () => navigate({ to: "/acessar", search: { reautenticar: true }, replace: true }),
+    [navigate],
+  );
   return (
     <ParticipantPortalPage
-      onMissingAccess={() => navigate({ to: "/acessar" })}
+      onMissingAccess={onMissingAccess}
       onSignedOut={() => navigate({ to: "/acessar" })}
     />
   );
