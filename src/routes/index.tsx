@@ -398,20 +398,51 @@ function AboutSection() {
           <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
             Fé, música e comunhão
           </h2>
-          <div className="mt-5 space-y-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+          <div className="mx-auto mt-5 max-w-3xl space-y-4 text-left text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             <p>
-              O Encontro de Coros do Regional Nordeste 1 – CNBB reúne coralistas, regentes e
-              instrumentistas para celebrar a fé e fortalecer a música litúrgica. Após Viçosa do
-              Ceará, em 2025, a segunda edição acontece em Quixadá, em 2026.
+              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu do desejo de
+              fortalecer a música litúrgica e promover a comunhão entre os músicos que, nas
+              diversas dioceses do Ceará, colocam seus dons a serviço da liturgia.
             </p>
             <p>
-              Uma iniciativa de Dom Francisco Edimilson Neves Ferreira, idealizada e organizada
-              pelo Pe. Michael Johnny da Silva Souza.
+              A iniciativa partiu de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e
+              Bispo Referencial da Comissão Episcopal para a Liturgia do Regional Nordeste 1, que
+              incentivou a criação de um espaço dedicado ao encontro, à formação e à integração
+              dos coros diocesanos. A proposta foi idealizada e organizada pelo Pe. Michael Johnny
+              da Silva Souza, que colaborou decisivamente para que esse projeto se tornasse
+              realidade.
+            </p>
+            <p>
+              A primeira edição aconteceu em 2025, na cidade de Viçosa do Ceará, reunindo
+              regentes, coralistas e instrumentistas das dioceses do Ceará. O encontro foi
+              promovido pela Comissão Episcopal para a Liturgia do Regional Nordeste 1 e
+              proporcionou aos participantes uma rica experiência de formação, partilha,
+              fraternidade e convivência.
+            </p>
+            <p>
+              Mais do que um encontro de músicos, a iniciativa tornou-se um espaço de
+              aprofundamento eclesial e formativo, favorecendo o conhecimento e a reflexão sobre
+              aspectos da música sacra e da música litúrgica, bem como sobre a missão daqueles que
+              exercem o ministério do canto e da música nas celebrações. Foi também uma
+              oportunidade para estreitar laços, compartilhar experiências e reconhecer a riqueza
+              dos diferentes coros que servem à Igreja no Ceará.
+            </p>
+            <p>
+              Em 2026, essa caminhada de comunhão e formação tem continuidade com a realização do
+              II Encontro de Coros Diocesanos do Regional Nordeste 1, que tem como sede a Diocese
+              de Quixadá. A segunda edição reafirma o compromisso de promover a formação dos
+              músicos, fortalecer a integração entre os coros das dioceses e valorizar a música
+              como parte essencial da ação litúrgica e como instrumento de evangelização.
+            </p>
+            <p>
+              De Viçosa do Ceará a Quixadá, o Encontro de Coros segue construindo uma história de
+              fé, música, formação, fraternidade e comunhão, fazendo ressoar, através da
+              diversidade de vozes, a unidade da Igreja presente nas dioceses do Ceará.
             </p>
           </div>
         </div>
 
-        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
             <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
@@ -419,7 +450,7 @@ function AboutSection() {
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Formação</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Oficinas com músicos e liturgistas experientes.
+                Conferências e ensaios com o Prof. Clayton Dias.
               </p>
             </CardContent>
           </Card>
@@ -432,7 +463,7 @@ function AboutSection() {
                 Celebração
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Missas e momentos de oração com música sacra.
+                Missas e Liturgias das Horas.
               </p>
             </CardContent>
           </Card>
@@ -441,22 +472,11 @@ function AboutSection() {
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber/10 sm:h-14 sm:w-14">
                 <Mic2 className="h-6 w-6 text-amber sm:h-7 sm:w-7" />
               </div>
-              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Concerto</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Apresentação especial do repertório sacro.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="about-pillar-content p-4 sm:p-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
-                <Users className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
-              </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">
-                Comunidade
+                Grande Concerto
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Espaço de encontro entre grupos de todo o Ceará.
+                Coros participantes do evento.
               </p>
             </CardContent>
           </Card>
