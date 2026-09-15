@@ -36,8 +36,7 @@ export type ParticipantAccessEventInput = {
     | "provisioning_pending"
     | "email_conflict"
     | "reprocess_requested"
-    | "password_reset"
-    | "password_recovery_requested";
+    | "password_reset";
   adminUserId?: string;
   errorCode?: ParticipantProvisioningErrorCode;
 };
@@ -59,11 +58,6 @@ export type ParticipantProvisioningRepository = {
     },
   ): Promise<void>;
   findByRegistration(id: string): Promise<ParticipantAccountRow | null>;
-  findPasswordRecoveryIdentity(input: { cpf: string; birthDate: string }): Promise<{
-    registrationId: string;
-    participantAccountId: string;
-    email: string;
-  } | null>;
   appendEvent(event: ParticipantAccessEventInput): Promise<void>;
 };
 
@@ -76,7 +70,6 @@ export type ParticipantAuthAdmin = {
   }): Promise<{ id: string }>;
   deleteUser(userId: string): Promise<void>;
   updatePassword(userId: string, password: string): Promise<void>;
-  sendPasswordRecoveryEmail(email: string, redirectTo: string): Promise<void>;
 };
 
 export type ParticipantProvisioningResult = {
@@ -268,34 +261,6 @@ export function createParticipantProvisioningService({
 
   return {
     provision,
-    async requestPasswordRecovery(
-      input: { cpf: string; birthDate: string; email: string },
-      redirectTo: string,
-    ) {
-      const cpf = input.cpf.replace(/\D/g, "");
-      const email = normalizeEmail(input.email);
-
-      try {
-        const identity = await repository.findPasswordRecoveryIdentity({
-          cpf,
-          birthDate: input.birthDate,
-        });
-        if (!identity || normalizeEmail(identity.email) !== email) {
-          return { status: "accepted" as const };
-        }
-
-        await auth.sendPasswordRecoveryEmail(email, redirectTo);
-        await appendOutcomeEvent({
-          registrationId: identity.registrationId,
-          participantAccountId: identity.participantAccountId,
-          eventType: "password_recovery_requested",
-        });
-      } catch {
-        // Keep unknown identities and temporary provider failures indistinguishable.
-      }
-
-      return { status: "accepted" as const };
-    },
     async reprocess(
       registrationId: string,
       adminUserId: string,
@@ -393,35 +358,6 @@ export function createSupabaseParticipantProvisioningRepository(): ParticipantPr
         email: row.email,
         cpf: row.cpf,
         birthDate: row.birth_date,
-      };
-    },
-    async findPasswordRecoveryIdentity({ cpf, birthDate }) {
-      const { data: registrationData, error: registrationError } = await supabaseAdmin
-        .from("registrations")
-        .select("id,email")
-        .eq("cpf", cpf)
-        .eq("birth_date", birthDate)
-        .eq("payment_status", "paid")
-        .maybeSingle();
-      checkError(registrationError);
-      const registration: Pick<RegistrationRow, "id" | "email"> | null = registrationData;
-      if (!registration?.email) return null;
-
-      const { data: accountData, error: accountError } = await supabaseAdmin
-        .from("participant_accounts")
-        .select("id")
-        .eq("registration_id", registration.id)
-        .eq("access_status", "active")
-        .not("user_id", "is", null)
-        .maybeSingle();
-      checkError(accountError);
-      const account: Pick<AccountDatabaseRow, "id"> | null = accountData;
-      if (!account) return null;
-
-      return {
-        registrationId: registration.id,
-        participantAccountId: account.id,
-        email: registration.email,
       };
     },
     async claim(id, claimId) {
@@ -543,12 +479,6 @@ export function createSupabaseParticipantAuthAdmin(): ParticipantAuthAdmin {
       const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
       checkError(error);
       if (!data.user) throw new Error("Participant Auth user was not updated");
-    },
-    async sendPasswordRecoveryEmail(email, redirectTo) {
-      const { error } = await supabaseAdmin.auth.resetPasswordForEmail(normalizeEmail(email), {
-        redirectTo,
-      });
-      checkError(error);
     },
   };
 }

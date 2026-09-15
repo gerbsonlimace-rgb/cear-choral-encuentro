@@ -748,7 +748,6 @@ describe("Supabase registration repository", () => {
       createUser: async () => ({ id: "33333333-3333-4333-8333-333333333333" }),
       deleteUser: async () => {},
       updatePassword: async () => {},
-      sendPasswordRecoveryEmail: async () => {},
     };
 
     await expect(

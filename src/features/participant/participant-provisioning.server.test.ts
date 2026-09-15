@@ -12,10 +12,9 @@ import {
   type ParticipantProvisioningRepository,
 } from "./participant-provisioning.server";
 
-const { from, rpc, authAdmin, resetPasswordForEmail } = vi.hoisted(() => ({
+const { from, rpc, authAdmin } = vi.hoisted(() => ({
   from: vi.fn(),
   rpc: vi.fn(),
-  resetPasswordForEmail: vi.fn(),
   authAdmin: {
     createUser: vi.fn(),
     deleteUser: vi.fn(),
@@ -25,7 +24,7 @@ const { from, rpc, authAdmin, resetPasswordForEmail } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/integrations/supabase/client.server", () => ({
-  supabaseAdmin: { from, rpc, auth: { admin: authAdmin, resetPasswordForEmail } },
+  supabaseAdmin: { from, rpc, auth: { admin: authAdmin } },
 }));
 
 const registrationId = "11111111-1111-4111-8111-111111111111";
@@ -56,7 +55,6 @@ function setup() {
     activate: vi.fn(async () => true),
     fail: vi.fn(async () => {}),
     findByRegistration: vi.fn(async () => claimedAccount),
-    findPasswordRecoveryIdentity: vi.fn(async () => null),
     appendEvent: vi.fn(async () => {}),
   };
   const auth: ParticipantAuthAdmin = {
@@ -64,7 +62,6 @@ function setup() {
     createUser: vi.fn(async () => ({ id: createdUserId })),
     deleteUser: vi.fn(async () => {}),
     updatePassword: vi.fn(async () => {}),
-    sendPasswordRecoveryEmail: vi.fn(async () => {}),
   };
   const service = createParticipantProvisioningService({
     repository,
@@ -75,73 +72,6 @@ function setup() {
 }
 
 describe("participant provisioning service", () => {
-  it("sends a recovery link only for matching active participant identity", async () => {
-    const { repository, auth, service } = setup();
-    const findPasswordRecoveryIdentity = vi.fn(async () => ({
-      registrationId,
-      participantAccountId: accountId,
-      email: " Participante@Example.com ",
-    }));
-    const sendPasswordRecoveryEmail = vi.fn(async () => {});
-    repository.findPasswordRecoveryIdentity = findPasswordRecoveryIdentity;
-    auth.sendPasswordRecoveryEmail = sendPasswordRecoveryEmail;
-
-    const recovery = service as unknown as {
-      requestPasswordRecovery(
-        input: { cpf: string; birthDate: string; email: string },
-        redirectTo: string,
-      ): Promise<{ status: "accepted" }>;
-    };
-
-    await expect(
-      recovery.requestPasswordRecovery(
-        {
-          cpf: "529.982.247-25",
-          birthDate: "1990-01-15",
-          email: " participante@example.com ",
-        },
-        "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-      ),
-    ).resolves.toEqual({ status: "accepted" });
-
-    expect(findPasswordRecoveryIdentity).toHaveBeenCalledExactlyOnceWith({
-      cpf: "52998224725",
-      birthDate: "1990-01-15",
-    });
-    expect(sendPasswordRecoveryEmail).toHaveBeenCalledExactlyOnceWith(
-      "participante@example.com",
-      "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-    );
-    expect(repository.appendEvent).toHaveBeenCalledWith({
-      registrationId,
-      participantAccountId: accountId,
-      eventType: "password_recovery_requested",
-    });
-  });
-
-  it("keeps a mismatched email indistinguishable without sending a recovery link", async () => {
-    const { repository, auth, service } = setup();
-    vi.mocked(repository.findPasswordRecoveryIdentity).mockResolvedValue({
-      registrationId,
-      participantAccountId: accountId,
-      email: "outro@example.com",
-    });
-
-    await expect(
-      service.requestPasswordRecovery(
-        {
-          cpf: "52998224725",
-          birthDate: "1990-01-15",
-          email: "participante@example.com",
-        },
-        "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-      ),
-    ).resolves.toEqual({ status: "accepted" });
-
-    expect(auth.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
-    expect(repository.appendEvent).not.toHaveBeenCalled();
-  });
-
   it("does not claim or call Auth when the registration is missing or unpaid", async () => {
     const { repository, auth, service } = setup();
     vi.mocked(repository.findPaidRegistration).mockResolvedValue(null);
@@ -488,64 +418,6 @@ describe("Supabase participant adapters", () => {
     authAdmin.deleteUser.mockReset();
     authAdmin.updateUserById.mockReset();
     authAdmin.listUsers.mockReset();
-    resetPasswordForEmail.mockReset();
-  });
-
-  it("finds recovery identity only through paid registration and active linked account", async () => {
-    const registrationQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(async () => ({
-        data: { id: registrationId, email: "Participante@Example.com" },
-        error: null,
-      })),
-    };
-    const accountQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      not: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(async () => ({ data: { id: accountId }, error: null })),
-    };
-    from.mockImplementation((table: string) =>
-      table === "registrations" ? registrationQuery : accountQuery,
-    );
-    const repository = createSupabaseParticipantProvisioningRepository();
-
-    await expect(
-      repository.findPasswordRecoveryIdentity({
-        cpf: "52998224725",
-        birthDate: "1990-01-15",
-      }),
-    ).resolves.toEqual({
-      registrationId,
-      participantAccountId: accountId,
-      email: "Participante@Example.com",
-    });
-
-    expect(registrationQuery.eq.mock.calls).toEqual([
-      ["cpf", "52998224725"],
-      ["birth_date", "1990-01-15"],
-      ["payment_status", "paid"],
-    ]);
-    expect(accountQuery.eq.mock.calls).toEqual([
-      ["registration_id", registrationId],
-      ["access_status", "active"],
-    ]);
-    expect(accountQuery.not).toHaveBeenCalledExactlyOnceWith("user_id", "is", null);
-  });
-
-  it("uses the Supabase recovery endpoint with the approved redirect URL", async () => {
-    resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
-    const auth = createSupabaseParticipantAuthAdmin();
-
-    await auth.sendPasswordRecoveryEmail(
-      " Participante@Example.com ",
-      "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-    );
-
-    expect(resetPasswordForEmail).toHaveBeenCalledExactlyOnceWith("participante@example.com", {
-      redirectTo: "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-    });
   });
 
   it("normalizes the email and checks every Auth page", async () => {

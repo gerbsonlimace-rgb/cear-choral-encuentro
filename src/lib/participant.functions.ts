@@ -11,35 +11,9 @@ const participantLoginSchema = z
   })
   .strict();
 
-const participantPasswordRecoverySchema = z
-  .object({
-    cpf: z.string().trim().min(11).max(14),
-    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    email: z.string().trim().email(),
-  })
-  .strict();
-
-const DEFAULT_PUBLIC_SITE_URL = "https://encontrocorosce.lovable.app";
-
-function participantPasswordRecoveryRedirect(): string {
-  const siteUrl = process.env.PUBLIC_SITE_URL?.trim() || DEFAULT_PUBLIC_SITE_URL;
-  return new URL("/acessar?recuperacao=senha", siteUrl).toString();
-}
-
 export const loginParticipant = createServerFn({ method: "POST" })
   .validator(participantLoginSchema)
   .handler(async ({ data }) => loginParticipantWithCredentials(data));
-
-export const requestParticipantPasswordRecovery = createServerFn({ method: "POST" })
-  .validator(participantPasswordRecoverySchema)
-  .handler(async ({ data }) => {
-    const { getParticipantProvisioningService } =
-      await import("@/features/participant/participant-provisioning.server");
-    return getParticipantProvisioningService().requestPasswordRecovery(
-      data,
-      participantPasswordRecoveryRedirect(),
-    );
-  });
 
 export const getParticipantAccess = createServerFn({ method: "GET" }).handler(async () => {
   const { getParticipantRequestAccess } =
