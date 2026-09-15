@@ -60,9 +60,8 @@ export type ParticipantRegistrationViewInput = Omit<ParticipantRegistrationView,
 
 export function buildInitialParticipantPassword(cpf: string, birthDate: string): string {
   const digits = cpfSchema.parse(cpf);
-  const normalizedDate = birthDateSchema.parse(birthDate);
-  const [year] = normalizedDate.split("-");
-  return `${digits}${year}`;
+  birthDateSchema.parse(birthDate);
+  return digits.slice(0, 6);
 }
 
 export function maskCpf(cpf: string): MaskedCpf {

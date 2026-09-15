@@ -106,3 +106,15 @@ export const verifyRegistrationPayment = createServerFn({ method: "POST" })
       await import("@/features/registration/registration-payment.server");
     return getRegistrationPaymentService().reconcilePayment(data);
   });
+
+export type ParticipantPortalAccessLinkResult =
+  | { ok: true; actionLink: string }
+  | { ok: false; message: string };
+
+export const createParticipantPortalAccessLink = createServerFn({ method: "POST" })
+  .validator(paymentLookupSchema)
+  .handler(async ({ data }): Promise<ParticipantPortalAccessLinkResult> => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().createParticipantPortalAccessLink(data);
+  });

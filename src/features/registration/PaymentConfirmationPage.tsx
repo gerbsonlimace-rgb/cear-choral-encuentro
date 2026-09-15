@@ -4,7 +4,10 @@ import { CheckCircle2, Download, ExternalLink, LogIn, LoaderCircle, MessageCircl
 import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { verifyRegistrationPayment } from "@/lib/registration.functions";
+import {
+  createParticipantPortalAccessLink,
+  verifyRegistrationPayment,
+} from "@/lib/registration.functions";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
 import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
@@ -15,13 +18,19 @@ type PaidPayment = Extract<PublicPaymentStatus, { status: "paid" }>;
 type PaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment?: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
+  getPortalAccessLink?: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
+  redirectToPortal?: (actionLink: string) => void;
   downloadReceipt?: (payment: PaidPayment) => Promise<void>;
   retryDelayMs?: number;
 };
 
+type PortalAccessLinkResult = { ok: true; actionLink: string } | { ok: false; message: string };
+
 type ResolvedPaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
+  getPortalAccessLink: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
+  redirectToPortal: (actionLink: string) => void;
   downloadReceipt: (payment: PaidPayment) => Promise<void>;
   retryDelayMs: number;
 };
@@ -36,10 +45,20 @@ const MAX_VERIFICATION_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 2000;
 const defaultVerifyPayment = (lookup: PaymentLookup) => verifyRegistrationPayment({ data: lookup });
 const defaultDownloadReceipt = (payment: PaidPayment) => downloadReceiptPdf(payment);
+const defaultGetPortalAccessLink = async (lookup: PaymentLookup): Promise<PortalAccessLinkResult> => {
+  try {
+    return await createParticipantPortalAccessLink({ data: lookup });
+  } catch {
+    return { ok: false, message: "Não foi possível preparar o acesso agora. Tente novamente." };
+  }
+};
+const defaultRedirectToPortal = (actionLink: string) => window.location.assign(actionLink);
 
 export function PaymentConfirmationPage({
   lookup,
   verifyPayment = defaultVerifyPayment,
+  getPortalAccessLink = defaultGetPortalAccessLink,
+  redirectToPortal = defaultRedirectToPortal,
   downloadReceipt = defaultDownloadReceipt,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 }: PaymentConfirmationPageProps) {
@@ -54,6 +73,8 @@ export function PaymentConfirmationPage({
       key={lookupKey}
       lookup={lookup}
       verifyPayment={verifyPayment}
+      getPortalAccessLink={getPortalAccessLink}
+      redirectToPortal={redirectToPortal}
       downloadReceipt={downloadReceipt}
       retryDelayMs={retryDelayMs}
     />
@@ -63,6 +84,8 @@ export function PaymentConfirmationPage({
 function PaymentConfirmationCycle({
   lookup,
   verifyPayment,
+  getPortalAccessLink,
+  redirectToPortal,
   downloadReceipt,
   retryDelayMs,
 }: ResolvedPaymentConfirmationPageProps) {
@@ -136,7 +159,13 @@ function PaymentConfirmationCycle({
         {!lookup ? (
           <PaymentMessage title="Não foi possível identificar este pagamento." />
         ) : state.kind === "paid" ? (
-          <ConfirmedPayment payment={state.payment} downloadReceipt={downloadReceipt} />
+          <ConfirmedPayment
+            payment={state.payment}
+            lookup={lookup!}
+            getPortalAccessLink={getPortalAccessLink}
+            redirectToPortal={redirectToPortal}
+            downloadReceipt={downloadReceipt}
+          />
         ) : state.kind === "pending" ? (
           <PaymentMessage title="Pagamento ainda não confirmado">
             <DuplicatePaymentWarning />
@@ -187,17 +216,26 @@ function PaymentMessage({
 
 function ConfirmedPayment({
   payment,
+  lookup,
+  getPortalAccessLink,
+  redirectToPortal,
   downloadReceipt,
 }: {
   payment: PaidPayment;
+  lookup: PaymentLookup;
+  getPortalAccessLink: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
+  redirectToPortal: (actionLink: string) => void;
   downloadReceipt: (payment: PaidPayment) => Promise<void>;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const rows = buildReceiptRows(payment);
   const isPreRegistration =
     payment.pricingType === "promotional" &&
     payment.registrationPriceCents < payment.standardPriceCents;
-  const remainingCents = payment.standardPriceCents - payment.registrationPriceCents;
+  const remainingCents = payment.remainingPriceCents ??
+    (payment.standardPriceCents - payment.registrationPriceCents);
   const remainingValue = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -209,6 +247,21 @@ function ConfirmedPayment({
       await downloadReceipt(payment);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handlePortalAccess = async () => {
+    setOpeningPortal(true);
+    setPortalError(null);
+    try {
+      const result = await getPortalAccessLink(lookup);
+      if (result.ok) {
+        redirectToPortal(result.actionLink);
+      } else {
+        setPortalError(result.message);
+      }
+    } finally {
+      setOpeningPortal(false);
     }
   };
 
@@ -270,17 +323,8 @@ function ConfirmedPayment({
           </div>
 
           <CardContent className="px-5 py-7 sm:px-10 sm:py-9">
-            {(payment.participantAccessStatus === "active" || payment.whatsappGroupUrl) && (
+            {payment.whatsappGroupUrl && (
               <nav aria-label="Próximos passos" className="mb-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                {payment.participantAccessStatus === "active" && (
-                  <a
-                    href="/acessar"
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <LogIn className="size-5 shrink-0" aria-hidden="true" />
-                    Acessar portal
-                  </a>
-                )}
                 {payment.whatsappGroupUrl && (
                   <a
                     href={payment.whatsappGroupUrl}
@@ -357,7 +401,6 @@ function ConfirmedPayment({
                 </div>
               </div>
 
-              {payment.participantAccessStatus === "active" && (
               <section
                 className="h-fit rounded-3xl border border-amber/40 bg-amber/10 p-5 sm:p-6"
                 aria-labelledby="material-title"
@@ -374,53 +417,27 @@ function ConfirmedPayment({
                       id="material-title"
                       className="font-display text-xl font-bold text-foreground"
                     >
-                      Seu acesso ao portal está pronto
+                      Acesso ao portal do participante
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Acesse o portal do participante para consultar as partituras, manuais e demais
-                      materiais do evento.
+                      Clique abaixo para entrar automaticamente no portal do participante. Não é
+                      necessário informar senha.
                     </p>
-                    {payment.participantInitialPassword && (
-                      <dl className="mt-4 grid gap-3 rounded-2xl border border-amber/30 bg-background/60 p-4 sm:grid-cols-2">
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Link do portal
-                          </dt>
-                          <dd className="mt-1 text-sm font-bold text-foreground">
-                            {payment.participantPortalUrl ?? "/acessar"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Senha inicial
-                          </dt>
-                          <dd className="mt-1 break-all font-mono text-sm font-bold text-foreground">
-                            {payment.participantInitialPassword}
-                          </dd>
-                        </div>
-                      </dl>
+                    {portalError && (
+                      <p className="mt-3 text-sm font-semibold text-destructive">{portalError}</p>
                     )}
-                    <a
-                      href={payment.participantPortalUrl ?? "/acessar"}
+                    <Button
+                      type="button"
+                      disabled={openingPortal}
+                      onClick={() => void handlePortalAccess()}
                       className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      Acessar o portal do participante
+                      {openingPortal ? "Preparando acesso…" : "Acessar portal do participante"}
                       <LogIn className="size-4" aria-hidden="true" />
-                    </a>
+                    </Button>
                   </div>
                 </div>
               </section>
-            )}
-              {payment.participantAccessStatus === "pending" && (
-              <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
-                Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.
-              </p>
-              )}
-              {payment.participantAccessStatus === "conflict" && (
-              <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
-                Seu acesso precisa de atendimento da organização.
-              </p>
-              )}
             </div>
           </CardContent>
         </Card>

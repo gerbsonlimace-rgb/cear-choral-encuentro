@@ -71,6 +71,16 @@ describe("choir pricing domain", () => {
     ).toBe(false);
   });
 
+  it("accepts a configured promotional balance independent of the discount", () => {
+    expect(
+      pricingSettingsSchema.safeParse({
+        standardPriceCents: 30000,
+        promotionalPriceCents: 10000,
+        promotionalRemainingPriceCents: 25000,
+      }).success,
+    ).toBe(true);
+  });
+
   it("normalizes choir names before persistence", () => {
     expect(
       choirMutationSchema.parse({

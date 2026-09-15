@@ -24,20 +24,6 @@ export const pricingSettingsSchema = z
         message: "O valor promocional deve ser menor que o valor normal.",
       });
     }
-    if (
-      settings.promotionalRemainingPriceCents !== undefined &&
-      settings.promotionalRemainingPriceCents !== null &&
-      settings.standardPriceCents !== null &&
-      settings.promotionalPriceCents !== null &&
-      settings.promotionalRemainingPriceCents >
-        settings.standardPriceCents - settings.promotionalPriceCents
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["promotionalRemainingPriceCents"],
-        message: "O valor restante não pode superar a diferença entre os valores.",
-      });
-    }
   });
 
 export const choirMutationSchema = z

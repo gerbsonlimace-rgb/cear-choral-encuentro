@@ -140,7 +140,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
 const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
@@ -1093,6 +1093,7 @@ describe("Supabase registration repository", () => {
       createUser: async () => ({ id: "33333333-3333-4333-8333-333333333333" }),
       deleteUser: async () => {},
       updatePassword: async () => {},
+      createMagicLink: async () => "https://example.supabase.co/auth/v1/verify?token=one-time",
     };
 
     await expect(
