@@ -56,6 +56,7 @@ const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const cpf = "52998224725";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
+const existingCheckoutUrl = "https://checkout.infinitepay.com.br/existing";
 const choirId = "22222222-2222-4222-8222-222222222222";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
 const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
@@ -139,6 +140,7 @@ const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
 const identityColumns = "id";
+const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -214,6 +216,11 @@ function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
   let identityRecord: { id: string } | null = null;
+  let resumeIdentityRecord: {
+    birthDate: string;
+    paymentStatus: "pending" | "paid" | "legacy";
+    checkoutUrl: string | null;
+  } | null = null;
 
   const repository: RegistrationRepository = {
     createPending: vi.fn(async (input) => {
@@ -244,6 +251,7 @@ function createFixture() {
       };
       return record;
     }),
+    findForResume: vi.fn(async () => resumeIdentityRecord),
   };
 
   const infinitePay: InfinitePayClient = {
@@ -294,6 +302,9 @@ function createFixture() {
     setIdentityRecord(next: typeof identityRecord) {
       identityRecord = next;
     },
+    setResumeIdentityRecord(next: typeof resumeIdentityRecord) {
+      resumeIdentityRecord = next;
+    },
     setRecord(next: RegistrationPaymentRecord | null) {
       record = next;
     },
@@ -338,6 +349,57 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("resumes the persisted checkout when CPF and birth date match", async () => {
+    fixture.setResumeIdentityRecord({
+      birthDate: "1990-05-12",
+      paymentStatus: "pending",
+      checkoutUrl: existingCheckoutUrl,
+    });
+
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
+      { status: "pending", checkoutUrl: existingCheckoutUrl },
+    );
+  });
+
+  it("uses the same identity error for an unknown CPF or mismatched birth date", async () => {
+    fixture.setResumeIdentityRecord({
+      birthDate: "1990-05-12",
+      paymentStatus: "pending",
+      checkoutUrl: existingCheckoutUrl,
+    });
+
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1991-01-01" })).rejects.toThrow(
+      "Não foi possível localizar uma inscrição com os dados informados.",
+    );
+
+    fixture.setResumeIdentityRecord(null);
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).rejects.toThrow(
+      "Não foi possível localizar uma inscrição com os dados informados.",
+    );
+  });
+
+  it("confirms paid registrations and directs pending records without a checkout to support", async () => {
+    fixture.setResumeIdentityRecord({
+      birthDate: "1990-05-12",
+      paymentStatus: "paid",
+      checkoutUrl: existingCheckoutUrl,
+    });
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
+      {
+        status: "paid",
+      },
+    );
+
+    fixture.setResumeIdentityRecord({
+      birthDate: "1990-05-12",
+      paymentStatus: "pending",
+      checkoutUrl: null,
+    });
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).rejects.toThrow(
+      "Procure a organização para continuar o pagamento.",
+    );
   });
 
   it("uses the trusted full-price quote when the participant opts out of raffles", async () => {
@@ -610,14 +672,18 @@ describe("registration payment service", () => {
 
   it("releases the group invitation only through verified payment reconciliation", async () => {
     fixture.setRecord(pendingRecord());
-    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty("whatsappGroupUrl");
+    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty(
+      "whatsappGroupUrl",
+    );
 
     const confirmed = await fixture.service.reconcilePayment(lookup);
     expect(confirmed).toMatchObject({
       status: "paid",
       whatsappGroupUrl: "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw",
     });
-    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty("whatsappGroupUrl");
+    expect(await fixture.service.getPublicStatus(fixedOrderNsu)).not.toHaveProperty(
+      "whatsappGroupUrl",
+    );
     expect(await fixture.service.reconcilePayment(lookup)).toMatchObject({
       whatsappGroupUrl: "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw",
     });
@@ -976,6 +1042,34 @@ describe("Supabase registration repository", () => {
     await expect(repository.findPayment(fixedOrderNsu)).rejects.toThrow(
       "Não foi possível consultar a inscrição",
     );
+  });
+
+  it("looks up only the identity fields needed to resume a checkout", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: {
+            birth_date: "1990-05-12",
+            payment_status: "pending",
+            checkout_url: existingCheckoutUrl,
+          },
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findForResume(cpf)).resolves.toEqual({
+      birthDate: "1990-05-12",
+      paymentStatus: "pending",
+      checkoutUrl: existingCheckoutUrl,
+    });
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["select", resumeIdentityColumns],
+      ["eq", "cpf", cpf],
+      ["maybeSingle"],
+    ]);
   });
 
   it("saves the checkout URL only while the order is pending", async () => {
