@@ -256,15 +256,35 @@ describe("landing page access", () => {
     expect(integralOption).not.toBeChecked();
     expect(raffleOption).toBeChecked();
     expect(within(options).getByText("R$ 300,00")).toBeVisible();
-    expect(within(options).getByText("R$ 100,00")).toBeVisible();
-    expect(within(options).getByText("Agora")).toBeVisible();
+    expect(
+      within(options).getByText("R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10"),
+    ).toBeVisible();
     expect(integralCard).toHaveTextContent("Pix");
     expect(integralCard).toHaveTextContent("5x no cartão");
-    expect(within(raffleCard).getByText("Concorra a R$ 1.000")).toBeVisible();
-    expect(within(raffleCard).getByText("Sorteio online em 08/11")).toBeVisible();
-    expect(within(raffleCard).getByText("25 rifas de R$ 10")).toBeVisible();
-    expect(within(raffleCard).getByText("Envie os valores arrecadados até 30/10")).toBeVisible();
-    expect(raffleCard).toHaveTextContent(/adesão ao programa depende/i);
+    expect(within(integralCard).getByText("Simples e rápido")).toBeVisible();
+    expect(within(integralCard).getByText("Inscrição confirmada na hora")).toBeVisible();
+    expect(within(raffleCard).queryByText("Concorra a R$ 1.000")).not.toBeInTheDocument();
+    const raffleSteps = within(raffleCard).getByRole("list", {
+      name: "Passo a passo do programa de rifas",
+    });
+    const steps = within(raffleSteps).getAllByRole("listitem");
+    expect(steps).toHaveLength(5);
+    expect(steps[0]).toHaveTextContent("Pague agora R$ 100 no Pix ou cartão.");
+    expect(steps[1]).toHaveTextContent(
+      "Agende com seu regente um momento para receber os blocos de rifas.",
+    );
+    expect(steps[2]).toHaveTextContent(
+      "Venda pelo menos 25 rifas, no valor de R$ 10 cada, e entregue ao seu regente todo o valor arrecadado até 30/10.",
+    );
+    expect(steps[3]).toHaveTextContent(
+      "A venda mínima de 25 rifas é obrigatória para subsidiar e confirmar sua inscrição no evento.",
+    );
+    expect(steps[3]).toHaveTextContent(
+      "O coralista que vender mais rifas ganhará um Pix de R$ 500.",
+    );
+    expect(steps[4]).toHaveTextContent(
+      "O sorteio do prêmio de R$ 1.000 será realizado online no dia 08/11.",
+    );
     expect(within(registration!).getByText("Selecione uma opção para comparar.")).toBeVisible();
     expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
     expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
@@ -290,15 +310,20 @@ describe("landing page access", () => {
     const integralCard = integralOption.closest("label") ?? integralOption;
     const raffleCard = raffleOption.closest("label") ?? raffleOption;
 
-    expect(options).toHaveClass("grid-cols-1", "md:grid-cols-2");
-    expect(integralCard).toHaveClass("min-h-[320px]");
-    expect(raffleCard).toHaveClass("min-h-[320px]");
+    expect(options).toHaveClass("grid-cols-1");
+    expect(options).not.toHaveClass("md:grid-cols-2");
+    expect(integralCard).toHaveClass("w-full");
+    expect(raffleCard).toHaveClass("w-full");
     expect(integralOption).toHaveAttribute("type", "radio");
     expect(raffleOption).toHaveAttribute("type", "radio");
-    expect(raffleOption).toHaveAttribute("aria-describedby", "raffle-option-details");
+    expect(raffleOption).toHaveAttribute("aria-describedby", "raffle-option-summary");
     expect(within(integralCard).getByText("R$ 300,00")).toHaveClass("text-4xl", "sm:text-5xl");
-    expect(within(raffleCard).getByText("R$ 100,00")).toHaveClass("text-4xl", "sm:text-5xl");
-    expect(within(raffleCard).getByText("Agora")).toBeVisible();
+    expect(
+      within(raffleCard).getByText("R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10"),
+    ).toHaveClass("text-3xl", "sm:text-4xl");
+    expect(raffleOption).toHaveAccessibleDescription(
+      "R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10",
+    );
     integralOption.focus();
     await user.keyboard("{ArrowRight}");
     expect(raffleOption).toBeChecked();

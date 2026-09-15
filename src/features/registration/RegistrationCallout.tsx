@@ -8,7 +8,6 @@ import {
   Check,
   CreditCard,
   Music2,
-  Send,
   ShoppingBag,
   Sparkles,
   Ticket,
@@ -23,6 +22,38 @@ const benefits = [
   { icon: Utensils, label: "Alimentação" },
   { icon: BedDouble, label: "Hospedagem" },
   { icon: ShoppingBag, label: "Kit do evento" },
+];
+
+const raffleSteps = [
+  {
+    icon: CreditCard,
+    title: "Faça o pagamento inicial",
+    description: "Pague agora R$ 100 no Pix ou cartão.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Receba seus blocos de rifas",
+    description: "Agende com seu regente um momento para receber os blocos de rifas.",
+  },
+  {
+    icon: Ticket,
+    title: "Venda as rifas",
+    description:
+      "Venda pelo menos 25 rifas, no valor de R$ 10 cada, e entregue ao seu regente todo o valor arrecadado até 30/10.",
+  },
+  {
+    icon: Award,
+    title: "Confirme sua inscrição e participe da venda extra",
+    description:
+      "A venda mínima de 25 rifas é obrigatória para subsidiar e confirmar sua inscrição no evento.",
+    extra:
+      "Quer vender mais? Solicite blocos adicionais ao seu regente. O coralista que vender mais rifas ganhará um Pix de R$ 500.",
+  },
+  {
+    icon: Trophy,
+    title: "Acompanhe o sorteio",
+    description: "O sorteio do prêmio de R$ 1.000 será realizado online no dia 08/11.",
+  },
 ];
 
 export function RegistrationCallout() {
@@ -94,11 +125,11 @@ export function RegistrationCallout() {
           <div
             role="radiogroup"
             aria-label="Opções de inscrição"
-            className="mt-7 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2"
+            className="mt-7 grid grid-cols-1 items-stretch gap-4"
           >
             <label
               htmlFor="registration-option-integral"
-              className={`relative flex min-h-[320px] cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
+              className={`relative flex min-h-[280px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
                 selectedOption === "integral"
                   ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.16),rgba(255,196,0,0.05))] shadow-[0_0_0_1px_rgba(255,196,0,0.28),0_16px_30px_rgba(0,0,0,0.22)]"
                   : "border-white/15 bg-white/[0.05] hover:border-[#ffc400]/55 hover:bg-white/[0.07]"
@@ -139,16 +170,25 @@ export function RegistrationCallout() {
                   Pague à vista no Pix ou em até{" "}
                   <strong className="text-white">5x no cartão</strong>.
                 </p>
-                <p className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/65">
-                  <Check className="size-4 text-[#ffc400]" aria-hidden="true" />
-                  Inscrição quitada na hora
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                  <p className="flex items-center gap-2 font-display text-xl font-bold text-white">
+                    <Sparkles className="size-5 text-[#ffc400]" aria-hidden="true" />
+                    Simples e rápido
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/65">
+                    Faça o pagamento e confirme sua vaga sem etapas adicionais.
+                  </p>
+                </div>
+                <p className="mt-auto flex items-center gap-2 rounded-xl bg-[#ffc400] px-4 py-3 text-sm font-extrabold text-black">
+                  <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+                  Inscrição confirmada na hora
                 </p>
               </div>
             </label>
 
             <label
               htmlFor="registration-option-raffles"
-              className={`relative flex min-h-[320px] cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
+              className={`relative flex min-h-[320px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
                 selectedOption === "raffles"
                   ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.2),rgba(255,196,0,0.07))] shadow-[0_0_0_1px_rgba(255,196,0,0.32),0_16px_30px_rgba(0,0,0,0.22)]"
                   : "border-[#ffc400]/60 bg-[linear-gradient(145deg,rgba(255,196,0,0.1),rgba(255,255,255,0.04))] hover:border-[#ffc400]"
@@ -160,7 +200,7 @@ export function RegistrationCallout() {
                 name="registrationOption"
                 value="raffles"
                 aria-label="Programa de rifas"
-                aria-describedby="raffle-option-details"
+                aria-describedby="raffle-option-summary"
                 checked={selectedOption === "raffles"}
                 onChange={() => setSelectedOption("raffles")}
                 className="peer sr-only"
@@ -182,45 +222,64 @@ export function RegistrationCallout() {
                 <p className="text-base font-bold">Programa de rifas</p>
               </div>
 
-              <div id="raffle-option-details" className="contents">
-                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
-                  R$ 100,00
+              <div className="contents">
+                <p
+                  id="raffle-option-summary"
+                  className="mt-7 max-w-4xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+                >
+                  R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10
                 </p>
-                <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ffc400]">
-                  Agora
+                <p className="mt-3 text-sm font-semibold text-white/65">
+                  Disponível para coros participantes.
                 </p>
 
-                <div className="mt-5 rounded-2xl bg-[#ffc400] p-4 text-black shadow-[0_12px_24px_rgba(255,196,0,0.18)]">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-black text-[#ffc400]">
-                      <Trophy className="size-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                      <p className="font-display text-2xl font-extrabold leading-none">
-                        Concorra a R$ 1.000
-                      </p>
-                      <p className="mt-1 flex items-center gap-1.5 text-sm font-bold">
-                        <CalendarDays className="size-4" aria-hidden="true" />
-                        Sorteio online em 08/11
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                  <p className="flex items-center gap-2 text-sm font-bold">
-                    <Ticket className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
-                    25 rifas de R$ 10
-                  </p>
-                  <p className="flex items-center gap-2 text-sm font-bold">
-                    <Send className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
-                    Envie os valores arrecadados até 30/10
-                  </p>
-                </div>
-                <p className="mt-auto border-t border-white/10 pt-4 text-xs font-semibold leading-relaxed text-white/60">
-                  Disponível para coros participantes. A adesão ao programa depende da venda das 25
-                  rifas e do envio dos valores dentro do prazo.
-                </p>
+                <ol
+                  aria-label="Passo a passo do programa de rifas"
+                  className="mx-auto mt-5 w-full max-w-4xl"
+                >
+                  {raffleSteps.map(({ icon: Icon, title, description, extra }, index) => (
+                    <li
+                      key={title}
+                      className="relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-4 last:pb-0"
+                    >
+                      {index < raffleSteps.length - 1 ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute bottom-0 left-[1.21875rem] top-10 w-px bg-[#ffc400]/35"
+                        />
+                      ) : null}
+                      <span className="relative z-10 inline-flex size-10 items-center justify-center rounded-full bg-[#ffc400] font-display text-lg font-extrabold text-black">
+                        {index + 1}
+                      </span>
+                      <div
+                        className={`rounded-xl border p-4 ${
+                          extra
+                            ? "border-[#ffc400]/60 bg-[#ffc400]/10"
+                            : "border-white/10 bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <Icon
+                            className="mt-0.5 size-4 shrink-0 text-[#ffc400]"
+                            strokeWidth={2.5}
+                            aria-hidden="true"
+                          />
+                          <div>
+                            <p className="font-bold leading-snug text-white">{title}</p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-white/70">
+                              {description}
+                            </p>
+                          </div>
+                        </div>
+                        {extra ? (
+                          <p className="mt-3 rounded-lg bg-[#ffc400] px-3 py-2.5 text-sm font-bold leading-relaxed text-black">
+                            {extra}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               </div>
             </label>
           </div>
