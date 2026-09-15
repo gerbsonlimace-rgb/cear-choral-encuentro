@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Banknote, ChartNoAxesCombined, Clock3 } from "lucide-react";
+import { BadgeCheck, Banknote, ChartNoAxesCombined, Clock3, Link2 } from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,10 +36,12 @@ import {
 import { BalancePaymentDialog, isSafeCheckoutUrl } from "@/features/regent/BalancePaymentDialog";
 import { startComplementCheckout } from "@/lib/regent.functions";
 import {
+  createAdminRegistrationCheckoutLink,
   exportAdminRegistrations,
   getAdminAccess,
   getAdminRegistrationSummary,
   listAdminRegistrations,
+  markAdminRegistrationPaid,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   type AdminAccessState,
@@ -70,6 +72,15 @@ type Props = {
     status: "success";
     sessionsRevoked: false;
   }>;
+  createPaymentLink?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    reused: boolean;
+  }>;
+  markPaid?: (input: { data: { registrationId: string } }) => Promise<{
+    status: "paid";
+    registrationId: string;
+  }>;
+  copyToClipboard?: (value: string) => Promise<void>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
   startBalanceCheckout?: (input: { data: { registrationId: string } }) => Promise<{
@@ -87,6 +98,7 @@ type Props = {
 
 const defaultGetSession = () => supabase.auth.getSession();
 const defaultSignOut = () => supabase.auth.signOut();
+const defaultCopyToClipboard = (value: string) => navigator.clipboard.writeText(value);
 const initialQuery: AdminRegistrationQuery = {
   search: "",
   paymentStatus: "all",
@@ -202,12 +214,16 @@ function RegistrationViews({
   onReprocess,
   onReset,
   onBalancePayment,
+  onPaymentLink,
+  onMarkPaid,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
   onReprocess: (row: AdminRegistrationRow) => void;
   onReset: (row: AdminRegistrationRow) => Promise<void>;
   onBalancePayment: (row: AdminRegistrationRow) => void;
+  onPaymentLink: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow) => void;
 }) {
   return (
     <>
@@ -263,7 +279,13 @@ function RegistrationViews({
                   <p className="break-words">{row.regentName ?? "Não informado"}</p>
                 </TableCell>
                 <TableCell className="align-top">
-                  <BalanceAction row={row} onBalancePayment={onBalancePayment} />
+                  <BalanceAction
+                    row={row}
+                    onBalancePayment={onBalancePayment}
+                    onPaymentLink={onPaymentLink}
+                    onMarkPaid={onMarkPaid}
+                    busy={participantActionBusy}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -308,7 +330,13 @@ function RegistrationViews({
                 </div>
               </dl>
               <div className="border-t pt-3">
-                <BalanceAction row={row} onBalancePayment={onBalancePayment} />
+                <BalanceAction
+                  row={row}
+                  onBalancePayment={onBalancePayment}
+                  onPaymentLink={onPaymentLink}
+                  onMarkPaid={onMarkPaid}
+                  busy={participantActionBusy}
+                />
                 <ParticipantAccessActions
                   row={row}
                   busy={participantActionBusy}
@@ -327,10 +355,17 @@ function RegistrationViews({
 function BalanceAction({
   row,
   onBalancePayment,
+  onPaymentLink,
+  onMarkPaid,
+  busy,
 }: {
   row: AdminRegistrationRow;
   onBalancePayment: (row: AdminRegistrationRow) => void;
+  onPaymentLink: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow) => void;
+  busy: boolean;
 }) {
+  const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
   const state = getAdminFinancialState(row);
   const openUrl = row.openComplementPayment?.checkoutUrl;
   if (openUrl && isSafeCheckoutUrl(openUrl)) {
@@ -343,9 +378,50 @@ function BalanceAction({
   if (row.openComplementPayment) {
     return <span className="text-xs text-muted-foreground">Pagamento em processamento</span>;
   }
+  if (state.status === "pending") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => onPaymentLink(row)}
+        >
+          <Link2 aria-hidden="true" className="mr-1.5 size-4" />
+          Gerar link de pagamento
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => setConfirmMarkPaid(true)}
+        >
+          <BadgeCheck aria-hidden="true" className="mr-1.5 size-4" />
+          Marcar como pago
+        </Button>
+        <AlertDialog open={confirmMarkPaid} onOpenChange={setConfirmMarkPaid}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido antes de
+                concluir esta ação.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction disabled={busy} onClick={() => void onMarkPaid(row)}>
+                Confirmar pagamento
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
   if (state.status !== "partially_paid" || state.pendingCents <= 0) return null;
   return (
-    <Button size="sm" variant="outline" onClick={() => onBalancePayment(row)}>
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => onBalancePayment(row)}>
       Pagar saldo de {money(state.pendingCents)}
     </Button>
   );
@@ -395,6 +471,9 @@ export function AdminRegistrationsPage({
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
+  createPaymentLink = createAdminRegistrationCheckoutLink,
+  markPaid = markAdminRegistrationPaid,
+  copyToClipboard = defaultCopyToClipboard,
   reprocessAccess = reprocessParticipantAccess,
   resetInitialPassword = resetParticipantInitialPassword,
   startBalanceCheckout,
@@ -647,6 +726,48 @@ export function AdminRegistrationsPage({
     }
   }
 
+  async function runPaymentLinkAction(row: AdminRegistrationRow): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await createPaymentLink({ data: { registrationId: row.id } });
+      if (!isSafeCheckoutUrl(result.checkoutUrl)) throw new Error("unsafe checkout URL");
+      await copyToClipboard(result.checkoutUrl);
+      setAnnouncement(
+        result.reused
+          ? "Link de pagamento copiado."
+          : "Novo link de pagamento gerado e copiado.",
+      );
+    } catch {
+      setActionError("Não foi possível gerar o link de pagamento. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
+  async function runMarkPaidAction(row: AdminRegistrationRow): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await markPaid({ data: { registrationId: row.id } });
+      if (result.status !== "paid") throw new Error("Unexpected payment result");
+      setAnnouncement("Inscrição marcada como paga.");
+      setRetry((value) => value + 1);
+    } catch {
+      setActionError("Não foi possível marcar a inscrição como paga. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
   async function logout() {
     if (actionBusy.current) return;
     actionBusy.current = true;
@@ -838,6 +959,8 @@ export function AdminRegistrationsPage({
                   onReprocess={(row) => void runParticipantAction(row, "reprocess")}
                   onReset={(row) => runParticipantAction(row, "reset")}
                   onBalancePayment={setBalanceTarget}
+                  onPaymentLink={(row) => void runPaymentLinkAction(row)}
+                  onMarkPaid={(row) => void runMarkPaidAction(row)}
                 />
               ) : (
                 <Card>

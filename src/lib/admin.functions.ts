@@ -190,3 +190,21 @@ export const resetParticipantInitialPassword = createServerFn({ method: "POST" }
       context.adminUserId,
     );
   });
+
+export const createAdminRegistrationCheckoutLink = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(participantRegistrationIdSchema)
+  .handler(async ({ data }) => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().createCheckoutLink(data.registrationId);
+  });
+
+export const markAdminRegistrationPaid = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(participantRegistrationIdSchema)
+  .handler(async ({ data, context }) => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().markPaid(data.registrationId, context.adminUserId);
+  });

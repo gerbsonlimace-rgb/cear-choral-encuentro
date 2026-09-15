@@ -11,17 +11,17 @@ const promotionalRegistration = {
 };
 
 describe("deriveRegistrationFinancialState", () => {
-  it("keeps a pending checkout amount pending without treating it as confirmed principal", () => {
+  it("shows the full registration price as pending before the initial checkout is confirmed", () => {
     expect(
       deriveRegistrationFinancialState({
         paymentStatus: "pending",
-        initialAmountCents: 10_000,
+        initialAmountCents: 100,
         pricingType: "promotional",
-        standardPriceCents: 30_000,
-        registrationPriceCents: 10_000,
+        standardPriceCents: 300,
+        registrationPriceCents: 100,
         confirmedComplementCents: 0,
       }),
-    ).toEqual({ status: "pending", pendingCents: 10_000, confirmedPrincipalCents: 0 });
+    ).toEqual({ status: "pending", pendingCents: 300, confirmedPrincipalCents: 0 });
   });
 
   it("returns legacy for a pending checkout with missing or contradictory price snapshots", () => {
@@ -74,7 +74,10 @@ describe("deriveRegistrationFinancialState", () => {
 
   it("marks a fully settled promotional registration paid", () => {
     expect(
-      deriveRegistrationFinancialState({ ...promotionalRegistration, confirmedComplementCents: 20_000 }),
+      deriveRegistrationFinancialState({
+        ...promotionalRegistration,
+        confirmedComplementCents: 20_000,
+      }),
     ).toEqual({ status: "paid", pendingCents: 0, confirmedPrincipalCents: 30_000 });
   });
 
