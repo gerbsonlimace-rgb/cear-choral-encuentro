@@ -601,6 +601,7 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null
+          badge_name?: string | null
           birth_date: string
           checkout_url: string | null
           choir_id: string | null
@@ -639,6 +640,7 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
+          badge_name?: string | null
           birth_date: string
           checkout_url?: string | null
           choir_id?: string | null
@@ -677,6 +679,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
+          badge_name?: string | null
           birth_date?: string
           checkout_url?: string | null
           choir_id?: string | null

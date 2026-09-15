@@ -14,6 +14,7 @@ const MAX_REGISTRATION_PHOTO_BASE64_LENGTH = Math.ceil(MAX_REGISTRATION_PHOTO_BY
 
 export type RegistrationDraftForm = {
   name: string;
+  badgeName: string;
   cpf: string;
   email: string;
   phone: string;
@@ -37,6 +38,7 @@ const draftSchema = z
     form: z
       .object({
         name: z.string().max(100),
+        badgeName: z.string().max(60).default(""),
         cpf: z.string().max(20),
         email: z.string().max(254),
         phone: z.string().max(30),

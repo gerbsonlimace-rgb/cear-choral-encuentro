@@ -710,7 +710,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
   const findRegistrationByIdentity = async (cpf: string, birthDate: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
-      .select("name,email,phone,birth_date,choir_id,voice_part,photo_path,payment_status")
+      .select("name,badge_name,email,phone,birth_date,choir_id,voice_part,photo_path,payment_status")
       .eq("cpf", cpf)
       .eq("birth_date", birthDate)
       .maybeSingle();
@@ -728,6 +728,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     return {
       status: "found" as const,
       name: data.name,
+      badgeName: typeof data.badge_name === "string" ? data.badge_name : null,
       email: data.email,
       phone: data.phone,
       choirId: typeof data.choir_id === "string" ? data.choir_id : null,
@@ -755,6 +756,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
+        badge_name: input.badgeName,
         cpf: input.cpf,
         photo_path: input.photoPath,
         voice_part: input.voicePart,
@@ -815,6 +817,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         .from("registrations")
         .update({
           name: input.name,
+          badge_name: input.badgeName,
           cpf: input.cpf,
           photo_path: input.photoPath,
           voice_part: input.voicePart,

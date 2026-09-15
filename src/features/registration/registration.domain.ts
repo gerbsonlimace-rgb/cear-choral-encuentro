@@ -96,6 +96,7 @@ export type RegistrationLookupResult =
   | {
       status: "found";
       name: string;
+      badgeName?: string | null;
       email: string;
       phone: string;
       choirId: string | null;
@@ -124,6 +125,7 @@ const registrationPhotoSchema = z
 export const registrationSchema = z
   .object({
     name: z.string().trim().min(2).max(100),
+    badgeName: z.string().trim().min(2, "Informe o nome para o crachá.").max(60),
     cpf: cpfSchema,
     email: z.string().trim().email("Informe um e-mail válido.").max(254),
     phone: z.string().trim().min(8).max(30),

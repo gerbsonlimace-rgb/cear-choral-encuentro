@@ -42,6 +42,7 @@ const available = vi.fn(async () => ({ cpfTaken: false, emailTaken: false }));
 
 async function fillPersonalData(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Nome completo"), "Maria da Silva");
+  await user.type(screen.getByLabelText("Nome para o crachá"), "Maria Silva");
   await user.type(screen.getByLabelText("CPF"), "52998224725");
   await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
@@ -113,7 +114,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       )
         .slice(0, 3)
         .map((input) => input.id),
-    ).toEqual(["cpf", "name", "email"]);
+    ).toEqual(["cpf", "name", "badgeName"]);
     expect(
       Array.from(
         screen
@@ -123,12 +124,15 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       )
         .slice(0, 3)
         .map((input) => input.id),
-    ).toEqual(["cpf", "name", "email"]);
+    ).toEqual(["cpf", "name", "badgeName"]);
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
-    expect(screen.getByLabelText("Prévia do crachá")).toBeInTheDocument();
+    expect(screen.getByLabelText("Exemplo de crachá")).toBeInTheDocument();
+    expect(screen.getByText("Nome completo usado no certificado.")).toBeInTheDocument();
+    expect(screen.getByText("Nome curto que aparecerá no crachá. Ex.: Antonio Lima.")).toBeInTheDocument();
+    expect(screen.getByText("Foto recente, de frente, mostrando apenas o rosto.")).toBeInTheDocument();
     await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
     expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
@@ -156,6 +160,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     const lookup = vi.fn(async () => ({
       status: "found" as const,
       name: "Maria da Silva",
+      badgeName: "Maria Silva",
       email: "maria@example.com",
       phone: "85999999999",
       choirId: quixadaId,
@@ -173,6 +178,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(lookup).toHaveBeenCalledWith({ cpf: "52998224725", birthDate: "1990-05-20" });
     expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(screen.getByDisplayValue("Maria Silva")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
   });
 
@@ -230,6 +237,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     saveRegistrationDraft({
       form: {
         name: "Maria da Silva",
+        badgeName: "Maria Silva",
         cpf: "529.982.247-25",
         email: "maria@example.com",
         phone: "(85) 99999-9999",

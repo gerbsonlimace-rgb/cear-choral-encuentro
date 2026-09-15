@@ -98,6 +98,7 @@ function formatPhone(value: string): string {
 
 const initialForm: Omit<RegistrationForm, "photo"> = {
   name: "",
+  badgeName: "",
   cpf: "",
   email: "",
   phone: "",
@@ -113,7 +114,7 @@ const inputClassName =
   "min-h-11 rounded-lg border-border bg-background pl-10 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
-  1: ["cpf", "name", "email", "phone", "birthDate", "photo"],
+  1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "photo"],
   2: ["choirId", "raffleChoice", "voicePart"],
 };
 
@@ -219,26 +220,10 @@ function RegistrationPriceSummary({
   );
 }
 
-function RegistrationBadgePreview({
-  name,
-  photo,
-}: {
-  name: string;
-  photo: RegistrationPhotoInput | null;
-}) {
-  const initials =
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "?";
-  const photoSrc = photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
-
+function RegistrationBadgeExample() {
   return (
     <aside
-      aria-label="Prévia do crachá"
+      aria-label="Exemplo de crachá"
       className="mx-auto w-full max-w-[15rem] lg:sticky lg:top-24"
     >
       <div className="relative mx-auto h-12 w-28" aria-hidden="true">
@@ -255,14 +240,10 @@ function RegistrationBadgePreview({
             className="mx-auto h-14 w-auto object-contain"
           />
           <div className="mx-auto mt-5 grid size-24 place-items-center overflow-hidden rounded-full border-[3px] border-amber bg-muted font-display text-2xl font-extrabold text-foreground">
-            {photoSrc ? (
-              <img src={photoSrc} alt="Foto do participante" className="size-full object-cover" />
-            ) : (
-              initials
-            )}
+            AL
           </div>
           <p className="mt-5 break-words font-display text-lg font-extrabold leading-tight text-foreground">
-            {name.trim() || "Seu nome"}
+            Antonio Lima
           </p>
           <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">
             Participante
@@ -445,6 +426,7 @@ export function RegistrationSection({
         setForm((previous) => ({
           ...previous,
           name: result.name,
+          badgeName: result.badgeName ?? previous.badgeName,
           email: result.email,
           phone: result.phone,
           choirId:
@@ -492,6 +474,9 @@ export function RegistrationSection({
 
     if (step === 1) {
       if (form.name.trim().length < 2) nextErrors.name = "Informe seu nome completo.";
+      if (form.badgeName.trim().length < 2) {
+        nextErrors.badgeName = "Informe o nome para o crachá.";
+      }
       const cpfResult = cpfSchema.safeParse(form.cpf);
       if (!cpfResult.success) nextErrors.cpf = cpfResult.error.issues[0]?.message;
       if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) nextErrors.email = "Informe um e-mail válido.";
@@ -742,7 +727,37 @@ export function RegistrationSection({
                             className={inputClassName}
                           />
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Nome completo usado no certificado.
+                        </p>
                         {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                      </div>
+
+                      <div className="order-4 space-y-1.5">
+                        <Label htmlFor="badgeName" className="font-semibold">
+                          Nome para o crachá
+                        </Label>
+                        <div className="relative">
+                          <BadgeCheck
+                            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                          <Input
+                            id="badgeName"
+                            required
+                            autoComplete="nickname"
+                            value={form.badgeName}
+                            onChange={(event) => handleChange("badgeName", event.target.value)}
+                            placeholder="Antonio Lima"
+                            className={inputClassName}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Nome curto que aparecerá no crachá. Ex.: Antonio Lima.
+                        </p>
+                        {errors.badgeName && (
+                          <p className="text-sm text-destructive">{errors.badgeName}</p>
+                        )}
                       </div>
 
                       <div className="order-4 space-y-1.5">
@@ -851,6 +866,9 @@ export function RegistrationSection({
                             onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
                           />
                         </label>
+                        <p className="text-xs text-muted-foreground">
+                          Foto recente, de frente, mostrando apenas o rosto.
+                        </p>
                         {errors.photo && (
                           <p id="photo-error" role="alert" className="text-sm text-destructive">
                             {errors.photo}
@@ -871,9 +889,9 @@ export function RegistrationSection({
                   )}
                   <details className="registration-badge-preview rounded-xl border border-border p-3">
                     <summary className="cursor-pointer py-2 text-sm font-semibold">
-                      Ver prévia do crachá
+                      Ver exemplo de crachá
                     </summary>
-                    <RegistrationBadgePreview name={form.name} photo={photo} />
+                    <RegistrationBadgeExample />
                   </details>
                 </div>
               )}
@@ -1083,7 +1101,8 @@ export function RegistrationSection({
                     </div>
                     <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
                       {[
-                        ["Nome", form.name],
+                        ["Nome completo (certificado)", form.name],
+                        ["Nome para o crachá", form.badgeName],
                         ["CPF", form.cpf],
                         ["E-mail", form.email],
                         ["WhatsApp", form.phone],

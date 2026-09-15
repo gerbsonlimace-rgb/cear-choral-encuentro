@@ -12,6 +12,7 @@ const savedAt = new Date("2026-09-13T12:00:00.000Z").getTime();
 const draft: RegistrationDraft = {
   form: {
     name: "Maria da Silva",
+    badgeName: "Maria Silva",
     cpf: "529.982.247-25",
     email: "maria@example.com",
     phone: "(85) 99999-9999",

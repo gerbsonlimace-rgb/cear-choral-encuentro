@@ -17,6 +17,7 @@ const standardQuote = {
 
 const baseInput = {
   name: "Maria da Silva",
+  badgeName: "Maria Silva",
   cpf: "52998224725",
   email: "maria@example.com",
   phone: "85999999999",
@@ -40,6 +41,14 @@ describe("registration domain", () => {
     expect(registrationSchema.safeParse({ ...baseInput, cpf: "111.111.111-11" }).success).toBe(
       false,
     );
+  });
+
+  it("requires a short badge name separate from the certificate name", () => {
+    expect(registrationSchema.safeParse({ ...baseInput, badgeName: "Antonio Lima" }).success).toBe(
+      true,
+    );
+    expect(registrationSchema.safeParse({ ...baseInput, badgeName: "" }).success).toBe(false);
+    expect(registrationSchema.safeParse({ ...baseInput, badgeName: "A" }).success).toBe(false);
   });
 
   it("normalizes the CPF and validates the birth date used to resume a registration", () => {

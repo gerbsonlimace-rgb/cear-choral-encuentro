@@ -80,6 +80,7 @@ const trustedSelection = {
 
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
+  badgeName: "Maria Silva",
   cpf,
   email: "maria@example.com",
   phone: "85999999999",
@@ -998,6 +999,7 @@ describe("Supabase registration repository", () => {
         "insert",
         {
           name: "Maria da Silva",
+          badge_name: "Maria Silva",
           cpf: "52998224725",
           photo_path: registrationPhotoPath,
           voice_part: "soprano",
