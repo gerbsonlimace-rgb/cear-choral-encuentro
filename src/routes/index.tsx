@@ -486,7 +486,7 @@ function AboutSection() {
               Clayton Dias
             </h3>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Maestro, pesquisador e professor, une prática coral e formação em música sacra.
+              Prof. Dr. Clayton Júnior Dias Doutor em Música (2016), Mestre em Música (2012) e Bacharel em Música com habilitação em Voz (2009) pela Universidade Estadual de Campinas (Unicamp). Atualmente está realizando o estágio de pós-doutorado como pesquisador colaborador do Departamento de História na Unicamp, desenvolvendo pesquisas sobre a música monódica medieval e a arte da memória. Especializou-se em Canto Gregoriano no Centro Francescano Studi di Canto Gregoriano (Assisi – Itália) e atualmente cursa o Master of Advanced Studies em Canto Gregoriano, Paleografia e Semiologia na Scuola Universitaria di Musica della Svizzera Italiana (Lugano – Suíça)
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-sm font-bold text-teal">
               <span className="rounded-full bg-teal/10 px-3 py-1">Canto gregoriano</span>
