@@ -199,11 +199,14 @@ describe("landing page access", () => {
     }
     expect(screen.queryByLabelText("CPF")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Falar com a coordenação pelo WhatsApp/ }),
-    ).toHaveAttribute("href", "https://wa.me/5585999033232");
+      screen.queryByText("Evento destinado a membros de coros diocesanos e litúrgicos."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Falar com a coordenação pelo WhatsApp/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it("presents equal selectable registration options without payment method cards", async () => {
+  it("presents the included benefits before a full-width registration choice", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
@@ -215,7 +218,17 @@ describe("landing page access", () => {
     expect(
       within(registration!).getByRole("heading", { name: "Faça agora sua inscrição" }),
     ).toBeVisible();
-    expect(within(registration!).getByText("Escolha a melhor forma de participar:")).toBeVisible();
+    const benefits = within(registration!).getByRole("list", {
+      name: "Benefícios inclusos na inscrição",
+    });
+    for (const benefit of [
+      "Formações e certificado",
+      "Alimentação",
+      "Hospedagem",
+      "Kit do evento",
+    ]) {
+      expect(within(benefits).getByText(benefit)).toBeVisible();
+    }
     expect(
       within(registration!).queryByRole("group", { name: "Formas de pagamento" }),
     ).not.toBeInTheDocument();
@@ -223,6 +236,10 @@ describe("landing page access", () => {
     const options = within(registration!).getByRole("radiogroup", {
       name: "Opções de inscrição",
     });
+    expect(options.parentElement).toHaveClass("w-full");
+    expect(
+      benefits.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     const integralOption = within(options).getByRole("radio", {
       name: "Inscrição integral",
     });
@@ -241,10 +258,11 @@ describe("landing page access", () => {
     expect(within(options).getByText("Agora")).toBeVisible();
     expect(integralOption).toHaveTextContent("Pix");
     expect(integralOption).toHaveTextContent("5x no cartão");
-    expect(
-      within(options).getByText("+ valor restante com a venda de rifas até 30/10."),
-    ).toBeVisible();
-    expect(within(options).getByText(/Exclusivo para membros de coros/)).toBeVisible();
+    expect(within(raffleOption).getByText("Concorra a R$ 1.000")).toBeVisible();
+    expect(within(raffleOption).getByText("Sorteio online em 08/11")).toBeVisible();
+    expect(within(raffleOption).getByText("25 rifas de R$ 10")).toBeVisible();
+    expect(within(raffleOption).getByText("Envie os R$ 250 até 30/10")).toBeVisible();
+    expect(raffleOption).toHaveTextContent(/adesão ao programa depende/i);
     expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
     expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
   });
@@ -266,17 +284,11 @@ describe("landing page access", () => {
       name: "Programa de rifas",
     });
 
-    expect(options).toHaveClass("grid-cols-1", "sm:grid-cols-2");
-    expect(integralOption).toHaveClass("min-h-[280px]");
-    expect(raffleOption).toHaveClass("min-h-[280px]");
-    expect(within(integralOption).getByText("R$ 300,00")).toHaveClass(
-      "text-4xl",
-      "sm:text-5xl",
-    );
-    expect(within(raffleOption).getByText("R$ 100,00")).toHaveClass(
-      "text-4xl",
-      "sm:text-5xl",
-    );
+    expect(options).toHaveClass("grid-cols-1", "md:grid-cols-2");
+    expect(integralOption).toHaveClass("min-h-[320px]");
+    expect(raffleOption).toHaveClass("min-h-[320px]");
+    expect(within(integralOption).getByText("R$ 300,00")).toHaveClass("text-4xl", "sm:text-5xl");
+    expect(within(raffleOption).getByText("R$ 100,00")).toHaveClass("text-4xl", "sm:text-5xl");
     expect(within(raffleOption).getByText("Agora")).toBeVisible();
   });
 
