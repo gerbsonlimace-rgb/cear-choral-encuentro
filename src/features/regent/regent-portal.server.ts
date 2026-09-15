@@ -39,6 +39,7 @@ export type PortalRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
 };
 
 export type PortalSummaryRegistrationRow = Pick<
@@ -48,6 +49,7 @@ export type PortalSummaryRegistrationRow = Pick<
   | "pricingType"
   | "standardPriceCents"
   | "registrationPriceCents"
+  | "remainingPriceCents"
   | "initialAmountCents"
 >;
 
@@ -90,6 +92,7 @@ type RegistrationDatabaseRow = {
   pricing_type: string | null;
   standard_price_cents: number | null;
   registration_price_cents: number | null;
+  remaining_price_cents?: number | null;
 };
 
 type PaymentDatabaseRow = {
@@ -121,7 +124,8 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     !isPricingType(row.pricing_type) ||
     !isNullableSafeInteger(row.amount_cents) ||
     !isNullableSafeInteger(row.standard_price_cents) ||
-    !isNullableSafeInteger(row.registration_price_cents)
+    !isNullableSafeInteger(row.registration_price_cents) ||
+    !isNullableSafeInteger(row.remaining_price_cents ?? null)
   ) {
     throw new Error("Não foi possível consultar os participantes.");
   }
@@ -136,6 +140,7 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     pricingType: row.pricing_type,
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
+    remainingPriceCents: row.remaining_price_cents ?? null,
   };
 }
 
@@ -264,6 +269,7 @@ export function createSupabaseRegentPortalRepository(): RegentPortalRepository {
           initialAmountCents: mapped.initialAmountCents,
           standardPriceCents: mapped.standardPriceCents,
           registrationPriceCents: mapped.registrationPriceCents,
+          remainingPriceCents: mapped.remainingPriceCents,
         };
       });
     },
@@ -374,6 +380,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
               pricingType: row.pricingType,
               standardPriceCents: row.standardPriceCents,
               registrationPriceCents: row.registrationPriceCents,
+              remainingPriceCents: row.remainingPriceCents,
               confirmedComplementCents: confirmedPrincipal(participantPayments),
               openPayment,
             }),
@@ -408,6 +415,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
           pricingType: registration.pricingType,
           standardPriceCents: registration.standardPriceCents,
           registrationPriceCents: registration.registrationPriceCents,
+          remainingPriceCents: registration.remainingPriceCents,
           confirmedComplementCents: confirmed,
         });
         if (

@@ -70,6 +70,7 @@ type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
 type SettingsDraft = {
   standard: string;
   promotional: string;
+  promotionalRemaining: string;
 };
 
 const emptyChoirDraft: ChoirMutation = {
@@ -85,6 +86,7 @@ function settingsDraft(settings: PricingSettings): SettingsDraft {
   return {
     standard: formatCentsForInput(settings.standardPriceCents),
     promotional: formatCentsForInput(settings.promotionalPriceCents),
+    promotionalRemaining: formatCentsForInput(settings.promotionalRemainingPriceCents ?? null),
   };
 }
 
@@ -121,6 +123,7 @@ export function AdminChoirsPage({
   const [settings, setSettings] = useState<SettingsDraft>({
     standard: "",
     promotional: "",
+    promotionalRemaining: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -219,6 +222,7 @@ export function AdminChoirsPage({
       const parsed = pricingSettingsSchema.parse({
         standardPriceCents: parseCurrencyToCents(settings.standard),
         promotionalPriceCents: parseCurrencyToCents(settings.promotional),
+        promotionalRemainingPriceCents: parseCurrencyToCents(settings.promotionalRemaining),
       });
       const saved = await saveSettings({ data: parsed });
       setData((previous) => (previous ? { ...previous, settings: saved } : previous));
@@ -436,6 +440,7 @@ export function AdminChoirsPage({
                         [
                           ["standard", "Valor normal"],
                           ["promotional", "Valor promocional"],
+                          ["promotionalRemaining", "Valor restante promocional"],
                         ] as const
                       ).map(([field, label]) => (
                         <div className="space-y-2" key={field}>

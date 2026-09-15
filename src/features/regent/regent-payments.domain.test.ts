@@ -26,6 +26,16 @@ describe("complement balance", () => {
     });
   });
 
+  it("uses the promotional remaining snapshot when configured", () => {
+    expect(
+      calculateComplementState({
+        ...paidPromotionalRegistration,
+        remainingPriceCents: 15_000,
+        confirmedComplementCents: 2_000,
+      }),
+    ).toMatchObject({ totalCents: 15_000, balanceCents: 13_000 });
+  });
+
   it("requires a paid promotional registration", () => {
     expect(
       calculateComplementState({

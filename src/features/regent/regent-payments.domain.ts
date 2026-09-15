@@ -74,6 +74,7 @@ export interface CalculateComplementStateInput {
   pricingType: string | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
   confirmedComplementCents: number;
   openPayment: ComplementPaymentRow | null;
 }
@@ -100,10 +101,15 @@ export function calculateComplementState(
   // Shirt/add-on prices are deliberately not part of this calculation: the
   // snapshots represent the registration base prices, and the complement is
   // only the difference between those two bases.
-  const totalCents = input.standardPriceCents - input.registrationPriceCents;
+  const derivedTotalCents = input.standardPriceCents - input.registrationPriceCents;
+  const totalCents = input.remainingPriceCents ?? derivedTotalCents;
   if (
+    (input.remainingPriceCents !== undefined &&
+      input.remainingPriceCents !== null &&
+      (!Number.isSafeInteger(input.remainingPriceCents) || input.remainingPriceCents < 0)) ||
     (input.pricingType === "standard" && totalCents !== 0) ||
     (input.pricingType === "promotional" && totalCents <= 0) ||
+    (input.pricingType === "promotional" && totalCents > derivedTotalCents) ||
     input.confirmedComplementCents > totalCents
   ) {
     return { eligible: false, reason: "missing_snapshot" };
@@ -119,6 +125,7 @@ export function calculateComplementState(
     pricingType: input.pricingType,
     standardPriceCents: input.standardPriceCents,
     registrationPriceCents: input.registrationPriceCents,
+    remainingPriceCents: input.remainingPriceCents,
     confirmedComplementCents: input.confirmedComplementCents,
   });
   if (financialState.status === "legacy") {

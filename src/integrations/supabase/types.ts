@@ -400,6 +400,7 @@ export type Database = {
           created_at: string
           id: boolean
           promotional_price_cents: number | null
+          promotional_remaining_price_cents: number | null
           shirt_price_cents: number | null
           standard_price_cents: number | null
           updated_at: string
@@ -408,6 +409,7 @@ export type Database = {
           created_at?: string
           id?: boolean
           promotional_price_cents?: number | null
+          promotional_remaining_price_cents?: number | null
           shirt_price_cents?: number | null
           standard_price_cents?: number | null
           updated_at?: string
@@ -416,6 +418,7 @@ export type Database = {
           created_at?: string
           id?: boolean
           promotional_price_cents?: number | null
+          promotional_remaining_price_cents?: number | null
           shirt_price_cents?: number | null
           standard_price_cents?: number | null
           updated_at?: string
@@ -627,6 +630,7 @@ export type Database = {
           pricing_type: string | null
           receipt_url: string | null
           registration_price_cents: number | null
+          remaining_price_cents?: number | null
           role: string | null
           shirt_price_cents: number | null
           shirt_size: string | null
@@ -664,6 +668,7 @@ export type Database = {
           pricing_type?: string | null
           receipt_url?: string | null
           registration_price_cents?: number | null
+          remaining_price_cents?: number | null
           role?: string | null
           shirt_price_cents?: number | null
           shirt_size?: string | null
@@ -701,6 +706,7 @@ export type Database = {
           pricing_type?: string | null
           receipt_url?: string | null
           registration_price_cents?: number | null
+          remaining_price_cents?: number | null
           role?: string | null
           shirt_price_cents?: number | null
           shirt_size?: string | null

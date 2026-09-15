@@ -76,6 +76,11 @@ export type ParticipantProvisioningResult = {
   status: ParticipantAccessStatus;
 };
 
+export type ParticipantInitialCredentials = {
+  portalUrl: "/acessar";
+  initialPassword: string;
+};
+
 export class ParticipantLinkFailure extends Error {
   constructor(readonly outcome: "confirmed_rejection" | "unknown") {
     super("Participant link was not confirmed");
@@ -261,6 +266,20 @@ export function createParticipantProvisioningService({
 
   return {
     provision,
+    async getInitialCredentials(
+      registrationId: string,
+    ): Promise<ParticipantInitialCredentials | null> {
+      const registration = await repository.findPaidRegistration(registrationId);
+      const account = await repository.findByRegistration(registrationId);
+      if (!registration || !account || account.accessStatus !== "active" || !account.userId) {
+        return null;
+      }
+
+      return {
+        portalUrl: "/acessar",
+        initialPassword: buildInitialParticipantPassword(registration.cpf, registration.birthDate),
+      };
+    },
     async reprocess(
       registrationId: string,
       adminUserId: string,

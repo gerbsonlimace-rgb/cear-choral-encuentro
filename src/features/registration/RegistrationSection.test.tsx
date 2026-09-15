@@ -150,19 +150,29 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
   });
 
-  it("blocks advancing when CPF or e-mail is already registered", async () => {
+  it("allows saved registrations to continue without blocking the wizard", async () => {
     const user = userEvent.setup();
-    const taken = vi.fn(async () => ({ cpfTaken: true, emailTaken: true }));
-    render(<RegistrationSection checkAvailability={taken} loadConfiguration={loadConfiguration} />);
+    const lookup = vi.fn(async () => ({
+      status: "found" as const,
+      name: "Maria da Silva",
+      email: "maria@example.com",
+      phone: "85999999999",
+      choirId: quixadaId,
+      voicePart: "soprano" as const,
+      hasPhoto: true,
+      paymentStatus: "pending" as const,
+    }));
+    render(
+      <RegistrationSection
+        lookupRegistration={lookup}
+        loadConfiguration={loadConfiguration}
+      />,
+    );
     await fillPersonalData(user);
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(taken).toHaveBeenCalledWith({ cpf: "52998224725", email: "maria@example.com" });
-    expect(await screen.findAllByText(/Já existe uma inscrição para este/)).toHaveLength(2);
-    expect(screen.getAllByRole("link", { name: "Retomar pagamento" })[0]).toHaveAttribute(
-      "href",
-      "#retomar-pagamento",
-    );
-    expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledWith({ cpf: "52998224725", birthDate: "1990-05-20" });
+    expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
   });
 
   it("loads configured choirs and all musical profiles in participation", async () => {
@@ -569,7 +579,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
   });
 
-  it("points duplicate CPF registrations to payment recovery", async () => {
+  it("surfaces checkout errors without a recovery section", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection
@@ -583,9 +593,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
-    expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute(
-      "href",
-      "#retomar-pagamento",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível preparar o pagamento");
+    expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
   });
 });

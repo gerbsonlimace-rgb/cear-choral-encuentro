@@ -4,6 +4,7 @@ import {
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
   type RegistrationInput,
+  type RegistrationLookupResult,
 } from "./registration.domain";
 
 const { storageFromMock, storageRemoveMock, storageUploadMock, supabaseAdminMock } = vi.hoisted(
@@ -56,10 +57,10 @@ const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const cpf = "52998224725";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
-const existingCheckoutUrl = "https://checkout.infinitepay.com.br/existing";
 const choirId = "22222222-2222-4222-8222-222222222222";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
 const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
+const existingCheckoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/existing";
 
 const trustedSelection = {
   choir: {
@@ -140,7 +141,7 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
-const identityColumns = "id";
+const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -220,7 +221,14 @@ function createSupabaseHarness(
 function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
-  let identityRecord: { id: string } | null = null;
+  let identityRecord: {
+    id: string;
+    paymentStatus: "pending" | "paid" | "legacy";
+    birthDate: string;
+    orderNsu: string | null;
+    checkoutUrl: string | null;
+  } | null = null;
+  let lookupResult = null as RegistrationLookupResult | null;
   let resumeIdentityRecord: {
     birthDate: string;
     paymentStatus: "pending" | "paid" | "legacy";
@@ -238,6 +246,8 @@ function createFixture() {
   } | null = null;
 
   const repository: RegistrationRepository = {
+    findByCpf: vi.fn(async () => identityRecord),
+    findRegistrationByIdentity: vi.fn(async () => lookupResult),
     createPending: vi.fn(async (input) => {
       calls.push("createPending");
       record = {
@@ -249,6 +259,9 @@ function createFixture() {
     saveCheckoutUrl: vi.fn(async () => {
       calls.push("saveCheckoutUrl");
       return true;
+    }),
+    updatePending: vi.fn(async () => {
+      calls.push("updatePending");
     }),
     clearPendingPhoto: vi.fn(async () => {
       calls.push("clearPendingPhoto");
@@ -298,6 +311,10 @@ function createFixture() {
   const provisionParticipant = vi.fn(
     async (): Promise<{ status: "active" | "pending" | "conflict" }> => ({ status: "active" }),
   );
+  const getParticipantCredentials = vi.fn(async () => null as {
+    portalUrl: "/acessar";
+    initialPassword: string;
+  } | null);
 
   const service = createRegistrationPaymentService({
     repository,
@@ -307,6 +324,7 @@ function createFixture() {
     now: () => fixedPaidAt,
     resolveChoirSelection: vi.fn(async () => trustedSelection),
     provisionParticipant,
+    getParticipantCredentials,
   });
 
   return {
@@ -314,10 +332,14 @@ function createFixture() {
     infinitePay,
     photoStorage,
     provisionParticipant,
+    getParticipantCredentials,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
       identityRecord = next;
+    },
+    setLookupResult(next: RegistrationLookupResult | null) {
+      lookupResult = next;
     },
     setResumeIdentityRecord(next: typeof resumeIdentityRecord) {
       resumeIdentityRecord = next;
@@ -339,6 +361,27 @@ describe("registration payment service", () => {
     fixture = createFixture();
   });
 
+  it("looks up saved participant data by CPF and birth date", async () => {
+    fixture.setLookupResult({
+      status: "found",
+      name: "Maria da Silva",
+      email: "maria@example.com",
+      phone: "88999999999",
+      choirId,
+      voicePart: "soprano",
+      hasPhoto: true,
+      paymentStatus: "pending",
+    });
+
+    await expect(
+      fixture.service.lookupRegistration({ cpf, birthDate: "1990-01-02" }),
+    ).resolves.toEqual(expect.objectContaining({ status: "found", name: "Maria da Silva" }));
+    expect(fixture.repository.findRegistrationByIdentity).toHaveBeenCalledWith(
+      cpf,
+      "1990-01-02",
+    );
+  });
+
   it("stores a pending registration before requesting checkout", async () => {
     const result = await fixture.service.startCheckout(baseInput);
 
@@ -348,16 +391,18 @@ describe("registration payment service", () => {
       "createCheckout",
       "saveCheckoutUrl",
     ]);
-    expect(fixture.repository.createPending).toHaveBeenCalledWith({
-      ...baseRegistrationInput,
-      orderNsu: fixedOrderNsu,
-      amountCents: 10000,
-      choirName: "Coro Diocesano de Quixadá",
-      photoPath: registrationPhotoPath,
-      pricingType: "promotional",
-      standardPriceCents: 30000,
-      registrationPriceCents: 10000,
-    });
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...baseRegistrationInput,
+        orderNsu: fixedOrderNsu,
+        amountCents: 10000,
+        choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
+        pricingType: "promotional",
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+      }),
+    );
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
       orderNsu: fixedOrderNsu,
       items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
@@ -517,6 +562,7 @@ describe("registration payment service", () => {
       pricingType: "standard",
       standardPriceCents: 30000,
       registrationPriceCents: 30000,
+      checkoutClaim: expect.any(String),
     });
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -833,6 +879,44 @@ describe("registration payment service", () => {
     expect(JSON.stringify(status)).not.toContain("transaction-1");
     expect(JSON.stringify(status)).not.toContain('"M"');
   });
+
+  it("returns participant portal credentials only after confirmed provisioning", async () => {
+    fixture.setRecord(pendingRecord());
+    fixture.getParticipantCredentials.mockResolvedValue({
+      portalUrl: "/acessar",
+      initialPassword: "5299822472515011990",
+    });
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "active",
+      participantPortalUrl: "/acessar",
+      participantInitialPassword: "5299822472515011990",
+    });
+    expect(fixture.getParticipantCredentials).toHaveBeenCalledWith("registration-1");
+  });
+
+  it("does not repeat participant credentials when a paid return URL is replayed", async () => {
+    fixture.setRecord({
+      ...pendingRecord(),
+      paymentStatus: "paid",
+      transactionNsu: "transaction-1",
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    fixture.getParticipantCredentials.mockResolvedValue({
+      portalUrl: "/acessar",
+      initialPassword: "5299822472515011990",
+    });
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "active",
+    });
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.not.toHaveProperty(
+      "participantInitialPassword",
+    );
+  });
 });
 
 describe("Supabase registration photo storage", () => {
@@ -1110,20 +1194,55 @@ describe("Supabase registration repository", () => {
     const database = createSupabaseHarness({
       maybeSingleResults: [
         {
-          data: { id: "registration-1" },
+          data: {
+            id: "registration-1",
+            payment_status: "pending",
+            birth_date: "1990-05-20",
+            order_nsu: fixedOrderNsu,
+            checkout_url: null,
+          },
           error: null,
         },
       ],
     });
     const repository = createSupabaseRegistrationRepository();
 
-    await expect(repository.findByCpf(cpf)).resolves.toEqual({ id: "registration-1" });
+    await expect(repository.findByCpf(cpf)).resolves.toEqual({
+      id: "registration-1",
+      paymentStatus: "pending",
+      birthDate: "1990-05-20",
+      orderNsu: fixedOrderNsu,
+      checkoutUrl: null,
+    });
     expect(database.trace).toEqual([
       ["from", "registrations"],
       ["select", identityColumns],
       ["eq", "cpf", cpf],
       ["maybeSingle"],
     ]);
+  });
+
+  it("preserves legacy payment status instead of guessing it is unpaid", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: {
+            id: "registration-legacy",
+            payment_status: "legacy",
+            birth_date: "1990-05-20",
+            order_nsu: null,
+            checkout_url: null,
+          },
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findByCpf(cpf)).resolves.toMatchObject({
+      id: "registration-legacy",
+      paymentStatus: "legacy",
+    });
   });
 
   it("surfaces a payment lookup failure", async () => {

@@ -14,6 +14,7 @@ export interface RegistrationFinancialStateInput {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
   confirmedComplementCents: number;
 }
 
@@ -51,10 +52,13 @@ export function deriveRegistrationFinancialState(
     return legacyState();
   }
 
-  const complementDueCents = input.standardPriceCents - input.registrationPriceCents;
+  const derivedComplementDueCents = input.standardPriceCents - input.registrationPriceCents;
+  const complementDueCents = input.remainingPriceCents ?? derivedComplementDueCents;
   const coherentPriceSnapshots =
     (input.pricingType === "standard" && complementDueCents === 0) ||
-    (input.pricingType === "promotional" && complementDueCents > 0);
+    (input.pricingType === "promotional" &&
+      complementDueCents > 0 &&
+      complementDueCents <= derivedComplementDueCents);
   if (!coherentPriceSnapshots || input.confirmedComplementCents > complementDueCents) {
     return legacyState();
   }
@@ -68,7 +72,7 @@ export function deriveRegistrationFinancialState(
   }
 
   const confirmedPrincipalCents = input.registrationPriceCents + input.confirmedComplementCents;
-  const pendingCents = input.standardPriceCents - confirmedPrincipalCents;
+  const pendingCents = complementDueCents - input.confirmedComplementCents;
   if (pendingCents === 0) {
     return { status: "paid", pendingCents, confirmedPrincipalCents };
   }

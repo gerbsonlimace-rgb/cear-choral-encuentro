@@ -37,6 +37,7 @@ export type RegentPaymentRegistration = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
 };
 
 export type RegentAccountingPayment = {
@@ -267,6 +268,7 @@ export function createRegentPaymentService({
         pricingType: registration.pricingType,
         standardPriceCents: registration.standardPriceCents,
         registrationPriceCents: registration.registrationPriceCents,
+        remainingPriceCents: registration.remainingPriceCents,
         confirmedComplementCents: safePaidTotal(payments),
         openPayment: null,
       });
@@ -396,7 +398,7 @@ function toComplementPaymentPublicStatus(
 }
 
 const registrationColumns =
-  "id,choir_id,payment_status,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,choir_id,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const paymentColumns =
   "id,registration_id,choir_id,amount_cents,status,order_nsu,checkout_url,infinitepay_invoice_slug,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at,initiated_by,initiated_by_name,initiated_as" as const;
 
@@ -540,6 +542,7 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
         pricingType: data.pricing_type as RegentPaymentRegistration["pricingType"],
         standardPriceCents: data.standard_price_cents,
         registrationPriceCents: data.registration_price_cents,
+        remainingPriceCents: data.remaining_price_cents,
       };
     },
 
