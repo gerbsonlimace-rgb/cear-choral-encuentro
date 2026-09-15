@@ -366,7 +366,8 @@ function HeroSection() {
           <div className="mt-7 sm:mt-8">
             <div className="flex items-center gap-2 text-sm font-semibold text-white/90 sm:text-base">
               <Users aria-hidden="true" className="h-5 w-5 shrink-0 text-amber" />
-              <span>Coralistas, Instrumentistas e Regentes</span>
+              <span>Regentes coralistas e instrumentistas
+</span>
             </div>
           </div>
         </div>
