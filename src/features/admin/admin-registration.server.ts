@@ -2,6 +2,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   buildRegistrationsCsv,
   enrichAdminRegistrationRow,
+  manualPaymentReceiptSchema,
+  MAX_MANUAL_PAYMENT_RECEIPT_BYTES,
   mapAdminRegistrationRow,
   summarizeAdminRegistrations,
   type AdminExportFile,
@@ -12,6 +14,7 @@ import {
   type AdminRegistrationQuery,
   type AdminRegistrationRow,
   type AdminRegistrationSummary,
+  type ManualPaymentReceipt,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
 
@@ -36,6 +39,11 @@ export const adminRegistrationColumns = [
   "payment_method",
   "installments",
   "paid_at",
+  "payment_origin",
+  "manual_receipt_path",
+  "manual_receipt_file_name",
+  "manual_receipt_mime_type",
+  "manual_receipt_size_bytes",
   "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
@@ -44,6 +52,27 @@ const complementPaymentColumns =
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const PHOTO_URL_EXPIRY_SECONDS = 3600;
+const MANUAL_PAYMENT_RECEIPT_BUCKET = "registration-payment-receipts";
+const RECEIPT_URL_EXPIRY_SECONDS = 3600;
+
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function receiptExtension(mimeType: ManualPaymentReceipt["mimeType"]): string {
+  if (mimeType === "application/pdf") return "pdf";
+  return mimeType === "image/jpeg" ? "jpg" : "png";
+}
+
+function parseManualReceipt(receipt: ManualPaymentReceipt) {
+  const parsed = manualPaymentReceiptSchema.parse(receipt);
+  const bytes = decodeBase64(parsed.base64);
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_MANUAL_PAYMENT_RECEIPT_BYTES) {
+    throw new Error("O comprovante deve ter até 10 MB.");
+  }
+  return { parsed, bytes };
+}
 
 async function signRegistrationPhoto(photoPath: string | null): Promise<string | null> {
   if (!photoPath) return null;
@@ -103,7 +132,9 @@ export type AdminRegistrationRepository = {
   markPaid?: (
     registrationId: string,
     adminUserId: string,
+    receipt: ManualPaymentReceipt,
   ) => Promise<{ status: "paid"; registrationId: string }>;
+  getReceiptUrl?(registrationId: string): Promise<{ signedUrl: string; expiresIn: number }>;
 };
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
@@ -255,7 +286,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       });
       if (error) throw new Error("Não foi possível registrar a exportação.");
     },
-    async markPaid(registrationId, adminUserId) {
+    async markPaid(registrationId, adminUserId, receipt) {
       const { data: current, error: readError } = await supabaseAdmin
         .from("registrations")
         .select("id,amount_cents,payment_status,checkout_url")
@@ -272,34 +303,74 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         );
       }
       const amountCents = current.amount_cents;
-      if (typeof amountCents !== "number" || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      if (
+        typeof amountCents !== "number" ||
+        !Number.isSafeInteger(amountCents) ||
+        amountCents <= 0
+      ) {
         throw new Error("Não foi possível confirmar o valor da inscrição.");
       }
 
+      const { parsed, bytes } = parseManualReceipt(receipt);
+      const receiptPath = `${registrationId}/${crypto.randomUUID()}.${receiptExtension(parsed.mimeType)}`;
+      const storage = supabaseAdmin.storage.from(MANUAL_PAYMENT_RECEIPT_BUCKET);
+      const { error: uploadError } = await storage.upload(receiptPath, bytes, {
+        cacheControl: "31536000",
+        contentType: parsed.mimeType,
+        upsert: false,
+      });
+      if (uploadError) throw new Error("Não foi possível enviar o comprovante.");
+
       const paidAt = new Date().toISOString();
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("registrations")
+          .update({
+            payment_status: "paid",
+            payment_origin: "manual",
+            manual_paid_by: adminUserId,
+            manual_receipt_path: receiptPath,
+            manual_receipt_file_name: parsed.fileName,
+            manual_receipt_mime_type: parsed.mimeType,
+            manual_receipt_size_bytes: bytes.byteLength,
+            infinitepay_invoice_slug: null,
+            infinitepay_transaction_nsu: null,
+            payment_method: null,
+            installments: null,
+            paid_amount_cents: amountCents,
+            receipt_url: null,
+            paid_at: paidAt,
+          })
+          .eq("id", registrationId)
+          .eq("payment_status", "pending")
+          .is("checkout_url", null)
+          .select("id")
+          .maybeSingle();
+        if (error || !data) {
+          throw new Error("Não foi possível marcar a inscrição como paga.");
+        }
+        return { status: "paid", registrationId: data.id };
+      } catch (error) {
+        await storage.remove([receiptPath]).catch(() => undefined);
+        throw error;
+      }
+    },
+    async getReceiptUrl(registrationId) {
       const { data, error } = await supabaseAdmin
         .from("registrations")
-        .update({
-          payment_status: "paid",
-          payment_origin: "manual",
-          manual_paid_by: adminUserId,
-          infinitepay_invoice_slug: null,
-          infinitepay_transaction_nsu: null,
-          payment_method: null,
-          installments: null,
-          paid_amount_cents: amountCents,
-          receipt_url: null,
-          paid_at: paidAt,
-        })
+        .select("manual_receipt_path")
         .eq("id", registrationId)
-        .eq("payment_status", "pending")
-        .is("checkout_url", null)
-        .select("id")
         .maybeSingle();
-      if (error || !data) {
-        throw new Error("Não foi possível marcar a inscrição como paga.");
+      if (error) throw new Error("Não foi possível consultar o comprovante.");
+      const path = data?.manual_receipt_path;
+      if (typeof path !== "string" || !path) throw new Error("Comprovante não encontrado.");
+      const { data: signed, error: signedError } = await supabaseAdmin.storage
+        .from(MANUAL_PAYMENT_RECEIPT_BUCKET)
+        .createSignedUrl(path, RECEIPT_URL_EXPIRY_SECONDS);
+      if (signedError || !signed?.signedUrl) {
+        throw new Error("Não foi possível abrir o comprovante.");
       }
-      return { status: "paid", registrationId: data.id };
+      return { signedUrl: signed.signedUrl, expiresIn: RECEIPT_URL_EXPIRY_SECONDS };
     },
   };
   return repository;
@@ -308,7 +379,9 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
 export function createAdminRegistrationService(
   repository: AdminRegistrationRepository,
   now: () => Date,
-  provisionParticipant?: (registrationId: string) => Promise<{ status: "active" | "pending" | "conflict" }>,
+  provisionParticipant?: (
+    registrationId: string,
+  ) => Promise<{ status: "active" | "pending" | "conflict" }>,
 ) {
   async function listEnriched(query: AdminRegistrationQuery, includePhotos: boolean) {
     if (!repository.listCandidates || !repository.listComplementPayments) {
@@ -388,13 +461,17 @@ export function createAdminRegistrationService(
       });
       return file;
     },
-    async markPaid(registrationId: string, adminUserId: string) {
+    async markPaid(registrationId: string, adminUserId: string, receipt: ManualPaymentReceipt) {
       if (!repository.markPaid) throw new Error("Ação administrativa indisponível.");
-      const result = await repository.markPaid(registrationId, adminUserId);
+      const result = await repository.markPaid(registrationId, adminUserId, receipt);
       // Payment truth is durable even if access provisioning is temporarily
       // unavailable; the admin can retry from the existing recovery action.
       await provisionParticipant?.(registrationId).catch(() => undefined);
       return result;
+    },
+    async getReceiptUrl(registrationId: string) {
+      if (!repository.getReceiptUrl) throw new Error("Ação administrativa indisponível.");
+      return repository.getReceiptUrl(registrationId);
     },
   };
 

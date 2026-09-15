@@ -26,6 +26,43 @@ export const adminRegistrationExportSchema = adminRegistrationQuerySchema.pick({
   paymentStatus: true,
 });
 
+export const MAX_MANUAL_PAYMENT_RECEIPT_BYTES = 10 * 1024 * 1024;
+const MAX_MANUAL_PAYMENT_RECEIPT_BASE64_LENGTH =
+  Math.ceil(MAX_MANUAL_PAYMENT_RECEIPT_BYTES / 3) * 4;
+export const manualPaymentReceiptMimeTypeSchema = z.enum([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+]);
+
+export const manualPaymentReceiptSchema = z
+  .object({
+    base64: z
+      .string()
+      .min(4, "Envie o comprovante de pagamento.")
+      .max(MAX_MANUAL_PAYMENT_RECEIPT_BASE64_LENGTH, "O comprovante deve ter até 10 MB.")
+      .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, {
+        message: "O comprovante enviado é inválido.",
+      }),
+    mimeType: manualPaymentReceiptMimeTypeSchema,
+    fileName: z
+      .string()
+      .trim()
+      .min(1, "Informe o nome do comprovante.")
+      .max(160, "O nome do comprovante é muito longo.")
+      .refine((value) => !/[\\/]/.test(value), "O nome do comprovante é inválido."),
+  })
+  .strict();
+
+export const adminMarkPaidSchema = z
+  .object({
+    registrationId: z.string().uuid(),
+    receipt: manualPaymentReceiptSchema,
+  })
+  .strict();
+
+export type ManualPaymentReceipt = z.infer<typeof manualPaymentReceiptSchema>;
+
 export type AdminRegistrationQuery = z.infer<typeof adminRegistrationQuerySchema>;
 export type AdminRegistrationExportQuery = z.infer<typeof adminRegistrationExportSchema>;
 export type RegistrationDatabaseRow = Tables<"registrations">;
@@ -47,6 +84,8 @@ export type AdminRegistrationRow = {
   paymentMethod: "pix" | "credit_card" | null;
   installments: number | null;
   paidAt: string | null;
+  paymentOrigin?: "infinitepay" | "manual" | null;
+  hasManualReceipt?: boolean;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
@@ -135,6 +174,11 @@ export function mapAdminRegistrationRow(
     paymentMethod: row.payment_method as AdminRegistrationRow["paymentMethod"],
     installments: row.installments,
     paidAt: row.paid_at,
+    paymentOrigin:
+      row.payment_origin === "manual" || row.payment_origin === "infinitepay"
+        ? row.payment_origin
+        : null,
+    hasManualReceipt: Boolean(row.manual_receipt_path),
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,

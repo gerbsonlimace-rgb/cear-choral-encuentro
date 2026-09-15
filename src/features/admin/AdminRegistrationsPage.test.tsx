@@ -11,6 +11,7 @@ vi.mock("@/lib/admin.functions", () => ({
   exportAdminRegistrations: vi.fn(),
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
+  getAdminRegistrationReceipt: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
 }));
@@ -194,15 +195,95 @@ describe("AdminRegistrationsPage read-only views", () => {
     );
 
     await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("Marcar inscrição como paga");
-    await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Confirmar pagamento" }),
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Marcar inscrição como paga");
+    await user.upload(
+      within(dialog).getByLabelText("Comprovante de pagamento"),
+      new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
     );
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar pagamento" }));
     await waitFor(() =>
-      expect(markPaid).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+      expect(markPaid).toHaveBeenCalledWith({
+        data: {
+          registrationId: "pending",
+          receipt: {
+            base64: "JVBERi0xLjQ=",
+            mimeType: "application/pdf",
+            fileName: "pix-pendente.pdf",
+          },
+        },
+      }),
     );
     expect(await screen.findByText("Inscrição marcada como paga.")).toBeInTheDocument();
     expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
+  });
+
+  it("requires a receipt and submits its contents with immediate manual payment", async () => {
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
+      registrationId: "pending",
+    });
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      markPaid,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
+    const dialog = screen.getByRole("alertdialog");
+    const confirm = within(dialog).getByRole("button", { name: "Confirmar pagamento" });
+    expect(confirm).toBeDisabled();
+
+    await user.upload(
+      within(dialog).getByLabelText("Comprovante de pagamento"),
+      new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
+    );
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await user.click(confirm);
+
+    await waitFor(() =>
+      expect(markPaid).toHaveBeenCalledWith({
+        data: {
+          registrationId: "pending",
+          receipt: {
+            base64: "JVBERi0xLjQ=",
+            mimeType: "application/pdf",
+            fileName: "pix-pendente.pdf",
+          },
+        },
+      }),
+    );
+  });
+
+  it("opens a server-signed receipt link for manually paid registrations", async () => {
+    const getReceiptUrl = vi.fn().mockResolvedValue({
+      signedUrl: "https://storage.example/signed/comprovante.pdf",
+      expiresIn: 3600,
+    });
+    const openReceiptUrl = vi.fn();
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [{ ...paid, paymentOrigin: "manual", hasManualReceipt: true }],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      getReceiptUrl,
+      openReceiptUrl,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Ver comprovante" }));
+
+    await waitFor(() =>
+      expect(getReceiptUrl).toHaveBeenCalledWith({ data: { registrationId: "paid" } }),
+    );
+    expect(openReceiptUrl).toHaveBeenCalledWith("https://storage.example/signed/comprovante.pdf");
   });
 
   it("renders derived states on desktop and mobile and opens the exact server-owned balance", async () => {

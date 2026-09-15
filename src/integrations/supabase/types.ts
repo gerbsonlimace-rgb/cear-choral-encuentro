@@ -625,6 +625,10 @@ export type Database = {
           payment_origin?: string
           payment_method: string | null
           manual_paid_by?: string | null
+          manual_receipt_path?: string | null
+          manual_receipt_file_name?: string | null
+          manual_receipt_mime_type?: string | null
+          manual_receipt_size_bytes?: number | null
           payment_status: string
           phone: string
           photo_path: string | null
@@ -664,6 +668,10 @@ export type Database = {
           payment_origin?: string
           payment_method?: string | null
           manual_paid_by?: string | null
+          manual_receipt_path?: string | null
+          manual_receipt_file_name?: string | null
+          manual_receipt_mime_type?: string | null
+          manual_receipt_size_bytes?: number | null
           payment_status?: string
           phone: string
           photo_path?: string | null
@@ -703,6 +711,10 @@ export type Database = {
           payment_origin?: string
           payment_method?: string | null
           manual_paid_by?: string | null
+          manual_receipt_path?: string | null
+          manual_receipt_file_name?: string | null
+          manual_receipt_mime_type?: string | null
+          manual_receipt_size_bytes?: number | null
           payment_status?: string
           phone?: string
           photo_path?: string | null

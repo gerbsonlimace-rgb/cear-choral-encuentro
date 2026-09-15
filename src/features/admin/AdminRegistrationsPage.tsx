@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { BadgeCheck, Banknote, ChartNoAxesCombined, Clock3, Link2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  BadgeCheck,
+  Banknote,
+  ChartNoAxesCombined,
+  Clock3,
+  ExternalLink,
+  Link2,
+} from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +46,7 @@ import {
   createAdminRegistrationCheckoutLink,
   exportAdminRegistrations,
   getAdminAccess,
+  getAdminRegistrationReceipt,
   getAdminRegistrationSummary,
   listAdminRegistrations,
   markAdminRegistrationPaid,
@@ -56,7 +64,12 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
-import { getAdminFinancialState } from "./admin.domain";
+import {
+  getAdminFinancialState,
+  manualPaymentReceiptMimeTypeSchema,
+  MAX_MANUAL_PAYMENT_RECEIPT_BYTES,
+  type ManualPaymentReceipt,
+} from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type Props = {
@@ -76,10 +89,17 @@ type Props = {
     checkoutUrl: string;
     reused: boolean;
   }>;
-  markPaid?: (input: { data: { registrationId: string } }) => Promise<{
+  markPaid?: (input: {
+    data: { registrationId: string; receipt: ManualPaymentReceipt };
+  }) => Promise<{
     status: "paid";
     registrationId: string;
   }>;
+  getReceiptUrl?: (input: { data: { registrationId: string } }) => Promise<{
+    signedUrl: string;
+    expiresIn: number;
+  }>;
+  openReceiptUrl?: (url: string) => void;
   copyToClipboard?: (value: string) => Promise<void>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
@@ -99,6 +119,7 @@ type Props = {
 const defaultGetSession = () => supabase.auth.getSession();
 const defaultSignOut = () => supabase.auth.signOut();
 const defaultCopyToClipboard = (value: string) => navigator.clipboard.writeText(value);
+const defaultOpenReceiptUrl = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
 const initialQuery: AdminRegistrationQuery = {
   search: "",
   paymentStatus: "all",
@@ -154,6 +175,27 @@ function pendingAmountCents(row: AdminRegistrationRow): number | null {
 function receivedAmountCents(row: AdminRegistrationRow): number | null {
   const state = getAdminFinancialState(row);
   return state.confirmedPrincipalCents ?? row.paidAmountCents;
+}
+
+function readReceipt(file: File): Promise<ManualPaymentReceipt> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Não foi possível ler o comprovante selecionado."));
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const separator = result.indexOf(",");
+      if (separator < 0) {
+        reject(new Error("Não foi possível ler o comprovante selecionado."));
+        return;
+      }
+      resolve({
+        base64: result.slice(separator + 1),
+        mimeType: manualPaymentReceiptMimeTypeSchema.parse(file.type),
+        fileName: file.name,
+      });
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function ParticipantAccessActions({
@@ -216,6 +258,7 @@ function RegistrationViews({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
+  onViewReceipt,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
@@ -223,7 +266,8 @@ function RegistrationViews({
   onReset: (row: AdminRegistrationRow) => Promise<void>;
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
-  onMarkPaid: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onViewReceipt: (row: AdminRegistrationRow) => void;
 }) {
   return (
     <>
@@ -284,6 +328,7 @@ function RegistrationViews({
                     onBalancePayment={onBalancePayment}
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
+                    onViewReceipt={onViewReceipt}
                     busy={participantActionBusy}
                   />
                 </TableCell>
@@ -335,6 +380,7 @@ function RegistrationViews({
                   onBalancePayment={onBalancePayment}
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
+                  onViewReceipt={onViewReceipt}
                   busy={participantActionBusy}
                 />
                 <ParticipantAccessActions
@@ -357,60 +403,131 @@ function BalanceAction({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
+  onViewReceipt,
   busy,
 }: {
   row: AdminRegistrationRow;
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
-  onMarkPaid: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onViewReceipt: (row: AdminRegistrationRow) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
+  const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
+  const [receiptError, setReceiptError] = useState("");
   const state = getAdminFinancialState(row);
   const openUrl = row.openComplementPayment?.checkoutUrl;
+  const viewReceipt = row.hasManualReceipt ? (
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => onViewReceipt(row)}>
+      <ExternalLink aria-hidden="true" className="mr-1.5 size-4" />
+      Ver comprovante
+    </Button>
+  ) : null;
+  const selectReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setReceipt(null);
+    setReceiptError("");
+    if (!manualPaymentReceiptMimeTypeSchema.safeParse(file.type).success) {
+      setReceiptError("Envie um comprovante em PDF, JPG ou PNG.");
+      return;
+    }
+    if (file.size === 0 || file.size > MAX_MANUAL_PAYMENT_RECEIPT_BYTES) {
+      setReceiptError("O comprovante deve ter entre 1 byte e 10 MB.");
+      return;
+    }
+    try {
+      setReceipt(await readReceipt(file));
+    } catch {
+      setReceiptError("Não foi possível ler o comprovante selecionado.");
+    }
+  };
+  const openMarkPaid = () => {
+    setReceipt(null);
+    setReceiptError("");
+    setConfirmMarkPaid(true);
+  };
   if (openUrl && isSafeCheckoutUrl(openUrl)) {
     return (
-      <Button asChild size="sm" variant="outline">
-        <a href={openUrl}>Continuar pagamento</a>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {viewReceipt}
+        <Button asChild size="sm" variant="outline">
+          <a href={openUrl}>Continuar pagamento</a>
+        </Button>
+      </div>
     );
   }
   if (row.openComplementPayment) {
-    return <span className="text-xs text-muted-foreground">Pagamento em processamento</span>;
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {viewReceipt}
+        <span className="text-xs text-muted-foreground">Pagamento em processamento</span>
+      </div>
+    );
   }
   if (state.status === "pending") {
     return (
       <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={() => onPaymentLink(row)}
-        >
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onPaymentLink(row)}>
           <Link2 aria-hidden="true" className="mr-1.5 size-4" />
           Gerar link de pagamento
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={() => setConfirmMarkPaid(true)}
-        >
+        <Button size="sm" variant="outline" disabled={busy} onClick={openMarkPaid}>
           <BadgeCheck aria-hidden="true" className="mr-1.5 size-4" />
           Marcar como pago
         </Button>
-        <AlertDialog open={confirmMarkPaid} onOpenChange={setConfirmMarkPaid}>
+        <AlertDialog
+          open={confirmMarkPaid}
+          onOpenChange={(open) => {
+            setConfirmMarkPaid(open);
+            if (!open) {
+              setReceipt(null);
+              setReceiptError("");
+            }
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
               <AlertDialogDescription>
-                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido antes de
-                concluir esta ação.
+                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
+                comprovante antes de concluir esta ação.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
+              <Input
+                id={`payment-receipt-${row.id}`}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+                aria-required="true"
+                disabled={busy}
+                onChange={(event) => void selectReceipt(event)}
+              />
+              {receipt && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo selecionado: {receipt.fileName}
+                </p>
+              )}
+              {receiptError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {receiptError}
+                </p>
+              )}
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction disabled={busy} onClick={() => void onMarkPaid(row)}>
+              <AlertDialogAction
+                disabled={busy || !receipt}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (!receipt) return;
+                  void onMarkPaid(row, receipt).then((success) => {
+                    if (success) setConfirmMarkPaid(false);
+                  });
+                }}
+              >
                 Confirmar pagamento
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -419,11 +536,14 @@ function BalanceAction({
       </div>
     );
   }
-  if (state.status !== "partially_paid" || state.pendingCents <= 0) return null;
+  if (state.status !== "partially_paid" || state.pendingCents <= 0) return viewReceipt;
   return (
-    <Button size="sm" variant="outline" disabled={busy} onClick={() => onBalancePayment(row)}>
-      Pagar saldo de {money(state.pendingCents)}
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      {viewReceipt}
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => onBalancePayment(row)}>
+        Pagar saldo de {money(state.pendingCents)}
+      </Button>
+    </div>
   );
 }
 
@@ -473,6 +593,8 @@ export function AdminRegistrationsPage({
   exportRegistrations = exportAdminRegistrations,
   createPaymentLink = createAdminRegistrationCheckoutLink,
   markPaid = markAdminRegistrationPaid,
+  getReceiptUrl = getAdminRegistrationReceipt,
+  openReceiptUrl = defaultOpenReceiptUrl,
   copyToClipboard = defaultCopyToClipboard,
   reprocessAccess = reprocessParticipantAccess,
   resetInitialPassword = resetParticipantInitialPassword,
@@ -737,9 +859,7 @@ export function AdminRegistrationsPage({
       if (!isSafeCheckoutUrl(result.checkoutUrl)) throw new Error("unsafe checkout URL");
       await copyToClipboard(result.checkoutUrl);
       setAnnouncement(
-        result.reused
-          ? "Link de pagamento copiado."
-          : "Novo link de pagamento gerado e copiado.",
+        result.reused ? "Link de pagamento copiado." : "Novo link de pagamento gerado e copiado.",
       );
     } catch {
       setActionError("Não foi possível gerar o link de pagamento. Tente novamente.");
@@ -749,19 +869,40 @@ export function AdminRegistrationsPage({
     }
   }
 
-  async function runMarkPaidAction(row: AdminRegistrationRow): Promise<void> {
-    if (actionBusy.current || gate !== "authorized") return;
+  async function runMarkPaidAction(
+    row: AdminRegistrationRow,
+    receipt: ManualPaymentReceipt,
+  ): Promise<boolean> {
+    if (actionBusy.current || gate !== "authorized") return false;
     actionBusy.current = true;
     setParticipantActionBusy(true);
     setActionError("");
     setAnnouncement("");
     try {
-      const result = await markPaid({ data: { registrationId: row.id } });
+      const result = await markPaid({ data: { registrationId: row.id, receipt } });
       if (result.status !== "paid") throw new Error("Unexpected payment result");
       setAnnouncement("Inscrição marcada como paga.");
       setRetry((value) => value + 1);
+      return true;
     } catch {
       setActionError("Não foi possível marcar a inscrição como paga. Tente novamente.");
+      return false;
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
+  async function runReceiptAction(row: AdminRegistrationRow): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    try {
+      const result = await getReceiptUrl({ data: { registrationId: row.id } });
+      openReceiptUrl(result.signedUrl);
+    } catch {
+      setActionError("Não foi possível abrir o comprovante. Tente novamente.");
     } finally {
       actionBusy.current = false;
       setParticipantActionBusy(false);
@@ -960,7 +1101,8 @@ export function AdminRegistrationsPage({
                   onReset={(row) => runParticipantAction(row, "reset")}
                   onBalancePayment={setBalanceTarget}
                   onPaymentLink={(row) => void runPaymentLinkAction(row)}
-                  onMarkPaid={(row) => void runMarkPaidAction(row)}
+                  onMarkPaid={runMarkPaidAction}
+                  onViewReceipt={(row) => void runReceiptAction(row)}
                 />
               ) : (
                 <Card>

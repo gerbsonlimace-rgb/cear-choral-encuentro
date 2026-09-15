@@ -18,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -202,7 +202,63 @@ describe("registration export", () => {
 });
 
 describe("manual payment confirmation", () => {
+  const receipt = {
+    base64: "JVBERi0xLjQK",
+    mimeType: "application/pdf" as const,
+    fileName: "comprovante.pdf",
+  };
+
+  it("uploads the receipt before marking a pending registration as paid", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    supabaseAdminMock.storage = {
+      from: vi.fn().mockReturnValue({ upload, remove }),
+    };
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      amount_cents: 10000,
+      paid_amount_cents: null,
+      payment_method: null,
+      installments: null,
+      paid_at: null,
+      checkout_url: null,
+    };
+    const { trace } = databaseHarness([
+      singleSuccess(pendingRow),
+      singleSuccess({ id: pendingRow.id }),
+    ]);
+
+    await expect(
+      createAdminRegistrationService(
+        createSupabaseAdminRegistrationRepository(),
+        () => new Date("2026-09-15T01:00:00Z"),
+      ).markPaid("registration-1", "admin-1", receipt),
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+
+    expect(upload).toHaveBeenCalledWith(
+      expect.stringMatching(/^registration-1\/.+\.pdf$/),
+      expect.any(Uint8Array),
+      expect.objectContaining({ contentType: "application/pdf", upsert: false }),
+    );
+    expect(trace).toContainEqual([
+      "update",
+      expect.objectContaining({
+        payment_origin: "manual",
+        manual_paid_by: "admin-1",
+        manual_receipt_file_name: "comprovante.pdf",
+        manual_receipt_mime_type: "application/pdf",
+        manual_receipt_size_bytes: 9,
+      }),
+    ]);
+  });
+
   it("marks a pending registration as paid with an auditable admin marker", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    supabaseAdminMock.storage = {
+      from: vi.fn().mockReturnValue({ upload, remove }),
+    };
     const pendingRow = {
       ...selectedRow,
       payment_status: "pending",
@@ -221,13 +277,13 @@ describe("manual payment confirmation", () => {
       () => new Date("2026-09-15T01:00:00Z"),
     );
 
-    await expect(service.markPaid("registration-1", "admin-1")).resolves.toEqual({
+    await expect(service.markPaid("registration-1", "admin-1", receipt)).resolves.toEqual({
       status: "paid",
       registrationId: "registration-1",
     });
     expect(trace).toContainEqual([
       "update",
-      {
+      expect.objectContaining({
         payment_status: "paid",
         payment_origin: "manual",
         manual_paid_by: "admin-1",
@@ -237,8 +293,12 @@ describe("manual payment confirmation", () => {
         installments: null,
         paid_amount_cents: 10000,
         receipt_url: null,
+        manual_receipt_file_name: "comprovante.pdf",
+        manual_receipt_mime_type: "application/pdf",
+        manual_receipt_size_bytes: 9,
         paid_at: expect.any(String),
-      },
+        manual_receipt_path: expect.stringMatching(/^registration-1\/.+\.pdf$/),
+      }),
     ]);
     expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
     expect(trace).toContainEqual(["is", "checkout_url", null]);
@@ -256,7 +316,7 @@ describe("manual payment confirmation", () => {
       createAdminRegistrationService(
         createSupabaseAdminRegistrationRepository(),
         () => new Date(),
-      ).markPaid("registration-1", "admin-1"),
+      ).markPaid("registration-1", "admin-1", receipt),
     ).rejects.toThrow("link de pagamento ativo");
   });
 
@@ -272,6 +332,7 @@ describe("manual payment confirmation", () => {
       createAdminRegistrationService(repository, () => new Date(), provisionParticipant).markPaid(
         "registration-1",
         "admin-1",
+        receipt,
       ),
     ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
     expect(provisionParticipant).toHaveBeenCalledWith("registration-1");
@@ -613,6 +674,7 @@ beforeEach(() => {
   supabaseAdminMock.from = () => {
     throw new Error("Unconfigured Supabase boundary");
   };
+  supabaseAdminMock.storage = undefined;
 });
 
 describe("registration repository list", () => {
@@ -670,6 +732,8 @@ describe("registration repository list", () => {
           paymentMethod: "pix",
           installments: 1,
           paidAt: "2026-09-07T13:00:00Z",
+          paymentOrigin: null,
+          hasManualReceipt: false,
           participantAccess: {
             label: "Aguardando criação",
             canReprocess: true,
@@ -738,6 +802,28 @@ describe("registration repository list", () => {
     await repository.listAll({ search: "", paymentStatus: "all" });
     expect(createSignedUrl).toHaveBeenCalledTimes(1);
     expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
+  });
+
+  it("creates a short-lived signed URL for an administrator receipt", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed/receipt.pdf" },
+      error: null,
+    });
+    supabaseAdminMock.storage = {
+      from: vi.fn().mockReturnValue({ createSignedUrl }),
+    };
+    const { trace } = databaseHarness([
+      singleSuccess({ manual_receipt_path: "registration-1/receipt.pdf" }),
+    ]);
+
+    await expect(
+      createSupabaseAdminRegistrationRepository().getReceiptUrl!("registration-1"),
+    ).resolves.toEqual({
+      signedUrl: "https://storage.example/signed/receipt.pdf",
+      expiresIn: 3600,
+    });
+    expect(trace).toContainEqual(["select", "manual_receipt_path"]);
+    expect(createSignedUrl).toHaveBeenCalledWith("registration-1/receipt.pdf", 3600);
   });
 
   it("replaces database details with a generic query error", async () => {
