@@ -11,13 +11,13 @@ O aplicativo deve exibir e cobrar o saldo configurado de R$ 250,00, sem derivá-
 
 ## Modelo de configuração
 
-`event_registration_settings` receberá `raffle_balance_price_cents`, um terceiro valor global positivo e opcional. O valor promocional existente continuará representando a entrada (`promotional_price_cents`). A administração exibirá os três campos e validará que os valores necessários estejam preenchidos quando houver coro promocional ativo.
+`event_registration_settings` usará o terceiro campo já introduzido pelo fluxo atual, `promotional_remaining_price_cents`, como valor global positivo ou nulo. O valor promocional existente continuará representando a entrada (`promotional_price_cents`). A cotação e o snapshot usam o nome de domínio `remainingPriceCents`/`remaining_price_cents`. A administração exibirá os três campos e validará que os valores necessários estejam preenchidos quando houver coro promocional ativo.
 
 Uma cotação promocional exposta ao formulário incluirá `balancePriceCents` e `totalPriceCents`, com `totalPriceCents = registrationPriceCents + balancePriceCents`. Uma cotação normal manterá `balancePriceCents = null` e total igual ao preço normal.
 
 ## Snapshots e compatibilidade
 
-Novas inscrições salvarão `raffle_balance_price_cents` junto dos snapshots existentes. O servidor usará o valor confiável resolvido para o coro, e não valores editáveis enviados pelo navegador.
+Novas inscrições salvarão `remaining_price_cents` junto dos snapshots existentes. O servidor usará o valor confiável resolvido para o coro, e não valores editáveis enviados pelo navegador.
 
 Inscrições históricas não serão reescritas. A migração manterá o comportamento legado para snapshots promocionais sem saldo explícito; novas inscrições usarão o terceiro valor configurado. Registros sem snapshots coerentes continuarão tratados como históricos/indisponíveis.
 
