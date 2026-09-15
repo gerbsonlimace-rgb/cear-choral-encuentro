@@ -11,25 +11,11 @@ const participantLoginSchema = z
   })
   .strict();
 
-function isCalendarDate(value: string): boolean {
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  );
-}
-
-export const participantPasswordRecoverySchema = z
+const participantPasswordRecoverySchema = z
   .object({
-    cpf: z
-      .string()
-      .transform((value) => value.replace(/\D/g, ""))
-      .refine((value) => value.length === 11, "CPF inválido"),
-    birthDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .refine(isCalendarDate, "Data de nascimento inválida"),
-    email: z.string().trim().toLowerCase().email().max(254),
+    cpf: z.string().trim().min(11).max(14),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    email: z.string().trim().email(),
   })
   .strict();
 
@@ -49,22 +35,9 @@ export const requestParticipantPasswordRecovery = createServerFn({ method: "POST
   .handler(async ({ data }) => {
     const { getParticipantProvisioningService } =
       await import("@/features/participant/participant-provisioning.server");
-    let ip = "unknown";
-    try {
-      const { getRequest } = await import("@tanstack/react-start/server");
-      const headers = getRequest().headers;
-      ip =
-        headers.get("cf-connecting-ip")?.trim() ||
-        headers.get("x-real-ip")?.trim() ||
-        headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        "unknown";
-    } catch {
-      // A missing transport IP must not change the public recovery response.
-    }
     return getParticipantProvisioningService().requestPasswordRecovery(
       data,
       participantPasswordRecoveryRedirect(),
-      { ip, identity: data.cpf.replace(/\D/g, "") },
     );
   });
 

@@ -4,7 +4,6 @@ import {
   ParticipantAuthFailure,
   ParticipantLinkFailure,
   createParticipantProvisioningService,
-  createParticipantRecoveryAttemptLimiter,
   createSupabaseParticipantAuthAdmin,
   createSupabaseParticipantProvisioningRepository,
   type PaidRegistrationIdentity,
@@ -20,7 +19,6 @@ const { from, rpc, authAdmin, resetPasswordForEmail } = vi.hoisted(() => ({
   authAdmin: {
     createUser: vi.fn(),
     deleteUser: vi.fn(),
-    getUserById: vi.fn(),
     updateUserById: vi.fn(),
     listUsers: vi.fn(),
   },
@@ -63,7 +61,6 @@ function setup() {
   };
   const auth: ParticipantAuthAdmin = {
     findUserByEmail: vi.fn(async () => null),
-    getUserEmail: vi.fn(async () => null),
     createUser: vi.fn(async () => ({ id: createdUserId })),
     deleteUser: vi.fn(async () => {}),
     updatePassword: vi.fn(async () => {}),
@@ -73,7 +70,6 @@ function setup() {
     repository,
     auth,
     createClaimId: () => claimId,
-    recoveryResponseDelay: async () => {},
   });
   return { repository, auth, service };
 }
@@ -84,12 +80,10 @@ describe("participant provisioning service", () => {
     const findPasswordRecoveryIdentity = vi.fn(async () => ({
       registrationId,
       participantAccountId: accountId,
-      userId: createdUserId,
       email: " Participante@Example.com ",
     }));
     const sendPasswordRecoveryEmail = vi.fn(async () => {});
     repository.findPasswordRecoveryIdentity = findPasswordRecoveryIdentity;
-    auth.getUserEmail = vi.fn(async () => "Participante@Example.com");
     auth.sendPasswordRecoveryEmail = sendPasswordRecoveryEmail;
 
     const recovery = service as unknown as {
@@ -118,7 +112,6 @@ describe("participant provisioning service", () => {
       "participante@example.com",
       "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
     );
-    expect(auth.getUserEmail).toHaveBeenCalledExactlyOnceWith(createdUserId);
     expect(repository.appendEvent).toHaveBeenCalledWith({
       registrationId,
       participantAccountId: accountId,
@@ -131,7 +124,6 @@ describe("participant provisioning service", () => {
     vi.mocked(repository.findPasswordRecoveryIdentity).mockResolvedValue({
       registrationId,
       participantAccountId: accountId,
-      userId: createdUserId,
       email: "outro@example.com",
     });
 
@@ -148,85 +140,6 @@ describe("participant provisioning service", () => {
 
     expect(auth.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
     expect(repository.appendEvent).not.toHaveBeenCalled();
-  });
-
-  it("keeps a linked Auth user with a different email indistinguishable", async () => {
-    const { repository, auth, service } = setup();
-    vi.mocked(repository.findPasswordRecoveryIdentity).mockResolvedValue({
-      registrationId,
-      participantAccountId: accountId,
-      userId: createdUserId,
-      email: "participante@example.com",
-    });
-    vi.mocked(auth.getUserEmail).mockResolvedValue("outra-conta@example.com");
-
-    await expect(
-      service.requestPasswordRecovery(
-        {
-          cpf: "52998224725",
-          birthDate: "1990-01-15",
-          email: "participante@example.com",
-        },
-        "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-      ),
-    ).resolves.toEqual({ status: "accepted" });
-
-    expect(auth.getUserEmail).toHaveBeenCalledExactlyOnceWith(createdUserId);
-    expect(auth.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
-    expect(repository.appendEvent).not.toHaveBeenCalled();
-  });
-
-  it("stops a throttled recovery attempt before identity or Auth lookups", async () => {
-    const { repository, auth } = setup();
-    const limiter = { allow: vi.fn(() => false) };
-    const recoveryResponseDelay = vi.fn(async () => {});
-    const service = createParticipantProvisioningService({
-      repository,
-      auth,
-      createClaimId: () => claimId,
-      recoveryAttemptLimiter: limiter,
-      recoveryResponseDelay,
-    });
-
-    await expect(
-      service.requestPasswordRecovery(
-        {
-          cpf: "52998224725",
-          birthDate: "1990-01-15",
-          email: "participante@example.com",
-        },
-        "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
-        { ip: "203.0.113.10", identity: "52998224725" },
-      ),
-    ).resolves.toEqual({ status: "accepted" });
-
-    expect(limiter.allow).toHaveBeenCalledExactlyOnceWith({
-      ip: "203.0.113.10",
-      identity: "52998224725",
-    });
-    expect(repository.findPasswordRecoveryIdentity).not.toHaveBeenCalled();
-    expect(auth.getUserEmail).not.toHaveBeenCalled();
-    expect(auth.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
-    expect(recoveryResponseDelay).toHaveBeenCalledOnce();
-  });
-
-  it("limits both aggregate IP traffic and repeated identity attempts", () => {
-    let now = 1_000;
-    const limiter = createParticipantRecoveryAttemptLimiter({
-      now: () => now,
-      windowMs: 60_000,
-      maxPerIp: 3,
-      maxPerIdentity: 2,
-    });
-
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-a" })).toBe(true);
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-a" })).toBe(true);
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-a" })).toBe(false);
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-b" })).toBe(true);
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-c" })).toBe(false);
-
-    now += 60_001;
-    expect(limiter.allow({ ip: "203.0.113.10", identity: "cpf-a" })).toBe(true);
   });
 
   it("does not claim or call Auth when the registration is missing or unpaid", async () => {
@@ -573,7 +486,6 @@ describe("Supabase participant adapters", () => {
     rpc.mockReset();
     authAdmin.createUser.mockReset();
     authAdmin.deleteUser.mockReset();
-    authAdmin.getUserById.mockReset();
     authAdmin.updateUserById.mockReset();
     authAdmin.listUsers.mockReset();
     resetPasswordForEmail.mockReset();
@@ -592,10 +504,7 @@ describe("Supabase participant adapters", () => {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       not: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(async () => ({
-        data: { id: accountId, user_id: createdUserId },
-        error: null,
-      })),
+      maybeSingle: vi.fn(async () => ({ data: { id: accountId }, error: null })),
     };
     from.mockImplementation((table: string) =>
       table === "registrations" ? registrationQuery : accountQuery,
@@ -610,7 +519,6 @@ describe("Supabase participant adapters", () => {
     ).resolves.toEqual({
       registrationId,
       participantAccountId: accountId,
-      userId: createdUserId,
       email: "Participante@Example.com",
     });
 
@@ -624,48 +532,6 @@ describe("Supabase participant adapters", () => {
       ["access_status", "active"],
     ]);
     expect(accountQuery.not).toHaveBeenCalledExactlyOnceWith("user_id", "is", null);
-    expect(accountQuery.select).toHaveBeenCalledExactlyOnceWith("id,user_id");
-  });
-
-  it("performs the active-account lookup even when the recovery registration is absent", async () => {
-    const registrationQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(async () => ({ data: null, error: null })),
-    };
-    const accountQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      not: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(async () => ({ data: null, error: null })),
-    };
-    from.mockImplementation((table: string) =>
-      table === "registrations" ? registrationQuery : accountQuery,
-    );
-
-    await expect(
-      createSupabaseParticipantProvisioningRepository().findPasswordRecoveryIdentity({
-        cpf: "52998224725",
-        birthDate: "1990-01-15",
-      }),
-    ).resolves.toBeNull();
-
-    expect(accountQuery.eq).toHaveBeenCalledWith(
-      "registration_id",
-      "00000000-0000-0000-0000-000000000000",
-    );
-  });
-
-  it("loads the canonical email for the linked Auth user", async () => {
-    authAdmin.getUserById.mockResolvedValue({
-      data: { user: { id: createdUserId, email: "Participante@Example.com" } },
-      error: null,
-    });
-
-    await expect(createSupabaseParticipantAuthAdmin().getUserEmail(createdUserId)).resolves.toBe(
-      "participante@example.com",
-    );
-    expect(authAdmin.getUserById).toHaveBeenCalledExactlyOnceWith(createdUserId);
   });
 
   it("uses the Supabase recovery endpoint with the approved redirect URL", async () => {
