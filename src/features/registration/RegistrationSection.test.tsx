@@ -596,4 +596,19 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível preparar o pagamento");
     expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
   });
+
+  it("shows the email conflict at the payment step", async () => {
+    const user = userEvent.setup();
+    const message = "Já existe um acesso com este e-mail.";
+    render(
+      <RegistrationSection
+        checkAvailability={available}
+        loadConfiguration={loadConfiguration}
+        startCheckout={vi.fn().mockResolvedValue({ ok: false, message })}
+      />,
+    );
+    await goToReview(user);
+    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  });
 });

@@ -572,9 +572,12 @@ export function RegistrationSection({
       const shouldRefresh =
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
+      const emailConflict = normalizedMessage.includes("já existe um acesso com este e-mail");
       setCheckoutError(
         externalCheckoutDisabled
           ? message
+          : emailConflict
+            ? message
           : shouldRefresh
             ? "A configuração de preços mudou. Confira o valor e tente novamente."
             : "Não foi possível preparar o pagamento. Tente novamente.",
