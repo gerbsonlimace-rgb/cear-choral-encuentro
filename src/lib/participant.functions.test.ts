@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { getParticipantRequestAccess, loadRegistration, loginParticipantWithCredentials } = vi.hoisted(() => ({
+const {
+  getParticipantRequestAccess,
+  loadRegistration,
+  loginParticipantWithCredentials,
+  requestPasswordRecovery,
+} = vi.hoisted(() => ({
   getParticipantRequestAccess: vi.fn(),
   loadRegistration: vi.fn(),
   loginParticipantWithCredentials: vi.fn(),
+  requestPasswordRecovery: vi.fn(),
 }));
 
 vi.mock("@/features/participant/participant-auth.server", () => ({
@@ -13,6 +19,10 @@ vi.mock("@/features/participant/participant-auth.server", () => ({
 
 vi.mock("@/features/registration/participant-area.server", () => ({
   loginParticipantWithCredentials,
+}));
+
+vi.mock("@/features/participant/participant-provisioning.server", () => ({
+  getParticipantProvisioningService: () => ({ requestPasswordRecovery }),
 }));
 
 vi.mock("@tanstack/react-start", async (importOriginal) => {
@@ -39,7 +49,12 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
 });
 
 import { requireParticipantAccess } from "@/features/participant/participant-auth.middleware";
-import { getParticipantAccess, getParticipantRegistration, loginParticipant } from "./participant.functions";
+import {
+  getParticipantAccess,
+  getParticipantRegistration,
+  loginParticipant,
+} from "./participant.functions";
+import * as participantFunctions from "./participant.functions";
 
 const ownAccess = {
   status: "authorized" as const,
@@ -55,6 +70,34 @@ type ServerFunction = {
 };
 
 describe("participant server-function boundaries", () => {
+  it("exposes a generic participant recovery request with the production callback", async () => {
+    requestPasswordRecovery.mockResolvedValue({ status: "accepted" });
+    const serverFunction = (
+      participantFunctions as unknown as {
+        requestParticipantPasswordRecovery: ServerFunction;
+      }
+    ).requestParticipantPasswordRecovery;
+
+    expect(typeof serverFunction).toBe("function");
+    await expect(
+      serverFunction({
+        data: {
+          cpf: "529.982.247-25",
+          birthDate: "1990-01-15",
+          email: "participante@example.com",
+        },
+      }),
+    ).resolves.toEqual({ status: "accepted" });
+    expect(requestPasswordRecovery).toHaveBeenCalledExactlyOnceWith(
+      {
+        cpf: "529.982.247-25",
+        birthDate: "1990-01-15",
+        email: "participante@example.com",
+      },
+      "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
+    );
+  });
+
   it("passes validated credentials to the participant login service", async () => {
     loginParticipantWithCredentials.mockResolvedValue({ ok: true, registrations: [] });
     const serverFunction = loginParticipant as unknown as ServerFunction;

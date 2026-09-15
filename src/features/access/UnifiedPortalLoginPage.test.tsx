@@ -1,13 +1,29 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode, type ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { UnifiedPortalAccess } from "./portal-access.domain";
 import { UnifiedPortalLoginPage } from "./UnifiedPortalLoginPage";
 
+const { requestParticipantPasswordRecovery, updateUser, globalSignOut } = vi.hoisted(() => ({
+  requestParticipantPasswordRecovery: vi.fn(),
+  updateUser: vi.fn(),
+  globalSignOut: vi.fn(),
+}));
+
 vi.mock("@/lib/portal-access.functions", () => ({ getUnifiedPortalAccess: vi.fn() }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
+vi.mock("@/lib/participant.functions", () => ({ requestParticipantPasswordRecovery }));
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { auth: { updateUser, signOut: globalSignOut } },
+}));
+
+afterEach(() => {
+  window.history.replaceState({}, "", "/acessar");
+  requestParticipantPasswordRecovery.mockReset();
+  updateUser.mockReset();
+  globalSignOut.mockReset();
+});
 
 type LoginDependencies = Pick<
   ComponentProps<typeof UnifiedPortalLoginPage>,
@@ -66,6 +82,71 @@ function deferred<T>() {
 }
 
 describe("UnifiedPortalLoginPage", () => {
+  it("collects CPF, birth date, and email before showing the generic recovery response", async () => {
+    requestParticipantPasswordRecovery.mockResolvedValue({ status: "accepted" });
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
+    await user.type(screen.getByLabelText("CPF"), "529.982.247-25");
+    await user.type(screen.getByLabelText("Data de nascimento"), "1990-01-15");
+    await user.type(screen.getByLabelText("E-mail"), " Participante@Example.com ");
+    await user.click(screen.getByRole("button", { name: "Enviar link de redefinição" }));
+
+    expect(requestParticipantPasswordRecovery).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        cpf: "52998224725",
+        birthDate: "1990-01-15",
+        email: "Participante@Example.com",
+      },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Se os dados coincidirem com uma conta participante ativa, enviaremos um link para o e-mail informado.",
+    );
+  });
+
+  it("updates and globally signs out the recovery session after matching passwords", async () => {
+    window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    updateUser.mockResolvedValue({ data: { user: { id: "participant-user" } }, error: null });
+    globalSignOut.mockResolvedValue({ error: null });
+    const { user, checkAccess } = setup({
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "participant-user" } } },
+        error: null,
+      }),
+    });
+
+    expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nova senha"), "NovaSenha123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "NovaSenha123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    expect(updateUser).toHaveBeenCalledExactlyOnceWith({ password: "NovaSenha123" });
+    expect(globalSignOut).toHaveBeenCalledExactlyOnceWith({ scope: "global" });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Senha atualizada. Entre novamente com a nova senha.",
+    );
+    expect(checkAccess).not.toHaveBeenCalled();
+  });
+
+  it("refuses different password confirmations without updating the recovery session", async () => {
+    window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    const { user } = setup({
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "participant-user" } } },
+        error: null,
+      }),
+    });
+
+    expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nova senha"), "NovaSenha123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "OutraSenha123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("As senhas informadas não coincidem.");
+    expect(updateUser).not.toHaveBeenCalled();
+    expect(globalSignOut).not.toHaveBeenCalled();
+  });
+
   it.each(["/admin/inscricoes", "/regente/alterar-senha", "/regente", "/participante"] as const)(
     "navigates to an authorized %s destination",
     async (destination) => {
