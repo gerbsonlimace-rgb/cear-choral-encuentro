@@ -62,6 +62,7 @@ export type ParticipantProvisioningRepository = {
   findPasswordRecoveryIdentity(input: { cpf: string; birthDate: string }): Promise<{
     registrationId: string;
     participantAccountId: string;
+    userId: string;
     email: string;
   } | null>;
   appendEvent(event: ParticipantAccessEventInput): Promise<void>;
@@ -69,6 +70,7 @@ export type ParticipantProvisioningRepository = {
 
 export type ParticipantAuthAdmin = {
   findUserByEmail(email: string): Promise<{ id: string } | null>;
+  getUserEmail(userId: string): Promise<string | null>;
   createUser(input: {
     email: string;
     password: string;
@@ -103,14 +105,87 @@ function statusOf(account: ParticipantAccountRow): ParticipantProvisioningResult
   return { status: account.accessStatus };
 }
 
+export type ParticipantRecoveryAttempt = {
+  ip: string;
+  identity: string;
+};
+
+type ParticipantRecoveryAttemptLimiter = {
+  allow(attempt: ParticipantRecoveryAttempt): boolean;
+};
+
+export function createParticipantRecoveryAttemptLimiter({
+  now = Date.now,
+  windowMs = 15 * 60 * 1000,
+  maxPerIp = 20,
+  maxPerIdentity = 5,
+}: {
+  now?: () => number;
+  windowMs?: number;
+  maxPerIp?: number;
+  maxPerIdentity?: number;
+} = {}): ParticipantRecoveryAttemptLimiter {
+  const buckets = new Map<string, { count: number; windowStartedAt: number }>();
+
+  function currentCount(key: string, timestamp: number): number {
+    const bucket = buckets.get(key);
+    if (!bucket || timestamp - bucket.windowStartedAt >= windowMs) return 0;
+    return bucket.count;
+  }
+
+  function increment(key: string, timestamp: number) {
+    const bucket = buckets.get(key);
+    if (!bucket || timestamp - bucket.windowStartedAt >= windowMs) {
+      buckets.set(key, { count: 1, windowStartedAt: timestamp });
+      return;
+    }
+    bucket.count += 1;
+  }
+
+  return {
+    allow({ ip, identity }) {
+      const timestamp = now();
+      const ipKey = `ip:${ip}`;
+      const identityKey = `identity:${ip}:${identity}`;
+      if (
+        currentCount(ipKey, timestamp) >= maxPerIp ||
+        currentCount(identityKey, timestamp) >= maxPerIdentity
+      ) {
+        return false;
+      }
+      increment(ipKey, timestamp);
+      increment(identityKey, timestamp);
+
+      if (buckets.size > 10_000) {
+        for (const [key, bucket] of buckets) {
+          if (timestamp - bucket.windowStartedAt >= windowMs) buckets.delete(key);
+        }
+      }
+      return true;
+    },
+  };
+}
+
+async function waitForRecoveryResponseWindow(startedAt: number): Promise<void> {
+  const targetMs = 1_200 + Math.floor(Math.random() * 401);
+  const remainingMs = targetMs - (Date.now() - startedAt);
+  if (remainingMs > 0) await new Promise((resolve) => setTimeout(resolve, remainingMs));
+}
+
+const participantRecoveryAttemptLimiter = createParticipantRecoveryAttemptLimiter();
+
 export function createParticipantProvisioningService({
   repository,
   auth,
   createClaimId = () => crypto.randomUUID(),
+  recoveryAttemptLimiter = { allow: () => true },
+  recoveryResponseDelay = async () => {},
 }: {
   repository: ParticipantProvisioningRepository;
   auth: ParticipantAuthAdmin;
   createClaimId?: () => string;
+  recoveryAttemptLimiter?: ParticipantRecoveryAttemptLimiter;
+  recoveryResponseDelay?: (startedAt: number) => Promise<void>;
 }) {
   async function appendOutcomeEvent(event: ParticipantAccessEventInput): Promise<void> {
     try {
@@ -271,11 +346,16 @@ export function createParticipantProvisioningService({
     async requestPasswordRecovery(
       input: { cpf: string; birthDate: string; email: string },
       redirectTo: string,
+      attempt: ParticipantRecoveryAttempt = { ip: "unknown", identity: input.cpf },
     ) {
+      const startedAt = Date.now();
       const cpf = input.cpf.replace(/\D/g, "");
       const email = normalizeEmail(input.email);
 
       try {
+        if (!recoveryAttemptLimiter.allow(attempt)) {
+          return { status: "accepted" as const };
+        }
         const identity = await repository.findPasswordRecoveryIdentity({
           cpf,
           birthDate: input.birthDate,
@@ -284,7 +364,12 @@ export function createParticipantProvisioningService({
           return { status: "accepted" as const };
         }
 
-        await auth.sendPasswordRecoveryEmail(email, redirectTo);
+        const authEmail = normalizeEmail((await auth.getUserEmail(identity.userId)) ?? "");
+        if (!authEmail || authEmail !== email) {
+          return { status: "accepted" as const };
+        }
+
+        await auth.sendPasswordRecoveryEmail(authEmail, redirectTo);
         await appendOutcomeEvent({
           registrationId: identity.registrationId,
           participantAccountId: identity.participantAccountId,
@@ -292,6 +377,9 @@ export function createParticipantProvisioningService({
         });
       } catch {
         // Keep unknown identities and temporary provider failures indistinguishable.
+        console.error("[participant-password-recovery] Internal recovery request failure");
+      } finally {
+        await recoveryResponseDelay(startedAt);
       }
 
       return { status: "accepted" as const };
@@ -405,22 +493,23 @@ export function createSupabaseParticipantProvisioningRepository(): ParticipantPr
         .maybeSingle();
       checkError(registrationError);
       const registration: Pick<RegistrationRow, "id" | "email"> | null = registrationData;
-      if (!registration?.email) return null;
+      const registrationId = registration?.id ?? "00000000-0000-0000-0000-000000000000";
 
       const { data: accountData, error: accountError } = await supabaseAdmin
         .from("participant_accounts")
-        .select("id")
-        .eq("registration_id", registration.id)
+        .select("id,user_id")
+        .eq("registration_id", registrationId)
         .eq("access_status", "active")
         .not("user_id", "is", null)
         .maybeSingle();
       checkError(accountError);
-      const account: Pick<AccountDatabaseRow, "id"> | null = accountData;
-      if (!account) return null;
+      const account: Pick<AccountDatabaseRow, "id" | "user_id"> | null = accountData;
+      if (!registration?.email || !account?.user_id) return null;
 
       return {
         registrationId: registration.id,
         participantAccountId: account.id,
+        userId: account.user_id,
         email: registration.email,
       };
     },
@@ -544,6 +633,11 @@ export function createSupabaseParticipantAuthAdmin(): ParticipantAuthAdmin {
       checkError(error);
       if (!data.user) throw new Error("Participant Auth user was not updated");
     },
+    async getUserEmail(userId) {
+      const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+      checkError(error);
+      return data.user?.email ? normalizeEmail(data.user.email) : null;
+    },
     async sendPasswordRecoveryEmail(email, redirectTo) {
       const { error } = await supabaseAdmin.auth.resetPasswordForEmail(normalizeEmail(email), {
         redirectTo,
@@ -557,5 +651,7 @@ export function getParticipantProvisioningService() {
   return createParticipantProvisioningService({
     repository: createSupabaseParticipantProvisioningRepository(),
     auth: createSupabaseParticipantAuthAdmin(),
+    recoveryAttemptLimiter: participantRecoveryAttemptLimiter,
+    recoveryResponseDelay: waitForRecoveryResponseWindow,
   });
 }

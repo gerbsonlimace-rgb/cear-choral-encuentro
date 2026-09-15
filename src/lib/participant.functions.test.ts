@@ -53,6 +53,7 @@ import {
   getParticipantAccess,
   getParticipantRegistration,
   loginParticipant,
+  participantPasswordRecoverySchema,
 } from "./participant.functions";
 import * as participantFunctions from "./participant.functions";
 
@@ -70,6 +71,35 @@ type ServerFunction = {
 };
 
 describe("participant server-function boundaries", () => {
+  it("normalizes a valid recovery identity and rejects malformed CPF or dates", () => {
+    expect(
+      participantPasswordRecoverySchema.parse({
+        cpf: "529.982.247-25",
+        birthDate: "1990-01-15",
+        email: " Participante@Example.com ",
+      }),
+    ).toEqual({
+      cpf: "52998224725",
+      birthDate: "1990-01-15",
+      email: "participante@example.com",
+    });
+
+    expect(() =>
+      participantPasswordRecoverySchema.parse({
+        cpf: "...........",
+        birthDate: "1990-01-15",
+        email: "participante@example.com",
+      }),
+    ).toThrow();
+    expect(() =>
+      participantPasswordRecoverySchema.parse({
+        cpf: "52998224725",
+        birthDate: "2026-99-99",
+        email: "participante@example.com",
+      }),
+    ).toThrow();
+  });
+
   it("exposes a generic participant recovery request with the production callback", async () => {
     requestPasswordRecovery.mockResolvedValue({ status: "accepted" });
     const serverFunction = (
@@ -95,6 +125,7 @@ describe("participant server-function boundaries", () => {
         email: "participante@example.com",
       },
       "https://encontrocorosce.lovable.app/acessar?recuperacao=senha",
+      { ip: "unknown", identity: "52998224725" },
     );
   });
 

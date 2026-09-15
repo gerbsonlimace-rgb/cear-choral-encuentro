@@ -13,7 +13,10 @@ const { requestParticipantPasswordRecovery, updateUser, globalSignOut } = vi.hoi
 }));
 
 vi.mock("@/lib/portal-access.functions", () => ({ getUnifiedPortalAccess: vi.fn() }));
-vi.mock("@/lib/participant.functions", () => ({ requestParticipantPasswordRecovery }));
+vi.mock("@/lib/participant.functions", () => ({
+  getParticipantAccess: vi.fn(),
+  requestParticipantPasswordRecovery,
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { auth: { updateUser, signOut: globalSignOut } },
 }));
@@ -27,7 +30,13 @@ afterEach(() => {
 
 type LoginDependencies = Pick<
   ComponentProps<typeof UnifiedPortalLoginPage>,
-  "signIn" | "checkAccess" | "signOut" | "getSession"
+  | "signIn"
+  | "checkAccess"
+  | "signOut"
+  | "getSession"
+  | "subscribeToAuthChanges"
+  | "checkParticipantRecoveryAccess"
+  | "scheduleRecoveryTimeout"
 >;
 
 function setup(overrides: LoginDependencies = {}) {
@@ -43,6 +52,20 @@ function setup(overrides: LoginDependencies = {}) {
   const getSession = vi.fn(
     overrides.getSession ?? (async () => ({ data: { session: null }, error: null })),
   );
+  const subscribeToAuthChanges = vi.fn(
+    overrides.subscribeToAuthChanges ??
+      (() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+  );
+  const checkParticipantRecoveryAccess = vi.fn(
+    overrides.checkParticipantRecoveryAccess ??
+      (async () => ({
+        status: "authorized" as const,
+        accountId: "participant-account",
+        registrationId: "participant-registration",
+        userId: "participant-user",
+      })),
+  );
+  const scheduleRecoveryTimeout = overrides.scheduleRecoveryTimeout ?? (() => () => undefined);
   const onAuthorized = vi.fn();
   const view = render(
     <UnifiedPortalLoginPage
@@ -50,6 +73,9 @@ function setup(overrides: LoginDependencies = {}) {
       checkAccess={checkAccess}
       signOut={signOut}
       getSession={getSession}
+      subscribeToAuthChanges={subscribeToAuthChanges}
+      checkParticipantRecoveryAccess={checkParticipantRecoveryAccess}
+      scheduleRecoveryTimeout={scheduleRecoveryTimeout}
       onAuthorized={onAuthorized}
     />,
   );
@@ -61,6 +87,9 @@ function setup(overrides: LoginDependencies = {}) {
     checkAccess,
     signOut,
     getSession,
+    subscribeToAuthChanges,
+    checkParticipantRecoveryAccess,
+    scheduleRecoveryTimeout,
     onAuthorized,
   };
 }
@@ -108,11 +137,16 @@ describe("UnifiedPortalLoginPage", () => {
     window.history.replaceState({}, "", "/acessar?recuperacao=senha");
     updateUser.mockResolvedValue({ data: { user: { id: "participant-user" } }, error: null });
     globalSignOut.mockResolvedValue({ error: null });
-    const { user, checkAccess } = setup({
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "participant-user" } } },
-        error: null,
+    let emitAuthChange!: (event: string, session: unknown | null) => void;
+    const { user, checkAccess, checkParticipantRecoveryAccess } = setup({
+      subscribeToAuthChanges: vi.fn((callback) => {
+        emitAuthChange = callback;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
       }),
+    });
+
+    await act(async () => {
+      emitAuthChange("PASSWORD_RECOVERY", { user: { id: "participant-user" } });
     });
 
     expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeInTheDocument();
@@ -125,16 +159,23 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Senha atualizada. Entre novamente com a nova senha.",
     );
+    expect(window.location.search).toBe("");
     expect(checkAccess).not.toHaveBeenCalled();
+    expect(checkParticipantRecoveryAccess).toHaveBeenCalledOnce();
   });
 
   it("refuses different password confirmations without updating the recovery session", async () => {
     window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    let emitAuthChange!: (event: string, session: unknown | null) => void;
     const { user } = setup({
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "participant-user" } } },
-        error: null,
+      subscribeToAuthChanges: vi.fn((callback) => {
+        emitAuthChange = callback;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
       }),
+    });
+
+    await act(async () => {
+      emitAuthChange("PASSWORD_RECOVERY", { user: { id: "participant-user" } });
     });
 
     expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeInTheDocument();
@@ -145,6 +186,79 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("As senhas informadas não coincidem.");
     expect(updateUser).not.toHaveBeenCalled();
     expect(globalSignOut).not.toHaveBeenCalled();
+  });
+
+  it("rejects a forged recovery URL backed only by a pre-existing session", async () => {
+    window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    let emitAuthChange!: (event: string, session: unknown | null) => void;
+    setup({
+      subscribeToAuthChanges: vi.fn((callback) => {
+        emitAuthChange = callback;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      }),
+      scheduleRecoveryTimeout: (callback) => {
+        callback();
+        return () => undefined;
+      },
+    });
+
+    await act(async () => {
+      emitAuthChange("INITIAL_SESSION", { user: { id: "admin-user" } });
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Este link de redefinição é inválido ou expirou. Solicite um novo link.",
+    );
+    expect(screen.queryByLabelText("Nova senha")).not.toBeInTheDocument();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects a recovery event whose user is not an active paid participant", async () => {
+    window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    let emitAuthChange!: (event: string, session: unknown | null) => void;
+    setup({
+      subscribeToAuthChanges: vi.fn((callback) => {
+        emitAuthChange = callback;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      }),
+      checkParticipantRecoveryAccess: vi.fn().mockResolvedValue({ status: "unavailable" }),
+    });
+
+    await act(async () => {
+      emitAuthChange("PASSWORD_RECOVERY", { user: { id: "regent-user" } });
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Este link de redefinição é inválido ou expirou. Solicite um novo link.",
+    );
+    expect(screen.queryByLabelText("Nova senha")).not.toBeInTheDocument();
+  });
+
+  it("falls back to a local sign-out when global revocation returns an error", async () => {
+    window.history.replaceState({}, "", "/acessar?recuperacao=senha");
+    updateUser.mockResolvedValue({ data: { user: { id: "participant-user" } }, error: null });
+    globalSignOut
+      .mockResolvedValueOnce({ error: new Error("global unavailable") })
+      .mockResolvedValueOnce({ error: null });
+    let emitAuthChange!: (event: string, session: unknown | null) => void;
+    const { user } = setup({
+      subscribeToAuthChanges: vi.fn((callback) => {
+        emitAuthChange = callback;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      }),
+    });
+    await act(async () => {
+      emitAuthChange("PASSWORD_RECOVERY", { user: { id: "participant-user" } });
+    });
+
+    await user.type(screen.getByLabelText("Nova senha"), "NovaSenha123");
+    await user.type(screen.getByLabelText("Confirmar nova senha"), "NovaSenha123");
+    await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
+
+    expect(globalSignOut.mock.calls).toEqual([[{ scope: "global" }], [{ scope: "local" }]]);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Senha atualizada. Entre novamente com a nova senha.",
+    );
   });
 
   it.each(["/admin/inscricoes", "/regente/alterar-senha", "/regente", "/participante"] as const)(

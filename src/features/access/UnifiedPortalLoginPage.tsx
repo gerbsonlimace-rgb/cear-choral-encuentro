@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { requestParticipantPasswordRecovery } from "@/lib/participant.functions";
+import {
+  getParticipantAccess,
+  requestParticipantPasswordRecovery,
+} from "@/lib/participant.functions";
 import { getUnifiedPortalAccess } from "@/lib/portal-access.functions";
 
 import type { PortalDestination, UnifiedPortalAccess } from "./portal-access.domain";
@@ -17,6 +20,11 @@ type Props = {
   checkAccess?: () => Promise<UnifiedPortalAccess>;
   signOut?: () => Promise<{ error: unknown }>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
+  subscribeToAuthChanges?: (callback: (event: string, session: unknown | null) => void) => {
+    data: { subscription: { unsubscribe: () => void } };
+  };
+  checkParticipantRecoveryAccess?: () => Promise<{ status: string }>;
+  scheduleRecoveryTimeout?: (callback: () => void) => () => void;
 };
 
 type CurrentOperation = {
@@ -33,6 +41,15 @@ const defaultSignIn: NonNullable<Props["signIn"]> = (credentials) =>
 const defaultCheckAccess = getUnifiedPortalAccess;
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
 const defaultGetSession: NonNullable<Props["getSession"]> = () => supabase.auth.getSession();
+const defaultSubscribeToAuthChanges: NonNullable<Props["subscribeToAuthChanges"]> = (callback) =>
+  supabase.auth.onAuthStateChange((event, session) => callback(event, session));
+const defaultCheckParticipantRecoveryAccess = getParticipantAccess;
+const defaultScheduleRecoveryTimeout: NonNullable<Props["scheduleRecoveryTimeout"]> = (
+  callback,
+) => {
+  const timeout = window.setTimeout(callback, 2_000);
+  return () => window.clearTimeout(timeout);
+};
 
 export function UnifiedPortalLoginPage({
   onAuthorized,
@@ -40,6 +57,9 @@ export function UnifiedPortalLoginPage({
   checkAccess = defaultCheckAccess,
   signOut = defaultSignOut,
   getSession = defaultGetSession,
+  subscribeToAuthChanges = defaultSubscribeToAuthChanges,
+  checkParticipantRecoveryAccess = defaultCheckParticipantRecoveryAccess,
+  scheduleRecoveryTimeout = defaultScheduleRecoveryTimeout,
 }: Props) {
   const isPasswordRecoveryCallback = useRef(
     typeof window !== "undefined" &&
@@ -68,6 +88,9 @@ export function UnifiedPortalLoginPage({
   const signOutRef = useRef(signOut);
   const startupGetSession = useRef(getSession);
   const startupCheckAccess = useRef(checkAccess);
+  const recoveryAccessCheck = useRef(checkParticipantRecoveryAccess);
+  const recoveryAuthSubscription = useRef(subscribeToAuthChanges);
+  const recoveryTimeoutScheduler = useRef(scheduleRecoveryTimeout);
   const startupSession = useRef<ReturnType<NonNullable<Props["getSession"]>> | null>(null);
   const startupGate = useRef<StartupGate | null>(null);
 
@@ -111,27 +134,43 @@ export function UnifiedPortalLoginPage({
     if (!gate) return;
 
     if (isPasswordRecoveryCallback) {
-      async function resolveRecoverySession() {
-        try {
-          startupSession.current ??= Promise.resolve().then(() => startupGetSession.current());
-          const sessionResult = await startupSession.current;
-          if (!isCurrent()) return;
-          if (sessionResult.error || !sessionResult.data.session) {
-            setRecoverySessionState("invalid");
-            setError("Este link de redefinição é inválido ou expirou. Solicite um novo link.");
-            return;
-          }
-          setRecoverySessionState("ready");
-        } catch {
-          if (!isCurrent()) return;
+      let recoveryEventReceived = false;
+      const invalidateRecovery = () => {
+        if (isCurrent() && !recoveryEventReceived) {
           setRecoverySessionState("invalid");
           setError("Este link de redefinição é inválido ou expirou. Solicite um novo link.");
         }
-      }
+      };
+      const cancelRecoveryTimeout = recoveryTimeoutScheduler.current(invalidateRecovery);
+      const { data } = recoveryAuthSubscription.current((event, session) => {
+        if (event !== "PASSWORD_RECOVERY" || recoveryEventReceived) return;
+        recoveryEventReceived = true;
+        cancelRecoveryTimeout();
 
-      void resolveRecoverySession();
+        void Promise.resolve().then(async () => {
+          try {
+            if (!session) throw new Error("Missing recovery session");
+            const access = await recoveryAccessCheck.current();
+            if (!isCurrent()) return;
+            if (access.status !== "authorized") {
+              recoveryEventReceived = false;
+              invalidateRecovery();
+              return;
+            }
+            setError("");
+            setRecoverySessionState("ready");
+          } catch {
+            if (!isCurrent()) return;
+            recoveryEventReceived = false;
+            invalidateRecovery();
+          }
+        });
+      });
+
       return () => {
         cancelled = true;
+        cancelRecoveryTimeout();
+        data.subscription.unsubscribe();
       };
     }
 
@@ -258,13 +297,28 @@ export function UnifiedPortalLoginPage({
       if (result.error) throw result.error;
       setNewPassword("");
       setNewPasswordConfirmation("");
+      let signedOut = false;
       try {
-        await supabase.auth.signOut({ scope: "global" });
+        const globalResult = await supabase.auth.signOut({ scope: "global" });
+        signedOut = !globalResult.error;
       } catch {
-        // The password is already updated; the user can still return to login.
+        signedOut = false;
+      }
+      if (!signedOut) {
+        try {
+          const localResult = await supabase.auth.signOut({ scope: "local" });
+          signedOut = !localResult.error;
+        } catch {
+          signedOut = false;
+        }
       }
       setPasswordUpdated(true);
-      setRecoveryStatus("Senha atualizada. Entre novamente com a nova senha.");
+      window.history.replaceState({}, "", "/acessar");
+      setRecoveryStatus(
+        signedOut
+          ? "Senha atualizada. Entre novamente com a nova senha."
+          : "Senha atualizada, mas a sessão não pôde ser encerrada. Feche esta página antes de entrar novamente.",
+      );
     } catch {
       setError("Não foi possível atualizar a senha. Solicite um novo link e tente novamente.");
     } finally {
