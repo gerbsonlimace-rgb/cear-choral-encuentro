@@ -442,7 +442,7 @@ function AboutSection() {
           </div>
         </div>
 
-        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
             <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
@@ -450,7 +450,7 @@ function AboutSection() {
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Formação</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Oficinas com músicos e liturgistas experientes.
+                Conferências e ensaios com o Prof. Clayton Dias.
               </p>
             </CardContent>
           </Card>
@@ -463,7 +463,7 @@ function AboutSection() {
                 Celebração
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Missas e momentos de oração com música sacra.
+                Missas e Liturgias das Horas.
               </p>
             </CardContent>
           </Card>
@@ -472,22 +472,11 @@ function AboutSection() {
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber/10 sm:h-14 sm:w-14">
                 <Mic2 className="h-6 w-6 text-amber sm:h-7 sm:w-7" />
               </div>
-              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Concerto</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Apresentação especial do repertório sacro.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="about-pillar-content p-4 sm:p-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
-                <Users className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
-              </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">
-                Comunidade
+                Grande Concerto
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Espaço de encontro entre grupos de todo o Ceará.
+                Coros participantes do evento.
               </p>
             </CardContent>
           </Card>
