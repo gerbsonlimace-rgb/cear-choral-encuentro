@@ -72,11 +72,20 @@ export const checkRegistrationAvailability = createServerFn({ method: "POST" })
     const { createSupabaseRegistrationRepository } =
       await import("@/features/registration/registration-payment.server");
     const repository = createSupabaseRegistrationRepository();
-    const [cpfRecord, emailRecord] = await Promise.all([
+    const [
+      { createSupabaseParticipantAuthAdmin },
+      cpfRecord,
+      emailRecord,
+    ] = await Promise.all([
+      import("@/features/participant/participant-provisioning.server"),
       repository.findByCpf(data.cpf),
       repository.findByEmail(data.email),
     ]);
-    return { cpfTaken: Boolean(cpfRecord), emailTaken: Boolean(emailRecord) };
+    const authRecord = await createSupabaseParticipantAuthAdmin().findUserByEmail(data.email);
+    return {
+      cpfTaken: Boolean(cpfRecord),
+      emailTaken: Boolean(emailRecord || authRecord),
+    };
   });
 
 export const lookupRegistration = createServerFn({ method: "POST" })

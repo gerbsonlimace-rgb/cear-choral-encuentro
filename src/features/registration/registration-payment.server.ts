@@ -170,6 +170,7 @@ export function createRegistrationPaymentService(deps: {
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
   provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
+  findAuthUserByEmail?: (email: string) => Promise<{ id: string } | null>;
   getParticipantPortalAccessLink?: (registrationId: string) => Promise<string | null>;
   getParticipantCredentials?: (
     registrationId: string,
@@ -241,11 +242,17 @@ export function createRegistrationPaymentService(deps: {
     },
     startCheckout: async (input: RegistrationInput) => {
       const existing = await deps.repository.findByCpf?.(input.cpf);
+      const canResumeExisting =
+        existing?.paymentStatus === "pending" && existing.birthDate === input.birthDate;
       if (
         existing &&
         (existing.paymentStatus !== "pending" || existing.birthDate !== input.birthDate)
       ) {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+      }
+      if (!canResumeExisting && deps.findAuthUserByEmail) {
+        const authUser = await deps.findAuthUserByEmail(input.email.trim().toLowerCase());
+        if (authUser) throw new Error("Já existe um acesso com este e-mail.");
       }
       if (existing?.paymentStatus === "pending" && existing.checkoutUrl && existing.orderNsu) {
         if (!isCheckoutClaim(existing.checkoutUrl)) {
@@ -935,6 +942,11 @@ export function getRegistrationPaymentService() {
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
+      findAuthUserByEmail: async (email) => {
+        const { createSupabaseParticipantAuthAdmin } =
+          await import("@/features/participant/participant-provisioning.server");
+        return createSupabaseParticipantAuthAdmin().findUserByEmail(email);
+      },
       provisionParticipant: async (registrationId) => {
         const { getParticipantProvisioningService } =
           await import("@/features/participant/participant-provisioning.server");

@@ -296,7 +296,7 @@ export function createParticipantProvisioningService({
     try {
       const existing = await auth.findUserByEmail(email);
       if (existing) {
-        return reuseExistingUser(account, claimId, existing.id);
+        return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
       }
     } catch {
       return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
@@ -311,7 +311,9 @@ export function createParticipantProvisioningService({
       if (error instanceof ParticipantAuthFailure && error.outcome === "email_conflict") {
         try {
           const existing = await auth.findUserByEmail(email);
-          if (existing) return reuseExistingUser(account, claimId, existing.id);
+          if (existing) {
+            return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+          }
         } catch {
           // A transient lookup failure remains pending and can be retried later.
         }
