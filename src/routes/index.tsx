@@ -150,7 +150,8 @@ function Header() {
             alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
             className="h-9 w-auto shrink-0 sm:h-11"
           />
-          <span className="truncate">II ECD-NE1</span>
+          <span className="truncate">
+</span>
         </Link>
         <nav
           aria-label="Navegação principal"
