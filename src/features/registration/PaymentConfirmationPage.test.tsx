@@ -67,29 +67,32 @@ describe("PaymentConfirmationPage", () => {
     expect(await screen.findByText("Maria de Lourdes")).toBeVisible();
     expect(screen.getByText("Coro Diocesano de Quixadá")).toBeVisible();
     expect(screen.getByText("R$ 120,00")).toBeVisible();
-    expect(screen.getByText(/material estará no app do Coralista/i)).toBeVisible();
+    expect(screen.getByText(/acesso ao portal está pronto/i)).toBeVisible();
 
-    const accessLink = screen.getByRole("link", { name: "Acessar o app do Coralista" });
+    const accessLink = screen.getByRole("link", { name: "Acessar o portal do participante" });
     expect(accessLink).toHaveAttribute("href", "/acessar");
 
     fireEvent.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
     await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(1));
   });
 
-  it("offers unified portal access only after participant access is active", async () => {
+  it("shows the portal link and initial password only after participant access is active", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
       paymentMethod: "pix" as const,
       installments: 1,
       participantAccessStatus: "active" as const,
+      participantPortalUrl: "/acessar",
+      participantInitialPassword: "5299822472515011990",
     });
 
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
-    expect(await screen.findByRole("link", { name: "Acessar o app do Coralista" })).toHaveAttribute(
-      "href",
-      "/acessar",
-    );
+    expect(
+      await screen.findByRole("link", { name: "Acessar o portal do participante" }),
+    ).toHaveAttribute("href", "/acessar");
+    expect(screen.getByText("Senha inicial")).toBeVisible();
+    expect(screen.getByText("5299822472515011990")).toBeVisible();
   });
 
   it.each([
@@ -112,8 +115,9 @@ describe("PaymentConfirmationPage", () => {
 
       expect(await screen.findByText(message)).toBeVisible();
       expect(
-        screen.queryByRole("link", { name: "Acessar o app do Coralista" }),
+        screen.queryByRole("link", { name: "Acessar o portal do participante" }),
       ).not.toBeInTheDocument();
+      expect(screen.queryByText("Senha inicial")).not.toBeInTheDocument();
       expect(screen.queryByText("Não faça outro pagamento.")).not.toBeInTheDocument();
     },
   );

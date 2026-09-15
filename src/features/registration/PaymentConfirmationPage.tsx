@@ -280,17 +280,37 @@ function ConfirmedPayment({
                       id="material-title"
                       className="font-display text-xl font-bold text-foreground"
                     >
-                      Seu material estará no app do Coralista
+                      Seu acesso ao portal está pronto
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      É necessário acessar o app do Coralista para consultar as partituras, manuais
-                      e demais materiais do evento.
+                      Acesse o portal do participante para consultar as partituras, manuais e demais
+                      materiais do evento.
                     </p>
+                    {payment.participantInitialPassword && (
+                      <dl className="mt-4 grid gap-3 rounded-2xl border border-amber/30 bg-background/60 p-4 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            Link do portal
+                          </dt>
+                          <dd className="mt-1 text-sm font-bold text-foreground">
+                            {payment.participantPortalUrl ?? "/acessar"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            Senha inicial
+                          </dt>
+                          <dd className="mt-1 break-all font-mono text-sm font-bold text-foreground">
+                            {payment.participantInitialPassword}
+                          </dd>
+                        </div>
+                      </dl>
+                    )}
                     <a
-                      href="/acessar"
+                      href={payment.participantPortalUrl ?? "/acessar"}
                       className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      Acessar o app do Coralista
+                      Acessar o portal do participante
                       <LogIn className="size-4" aria-hidden="true" />
                     </a>
                   </div>

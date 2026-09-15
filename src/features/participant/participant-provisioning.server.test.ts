@@ -98,6 +98,27 @@ describe("participant provisioning service", () => {
     expect(auth.createUser).not.toHaveBeenCalled();
   });
 
+  it("returns initial credentials only for a paid active linked participant", async () => {
+    const { repository, service } = setup();
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: createdUserId,
+      provisioningClaimId: null,
+    });
+
+    await expect(service.getInitialCredentials(registrationId)).resolves.toEqual({
+      portalUrl: "/acessar",
+      initialPassword: "5299822472515011990",
+    });
+  });
+
+  it("does not return initial credentials before the participant link is confirmed", async () => {
+    const { repository, service } = setup();
+
+    await expect(service.getInitialCredentials(registrationId)).resolves.toBeNull();
+  });
+
   it("lets only the current claim holder call Auth", async () => {
     const { repository, auth, service } = setup();
     vi.mocked(repository.claim).mockResolvedValue({

@@ -4,6 +4,7 @@ import {
   type ResolvedChoirSelection,
 } from "@/features/choirs/choir-pricing.server";
 import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
+import type { ParticipantInitialCredentials } from "@/features/participant/participant-provisioning.server";
 import {
   createInfinitePayClient,
   sanitizeInfinitePayReceiptUrl,
@@ -43,6 +44,8 @@ export type PublicPaymentStatus =
       paymentMethod: "pix" | "credit_card";
       installments: number;
       participantAccessStatus: ParticipantAccessStatus;
+      participantPortalUrl?: string;
+      participantInitialPassword?: string;
       receiptUrl?: string;
       orderNsu?: string;
       amountCents?: number;
@@ -119,17 +122,24 @@ export function createRegistrationPaymentService(deps: {
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
   provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
+  getParticipantCredentials?: (
+    registrationId: string,
+  ) => Promise<ParticipantInitialCredentials | null>;
 }) {
   const toPaidPublicStatus = async (
     registration: RegistrationPaymentRecord,
   ): Promise<PublicPaymentStatus> => {
     let participantAccessStatus: ParticipantAccessStatus = "pending";
+    let participantCredentials: ParticipantInitialCredentials | null = null;
     try {
       participantAccessStatus = (await deps.provisionParticipant(registration.id)).status;
+      if (participantAccessStatus === "active" && deps.getParticipantCredentials) {
+        participantCredentials = await deps.getParticipantCredentials(registration.id);
+      }
     } catch {
       // Payment truth is durable and must remain independent from delayed access preparation.
     }
-    return toPublicPaymentStatus(registration, participantAccessStatus);
+    return toPublicPaymentStatus(registration, participantAccessStatus, participantCredentials);
   };
 
   return {
@@ -264,6 +274,7 @@ export type RegistrationPaymentService = ReturnType<typeof createRegistrationPay
 function toPublicPaymentStatus(
   record: RegistrationPaymentRecord,
   participantAccessStatus: ParticipantAccessStatus = "pending",
+  participantCredentials: ParticipantInitialCredentials | null = null,
 ): PublicPaymentStatus {
   if (record.paymentStatus !== "paid" || !record.paymentMethod || !record.installments) {
     return { status: "pending" };
@@ -274,6 +285,12 @@ function toPublicPaymentStatus(
     paymentMethod: record.paymentMethod,
     installments: record.installments,
     participantAccessStatus,
+    ...(participantAccessStatus === "active" && participantCredentials
+      ? {
+          participantPortalUrl: participantCredentials.portalUrl,
+          participantInitialPassword: participantCredentials.initialPassword,
+        }
+      : {}),
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
     ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
     ...(record.paidAt ? { paidAt: record.paidAt } : {}),
@@ -549,6 +566,11 @@ export function getRegistrationPaymentService() {
         const { getParticipantProvisioningService } =
           await import("@/features/participant/participant-provisioning.server");
         return getParticipantProvisioningService().provision(registrationId);
+      },
+      getParticipantCredentials: async (registrationId) => {
+        const { getParticipantProvisioningService } =
+          await import("@/features/participant/participant-provisioning.server");
+        return getParticipantProvisioningService().getInitialCredentials(registrationId);
       },
     });
   }

@@ -273,6 +273,10 @@ function createFixture() {
   const provisionParticipant = vi.fn(
     async (): Promise<{ status: "active" | "pending" | "conflict" }> => ({ status: "active" }),
   );
+  const getParticipantCredentials = vi.fn(async () => null as {
+    portalUrl: "/acessar";
+    initialPassword: string;
+  } | null);
 
   const service = createRegistrationPaymentService({
     repository,
@@ -282,6 +286,7 @@ function createFixture() {
     now: () => fixedPaidAt,
     resolveChoirSelection: vi.fn(async () => trustedSelection),
     provisionParticipant,
+    getParticipantCredentials,
   });
 
   return {
@@ -289,6 +294,7 @@ function createFixture() {
     infinitePay,
     photoStorage,
     provisionParticipant,
+    getParticipantCredentials,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
@@ -684,6 +690,28 @@ describe("registration payment service", () => {
     });
     expect(JSON.stringify(status)).not.toContain("transaction-1");
     expect(JSON.stringify(status)).not.toContain('"M"');
+  });
+
+  it("returns participant portal credentials only after confirmed provisioning", async () => {
+    fixture.setRecord({
+      ...pendingRecord(),
+      paymentStatus: "paid",
+      transactionNsu: "transaction-1",
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    fixture.getParticipantCredentials.mockResolvedValue({
+      portalUrl: "/acessar",
+      initialPassword: "5299822472515011990",
+    });
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "active",
+      participantPortalUrl: "/acessar",
+      participantInitialPassword: "5299822472515011990",
+    });
+    expect(fixture.getParticipantCredentials).toHaveBeenCalledWith("registration-1");
   });
 });
 
