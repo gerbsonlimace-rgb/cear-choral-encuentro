@@ -319,7 +319,7 @@ export type Database = {
           category: string
           created_at: string
           created_by: string | null
-          event_id: string
+          event_id: string | null
           id: string
           mime_type: string
           original_file_name: string
@@ -330,10 +330,10 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          category: string
+          category?: string
           created_at?: string
           created_by?: string | null
-          event_id: string
+          event_id?: string | null
           id?: string
           mime_type?: string
           original_file_name: string
@@ -347,7 +347,7 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string | null
-          event_id?: string
+          event_id?: string | null
           id?: string
           mime_type?: string
           original_file_name?: string
