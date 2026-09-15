@@ -269,11 +269,21 @@ describe("landing page access", () => {
     });
     const summaryItems = within(raffleSummary).getAllByRole("listitem");
     expect(summaryItems).toHaveLength(5);
-    expect(summaryItems[0]).toHaveTextContent("Pague R$ 100");
-    expect(summaryItems[1]).toHaveTextContent("Agende com o regente");
-    expect(summaryItems[2]).toHaveTextContent("Venda 25 rifas");
-    expect(summaryItems[3]).toHaveTextContent("Entregue até 30/10");
-    expect(summaryItems[4]).toHaveTextContent("Sorteio R$ 1.000 em 08/11");
+    expect(summaryItems[0]).toHaveTextContent(
+      "Pagamento inicial: Pague R$ 100 agora no Pix ou cartão.",
+    );
+    expect(summaryItems[1]).toHaveTextContent(
+      "Blocos de rifas: Agende com seu regente um momento para receber os blocos.",
+    );
+    expect(summaryItems[2]).toHaveTextContent(
+      "Venda mínima: Venda pelo menos 25 rifas de R$ 10 cada.",
+    );
+    expect(summaryItems[3]).toHaveTextContent(
+      "Entrega dos valores: Envie todo o valor arrecadado ao seu regente até 30/10.",
+    );
+    expect(summaryItems[4]).toHaveTextContent(
+      "Sorteio: Sorteio online do prêmio de R$ 1.000 em 08/11.",
+    );
     expect(raffleCard).toHaveTextContent(
       "Condições: venda mínima de 25 rifas de R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua inscrição.",
     );
