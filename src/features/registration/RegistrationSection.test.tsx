@@ -193,7 +193,7 @@ describe("RegistrationSection", () => {
     expect(navigateToCheckout).not.toHaveBeenCalled();
   });
 
-  it("keeps the form and points a duplicate CPF to Retomar pagamento", async () => {
+  it("keeps the form when the server rejects a duplicate CPF", async () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockResolvedValue({
       ok: false,
@@ -207,8 +207,10 @@ describe("RegistrationSection", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
 
-    const resumeLink = await screen.findByRole("link", { name: "Retomar pagamento" });
-    expect(resumeLink).toHaveAttribute("href", "#retomar-pagamento");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível preparar o pagamento. Tente novamente.",
+    );
+    expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
     expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
     expect(screen.getByLabelText("Coro/Diocese")).toHaveValue(quixadaId);
@@ -267,7 +269,7 @@ describe("RegistrationSection", () => {
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
   });
 
-  it("keeps the form and points a known CPF conflict to Retomar pagamento", async () => {
+  it("keeps the form when a known CPF conflict is returned", async () => {
     const user = userEvent.setup();
     const startCheckout = vi.fn().mockResolvedValue({
       ok: false,
@@ -281,10 +283,10 @@ describe("RegistrationSection", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar para pagamento" }));
 
-    expect(await screen.findByRole("link", { name: "Retomar pagamento" })).toHaveAttribute(
-      "href",
-      "#retomar-pagamento",
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível preparar o pagamento. Tente novamente.",
     );
+    expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
     expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
   });

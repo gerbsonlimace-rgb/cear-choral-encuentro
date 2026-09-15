@@ -178,7 +178,6 @@ export function RegistrationSection({
   const [photoFileName, setPhotoFileName] = useState("");
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
-  const [hasCpfConflict, setHasCpfConflict] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const mounted = useRef(false);
@@ -278,7 +277,6 @@ export function RegistrationSection({
 
     setErrors({});
     setCheckoutError("");
-    setHasCpfConflict(false);
     setIsSubmitting(true);
     try {
       const checkout = await startCheckout(parsedForm.data);
@@ -287,7 +285,6 @@ export function RegistrationSection({
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");
-      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
       const externalCheckoutDisabled = normalizedMessage.includes(
         "checkout externo da infinitepay ainda não foi ativado",
       );
@@ -297,13 +294,10 @@ export function RegistrationSection({
       setCheckoutError(
         externalCheckoutDisabled
           ? message
-          : cpfConflict
-            ? "Já existe uma inscrição para este CPF."
-            : shouldRefresh
-              ? "A configuração de preços mudou. Confira o valor e tente novamente."
-              : "Não foi possível preparar o pagamento. Tente novamente.",
+          : shouldRefresh
+            ? "A configuração de preços mudou. Confira o valor e tente novamente."
+            : "Não foi possível preparar o pagamento. Tente novamente.",
       );
-      setHasCpfConflict(cpfConflict);
       if (shouldRefresh) await refreshConfiguration(true);
     } finally {
       setIsSubmitting(false);
@@ -592,17 +586,6 @@ export function RegistrationSection({
                 {checkoutError && (
                   <p role="alert" aria-live="polite" className="text-sm text-destructive">
                     {checkoutError}
-                    {hasCpfConflict && (
-                      <>
-                        {" "}
-                        <a
-                          href="#retomar-pagamento"
-                          className="font-bold underline underline-offset-4"
-                        >
-                          Retomar pagamento
-                        </a>
-                      </>
-                    )}
                   </p>
                 )}
 
