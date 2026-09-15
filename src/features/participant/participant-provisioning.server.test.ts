@@ -72,7 +72,7 @@ function setup() {
 }
 
 describe("participant provisioning service", () => {
-  it("does not claim or call Auth when the registration is missing or unpaid", async () => {
+  it("does not provision when the raw initial payment_status is pending", async () => {
     const { repository, auth, service } = setup();
     vi.mocked(repository.findPaidRegistration).mockResolvedValue(null);
 
@@ -81,6 +81,15 @@ describe("participant provisioning service", () => {
     expect(repository.claim).not.toHaveBeenCalled();
     expect(auth.findUserByEmail).not.toHaveBeenCalled();
     expect(auth.createUser).not.toHaveBeenCalled();
+  });
+
+  it("provisions a paid initial registration after payment confirmation", async () => {
+    const { repository, auth, service } = setup();
+
+    await expect(service.provision(registrationId)).resolves.toEqual({ status: "active" });
+
+    expect(repository.claim).toHaveBeenCalledWith(registrationId, claimId);
+    expect(auth.createUser).toHaveBeenCalledOnce();
   });
 
   it("returns an existing active link without calling Auth", async () => {
@@ -202,7 +211,7 @@ describe("participant provisioning service", () => {
 
     expect(auth.createUser).toHaveBeenCalledWith({
       email: "participante@example.com",
-      password: "5299822472515011990",
+      password: "529982247251990",
       emailConfirm: true,
     });
     expect(repository.activate).toHaveBeenCalledWith({
@@ -393,7 +402,7 @@ describe("participant provisioning service", () => {
 
     expect(auth.updatePassword).toHaveBeenCalledExactlyOnceWith(
       createdUserId,
-      "5299822472515011990",
+      "529982247251990",
     );
     expect(repository.appendEvent).toHaveBeenCalledWith({
       registrationId,

@@ -127,7 +127,7 @@ export function ParticipantPasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent>
+      <DialogContent className="chorister-app rounded-2xl border-zinc-200 bg-white text-zinc-950">
         <DialogHeader>
           <DialogTitle>Alterar senha</DialogTitle>
           <DialogDescription>
@@ -146,6 +146,7 @@ export function ParticipantPasswordDialog({
             <Input
               id="participant-current-password"
               type="password"
+              className="min-h-11 bg-white text-base sm:text-sm"
               autoComplete="current-password"
               required
               value={currentPassword}
@@ -158,6 +159,7 @@ export function ParticipantPasswordDialog({
             <Input
               id="participant-new-password"
               type="password"
+              className="min-h-11 bg-white text-base sm:text-sm"
               autoComplete="new-password"
               required
               minLength={8}
@@ -171,6 +173,7 @@ export function ParticipantPasswordDialog({
             <Input
               id="participant-password-confirmation"
               type="password"
+              className="min-h-11 bg-white text-base sm:text-sm"
               autoComplete="new-password"
               required
               minLength={8}

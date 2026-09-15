@@ -17,6 +17,8 @@ export const Route = createFileRoute("/participante")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
+      { name: "theme-color", content: "#ffffff" },
+      { name: "color-scheme", content: "light" },
     ],
   }),
   component: () => <Outlet />,

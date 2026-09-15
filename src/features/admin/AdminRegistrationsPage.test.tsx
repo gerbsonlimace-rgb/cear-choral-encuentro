@@ -9,6 +9,8 @@ vi.mock("@/lib/admin.functions", () => ({
   getAdminRegistrationSummary: vi.fn(),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
+  createAdminRegistrationCheckoutLink: vi.fn(),
+  markAdminRegistrationPaid: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
 }));
@@ -42,6 +44,8 @@ const legacy: AdminRegistrationRow = {
   pricingType: null,
   standardPriceCents: null,
   registrationPriceCents: null,
+  photoUrl: null,
+  regentName: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -60,7 +64,29 @@ const paid: AdminRegistrationRow = {
   paymentMethod: "credit_card",
   installments: 2,
   paidAt: "2026-09-02T12:00:00Z",
+  photoUrl: "https://example.com/foto-clara.jpg",
   participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
+};
+const partial: AdminRegistrationRow = {
+  ...paid,
+  id: "partial",
+  name: "Daniela Parcial",
+  paidAmountCents: 18000,
+  financialState: {
+    status: "partially_paid",
+    pendingCents: 12000,
+    confirmedPrincipalCents: 18000,
+  },
+  openComplementPayment: {
+    id: "open-unsafe",
+    amountCents: 12000,
+    status: "pending",
+    checkoutUrl: "http://evil.example/checkout",
+    createdAt: "2026-09-10T12:00:00Z",
+    paidAt: null,
+    initiatedByName: "Admin",
+    initiatedAs: "admin",
+  },
 };
 const page = { rows: [legacy, pending, paid], total: 3, page: 1, pageSize: 25 };
 const summary: AdminRegistrationSummary = {
@@ -69,25 +95,33 @@ const summary: AdminRegistrationSummary = {
   pending: 4,
   legacy: 2,
   receivedCents: 20000,
+  pendingCents: 50000,
   pendingRegentCents: 40000,
+  expectedCents: 110000,
   byChoir: [
     {
       choirName: "Diocese de Quixadá",
       total: 7,
       receivedCents: 20000,
+      pendingCents: 50000,
       pendingRegentCents: 40000,
+      expectedCents: 110000,
     },
     {
       choirName: "Diocese de Sobral",
       total: 4,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
     {
       choirName: "Arquidiocese de Fortaleza",
       total: 3,
       receivedCents: 0,
+      pendingCents: 0,
       pendingRegentCents: 0,
+      expectedCents: 0,
     },
   ],
 };
@@ -115,6 +149,126 @@ function setup(overrides = {}) {
 }
 
 describe("AdminRegistrationsPage read-only views", () => {
+  it("does not create a duplicate checkout when an open complement URL is unsafe", async () => {
+    setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [partial],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+    });
+    await waitFor(() => expect(screen.getAllByText("Daniela Parcial")).toHaveLength(2));
+    expect(screen.getAllByText("Pagamento em processamento")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /Pagar saldo/ })).not.toBeInTheDocument();
+  });
+
+  it("lets an administrator generate a payment link or mark a pending registration as paid", async () => {
+    const createPaymentLink = vi.fn().mockResolvedValue({
+      checkoutUrl: "https://checkout.infinitepay.com.br/registration-pending",
+      reused: false,
+    });
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
+      registrationId: "pending",
+    });
+    const copyToClipboard = vi.fn().mockResolvedValue(undefined);
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      createPaymentLink,
+      markPaid,
+      copyToClipboard,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Gerar link de pagamento" }));
+    await waitFor(() =>
+      expect(copyToClipboard).toHaveBeenCalledWith(
+        "https://checkout.infinitepay.com.br/registration-pending",
+      ),
+    );
+
+    await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Marcar inscrição como paga");
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Confirmar pagamento" }),
+    );
+    await waitFor(() =>
+      expect(markPaid).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+    );
+    expect(await screen.findByText("Inscrição marcada como paga.")).toBeInTheDocument();
+    expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
+  });
+
+  it("renders derived states on desktop and mobile and opens the exact server-owned balance", async () => {
+    const partialWithoutOpen = {
+      ...partial,
+      id: "partial-pay",
+      name: "Eduarda Parcial",
+      openComplementPayment: null,
+    } satisfies AdminRegistrationRow;
+    const settled = {
+      ...paid,
+      id: "settled",
+      name: "Fernanda Paga",
+      financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 30000 },
+    } satisfies AdminRegistrationRow;
+    const loadRegistrations = vi.fn().mockResolvedValue({
+      rows: [partialWithoutOpen, pending, settled],
+      total: 3,
+      page: 1,
+      pageSize: 25,
+    });
+    const startCheckout = vi.fn().mockResolvedValue({
+      checkoutUrl: "https://checkout.infinitepay.io/partial-pay",
+      orderNsu: "order-1",
+    });
+    const navigateToCheckout = vi.fn();
+    const { user } = setup({ loadRegistrations, startCheckout, navigateToCheckout });
+    await screen.findByRole("table");
+
+    for (const view of [
+      screen.getByRole("table"),
+      screen.getByRole("region", { name: "Cartões de inscrições" }),
+    ]) {
+      expect(within(view).getByText("Parcialmente pago")).toBeInTheDocument();
+      expect(within(view).getAllByText("Valor pendente").length).toBeGreaterThan(0);
+      expect(within(view).getAllByText(/R\$\s*120,00/).length).toBeGreaterThan(0);
+      expect(
+        within(view).getByRole("button", { name: /Pagar saldo de R\$\s*120,00/ }),
+      ).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("Pendente").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/R\$\s*0,00/).length).toBeGreaterThan(0);
+
+    await user.click(screen.getAllByRole("button", { name: /Pagar saldo de R\$\s*120,00/ })[0]);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Eduarda Parcial");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Pagar saldo de R\$\s*120,00/,
+      }),
+    );
+    await waitFor(() =>
+      expect(startCheckout).toHaveBeenCalledWith({ data: { registrationId: "partial-pay" } }),
+    );
+    expect(navigateToCheckout).toHaveBeenCalledWith("https://checkout.infinitepay.io/partial-pay");
+
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("combobox", { name: "Situação" }));
+    await user.click(await screen.findByRole("option", { name: "Parcialmente pagas" }));
+    await waitFor(() =>
+      expect(loadRegistrations).toHaveBeenLastCalledWith({
+        data: { search: "", paymentStatus: "partially_paid", page: 1, pageSize: 25 },
+      }),
+    );
+  });
+
   it("renders the aggregated initial payload without repeating authorization or reads", async () => {
     const checkAdmin = vi.fn();
     const loadRegistrations = vi.fn();
@@ -133,35 +287,19 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).not.toHaveBeenCalled();
   });
 
-  it("shows complete totals and the registration count for each diocese above the filters", async () => {
+  it("keeps financial totals above the filters without repeating the summary breakdown", async () => {
     const { loadSummary, user } = setup();
 
-    const overview = await screen.findByRole(
-      "region",
-      { name: "Visão geral das inscrições" },
-      { timeout: 3000 },
+    const financial = await screen.findByRole("group", { name: "Resumo financeiro" });
+    expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
+    expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
+      "R$ 1.100,00",
     );
-    expect(within(overview).getByText("14")).toBeInTheDocument();
-    expect(within(overview).getByText("8")).toBeInTheDocument();
-    expect(within(overview).getByText("4")).toBeInTheDocument();
-    expect(within(overview).getByText("2")).toBeInTheDocument();
-    expect(within(overview).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(overview).getByText("Pendente do regente").parentElement).toHaveTextContent(
-      "R$ 400,00",
-    );
-    expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
-    expect(within(overview).getByText("7 inscritos")).toBeInTheDocument();
-    const quixada = within(overview).getByText("Diocese de Quixadá").closest("li");
-    expect(quixada).not.toBeNull();
-    expect(within(quixada!).getByText(/Recebido:/)).toHaveTextContent("R$ 200,00");
-    expect(within(quixada!).getByText(/Pendente do regente:/)).toHaveTextContent("R$ 400,00");
-    expect(within(overview).getByText("Diocese de Sobral")).toBeInTheDocument();
-    expect(within(overview).getByText("4 inscritos")).toBeInTheDocument();
-    expect(within(overview).getByText("Arquidiocese de Fortaleza")).toBeInTheDocument();
-    expect(within(overview).getByText("3 inscritos")).toBeInTheDocument();
-    expect(overview.compareDocumentPosition(screen.getByLabelText("Pesquisar inscrições"))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(
+      screen.queryByRole("region", { name: "Visão geral das inscrições" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Financeiro por coro/diocese")).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Pesquisar inscrições"), "Clara");
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
@@ -169,12 +307,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).toHaveBeenCalledOnce();
   });
 
-  it("links to choir and event-value administration", async () => {
+  it("links separately to choir and event-value administration", async () => {
     setup();
 
-    expect(await screen.findByRole("link", { name: "Coros e valores" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Coros" })).toHaveAttribute(
       "href",
       "/admin/coros",
+    );
+    expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+      "href",
+      "/admin/configuracoes",
     );
   });
 
@@ -189,9 +331,13 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Pendente")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
-      expect(scope.getByText("Cartão · 2x")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
-      expect(scope.getAllByText("R$ 139,90").length).toBe(2);
+      expect(scope.getByText("AH")).toBeInTheDocument();
+      expect(scope.getByText("CP")).toBeInTheDocument();
+      expect(scope.getAllByText("R$ 139,90").length).toBe(1);
+      expect(scope.getAllByText("R$ 100,00").length).toBe(1);
+      expect(scope.getAllByText("85999990000").length).toBe(3);
+      expect(scope.getAllByText("Regente").length).toBeGreaterThan(0);
     }
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");

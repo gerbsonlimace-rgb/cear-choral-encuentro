@@ -107,6 +107,28 @@ describe("admin registration handlers", () => {
     });
   });
 
+  it("passes the partially paid filter to the authorized service", async () => {
+    const list = vi.fn().mockResolvedValue({ rows: [], total: 0, page: 1, pageSize: 25 });
+    const service: AdminRegistrationServicePort = {
+      list,
+      async export() {
+        throw new Error("Unexpected export");
+      },
+      async summary() {
+        throw new Error("Unexpected summary");
+      },
+    };
+
+    await createAdminFunctionHandlers(service).list({ paymentStatus: "partially_paid" });
+
+    expect(list).toHaveBeenCalledWith({
+      search: "",
+      paymentStatus: "partially_paid",
+      page: 1,
+      pageSize: 25,
+    });
+  });
+
   it("rejects an invalid list query before the service can return registration data", async () => {
     let serviceReached = false;
     const service: AdminRegistrationServicePort = {
@@ -182,13 +204,17 @@ describe("admin registration handlers", () => {
       pending: 2,
       legacy: 2,
       receivedCents: 20000,
+      pendingCents: 5000,
       pendingRegentCents: 40000,
+      expectedCents: 65000,
       byChoir: [
         {
           choirName: "Diocese de Quixadá",
           total: 7,
           receivedCents: 20000,
+          pendingCents: 5000,
           pendingRegentCents: 40000,
+          expectedCents: 65000,
         },
       ],
     };
@@ -232,7 +258,9 @@ describe("admin registration handlers", () => {
           pending: 0,
           legacy: 0,
           receivedCents: 0,
+          pendingCents: 0,
           pendingRegentCents: 0,
+          expectedCents: 0,
           byChoir: [],
         };
       },

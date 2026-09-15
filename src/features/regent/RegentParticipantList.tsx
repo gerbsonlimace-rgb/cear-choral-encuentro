@@ -15,7 +15,6 @@ import {
 
 import {
   formatComplementCents,
-  type ComplementIneligibilityReason,
   type ComplementPaymentRow,
   type PortalParticipant,
 } from "./regent-payments.domain";
@@ -94,17 +93,19 @@ function ParticipantAvatar({ participant }: { participant: PortalParticipant }) 
   );
 }
 
-function RegistrationBadge({ status }: { status: PortalParticipant["paymentStatus"] }) {
-  const label = status === "paid" ? "Pago" : status === "pending" ? "Pendente" : "Histórico";
-  return <Badge variant={status === "paid" ? "default" : "secondary"}>{label}</Badge>;
-}
+const financialLabels = {
+  legacy: "Histórico",
+  pending: "Pendente",
+  partially_paid: "Parcialmente pago",
+  paid: "Pago",
+} as const;
 
-const ineligibleLabels: Record<ComplementIneligibilityReason, string> = {
-  awaiting_participant_payment: "Aguardando pagamento do participante",
-  standard_price: "Inscrição sem complemento",
-  missing_snapshot: "Valores da inscrição indisponíveis",
-  settled: "Complemento quitado",
-};
+function RegistrationBadge({ participant }: { participant: PortalParticipant }) {
+  const { status } = participant.financialState;
+  return (
+    <Badge variant={status === "paid" ? "default" : "secondary"}>{financialLabels[status]}</Badge>
+  );
+}
 
 function PaymentBadge({ payment }: { payment: ComplementPaymentRow }) {
   const label =
@@ -184,7 +185,7 @@ function ComplementAction({
   participant: PortalParticipant;
   onPay: Props["onPay"];
 }) {
-  if (!participant.complement.eligible) {
+  if (participant.financialState.status !== "partially_paid" || !participant.complement.eligible) {
     return null;
   }
 
@@ -203,21 +204,21 @@ function ComplementAction({
     <Button
       type="button"
       size="sm"
-      aria-label={`Pagar complemento de ${participant.name}`}
+      aria-label={`Pagar saldo de ${formatComplementCents(participant.complement.balanceCents)}`}
       onClick={() => onPay(participant)}
     >
-      Pagar complemento
+      Pagar saldo de {formatComplementCents(participant.complement.balanceCents)}
     </Button>
   );
 }
 
-function ComplementAmounts({ participant }: { participant: PortalParticipant }) {
-  if (!participant.complement.eligible) return null;
+function PendingAmount({ participant }: { participant: PortalParticipant }) {
+  const amount = participant.financialState.pendingCents;
   return (
     <div className="space-y-0.5 text-xs">
-      <p>Pago: {formatComplementCents(participant.complement.paidCents)}</p>
+      <p className="font-medium text-muted-foreground">Valor pendente</p>
       <p className="font-semibold">
-        Saldo: {formatComplementCents(participant.complement.balanceCents)}
+        {amount === null ? "Não disponível" : formatComplementCents(amount)}
       </p>
     </div>
   );
@@ -251,9 +252,9 @@ export function RegentParticipantList({ participants, onPay }: Props) {
               <TableRow>
                 <TableHead>Participante</TableHead>
                 <TableHead>Contato</TableHead>
-                <TableHead>Inscrição</TableHead>
+                <TableHead>Situação financeira</TableHead>
                 <TableHead>Valores da inscrição</TableHead>
-                <TableHead>Complemento</TableHead>
+                <TableHead>Valor pendente</TableHead>
                 <TableHead>Parcelas</TableHead>
                 <TableHead className="text-right">Ação</TableHead>
               </TableRow>
@@ -271,18 +272,13 @@ export function RegentParticipantList({ participants, onPay }: Props) {
                     <Contact participant={participant} />
                   </TableCell>
                   <TableCell>
-                    <RegistrationBadge status={participant.paymentStatus} />
+                    <RegistrationBadge participant={participant} />
                   </TableCell>
                   <TableCell>
                     <RegistrationPrices participant={participant} />
                   </TableCell>
                   <TableCell>
-                    <ComplementAmounts participant={participant} />
-                    {!participant.complement.eligible && (
-                      <span className="text-xs text-muted-foreground">
-                        {ineligibleLabels[participant.complement.reason]}
-                      </span>
-                    )}
+                    <PendingAmount participant={participant} />
                   </TableCell>
                   <TableCell>
                     <PaymentHistory participant={participant} />
@@ -307,17 +303,12 @@ export function RegentParticipantList({ participants, onPay }: Props) {
                   <p className="break-words font-semibold">{participant.name}</p>
                   <Contact participant={participant} />
                 </div>
-                <RegistrationBadge status={participant.paymentStatus} />
+                <RegistrationBadge participant={participant} />
               </div>
               <RegistrationPrices participant={participant} />
               <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-3">
                 <div className="min-w-0 flex-1">
-                  <ComplementAmounts participant={participant} />
-                  {!participant.complement.eligible && (
-                    <p className="text-xs text-muted-foreground">
-                      {ineligibleLabels[participant.complement.reason]}
-                    </p>
-                  )}
+                  <PendingAmount participant={participant} />
                   <PaymentHistory participant={participant} />
                 </div>
                 <ComplementAction participant={participant} onPay={onPay} />

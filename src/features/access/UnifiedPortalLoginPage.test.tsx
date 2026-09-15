@@ -66,7 +66,7 @@ function deferred<T>() {
 }
 
 describe("UnifiedPortalLoginPage", () => {
-  it.each(["/admin/inscricoes", "/regente/alterar-senha", "/regente", "/participante"] as const)(
+  it.each(["/admin/resumo", "/regente/alterar-senha", "/regente", "/participante"] as const)(
     "navigates to an authorized %s destination",
     async (destination) => {
       const { user, signIn, checkAccess, onAuthorized } = setup({
@@ -89,6 +89,9 @@ describe("UnifiedPortalLoginPage", () => {
     setup();
 
     expect(
+      screen.getByRole("img", { name: "Encontro de Coros Diocesanos e Litúrgicos" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(
         "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
       ),
@@ -102,8 +105,13 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "No primeiro acesso como participante, use os dígitos do CPF seguidos da data de nascimento em DDMMAAAA.",
+        "Primeiro acesso do participante: CPF sem pontuação + ano de nascimento (AAAA).",
       ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("20 a 22 de novembro de 2026")).toBeInTheDocument();
+    expect(screen.getByText("Quixadá, Ceará")).toBeInTheDocument();
+    expect(
+      screen.getByText("Um único acesso para participante, regente e administração"),
     ).toBeInTheDocument();
   });
 
@@ -204,11 +212,11 @@ describe("UnifiedPortalLoginPage", () => {
       }),
       checkAccess: vi.fn().mockResolvedValue({
         status: "authorized",
-        destination: "/admin/inscricoes",
+        destination: "/admin/resumo",
       }),
     });
 
-    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/inscricoes"));
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/resumo"));
     expect(checkAccess).toHaveBeenCalledOnce();
     expect(signIn).not.toHaveBeenCalled();
   });
@@ -322,7 +330,7 @@ describe("UnifiedPortalLoginPage", () => {
     const getSession = vi.fn(() => session.promise);
     const checkAccess = vi.fn().mockResolvedValue({
       status: "authorized",
-      destination: "/admin/inscricoes",
+      destination: "/admin/resumo",
     });
     const signOut = vi.fn().mockResolvedValue({ error: null });
     const onAuthorized = vi.fn();
@@ -345,7 +353,7 @@ describe("UnifiedPortalLoginPage", () => {
       }),
     );
 
-    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/inscricoes"));
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/resumo"));
     expect(getSession).toHaveBeenCalledOnce();
     expect(checkAccess).toHaveBeenCalledOnce();
     expect(signOut).not.toHaveBeenCalled();

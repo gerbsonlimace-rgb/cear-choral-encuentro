@@ -10,6 +10,8 @@ type Props = {
   lookup: PaymentLookup | null;
   verifyPayment?: (lookup: PaymentLookup) => Promise<ComplementPaymentPublicStatus>;
   retryDelayMs?: number;
+  returnTo?: "/regente" | "/admin/inscricoes" | "/participante";
+  returnLabel?: string;
 };
 
 type State =
@@ -26,6 +28,8 @@ export function ComplementPaymentConfirmationPage({
   lookup,
   verifyPayment = defaultVerifyPayment,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+  returnTo = "/regente",
+  returnLabel = "Voltar à área do regente",
 }: Props) {
   const key = JSON.stringify(
     lookup
@@ -38,11 +42,19 @@ export function ComplementPaymentConfirmationPage({
       lookup={lookup}
       verifyPayment={verifyPayment}
       retryDelayMs={retryDelayMs}
+      returnTo={returnTo}
+      returnLabel={returnLabel}
     />
   );
 }
 
-function ConfirmationCycle({ lookup, verifyPayment, retryDelayMs }: Required<Props>) {
+function ConfirmationCycle({
+  lookup,
+  verifyPayment,
+  retryDelayMs,
+  returnTo,
+  returnLabel,
+}: Required<Props>) {
   const [cycle, setCycle] = useState(0);
   const [state, setState] = useState<State>({ kind: "processing" });
   const orderNsu = lookup?.orderNsu;
@@ -87,14 +99,21 @@ function ConfirmationCycle({ lookup, verifyPayment, retryDelayMs }: Required<Pro
     };
   }, [cycle, orderNsu, receiptUrl, retryDelayMs, slug, transactionNsu, verifyPayment]);
 
-  if (!lookup) return <Message title="Não foi possível identificar este pagamento." />;
+  if (!lookup)
+    return (
+      <Message
+        title="Não foi possível identificar este pagamento."
+        returnTo={returnTo}
+        returnLabel={returnLabel}
+      />
+    );
   if (state.kind === "paid") {
     const method =
       state.payment.paymentMethod === "pix"
         ? "Pix"
         : `Cartão em ${state.payment.installments} ${state.payment.installments === 1 ? "parcela" : "parcelas"}`;
     return (
-      <Message title="Complemento confirmado">
+      <Message title="Complemento confirmado" returnTo={returnTo} returnLabel={returnLabel}>
         <p className="mt-3 text-muted-foreground">Pagamento por {method}.</p>
         {state.payment.receiptUrl && <ReceiptLink receiptUrl={state.payment.receiptUrl} />}
       </Message>
@@ -102,7 +121,11 @@ function ConfirmationCycle({ lookup, verifyPayment, retryDelayMs }: Required<Pro
   }
   if (state.kind === "pending") {
     return (
-      <Message title="Pagamento complementar ainda não confirmado">
+      <Message
+        title="Pagamento complementar ainda não confirmado"
+        returnTo={returnTo}
+        returnLabel={returnLabel}
+      >
         <p className="mt-3 text-muted-foreground">Não faça outro pagamento.</p>
         <RetryButton onClick={() => setCycle((current) => current + 1)} />
       </Message>
@@ -110,27 +133,43 @@ function ConfirmationCycle({ lookup, verifyPayment, retryDelayMs }: Required<Pro
   }
   if (state.kind === "error") {
     return (
-      <Message title="Não foi possível verificar agora">
+      <Message
+        title="Não foi possível verificar agora"
+        returnTo={returnTo}
+        returnLabel={returnLabel}
+      >
         <p className="mt-3 text-muted-foreground">Não faça outro pagamento.</p>
         <RetryButton onClick={() => setCycle((current) => current + 1)} />
       </Message>
     );
   }
-  return <Message title="Confirmando pagamento…" />;
+  return <Message title="Confirmando pagamento…" returnTo={returnTo} returnLabel={returnLabel} />;
 }
 
-function Message({ children, title }: { children?: ReactNode; title: string }) {
+function Message({
+  children,
+  title,
+  returnTo,
+  returnLabel,
+}: {
+  children?: ReactNode;
+  title: string;
+  returnTo: "/regente" | "/admin/inscricoes" | "/participante";
+  returnLabel: string;
+}) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <main
+      className={`${returnTo === "/participante" ? "internal-app " : ""}flex min-h-screen items-center justify-center bg-background px-4 py-12`}
+    >
       <Card className="w-full max-w-lg border-border bg-card shadow-sm shadow-teal/10">
         <CardContent className="p-6 text-center sm:p-8">
           <h1 className="font-display text-3xl font-extrabold text-foreground">{title}</h1>
           {children}
           <Link
-            to="/regente"
+            to={returnTo}
             className="mt-6 inline-flex font-semibold text-teal underline-offset-4 hover:underline"
           >
-            Voltar à área do regente
+            {returnLabel}
           </Link>
         </CardContent>
       </Card>

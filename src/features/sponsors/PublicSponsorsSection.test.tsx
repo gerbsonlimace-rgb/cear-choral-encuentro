@@ -9,12 +9,10 @@ describe("PublicSponsorsSection", () => {
     render(<PublicSponsorsSection loadSponsors={loadSponsors} />);
 
     await vi.waitFor(() => expect(loadSponsors).toHaveBeenCalledOnce());
-    expect(
-      screen.queryByRole("heading", { name: "Quem ajuda esta música a chegar mais longe" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Patrocinadores")).not.toBeInTheDocument();
   });
 
-  it("renders configured sponsors with accessible logos", async () => {
+  it("renders configured sponsors with logos and name captions", async () => {
     render(
       <PublicSponsorsSection
         loadSponsors={vi.fn(async () => [
@@ -27,12 +25,13 @@ describe("PublicSponsorsSection", () => {
       />,
     );
 
-    expect(
-      await screen.findByRole("heading", { name: "Quem ajuda esta música a chegar mais longe" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Universidade Católica" })).toHaveAttribute(
-      "src",
-      "https://example.test/unicatolica.png",
-    );
+    const logo = await screen.findByRole("img", {
+      name: "Logo de Universidade Católica",
+    });
+    expect(logo).toHaveAttribute("src", "https://example.test/unicatolica.png");
+    expect(logo.parentElement).toHaveClass("rounded-lg");
+    expect(logo.closest("div")).toHaveClass("rounded-xl");
+    expect(screen.getByText("Patrocinadores")).toBeInTheDocument();
+    expect(screen.getByText("Universidade Católica")).toBeInTheDocument();
   });
 });

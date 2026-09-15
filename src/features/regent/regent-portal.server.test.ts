@@ -71,6 +71,7 @@ const registration: PortalRegistrationRow = {
   phone: "(88) 99999-1234",
   photoPath: `${registrationId}/participant.webp`,
   paymentStatus: "paid",
+  initialAmountCents: 10_000,
   pricingType: "promotional",
   standardPriceCents: 30_000,
   registrationPriceCents: 10_000,
@@ -147,7 +148,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,name,cpf,phone,photo_path,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
+        "id,name,cpf,phone,photo_path,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents",
         { count: "exact" },
       ],
       ["eq", "choir_id", authorizedChoirId],
@@ -179,6 +180,27 @@ describe("Supabase regent portal repository", () => {
     ]);
   });
 
+  it("includes payments initiated by participants in the regent history", async () => {
+    queueQueryResponse([
+      {
+        id: "payment",
+        registration_id: registrationId,
+        amount_cents: 8000,
+        status: "paid",
+        checkout_url: null,
+        created_at: "2026-09-14T00:00:00Z",
+        paid_at: "2026-09-14T00:01:00Z",
+        initiated_by_name: "Maria",
+        initiated_as: "participant",
+      },
+    ]);
+    await expect(
+      createSupabaseRegentPortalRepository().listParticipantPayments(authorizedChoirId, [
+        registrationId,
+      ]),
+    ).resolves.toMatchObject([{ initiatedAs: "participant", amountCents: 8000 }]);
+  });
+
   it("keeps both all-choir summary queries scoped and counts only paid principal", async () => {
     queueQueryResponse([]);
     queueQueryResponse([]);
@@ -191,7 +213,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
+        "id,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents",
         undefined,
       ],
       ["eq", "choir_id", authorizedChoirId],
@@ -287,9 +309,15 @@ describe("regent portal service", () => {
           whatsappUrl: "https://wa.me/5588999991234",
           photoUrl: "https://storage.example.test/signed-photo",
           paymentStatus: "paid",
+          initialAmountCents: 10_000,
           pricingType: "promotional",
           standardPriceCents: 30_000,
           registrationPriceCents: 10_000,
+          financialState: {
+            status: "partially_paid",
+            pendingCents: 12_000,
+            confirmedPrincipalCents: 18_000,
+          },
           complement: {
             eligible: true,
             totalCents: 20_000,
@@ -307,6 +335,30 @@ describe("regent portal service", () => {
       total: 1,
       page: 1,
       pageSize: 20,
+    });
+  });
+
+  it("projects the initial checkout and only confirmed complement principal into financial state", async () => {
+    const repository = setupRepository({
+      listParticipants: vi.fn().mockResolvedValue({
+        rows: [{ ...registration, initialAmountCents: 10_000 }],
+        total: 1,
+      }),
+    });
+
+    const page = await createRegentPortalService(repository).list(authorizedChoirId, {
+      search: "",
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(page.rows[0]).toMatchObject({
+      initialAmountCents: 10_000,
+      financialState: {
+        status: "partially_paid",
+        pendingCents: 12_000,
+        confirmedPrincipalCents: 18_000,
+      },
     });
   });
 
@@ -362,6 +414,26 @@ describe("regent portal service", () => {
     expect(repository.listSummaryRegistrations).toHaveBeenCalledExactlyOnceWith(authorizedChoirId);
     expect(repository.listSummaryPaidComplements).toHaveBeenCalledExactlyOnceWith(
       authorizedChoirId,
+    );
+  });
+
+  it("excludes a financially incoherent initial checkout from the derived summary", async () => {
+    const repository = setupRepository({
+      listSummaryRegistrations: vi
+        .fn()
+        .mockResolvedValue([{ ...registration, initialAmountCents: 9_999 }]),
+      listSummaryPaidComplements: vi
+        .fn()
+        .mockResolvedValue([{ registrationId, amountCents: 8_000 }]),
+    });
+
+    await expect(createRegentPortalService(repository).summary(authorizedChoirId)).resolves.toEqual(
+      {
+        totalParticipants: 1,
+        eligibleComplementCents: 0,
+        confirmedComplementCents: 0,
+        outstandingComplementCents: 0,
+      },
     );
   });
 });

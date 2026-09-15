@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
 
 import {
   birthDateSchema,
@@ -30,6 +31,7 @@ export type ParticipantRegistrationView = {
   };
   registration: {
     choirName: string;
+    regentNames?: string[];
     diocese: string;
     city?: string | null;
     institution?: string | null;
@@ -41,6 +43,7 @@ export type ParticipantRegistrationView = {
   };
   payment: {
     status: "paid";
+    financialState?: RegistrationFinancialState | null;
     amountCents?: number | null;
     paidAmountCents?: number | null;
     paymentMethod?: "pix" | "credit_card" | null;
@@ -58,8 +61,8 @@ export type ParticipantRegistrationViewInput = Omit<ParticipantRegistrationView,
 export function buildInitialParticipantPassword(cpf: string, birthDate: string): string {
   const digits = cpfSchema.parse(cpf);
   const normalizedDate = birthDateSchema.parse(birthDate);
-  const [year, month, day] = normalizedDate.split("-");
-  return `${digits}${day}${month}${year}`;
+  const [year] = normalizedDate.split("-");
+  return `${digits}${year}`;
 }
 
 export function maskCpf(cpf: string): MaskedCpf {

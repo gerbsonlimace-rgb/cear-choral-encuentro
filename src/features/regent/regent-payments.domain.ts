@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  deriveRegistrationFinancialState,
+  type RegistrationFinancialState,
+} from "../registration/registration-financial-state.domain";
 
 export type ComplementPaymentStatus = "creating" | "pending" | "paid" | "failed" | "expired";
 
@@ -10,7 +14,7 @@ export interface ComplementPaymentRow {
   createdAt: string;
   paidAt: string | null;
   initiatedByName: string;
-  initiatedAs: "regent" | "admin";
+  initiatedAs: "regent" | "admin" | "participant";
 }
 
 export type ComplementIneligibilityReason =
@@ -34,10 +38,11 @@ export interface PortalParticipant {
   whatsappUrl: string | null;
   photoUrl: string | null;
   paymentStatus: "legacy" | "pending" | "paid";
+  initialAmountCents: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
-  remainingPriceCents?: number | null;
+  financialState: RegistrationFinancialState;
   complement: ComplementEligibility;
   payments: ComplementPaymentRow[];
   // Optional presentation snapshots retained for consumers that expose them.
@@ -47,6 +52,12 @@ export interface PortalParticipant {
   shirtPriceCents?: number | null;
 }
 
+export type BalancePaymentTarget = {
+  id: string;
+  name: string;
+  balanceCents: number;
+};
+
 export interface PortalSummary {
   totalParticipants: number;
   eligibleComplementCents: number;
@@ -54,9 +65,7 @@ export interface PortalSummary {
   outstandingComplementCents: number;
 }
 
-export const complementCheckoutSchema = z
-  .object({ registrationId: z.string().uuid(), amountCents: z.number().int().positive().safe() })
-  .strict();
+export const complementCheckoutSchema = z.object({ registrationId: z.string().uuid() }).strict();
 
 export type ComplementCheckoutInput = z.infer<typeof complementCheckoutSchema>;
 
@@ -109,13 +118,25 @@ export function calculateComplementState(
   if (input.paymentStatus !== "paid") {
     return { eligible: false, reason: "awaiting_participant_payment" };
   }
-  if (input.confirmedComplementCents === totalCents) return { eligible: false, reason: "settled" };
+
+  const financialState = deriveRegistrationFinancialState({
+    paymentStatus: "paid",
+    initialAmountCents: input.registrationPriceCents,
+    pricingType: input.pricingType,
+    standardPriceCents: input.standardPriceCents,
+    registrationPriceCents: input.registrationPriceCents,
+    confirmedComplementCents: input.confirmedComplementCents,
+  });
+  if (financialState.status === "legacy") {
+    return { eligible: false, reason: "missing_snapshot" };
+  }
+  if (financialState.status === "paid") return { eligible: false, reason: "settled" };
 
   return {
     eligible: true,
     totalCents,
     paidCents: input.confirmedComplementCents,
-    balanceCents: totalCents - input.confirmedComplementCents,
+    balanceCents: financialState.pendingCents,
     ...(input.openPayment?.status === "creating" || input.openPayment?.status === "pending"
       ? { openPayment: input.openPayment }
       : {}),

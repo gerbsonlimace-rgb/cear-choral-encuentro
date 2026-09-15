@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,10 @@ vi.mock("@/lib/regent.functions", () => ({
   replaceAdminRegent: vi.fn(),
   revokeAdminRegent: vi.fn(),
   resetAdminRegentPassword: vi.fn(),
+}));
+vi.mock("@/lib/coroapp-event-source.functions", () => ({
+  getAdminCoroAppEventSources: vi.fn(async () => []),
+  replaceAdminCoroAppEventSources: vi.fn(async () => []),
 }));
 
 const emptyData: AdminChoirPricing = {
@@ -73,29 +77,31 @@ describe("AdminChoirsPage", () => {
     expect(loadData).not.toHaveBeenCalled();
   });
 
-  it("includes regent management using loaded choir options and the public portal link", async () => {
+  it("opens the regent registration from the selected choir", async () => {
     setup({ loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })) });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: "Regentes" }));
-    expect(await screen.findByRole("heading", { name: "Regentes" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Coro")).toHaveTextContent("Coro Diocesano de Quixadá");
-    expect(screen.queryByRole("link", { name: "Área dos regentes" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Gerenciar regente" }));
+    const dialog = screen.getByRole("dialog", {
+      name: "Regente de Coro Diocesano de Quixadá",
+    });
+    expect(within(dialog).getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Coro")).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Cadastrar regente" })).toBeInTheDocument();
   });
   it("shows unconfigured global prices and an empty choir state", async () => {
-    const { user } = setup();
+    setup({ section: "settings" });
 
-    expect(screen.getByRole("heading", { name: "Coros e valores" })).toBeInTheDocument();
-    await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
+    expect(screen.getByRole("heading", { name: "Configurações" })).toBeInTheDocument();
     expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByLabelText("Valor promocional")).toHaveValue("");
-    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(3);
+    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Eventos do CoroApp" })).toBeInTheDocument();
   });
 
   it("converts and saves all global currency values", async () => {
     const saveSettings = vi.fn(async ({ data }) => data);
-    const { user } = setup({ saveSettings });
+    const { user } = setup({ saveSettings, section: "settings" });
 
-    await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
     await user.type(await screen.findByLabelText("Valor normal"), "300,00");
     await user.type(screen.getByLabelText("Valor promocional"), "100,00");
     await user.type(screen.getByLabelText("Valor restante promocional"), "150,00");

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2, Download, ExternalLink, LogIn } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, LogIn, LoaderCircle, MessageCircle } from "lucide-react";
 
 import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
+import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
 import type { PaymentLookup } from "./registration.domain";
 
@@ -93,6 +94,7 @@ function PaymentConfirmationCycle({
         if (disposed) return;
 
         if (payment.status === "paid") {
+          clearRegistrationDraft();
           setState({ kind: "paid", payment });
           return;
         }
@@ -118,40 +120,57 @@ function PaymentConfirmationCycle({
     };
   }, [cycle, orderNsu, receiptUrl, retryDelayMs, slug, transactionNsu, verifyPayment]);
 
-  if (!lookup) {
-    return <PaymentMessage title="Não foi possível identificar este pagamento." />;
-  }
+  const displayState = !lookup ? "error" : state.kind;
 
-  if (state.kind === "paid") {
-    return <ConfirmedPayment payment={state.payment} downloadReceipt={downloadReceipt} />;
-  }
-
-  if (state.kind === "pending") {
-    return (
-      <PaymentMessage title="Pagamento ainda não confirmado">
-        <DuplicatePaymentWarning />
-        <RetryButton onClick={() => setCycle((current) => current + 1)} />
-      </PaymentMessage>
-    );
-  }
-
-  if (state.kind === "error") {
-    return (
-      <PaymentMessage title="Não foi possível verificar agora">
-        <DuplicatePaymentWarning />
-        <RetryButton onClick={() => setCycle((current) => current + 1)} />
-      </PaymentMessage>
-    );
-  }
-
-  return <PaymentMessage title="Confirmando pagamento…" />;
+  return (
+    <main
+      data-testid="payment-confirmation-shell"
+      data-confirmation-state={displayState}
+      className="relative min-h-svh overflow-hidden bg-[#f5efe3] px-4 py-8 transition-colors duration-500 motion-reduce:transition-none sm:px-6 sm:py-12"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(210,166,52,0.24),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(18,17,14,0.12),transparent_42%)]"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-5xl transition-all duration-500 ease-out motion-reduce:transition-none">
+        {!lookup ? (
+          <PaymentMessage title="Não foi possível identificar este pagamento." />
+        ) : state.kind === "paid" ? (
+          <ConfirmedPayment payment={state.payment} downloadReceipt={downloadReceipt} />
+        ) : state.kind === "pending" ? (
+          <PaymentMessage title="Pagamento ainda não confirmado">
+            <DuplicatePaymentWarning />
+            <RetryButton onClick={() => setCycle((current) => current + 1)} />
+          </PaymentMessage>
+        ) : state.kind === "error" ? (
+          <PaymentMessage title="Não foi possível verificar agora">
+            <DuplicatePaymentWarning />
+            <RetryButton onClick={() => setCycle((current) => current + 1)} />
+          </PaymentMessage>
+        ) : (
+          <PaymentMessage title="Confirmando pagamento…" processing />
+        )}
+      </div>
+    </main>
+  );
 }
 
-function PaymentMessage({ children, title }: { children?: ReactNode; title: string }) {
+function PaymentMessage({
+  children,
+  processing = false,
+  title,
+}: {
+  children?: ReactNode;
+  processing?: boolean;
+  title: string;
+}) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-lg border-border bg-card shadow-sm shadow-teal/10">
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Card className="w-full max-w-lg border-[#ded3bf] bg-[#fffaf0]/90 shadow-xl shadow-primary/10 backdrop-blur-sm">
         <CardContent className="p-6 text-center sm:p-8">
+          {processing && (
+            <LoaderCircle className="mx-auto mb-4 size-9 animate-spin text-amber-foreground motion-reduce:animate-none" aria-hidden="true" />
+          )}
           <h1 className="font-display text-3xl font-extrabold text-foreground">{title}</h1>
           {children}
           <a
@@ -162,7 +181,7 @@ function PaymentMessage({ children, title }: { children?: ReactNode; title: stri
           </a>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -175,6 +194,14 @@ function ConfirmedPayment({
 }) {
   const [downloading, setDownloading] = useState(false);
   const rows = buildReceiptRows(payment);
+  const isPreRegistration =
+    payment.pricingType === "promotional" &&
+    payment.registrationPriceCents < payment.standardPriceCents;
+  const remainingCents = payment.standardPriceCents - payment.registrationPriceCents;
+  const remainingValue = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(remainingCents / 100);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -186,12 +213,7 @@ function ConfirmedPayment({
   };
 
   return (
-    <main className="relative min-h-svh overflow-hidden bg-background px-4 py-8 sm:px-6 sm:py-12">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(210,166,52,0.18),transparent_65%)]"
-        aria-hidden="true"
-      />
-      <div className="relative mx-auto max-w-4xl">
+    <div className="relative mx-auto max-w-5xl">
         <header className="overflow-hidden rounded-[2rem] bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15 sm:px-8 sm:py-7">
           <div className="flex items-center gap-4 sm:gap-6">
             <img
@@ -224,18 +246,58 @@ function ConfirmedPayment({
                   Pagamento aprovado pela InfinitePay
                 </p>
                 <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                  Inscrição confirmada
+                  {isPreRegistration ? "Pré-inscrição confirmada" : "Inscrição confirmada"}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  Sua vaga está garantida. Confira abaixo os dados da sua inscrição e guarde este
-                  comprovante.
+                  {isPreRegistration ? (
+                    <>
+                      {payment.participantAccessStatus === "active" && (
+                        <>
+                          <span>Acesso ao app liberado</span>.{" "}
+                        </>
+                      )}
+                      Sua vaga será confirmada após a quitação do valor restante.
+                    </>
+                  ) : (
+                    <><span>Vaga confirmada</span>. Confira abaixo os dados da sua inscrição e guarde este comprovante.</>
+                  )}
                 </p>
+                {isPreRegistration && (
+                  <p className="mt-3 font-bold text-foreground">Valor restante: {remainingValue}</p>
+                )}
               </div>
             </div>
           </div>
 
-          <CardContent className="space-y-7 px-5 py-7 sm:px-10 sm:py-9">
-            <section aria-labelledby="registration-details-title">
+          <CardContent className="px-5 py-7 sm:px-10 sm:py-9">
+            {(payment.participantAccessStatus === "active" || payment.whatsappGroupUrl) && (
+              <nav aria-label="Próximos passos" className="mb-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                {payment.participantAccessStatus === "active" && (
+                  <a
+                    href="/acessar"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <LogIn className="size-5 shrink-0" aria-hidden="true" />
+                    Acessar portal
+                  </a>
+                )}
+                {payment.whatsappGroupUrl && (
+                  <a
+                    href={payment.whatsappGroupUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#166534] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#14532d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
+                    Entrar no grupo do WhatsApp
+                    <ExternalLink className="size-4 shrink-0" aria-hidden="true" />
+                  </a>
+                )}
+              </nav>
+            )}
+            <div data-testid="confirmation-columns" className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-7">
+                <section aria-labelledby="registration-details-title">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-foreground">
@@ -249,7 +311,7 @@ function ConfirmedPayment({
                   </h2>
                 </div>
                 <span className="rounded-full bg-emerald/15 px-3 py-1 text-xs font-bold text-emerald-foreground">
-                  Confirmada
+                  {isPreRegistration ? "Pré-inscrição" : "Confirmada"}
                 </span>
               </div>
               <dl className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -264,11 +326,40 @@ function ConfirmedPayment({
                   </div>
                 ))}
               </dl>
-            </section>
+                </section>
 
-            {payment.participantAccessStatus === "active" && (
+                <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:flex-wrap sm:items-center">
+                  <Button
+                    className="w-full rounded-full bg-primary px-6 py-6 font-bold text-primary-foreground shadow-lg shadow-primary/15 hover:bg-primary/90 sm:w-auto"
+                    disabled={downloading}
+                    onClick={() => void handleDownload()}
+                  >
+                    <Download aria-hidden="true" />
+                    {downloading ? "Gerando PDF…" : "Baixar comprovante em PDF"}
+                  </Button>
+                  {payment.receiptUrl && (
+                    <a
+                      href={payment.receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+                    >
+                      Ver comprovante
+                      <ExternalLink className="size-4" aria-hidden="true" />
+                    </a>
+                  )}
+                  <a
+                    href="/"
+                    className="text-center text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline sm:ml-auto"
+                  >
+                    Voltar ao início
+                  </a>
+                </div>
+              </div>
+
+              {payment.participantAccessStatus === "active" && (
               <section
-                className="rounded-3xl border border-amber/40 bg-amber/10 p-5 sm:p-6"
+                className="h-fit rounded-3xl border border-amber/40 bg-amber/10 p-5 sm:p-6"
                 aria-labelledby="material-title"
               >
                 <div className="flex items-start gap-4">
@@ -276,39 +367,42 @@ function ConfirmedPayment({
                     <LogIn className="size-5" aria-hidden="true" />
                   </div>
                   <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-foreground">
+                      Próximo passo
+                    </p>
                     <h2
                       id="material-title"
                       className="font-display text-xl font-bold text-foreground"
                     >
-                      Seu acesso ao portal está pronto
+                      Acesso ao App do Coralista
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Acesse o portal do participante para consultar as partituras, manuais e demais
-                      materiais do evento.
+                      Seu material estará no app do Coralista. Entre para consultar partituras,
+                      manuais e os demais materiais do evento.
                     </p>
-                    {payment.participantInitialPassword && (
-                      <dl className="mt-4 grid gap-3 rounded-2xl border border-amber/30 bg-background/60 p-4 sm:grid-cols-2">
-                        <div>
+                    {payment.participantEmail && (
+                      <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                        <div className="rounded-2xl border border-amber/30 bg-[#fffaf0]/70 p-3">
                           <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Link do portal
+                            Usuário
                           </dt>
-                          <dd className="mt-1 text-sm font-bold text-foreground">
-                            {payment.participantPortalUrl ?? "/acessar"}
+                          <dd className="mt-1 break-all text-sm font-bold text-foreground">
+                            {payment.participantEmail}
                           </dd>
                         </div>
-                        <div>
+                        <div className="rounded-2xl border border-amber/30 bg-[#fffaf0]/70 p-3">
                           <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                             Senha inicial
                           </dt>
-                          <dd className="mt-1 break-all font-mono text-sm font-bold text-foreground">
-                            {payment.participantInitialPassword}
+                          <dd className="mt-1 text-sm font-bold text-foreground">
+                            CPF + ano de nascimento (AAAA)
                           </dd>
                         </div>
                       </dl>
                     )}
                     <a
-                      href={payment.participantPortalUrl ?? "/acessar"}
-                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      href="/acessar"
+                      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Acessar o portal do participante
                       <LogIn className="size-4" aria-hidden="true" />
@@ -317,48 +411,20 @@ function ConfirmedPayment({
                 </div>
               </section>
             )}
-            {payment.participantAccessStatus === "pending" && (
+              {payment.participantAccessStatus === "pending" && (
               <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
                 Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.
               </p>
-            )}
-            {payment.participantAccessStatus === "conflict" && (
+              )}
+              {payment.participantAccessStatus === "conflict" && (
               <p className="rounded-3xl border border-amber/40 bg-amber/10 p-5 text-sm leading-6 text-muted-foreground">
                 Seu acesso precisa de atendimento da organização.
               </p>
-            )}
-
-            <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:flex-wrap sm:items-center">
-              <Button
-                className="w-full rounded-full bg-primary px-6 py-6 font-bold text-primary-foreground shadow-lg shadow-primary/15 hover:bg-primary/90 sm:w-auto"
-                disabled={downloading}
-                onClick={() => void handleDownload()}
-              >
-                <Download aria-hidden="true" />
-                {downloading ? "Gerando PDF…" : "Baixar comprovante em PDF"}
-              </Button>
-              {payment.receiptUrl && (
-                <a
-                  href={payment.receiptUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted"
-                >
-                  Ver comprovante
-                  <ExternalLink className="size-4" aria-hidden="true" />
-                </a>
               )}
-              <a
-                href="/"
-                className="text-center text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline sm:ml-auto"
-              >
-                Voltar ao início
-              </a>
             </div>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </div>
   );
 }
 

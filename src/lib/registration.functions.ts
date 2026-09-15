@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   paymentLookupSchema,
-  registrationLookupSchema,
+  registrationAvailabilitySchema,
   registrationResumeSchema,
   registrationSchema,
 } from "@/features/registration/registration.domain";
@@ -63,12 +63,19 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
     }
   });
 
-export const lookupRegistration = createServerFn({ method: "POST" })
-  .validator(registrationLookupSchema)
-  .handler(async ({ data }): Promise<RegistrationLookupResult> => {
-    const { getRegistrationPaymentService } =
+export type RegistrationAvailabilityResult = { cpfTaken: boolean; emailTaken: boolean };
+
+export const checkRegistrationAvailability = createServerFn({ method: "POST" })
+  .validator(registrationAvailabilitySchema)
+  .handler(async ({ data }): Promise<RegistrationAvailabilityResult> => {
+    const { createSupabaseRegistrationRepository } =
       await import("@/features/registration/registration-payment.server");
-    return getRegistrationPaymentService().lookupRegistration(data);
+    const repository = createSupabaseRegistrationRepository();
+    const [cpfRecord, emailRecord] = await Promise.all([
+      repository.findByCpf(data.cpf),
+      repository.findByEmail(data.email),
+    ]);
+    return { cpfTaken: Boolean(cpfRecord), emailTaken: Boolean(emailRecord) };
   });
 
 export const resumeRegistrationCheckout = createServerFn({ method: "POST" })

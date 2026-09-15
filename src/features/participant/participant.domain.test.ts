@@ -30,15 +30,15 @@ describe("participant domain", () => {
     expect(JSON.stringify(view)).not.toContain("52998224725");
   });
 
-  it("normalizes CPF and formats the initial password as DDMMAAAA", () => {
+  it("normalizes CPF and formats the initial password as CPF plus the four-digit birth year", () => {
     expect(buildInitialParticipantPassword("529.982.247-25", "1990-01-15")).toBe(
-      "5299822472515011990",
+      "529982247251990",
     );
   });
 
   it("keeps leap-day dates in the password", () => {
     expect(buildInitialParticipantPassword("52998224725", "2000-02-29")).toBe(
-      "5299822472529022000",
+      "529982247252000",
     );
   });
 

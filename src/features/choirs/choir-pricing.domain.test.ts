@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyRaffleChoice,
   choirMutationSchema,
   formatCentsForInput,
   parseCurrencyToCents,
@@ -110,22 +111,32 @@ describe("choir pricing domain", () => {
     });
   });
 
-  it("resolves the configured promotional amount still due", () => {
-    expect(
-      resolveChoirPrice(
-        { ...baseChoir, usesPromotionalPrice: true },
-        {
-          standardPriceCents: 30000,
-          promotionalPriceCents: 10000,
-          promotionalRemainingPriceCents: 15000,
-        },
-      ),
-    ).toEqual({
-      pricingType: "promotional",
+  it("applies the participant raffle choice to a promotional quote", () => {
+    const promotionalQuote = {
+      pricingType: "promotional" as const,
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
-      remainingPriceCents: 15000,
+    };
+
+    expect(applyRaffleChoice(promotionalQuote, "participate")).toEqual(promotionalQuote);
+    expect(applyRaffleChoice(promotionalQuote, "full_price")).toEqual({
+      pricingType: "standard",
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
     });
+  });
+
+  it("rejects raffle participation when the current choir has no promotion", () => {
+    expect(() =>
+      applyRaffleChoice(
+        {
+          pricingType: "standard",
+          standardPriceCents: 30000,
+          registrationPriceCents: 30000,
+        },
+        "participate",
+      ),
+    ).toThrow("O programa de rifas não está disponível para este coro.");
   });
 
   it("hides inactive or incompletely configured choirs", () => {

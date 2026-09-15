@@ -37,6 +37,7 @@ import type {
 type Mutation<T> = (input: { data: T }) => Promise<RegentAdminResult>;
 export type AdminRegentsPanelProps = {
   choirs: { id: string; name: string }[];
+  choirId?: string;
   loadRegents?: () => Promise<AdminRegentRow[]>;
   createRegent?: Mutation<RegentCreation>;
   replaceRegent?: Mutation<RegentCreation>;
@@ -50,6 +51,7 @@ type Confirmation =
 
 export function AdminRegentsPanel({
   choirs,
+  choirId,
   loadRegents = listAdminRegents,
   createRegent = createAdminRegent,
   replaceRegent = replaceAdminRegent,
@@ -57,7 +59,7 @@ export function AdminRegentsPanel({
   resetPassword = resetAdminRegentPassword,
 }: AdminRegentsPanelProps) {
   const [regents, setRegents] = useState<AdminRegentRow[]>([]);
-  const [draft, setDraft] = useState(emptyDraft);
+  const [draft, setDraft] = useState({ ...emptyDraft, choirId: choirId ?? "" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -80,6 +82,10 @@ export function AdminRegentsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (choirId) setDraft((current) => ({ ...current, choirId }));
+  }, [choirId]);
+  const visibleRegents = choirId ? regents.filter((regent) => regent.choirId === choirId) : regents;
 
   async function mutate(
     operation: () => Promise<RegentAdminResult>,
@@ -128,7 +134,7 @@ export function AdminRegentsPanel({
       () => createRegent({ data }),
       (regent) => {
         setRegents((rows) => [...rows, regent]);
-        setDraft(emptyDraft);
+        setDraft({ ...emptyDraft, choirId: choirId ?? "" });
       },
     );
   }
@@ -160,7 +166,7 @@ export function AdminRegentsPanel({
             { ...action.regent, revokedAt: new Date().toISOString() },
             regent,
           ]);
-          setDraft(emptyDraft);
+          setDraft({ ...emptyDraft, choirId: choirId ?? "" });
         },
       );
     }
@@ -203,7 +209,15 @@ export function AdminRegentsPanel({
               onChange={(event) => setDraft({ ...draft, email: event.target.value })}
             />
           </div>
-          <div className="space-y-1">
+          {choirId ? (
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Coro</p>
+              <p className="flex h-9 items-center rounded-md bg-muted px-3 text-sm">
+                {choirs.find((choir) => choir.id === choirId)?.name ?? "Coro selecionado"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
             <Label htmlFor="regent-choir">Coro</Label>
             <select
               id="regent-choir"
@@ -219,7 +233,8 @@ export function AdminRegentsPanel({
                 </option>
               ))}
             </select>
-          </div>
+            </div>
+          )}
           <div className="space-y-1">
             <Label htmlFor="regent-password">Senha temporária</Label>
             <Input
@@ -254,11 +269,11 @@ export function AdminRegentsPanel({
       </Button>
       {loading ? (
         <p role="status">Carregando regentes…</p>
-      ) : !regents.length ? (
+      ) : !visibleRegents.length ? (
         <p className="text-sm">Nenhum regente cadastrado.</p>
       ) : (
         <div className="space-y-2">
-          {regents.map((regent) => (
+          {visibleRegents.map((regent) => (
             <article
               key={regent.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"

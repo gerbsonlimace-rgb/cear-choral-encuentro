@@ -1,4 +1,4 @@
-import { Download, KeyRound, LogOut } from "lucide-react";
+import { Download, KeyRound, LayoutDashboard, LogOut } from "lucide-react";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,6 +13,7 @@ type ChoristerProfileTabProps = {
   onChangePassword: Action;
   onDownloadReceipt: (participant: ParticipantRegistrationView) => void | Promise<void>;
   onLogout: Action;
+  onOpenAdmin?: Action;
 };
 
 const moneyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -76,6 +77,7 @@ export function ChoristerProfileTab({
   onChangePassword,
   onDownloadReceipt,
   onLogout,
+  onOpenAdmin,
 }: ChoristerProfileTabProps) {
   const [receiptState, setReceiptState] = useState<"idle" | "working" | "error">("idle");
   const [leaving, setLeaving] = useState(false);
@@ -115,16 +117,16 @@ export function ChoristerProfileTab({
   return (
     <section aria-labelledby="chorister-profile-title" className="space-y-5">
       <header>
-        <p className="text-sm font-medium text-amber-700">Área segura do participante</p>
+        <p className="text-sm font-medium text-zinc-500">Área segura do participante</p>
         <h1
           id="chorister-profile-title"
-          className="mt-1 font-display text-2xl font-semibold text-zinc-950"
+          className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950"
         >
           Meu Perfil
         </h1>
       </header>
 
-      <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <Avatar className="size-14 border border-zinc-200 bg-zinc-50">
             {identity.photoUrl && !photoFailed ? (
@@ -135,12 +137,16 @@ export function ChoristerProfileTab({
                 onError={() => setPhotoFailed(true)}
               />
             ) : (
-              <AvatarFallback role="img" aria-label="Foto não disponível" className="font-semibold">
+              <AvatarFallback
+                role="img"
+                aria-label="Foto não disponível"
+                className="bg-zinc-100 font-semibold text-zinc-700"
+              >
                 {getInitials(identity.name)}
               </AvatarFallback>
             )}
           </Avatar>
-          <h2 className="font-display text-lg font-semibold text-zinc-950">Dados pessoais</h2>
+          <h2 className="text-lg font-semibold text-zinc-950">Dados pessoais</h2>
         </div>
         <dl className="mt-2">
           <Detail label="Nome">{identity.name}</Detail>
@@ -151,8 +157,8 @@ export function ChoristerProfileTab({
         </dl>
       </article>
 
-      <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="font-display text-lg font-semibold text-zinc-950">Inscrição</h2>
+      <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-zinc-950">Inscrição</h2>
         <dl className="mt-2">
           <Detail label="Coro">{registration.choirName}</Detail>
           <Detail label="Diocese">{registration.diocese}</Detail>
@@ -180,8 +186,8 @@ export function ChoristerProfileTab({
         </dl>
       </article>
 
-      <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="font-display text-lg font-semibold text-zinc-950">Pagamento</h2>
+      <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-zinc-950">Pagamento</h2>
         <dl className="mt-2">
           <Detail label="Situação do pagamento">Pago</Detail>
           {payment.amountCents != null && (
@@ -208,7 +214,7 @@ export function ChoristerProfileTab({
                 href={payment.receiptUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-amber-800 underline underline-offset-4"
+                className="text-zinc-700 underline underline-offset-4"
               >
                 Abrir comprovante
               </a>
@@ -236,9 +242,20 @@ export function ChoristerProfileTab({
         )}
       </article>
 
-      <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="font-display text-lg font-semibold text-zinc-950">Acesso</h2>
+      <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-zinc-950">Acesso</h2>
         <div className="mt-3 flex flex-wrap gap-2">
+          {onOpenAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => void onOpenAdmin()}
+            >
+              <LayoutDashboard aria-hidden="true" className="size-4" />
+              Ir para administração
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"

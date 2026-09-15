@@ -75,6 +75,8 @@ function repository(
     findAccessByUserId: vi.fn(async () => access),
     loadPaidRegistration: vi.fn(async () => registration),
     createPhotoUrl: vi.fn(async () => null),
+    loadActiveRegentNames: vi.fn(async () => ["João de Souza"]),
+    loadConfirmedComplementCents: vi.fn(async () => 2000),
   };
 }
 
@@ -91,10 +93,18 @@ describe("participant authorizer", () => {
     ["without a link", null],
     ["with pending access", { ...activePaidAccount, accessStatus: "pending" as const }],
     ["with conflicting access", { ...activePaidAccount, accessStatus: "conflict" as const }],
-    ["with an unpaid registration", { ...activePaidAccount, paymentStatus: "pending" as const }],
     ["with a mismatched user", { ...activePaidAccount, userId: "other-user" }],
   ])("returns a neutral unavailable state %s", async (_case, row) => {
     const authorizer = createParticipantAuthorizer(repository(row));
+
+    await expect(authorizer.findAccess("user-1")).resolves.toEqual({ status: "unavailable" });
+    await expect(authorizer.requireActive("user-1")).rejects.toThrow("Acesso não autorizado.");
+  });
+
+  it("denies app access when the raw initial payment_status is pending", async () => {
+    const authorizer = createParticipantAuthorizer(
+      repository({ ...activePaidAccount, paymentStatus: "pending" }),
+    );
 
     await expect(authorizer.findAccess("user-1")).resolves.toEqual({ status: "unavailable" });
     await expect(authorizer.requireActive("user-1")).rejects.toThrow("Acesso não autorizado.");
@@ -108,6 +118,15 @@ describe("participant authorizer", () => {
       accountId: "account-1",
       registrationId: activePaidAccount.registrationId,
       userId: "user-1",
+    });
+  });
+
+  it("authorizes app access for an active paid initial registration", async () => {
+    const authorizer = createParticipantAuthorizer(repository(activePaidAccount));
+
+    await expect(authorizer.findAccess("user-1")).resolves.toMatchObject({
+      status: "authorized",
+      registrationId: activePaidAccount.registrationId,
     });
   });
 });
@@ -156,6 +175,43 @@ describe("participant access probe", () => {
 });
 
 describe("participant registration loader", () => {
+  it.each([
+    [2000, "partially_paid", 8000],
+    [10000, "paid", 0],
+  ] as const)(
+    "discounts %i confirmed cents from the raffle balance",
+    async (complement, status, pendingCents) => {
+      const data = repository(activePaidAccount, { ...completeRegistration, amount_cents: 30000 });
+      vi.mocked(data.loadConfirmedComplementCents).mockResolvedValue(complement);
+      const view = await createParticipantRegistrationLoader(data).load({
+        ...activePaidAccount,
+        status: "authorized",
+      });
+      expect(view.payment.financialState).toEqual({
+        status,
+        pendingCents,
+        confirmedPrincipalCents: 30000 + complement,
+      });
+      expect(data.loadConfirmedComplementCents).toHaveBeenCalledExactlyOnceWith(
+        activePaidAccount.registrationId,
+      );
+      expect(data.loadActiveRegentNames).toHaveBeenCalledExactlyOnceWith(
+        completeRegistration.choir_id,
+      );
+    },
+  );
+  it("keeps the portal usable without inventing a balance when the ledger fails", async () => {
+    const data = repository(activePaidAccount, completeRegistration);
+    vi.mocked(data.loadConfirmedComplementCents).mockRejectedValue(
+      new Error("private ledger failure"),
+    );
+    const view = await createParticipantRegistrationLoader(data).load({
+      ...activePaidAccount,
+      status: "authorized",
+    });
+    expect(view.payment.financialState).toBeNull();
+    expect(JSON.stringify(view)).not.toContain("private ledger failure");
+  });
   it("returns the complete approved paid view with masked CPF and a signed photo URL", async () => {
     const data = repository(activePaidAccount, completeRegistration);
     vi.mocked(data.createPhotoUrl).mockResolvedValue("https://signed.example/photo");
@@ -178,6 +234,7 @@ describe("participant registration loader", () => {
       },
       registration: {
         choirName: "Coro Diocesano",
+        regentNames: ["João de Souza"],
         diocese: "Diocese de Quixadá",
         city: "Quixadá",
         institution: "Paróquia São José",
@@ -189,6 +246,7 @@ describe("participant registration loader", () => {
       },
       payment: {
         status: "paid",
+        financialState: { status: "legacy", pendingCents: null, confirmedPrincipalCents: null },
         amountCents: 35000,
         paidAmountCents: 35000,
         paymentMethod: "credit_card",
@@ -255,6 +313,72 @@ describe("participant registration loader", () => {
 });
 
 describe("Supabase participant repository", () => {
+  it("reads only confirmed complements belonging to the authorized registration across pages", async () => {
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi
+        .fn()
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 500 }, () => ({ amount_cents: 10 })),
+          error: null,
+        })
+        .mockResolvedValueOnce({ data: [{ amount_cents: 2000 }], error: null }),
+    };
+    from.mockReturnValue(builder);
+    await expect(
+      createSupabaseParticipantRepository().loadConfirmedComplementCents(
+        activePaidAccount.registrationId,
+      ),
+    ).resolves.toBe(7000);
+    expect(from).toHaveBeenCalledWith("registration_complement_payments");
+    expect(builder.eq.mock.calls).toEqual([
+      ["registration_id", activePaidAccount.registrationId],
+      ["status", "paid"],
+      ["registration_id", activePaidAccount.registrationId],
+      ["status", "paid"],
+    ]);
+    expect(builder.range.mock.calls).toEqual([
+      [0, 499],
+      [500, 999],
+    ]);
+  });
+  it("rejects a failed ledger query instead of treating it as zero paid", async () => {
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({ data: null, error: { message: "private failure" } }),
+    };
+    from.mockReturnValue(builder);
+    await expect(
+      createSupabaseParticipantRepository().loadConfirmedComplementCents(
+        activePaidAccount.registrationId,
+      ),
+    ).rejects.toThrow("Não foi possível validar o acesso do participante.");
+  });
+  it("loads active regents only for the registration choir and avoids querying an absent choir", async () => {
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [{ name: "João" }, { name: "João" }, { name: "Maria" }],
+        error: null,
+      }),
+    };
+    from.mockReturnValue(builder);
+    const repo = createSupabaseParticipantRepository();
+    await expect(repo.loadActiveRegentNames(null)).resolves.toEqual([]);
+    expect(from).not.toHaveBeenCalled();
+    await expect(repo.loadActiveRegentNames(completeRegistration.choir_id)).resolves.toEqual([
+      "João",
+      "Maria",
+    ]);
+    expect(builder.eq).toHaveBeenCalledExactlyOnceWith("choir_id", completeRegistration.choir_id);
+    expect(builder.is).toHaveBeenCalledExactlyOnceWith("revoked_at", null);
+  });
   function query(result: { data: Record<string, unknown> | null; error: unknown }) {
     const select = vi.fn();
     const eq = vi.fn();

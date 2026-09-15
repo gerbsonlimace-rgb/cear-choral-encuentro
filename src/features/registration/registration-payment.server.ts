@@ -3,10 +3,12 @@ import {
   getChoirPricingService,
   type ResolvedChoirSelection,
 } from "@/features/choirs/choir-pricing.server";
+import { applyRaffleChoice } from "@/features/choirs/choir-pricing.domain";
 import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
 import type { ParticipantInitialCredentials } from "@/features/participant/participant-provisioning.server";
 import {
   createInfinitePayClient,
+  isSafeInfinitePayCheckoutUrl,
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
 } from "./infinitepay.server";
@@ -18,12 +20,14 @@ import {
   type RegistrationInput,
   type RegistrationLookupResult,
   type RegistrationPhotoInput,
+  type RegistrationResumeInput,
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
-const REGISTRATION_CPF_CONFLICT_MESSAGE = "Já existe uma inscrição para este CPF.";
-const CHECKOUT_CLAIM_PREFIX = "https://pending.invalid/creating/";
-const CHECKOUT_CLAIM_TTL_MS = 2 * 60 * 1000;
+// Keep the invitation out of public client bundles and unverified status lookups.
+const REGISTRATION_WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw";
+const REGISTRATION_CPF_CONFLICT_MESSAGE =
+  "Já existe uma inscrição para este CPF. Use Retomar pagamento.";
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -38,6 +42,10 @@ export type RegistrationPaymentRecord = {
   choirName?: string | null;
   paidAmountCents?: number | null;
   paidAt?: string | null;
+  participantEmail?: string | null;
+  pricingType: "standard" | "promotional" | null;
+  standardPriceCents: number | null;
+  registrationPriceCents: number | null;
 };
 
 export type PublicPaymentStatus =
@@ -47,15 +55,18 @@ export type PublicPaymentStatus =
       paymentMethod: "pix" | "credit_card";
       installments: number;
       participantAccessStatus: ParticipantAccessStatus;
-      participantPortalUrl?: string;
-      participantInitialPassword?: string;
+      whatsappGroupUrl?: string;
       receiptUrl?: string;
       orderNsu?: string;
       amountCents?: number;
       paidAmountCents?: number;
       paidAt?: string;
       participantName?: string;
+      participantEmail?: string;
       choirName?: string;
+      pricingType: "standard" | "promotional";
+      standardPriceCents: number;
+      registrationPriceCents: number;
     };
 
 export type RegistrationIdentityRecord = {
@@ -66,17 +77,33 @@ export type RegistrationIdentityRecord = {
   checkoutUrl: string | null;
 };
 
+export type RegistrationResumeRecord = {
+  birthDate: string;
+  paymentStatus: "pending" | "paid" | "legacy";
+  checkoutUrl: string | null;
+};
+
 export type RegistrationResumeResult =
-  { status: "pending"; checkoutUrl: string } | { status: "paid" };
+  | { status: "pending"; checkoutUrl: string }
+  | { status: "paid" };
+
+export type RegistrationCheckoutLinkRecord = {
+  id: string;
+  orderNsu: string;
+  amountCents: number;
+  paymentStatus: "pending" | "paid" | "legacy";
+  checkoutUrl: string | null;
+  name: string;
+  email: string;
+  phone: string;
+};
 
 export type RegistrationRepository = {
   findByCpf?: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
-  findRegistrationByIdentity?: (
-    cpf: string,
-    birthDate: string,
-  ) => Promise<RegistrationLookupResult | null>;
+  findForResume?: (cpf: string) => Promise<RegistrationResumeRecord | null>;
+  findForCheckoutLink?: (registrationId: string) => Promise<RegistrationCheckoutLinkRecord | null>;
   createPending(
-    input: Omit<RegistrationInput, "photo"> & {
+    input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
       orderNsu: string;
       amountCents: number;
       choirName: string;
@@ -104,6 +131,7 @@ export type RegistrationRepository = {
       checkoutClaim?: string;
     },
   ): Promise<void>;
+  saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<boolean>;
   clearPendingPhoto(orderNsu: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
@@ -151,7 +179,10 @@ export function createRegistrationPaymentService(deps: {
     } catch {
       // Payment truth is durable and must remain independent from delayed access preparation.
     }
-    return toPublicPaymentStatus(registration, participantAccessStatus, participantCredentials);
+    const payment = toPublicPaymentStatus(registration, participantAccessStatus);
+    return payment.status === "paid"
+      ? { ...payment, whatsappGroupUrl: REGISTRATION_WHATSAPP_GROUP_URL }
+      : payment;
   };
 
   return {
@@ -182,21 +213,24 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const selection = await deps.resolveChoirSelection(input.choirId);
+      const appliedQuote = applyRaffleChoice(selection.quote, input.raffleChoice);
       const quoteChanged =
-        input.displayedQuote.pricingType !== selection.quote.pricingType ||
-        input.displayedQuote.standardPriceCents !== selection.quote.standardPriceCents ||
-        input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents ||
-        (input.displayedQuote.remainingPriceCents ?? null) !==
-          (selection.quote.remainingPriceCents ?? null);
+        input.displayedQuote.pricingType !== appliedQuote.pricingType ||
+        input.displayedQuote.standardPriceCents !== appliedQuote.standardPriceCents ||
+        input.displayedQuote.registrationPriceCents !== appliedQuote.registrationPriceCents;
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
 
       const orderNsu = deps.randomUUID();
-      const checkoutClaim = createCheckoutClaim(orderNsu, deps.now());
-      const amountCents = calculateOrderAmountCents(input, selection.quote);
+      const amountCents = calculateOrderAmountCents(input, appliedQuote);
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
-      const { photo: _photo, ...registrationData } = input;
+      const {
+        photo: _photo,
+        raffleChoice: _raffleChoice,
+        displayedQuote: _displayedQuote,
+        ...registrationData
+      } = input;
 
       const pendingInput = {
         ...registrationData,
@@ -214,38 +248,16 @@ export function createRegistrationPaymentService(deps: {
       };
 
       try {
-        if (existing?.paymentStatus === "pending") {
-          if (!existing.orderNsu) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
-          try {
-            await deps.repository.updatePending({
-              registrationId: existing.id,
-              expectedOrderNsu: existing.orderNsu,
-              ...pendingInput,
-            });
-          } catch (caught) {
-            const latest = await deps.repository.findByCpf?.(input.cpf);
-            if (
-              latest?.paymentStatus === "pending" &&
-              latest.birthDate === input.birthDate &&
-              latest.checkoutUrl &&
-              latest.orderNsu
-            ) {
-              if (isCheckoutClaim(latest.checkoutUrl)) {
-                const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
-                if (!ready) {
-                  throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
-                }
-                await deps.photoStorage.remove(photoPath).catch(() => undefined);
-                return ready;
-              }
-              await deps.photoStorage.remove(photoPath).catch(() => undefined);
-              return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
-            }
-            throw caught;
-          }
-        } else {
-          await deps.repository.createPending(pendingInput);
-        }
+        await deps.repository.createPending({
+          ...registrationData,
+          orderNsu,
+          amountCents,
+          choirName: selection.choir.name,
+          photoPath,
+          pricingType: appliedQuote.pricingType,
+          standardPriceCents: appliedQuote.standardPriceCents,
+          registrationPriceCents: appliedQuote.registrationPriceCents,
+        });
       } catch (caught) {
         await deps.photoStorage.remove(photoPath).catch(() => undefined);
         throw caught;
@@ -255,10 +267,13 @@ export function createRegistrationPaymentService(deps: {
       try {
         checkout = await deps.infinitePay.createCheckout({
           orderNsu,
-          items: buildCheckoutItems(input, selection.quote),
+          items: buildCheckoutItems(input, appliedQuote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
-        await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
+        const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+        if (!saved) {
+          throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
+        }
       } catch (caught) {
         await Promise.allSettled([
           deps.repository.clearPendingPhoto(orderNsu),
@@ -268,6 +283,67 @@ export function createRegistrationPaymentService(deps: {
       }
 
       return { checkoutUrl: checkout.url, orderNsu };
+    },
+
+    resumeCheckout: async (input: RegistrationResumeInput): Promise<RegistrationResumeResult> => {
+      const registration = await deps.repository.findForResume?.(input.cpf);
+      if (!registration || registration.birthDate !== input.birthDate) {
+        throw new Error("Não foi possível localizar uma inscrição com os dados informados.");
+      }
+
+      if (registration.paymentStatus === "paid") return { status: "paid" };
+      if (registration.paymentStatus === "pending" && registration.checkoutUrl) {
+        return { status: "pending", checkoutUrl: registration.checkoutUrl };
+      }
+
+      throw new Error("Procure a organização para continuar o pagamento.");
+    },
+
+    createCheckoutLink: async (registrationId: string) => {
+      const registration = await deps.repository.findForCheckoutLink?.(registrationId);
+      if (!registration) throw new Error("Inscrição não encontrada.");
+      if (registration.paymentStatus !== "pending") {
+        throw new Error("A inscrição não está pendente.");
+      }
+      if (registration.checkoutUrl && isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
+        return { checkoutUrl: registration.checkoutUrl, reused: true as const };
+      }
+      if (
+        !registration.orderNsu ||
+        !Number.isSafeInteger(registration.amountCents) ||
+        registration.amountCents <= 0
+      ) {
+        throw new Error("Não foi possível preparar o pagamento desta inscrição.");
+      }
+
+      const checkout = await deps.infinitePay.createCheckout({
+        orderNsu: registration.orderNsu,
+        items: [
+          {
+            quantity: 1,
+            price: registration.amountCents,
+            description: "Inscrição — II Encontro de Coros",
+          },
+        ],
+        customer: {
+          name: registration.name,
+          email: registration.email,
+          phoneNumber: registration.phone,
+        },
+      });
+      const saved = await deps.repository.saveCheckoutUrl(registration.orderNsu, checkout.url);
+      if (saved) return { checkoutUrl: checkout.url, reused: false as const };
+
+      // A manual confirmation may have won the race while InfinitePay was
+      // creating the checkout. Never return a link unless it is still tied to
+      // a pending registration.
+      const current = await deps.repository.findForCheckoutLink?.(registrationId);
+      if (current?.paymentStatus === "pending" && current.checkoutUrl) {
+        if (isSafeInfinitePayCheckoutUrl(current.checkoutUrl)) {
+          return { checkoutUrl: current.checkoutUrl, reused: true as const };
+        }
+      }
+      throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
     },
 
     reconcilePayment: async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
@@ -317,7 +393,16 @@ function toPublicPaymentStatus(
   participantAccessStatus: ParticipantAccessStatus = "pending",
   participantCredentials: ParticipantInitialCredentials | null = null,
 ): PublicPaymentStatus {
-  if (record.paymentStatus !== "paid" || !record.paymentMethod || !record.installments) {
+  if (
+    record.paymentStatus !== "paid" ||
+    !record.paymentMethod ||
+    !record.installments ||
+    !record.pricingType ||
+    typeof record.standardPriceCents !== "number" ||
+    typeof record.registrationPriceCents !== "number" ||
+    !Number.isSafeInteger(record.standardPriceCents) ||
+    !Number.isSafeInteger(record.registrationPriceCents)
+  ) {
     return { status: "pending" };
   }
 
@@ -326,16 +411,14 @@ function toPublicPaymentStatus(
     paymentMethod: record.paymentMethod,
     installments: record.installments,
     participantAccessStatus,
-    ...(participantAccessStatus === "active" && participantCredentials
-      ? {
-          participantPortalUrl: participantCredentials.portalUrl,
-          participantInitialPassword: participantCredentials.initialPassword,
-        }
-      : {}),
+    pricingType: record.pricingType,
+    standardPriceCents: record.standardPriceCents,
+    registrationPriceCents: record.registrationPriceCents,
     ...(record.receiptUrl ? { receiptUrl: record.receiptUrl } : {}),
     ...(record.paidAmountCents ? { paidAmountCents: record.paidAmountCents } : {}),
     ...(record.paidAt ? { paidAt: record.paidAt } : {}),
     ...(record.participantName ? { participantName: record.participantName } : {}),
+    ...(record.participantEmail ? { participantEmail: record.participantEmail } : {}),
     ...(record.choirName ? { choirName: record.choirName } : {}),
   };
 }
@@ -375,8 +458,11 @@ async function waitForCheckoutUrl(
 }
 
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,choir_name,paid_amount_cents,paid_at" as const;
-const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url" as const;
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents" as const;
+const identityColumns = "id" as const;
+const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
+const checkoutLinkColumns =
+  "id,order_nsu,amount_cents,payment_status,checkout_url,name,email,phone" as const;
 
 function mapPaymentRow(row: {
   id: string;
@@ -388,9 +474,13 @@ function mapPaymentRow(row: {
   installments: number | null;
   receipt_url: string | null;
   name?: string | null;
+  email?: string | null;
   choir_name?: string | null;
   paid_amount_cents?: number | null;
   paid_at?: string | null;
+  pricing_type?: string | null;
+  standard_price_cents?: number | null;
+  registration_price_cents?: number | null;
 }): RegistrationPaymentRecord {
   if (!row.order_nsu || !row.amount_cents || !["pending", "paid"].includes(row.payment_status)) {
     throw new Error("Registro de pagamento inválido.");
@@ -406,18 +496,24 @@ function mapPaymentRow(row: {
     installments: row.installments,
     receiptUrl: row.receipt_url,
     participantName: row.name ?? null,
+    participantEmail: row.email ?? null,
     choirName: row.choir_name ?? null,
     paidAmountCents: row.paid_amount_cents ?? null,
     paidAt: row.paid_at ?? null,
+    pricingType:
+      row.pricing_type === "standard" || row.pricing_type === "promotional"
+        ? row.pricing_type
+        : null,
+    standardPriceCents: row.standard_price_cents ?? null,
+    registrationPriceCents: row.registration_price_cents ?? null,
   };
 }
 
 export type SupabaseRegistrationRepository = RegistrationRepository & {
   findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
-  findRegistrationByIdentity: (
-    cpf: string,
-    birthDate: string,
-  ) => Promise<RegistrationLookupResult | null>;
+  findByEmail: (email: string) => Promise<RegistrationIdentityRecord | null>;
+  findForResume: (cpf: string) => Promise<RegistrationResumeRecord | null>;
+  findForCheckoutLink: (registrationId: string) => Promise<RegistrationCheckoutLinkRecord | null>;
 };
 
 export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
@@ -446,6 +542,76 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       birthDate: data.birth_date,
       orderNsu: typeof data.order_nsu === "string" ? data.order_nsu : null,
       checkoutUrl: typeof data.checkout_url === "string" ? data.checkout_url : null,
+    };
+  };
+
+  const findByEmail = async (email: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(identityColumns)
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    if (typeof data.id !== "string") throw new Error("Registro de inscrição inválido.");
+    return { id: data.id };
+  };
+
+  const findForResume = async (cpf: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(resumeIdentityColumns)
+      .eq("cpf", cpf)
+      .maybeSingle();
+
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    if (
+      typeof data.birth_date !== "string" ||
+      !["pending", "paid", "legacy"].includes(data.payment_status)
+    ) {
+      throw new Error("Registro de inscrição inválido.");
+    }
+
+    return {
+      birthDate: data.birth_date,
+      paymentStatus: data.payment_status as RegistrationResumeRecord["paymentStatus"],
+      checkoutUrl: data.checkout_url,
+    };
+  };
+
+  const findForCheckoutLink = async (registrationId: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(checkoutLinkColumns)
+      .eq("id", registrationId)
+      .maybeSingle();
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    const amountCents = data.amount_cents;
+    if (
+      typeof data.id !== "string" ||
+      typeof data.order_nsu !== "string" ||
+      typeof amountCents !== "number" ||
+      !Number.isSafeInteger(amountCents) ||
+      !["pending", "paid", "legacy"].includes(data.payment_status) ||
+      (data.checkout_url !== null && typeof data.checkout_url !== "string") ||
+      typeof data.name !== "string" ||
+      typeof data.email !== "string" ||
+      typeof data.phone !== "string"
+    ) {
+      throw new Error("Registro de inscrição inválido.");
+    }
+    return {
+      id: data.id,
+      orderNsu: data.order_nsu,
+      amountCents,
+      paymentStatus: data.payment_status as RegistrationCheckoutLinkRecord["paymentStatus"],
+      checkoutUrl: data.checkout_url,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
     };
   };
 
@@ -501,7 +667,9 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
   return {
     findByCpf,
-    findRegistrationByIdentity,
+    findByEmail,
+    findForCheckoutLink,
+    findForResume,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
@@ -546,57 +714,18 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       }
     },
 
-    saveCheckoutUrl: async (orderNsu, checkoutUrl, checkoutClaim) => {
-      let query = supabaseAdmin
+    saveCheckoutUrl: async (orderNsu, checkoutUrl) => {
+      const { data, error } = await supabaseAdmin
         .from("registrations")
         .update({ checkout_url: checkoutUrl })
         .eq("order_nsu", orderNsu)
-        .eq("payment_status", "pending");
-      if (checkoutClaim) query = query.eq("checkout_url", checkoutClaim);
-      if (!checkoutClaim) {
-        const { error } = await query;
-        if (error) throw new Error("Não foi possível salvar o checkout.");
-        return;
-      }
-      const { data, error } = await query.select("id").maybeSingle();
-
-      if (error) throw new Error("Não foi possível salvar o checkout.");
-      if (!data) throw new Error("O checkout não está mais reservado para esta tentativa.");
-    },
-
-    updatePending: async (input) => {
-      const { data, error } = await supabaseAdmin
-        .from("registrations")
-        .update({
-          name: input.name,
-          cpf: input.cpf,
-          photo_path: input.photoPath,
-          voice_part: input.voicePart,
-          phone: input.phone,
-          birth_date: input.birthDate,
-          choir_id: input.choirId,
-          choir_name: input.choirName,
-          diocese: input.choirName,
-          email: input.email,
-          pricing_type: input.pricingType,
-          standard_price_cents: input.standardPriceCents,
-          registration_price_cents: input.registrationPriceCents,
-          ...(input.remainingPriceCents !== undefined
-            ? { remaining_price_cents: input.remainingPriceCents }
-            : {}),
-          amount_cents: input.amountCents,
-          payment_status: "pending",
-          order_nsu: input.orderNsu,
-          checkout_url: input.checkoutClaim ?? null,
-        })
-        .eq("id", input.registrationId)
         .eq("payment_status", "pending")
-        .eq("order_nsu", input.expectedOrderNsu)
+        .is("checkout_url", null)
         .select("id")
         .maybeSingle();
 
-      if (error) throw new Error("Não foi possível atualizar a inscrição.");
-      if (!data) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+      if (error) throw new Error("Não foi possível salvar o checkout.");
+      return data !== null;
     },
 
     clearPendingPhoto: async (orderNsu) => {

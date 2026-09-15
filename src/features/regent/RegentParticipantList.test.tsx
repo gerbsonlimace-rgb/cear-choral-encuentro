@@ -36,9 +36,15 @@ const participants: PortalParticipant[] = [
     whatsappUrl: "https://wa.me/5588999991234",
     photoUrl: null,
     paymentStatus: "paid",
+    initialAmountCents: 10_000,
     pricingType: "promotional",
     standardPriceCents: 30_000,
     registrationPriceCents: 10_000,
+    financialState: {
+      status: "partially_paid",
+      pendingCents: 15_000,
+      confirmedPrincipalCents: 15_000,
+    },
     complement: {
       eligible: true,
       totalCents: 20_000,
@@ -55,9 +61,15 @@ const participants: PortalParticipant[] = [
     whatsappUrl: "https://wa.me/5585999990000",
     photoUrl: "https://example.com/bruno.jpg",
     paymentStatus: "pending",
+    initialAmountCents: 10_000,
     pricingType: "promotional",
     standardPriceCents: 30_000,
     registrationPriceCents: 10_000,
+    financialState: {
+      status: "pending",
+      pendingCents: 10_000,
+      confirmedPrincipalCents: 0,
+    },
     complement: { eligible: false, reason: "awaiting_participant_payment" },
     payments: [],
   },
@@ -69,9 +81,15 @@ const participants: PortalParticipant[] = [
     whatsappUrl: "https://wa.me/5588988887777",
     photoUrl: null,
     paymentStatus: "paid",
+    initialAmountCents: 10_000,
     pricingType: "promotional",
     standardPriceCents: 30_000,
     registrationPriceCents: 10_000,
+    financialState: {
+      status: "partially_paid",
+      pendingCents: 15_000,
+      confirmedPrincipalCents: 15_000,
+    },
     complement: {
       eligible: true,
       totalCents: 20_000,
@@ -89,15 +107,114 @@ const participants: PortalParticipant[] = [
     whatsappUrl: "https://wa.me/5588977776666",
     photoUrl: null,
     paymentStatus: "legacy",
+    initialAmountCents: null,
     pricingType: null,
     standardPriceCents: null,
     registrationPriceCents: null,
+    financialState: {
+      status: "legacy",
+      pendingCents: null,
+      confirmedPrincipalCents: null,
+    },
     complement: { eligible: false, reason: "missing_snapshot" },
     payments: [],
   },
 ];
 
 describe("RegentParticipantList", () => {
+  it("uses derived financial labels, pending values, and balance actions", () => {
+    const financialParticipants = [
+      {
+        ...participants[0],
+        name: "Ana Parcial",
+        initialAmountCents: 10_000,
+        financialState: {
+          status: "partially_paid" as const,
+          pendingCents: 12_000,
+          confirmedPrincipalCents: 18_000,
+        },
+        complement: {
+          eligible: true as const,
+          totalCents: 20_000,
+          paidCents: 8_000,
+          balanceCents: 12_000,
+        },
+      },
+      {
+        ...participants[1],
+        name: "Bruno Inicial",
+        initialAmountCents: 10_000,
+        financialState: {
+          status: "pending" as const,
+          pendingCents: 10_000,
+          confirmedPrincipalCents: 0,
+        },
+      },
+      {
+        ...participants[0],
+        id: "55555555-5555-4555-8555-555555555555",
+        name: "Clara Quitada",
+        initialAmountCents: 10_000,
+        financialState: {
+          status: "paid" as const,
+          pendingCents: 0,
+          confirmedPrincipalCents: 30_000,
+        },
+        complement: { eligible: false as const, reason: "settled" as const },
+      },
+      {
+        ...participants[0],
+        id: "66666666-6666-4666-8666-666666666666",
+        name: "Davi Integral",
+        pricingType: "standard" as const,
+        initialAmountCents: 30_000,
+        standardPriceCents: 30_000,
+        registrationPriceCents: 30_000,
+        financialState: {
+          status: "paid" as const,
+          pendingCents: 0,
+          confirmedPrincipalCents: 30_000,
+        },
+        complement: { eligible: false as const, reason: "standard_price" as const },
+      },
+      {
+        ...participants[3],
+        initialAmountCents: null,
+        financialState: {
+          status: "legacy" as const,
+          pendingCents: null,
+          confirmedPrincipalCents: null,
+        },
+      },
+    ] as PortalParticipant[];
+
+    render(<RegentParticipantList participants={financialParticipants} onPay={vi.fn()} />);
+
+    const table = screen.getByRole("table", { name: "Participantes" });
+    expect(within(table).getByText("Parcialmente pago")).toBeInTheDocument();
+    expect(within(table).getAllByText("Valor pendente")).not.toHaveLength(0);
+    expect(within(table).getAllByText(/R\$\s*120,00/)).not.toHaveLength(0);
+    expect(
+      within(table).getByRole("button", { name: /Pagar saldo de R\$\s*120,00/ }),
+    ).toBeEnabled();
+
+    const initialRow = within(table).getByRole("row", { name: /Bruno Inicial/ });
+    expect(initialRow).toHaveTextContent("Pendente");
+    expect(initialRow).toHaveTextContent(/R\$\s*100,00/);
+    expect(
+      within(initialRow).queryByRole("button", { name: /Pagar saldo/ }),
+    ).not.toBeInTheDocument();
+
+    for (const name of ["Clara Quitada", "Davi Integral"]) {
+      const row = within(table).getByRole("row", { name: new RegExp(name) });
+      expect(row).toHaveTextContent("Pago");
+      expect(row).toHaveTextContent(/R\$\s*0,00/);
+    }
+    const historicalRow = within(table).getByRole("row", { name: /Davi Histórico/ });
+    expect(historicalRow).toHaveTextContent("Histórico");
+    expect(historicalRow).toHaveTextContent("Não disponível");
+  });
+
   it("shows compact desktop and mobile records with formatted identity and payment actions", () => {
     render(<RegentParticipantList participants={participants} onPay={vi.fn()} />);
 
@@ -123,14 +240,13 @@ describe("RegentParticipantList", () => {
         "src",
         "https://example.com/bruno.jpg",
       );
-      expect(scope.getAllByText("Pago").length).toBeGreaterThan(0);
+      expect(scope.getAllByText("Parcialmente pago").length).toBeGreaterThan(0);
       expect(scope.getByText("Pendente")).toBeInTheDocument();
-      expect(scope.getByText("Aguardando pagamento do participante")).toBeInTheDocument();
       expect(scope.getByRole("link", { name: "Continuar pagamento" })).toHaveAttribute(
         "href",
         pendingInstallment.checkoutUrl,
       );
-      expect(scope.getByRole("button", { name: "Pagar complemento de Ana Regente" })).toBeEnabled();
+      expect(scope.getByRole("button", { name: /Pagar saldo de R\$\s*150,00/ })).toBeEnabled();
       expect(scope.getAllByText("Valor normal: R$ 300,00")).toHaveLength(3);
       expect(scope.getAllByText("Valor da inscrição: R$ 100,00")).toHaveLength(3);
       expect(scope.getByText("Valor normal: Não disponível")).toBeInTheDocument();
@@ -153,7 +269,7 @@ describe("RegentParticipantList", () => {
     expect(within(row).getByText("R$ 50,00")).toBeInTheDocument();
     expect(row).toHaveTextContent("Regente Ana · 10/09/2026");
 
-    await user.click(within(row).getByRole("button", { name: "Pagar complemento de Ana Regente" }));
+    await user.click(within(row).getByRole("button", { name: /Pagar saldo de R\$\s*150,00/ }));
     expect(onPay).toHaveBeenCalledExactlyOnceWith(participants[0]);
   });
 

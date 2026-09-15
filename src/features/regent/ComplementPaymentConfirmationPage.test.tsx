@@ -34,8 +34,13 @@ async function renderWithRouter(page: ReactNode) {
     path: "/regente",
     component: () => <h1>Área do regente</h1>,
   });
+  const adminRegistrationsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/admin/inscricoes",
+    component: () => <h1>Inscrições</h1>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([confirmationRoute, regentRoute]),
+    routeTree: rootRoute.addChildren([confirmationRoute, regentRoute, adminRegistrationsRoute]),
     history: createMemoryHistory({ initialEntries: ["/confirmacao"] }),
   });
   await router.load();
@@ -59,6 +64,27 @@ describe("ComplementPaymentConfirmationPage", () => {
     expect(screen.getByRole("link", { name: "Voltar à área do regente" })).toHaveAttribute(
       "href",
       "/regente",
+    );
+  });
+
+  it("uses the supplied administrator return destination and label", async () => {
+    await renderWithRouter(
+      <ComplementPaymentConfirmationPage
+        lookup={lookup}
+        returnTo="/admin/inscricoes"
+        returnLabel="Voltar às inscrições"
+        verifyPayment={vi.fn().mockResolvedValue({
+          status: "paid",
+          paymentMethod: "pix",
+          installments: 1,
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Complemento confirmado")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Voltar às inscrições" })).toHaveAttribute(
+      "href",
+      "/admin/inscricoes",
     );
   });
 

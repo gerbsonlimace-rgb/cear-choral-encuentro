@@ -4,9 +4,16 @@ const { createChoristerAppServer, load } = vi.hoisted(() => ({
   createChoristerAppServer: vi.fn(),
   load: vi.fn(),
 }));
+const { listSources } = vi.hoisted(() => ({
+  listSources: vi.fn(),
+}));
 
 vi.mock("@/features/chorister-app/choristerApp.server", () => ({
   createChoristerAppServer,
+}));
+
+vi.mock("@/features/coroapp-integration/coroAppEventSource.service.server", () => ({
+  getCoroAppEventSourceService: () => ({ list: listSources }),
 }));
 
 vi.mock("@tanstack/react-start", async (importOriginal) => {
@@ -41,6 +48,15 @@ type ServerFunction = {
 describe("chorister feed server-function boundary", () => {
   it("uses the participant middleware and accepts no event selector from the browser", async () => {
     load.mockResolvedValue({ status: "not_published" });
+    listSources.mockResolvedValue([
+      {
+        eventId: "44444444-4444-4444-8444-444444444444",
+        publicUrl: "https://coroapp.lovable.app/e/44444444-4444-4444-8444-444444444444",
+        eventName: "Missa",
+        sortOrder: 0,
+        updatedAt: "2026-09-12T20:00:00.000Z",
+      },
+    ]);
     createChoristerAppServer.mockReturnValue({ load });
     const serverFunction = getChoristerPortalFeed as unknown as ServerFunction;
 
@@ -70,6 +86,8 @@ describe("chorister feed server-function boundary", () => {
         },
       }),
     );
-    expect(createChoristerAppServer.mock.calls[0][0]).not.toHaveProperty("eventId");
+    expect(createChoristerAppServer.mock.calls[0][0]).toMatchObject({
+      eventId: "44444444-4444-4444-8444-444444444444",
+    });
   });
 });

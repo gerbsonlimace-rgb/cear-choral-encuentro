@@ -324,6 +324,21 @@ describe("complement confirmation server boundary", () => {
     await expect(handler(regent, lookup)).resolves.toEqual({ status: "pending" });
     expect(service.reconcilePaymentForAccess).toHaveBeenCalledExactlyOnceWith(lookup, regent);
   });
+
+  it("accepts only a registration ID for complement checkout", () => {
+    const checkout = startComplementCheckout as unknown as {
+      method: string;
+      middlewares: unknown[];
+      validate: (input: unknown) => unknown;
+    };
+
+    expect(checkout.method).toBe("POST");
+    expect(checkout.middlewares).toContain(requirePortalReadyAccess);
+    expect(checkout.validate({ registrationId: regent.choirId })).toEqual({
+      registrationId: regent.choirId,
+    });
+    expect(() => checkout.validate({ registrationId: regent.choirId, amountCents: 1 })).toThrow();
+  });
 });
 
 describe("regent password server boundaries", () => {

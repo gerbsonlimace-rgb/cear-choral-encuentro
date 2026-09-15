@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
+  ChoristerPortalCollection,
+  ChoristerPortalCollectionState,
+  ChoristerTab,
   ChoristerPortalFeed,
   ChoristerPortalFeedState,
 } from "@/features/chorister-app/choristerApp.domain";
 import { supabase } from "@/integrations/supabase/client";
-import { getChoristerPortalFeed } from "@/lib/chorister-app.functions";
+import { getChoristerPortalCollection } from "@/lib/chorister-event-collection.functions";
 import { getParticipantAccess, getParticipantRegistration } from "@/lib/participant.functions";
 
 import type { ParticipantAccess } from "./participant-auth.server";
@@ -20,11 +23,13 @@ import { downloadParticipantReceipt } from "./participant-receipt";
 import { ParticipantPasswordDialog } from "./ParticipantPasswordDialog";
 
 type Props = {
+  onOpenAdmin?: () => void;
   onMissingAccess: () => void;
   onSignedOut: () => void;
   checkAccess?: () => Promise<ParticipantAccess>;
   loadRegistration?: () => Promise<ParticipantRegistrationView>;
   loadFeed?: () => Promise<ChoristerPortalFeedState>;
+  loadCollection?: () => Promise<ChoristerPortalCollectionState>;
   signOut?: () => Promise<{ error: unknown }>;
   reauthenticateForPasswordChange?: (credentials: {
     email: string;
@@ -33,6 +38,10 @@ type Props = {
   updatePassword?: (password: string) => Promise<{ error: unknown }>;
   getSignedInEmail?: () => Promise<{ email: string | null; error: unknown }>;
   downloadReceipt?: (view: ParticipantRegistrationView) => Promise<void>;
+  initialTab?: ChoristerTab;
+  initialEventId?: string;
+  onTabChange?: (tab: ChoristerTab) => void;
+  onEventChange?: (eventId: string | null) => void;
 };
 
 type Gate =
@@ -47,6 +56,8 @@ type Gate =
 
 type ContentStatus = "ready" | "not_published" | "unavailable";
 type AudioAsset = ChoristerPortalFeed["event"]["songs"][number]["audios"][number];
+type PortalContentState = ChoristerPortalFeedState | ChoristerPortalCollectionState;
+type PortalEvent = ChoristerPortalCollection["events"][number];
 
 const EMPTY_PORTAL_FEED: ChoristerPortalFeed = {
   status: "published",
@@ -63,41 +74,58 @@ const EMPTY_PORTAL_FEED: ChoristerPortalFeed = {
 
 const defaultSignOut: NonNullable<Props["signOut"]> = () => supabase.auth.signOut();
 
-function findScoreAsset(feed: ChoristerPortalFeed, assetId: string): PdfAsset | undefined {
-  return [...feed.event.songs.flatMap((song) => song.sheetMusic), ...feed.event.documents].find(
-    (asset) => asset.id === assetId,
-  );
+function publishedEvents(state: PortalContentState): PortalEvent[] | null {
+  if (state.status !== "published") return null;
+  return "events" in state ? state.events : [state.event];
 }
 
-function findAudioAsset(feed: ChoristerPortalFeed, assetId: string): AudioAsset | undefined {
-  return feed.event.songs.flatMap((song) => song.audios).find((audio) => audio.id === assetId);
+function findScoreAsset(events: PortalEvent[], assetId: string): PdfAsset | undefined {
+  return events
+    .flatMap((event) => [...event.songs.flatMap((song) => song.sheetMusic), ...event.documents])
+    .find((asset) => asset.id === assetId);
+}
+
+function findAudioAsset(events: PortalEvent[], assetId: string): AudioAsset | undefined {
+  return events
+    .flatMap((event) => event.songs)
+    .flatMap((song) => song.audios)
+    .find((audio) => audio.id === assetId);
 }
 
 export function ParticipantPortalPage({
+  onOpenAdmin,
   onMissingAccess,
   onSignedOut,
   checkAccess = getParticipantAccess,
   loadRegistration = getParticipantRegistration,
-  loadFeed = getChoristerPortalFeed,
+  loadFeed,
+  loadCollection = getChoristerPortalCollection,
   signOut = defaultSignOut,
   reauthenticateForPasswordChange,
   updatePassword,
   getSignedInEmail,
   downloadReceipt = downloadParticipantReceipt,
+  initialTab,
+  initialEventId,
+  onTabChange,
+  onEventChange,
 }: Props) {
   const [gate, setGate] = useState<Gate>("checking");
   const [view, setView] = useState<ParticipantRegistrationView | null>(null);
   const [feed, setFeed] = useState<ChoristerPortalFeed | null>(null);
+  const [events, setEvents] = useState<PortalEvent[]>([]);
   const [contentStatus, setContentStatus] = useState<ContentStatus>("ready");
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const revision = useRef(0);
   const mounted = useRef(true);
   const signingOut = useRef(false);
+  const loadContent = loadFeed ?? loadCollection;
 
   const loadPortal = useCallback(async () => {
     const current = ++revision.current;
     setView(null);
     setFeed(null);
+    setEvents([]);
     setContentStatus("ready");
     setGate("checking");
     try {
@@ -113,42 +141,48 @@ export function ParticipantPortalPage({
       const registration = await loadRegistration();
       if (current !== revision.current || !mounted.current) return;
 
-      let portalFeed: ChoristerPortalFeedState;
+      let portalContent: PortalContentState;
       try {
-        portalFeed = await loadFeed();
+        portalContent = await loadContent();
       } catch {
         if (current === revision.current && mounted.current) {
           setView(registration);
           setFeed(EMPTY_PORTAL_FEED);
+          setEvents([EMPTY_PORTAL_FEED.event]);
           setContentStatus("unavailable");
           setGate("ready");
         }
         return;
       }
       if (current !== revision.current || !mounted.current) return;
-      if (portalFeed.status === "not_published") {
+      if (portalContent.status === "not_published") {
         setView(registration);
         setFeed(EMPTY_PORTAL_FEED);
+        setEvents([EMPTY_PORTAL_FEED.event]);
         setContentStatus("not_published");
         setGate("ready");
         return;
       }
-      if (portalFeed.status === "unavailable") {
+      if (portalContent.status === "unavailable") {
         setView(registration);
         setFeed(EMPTY_PORTAL_FEED);
+        setEvents([EMPTY_PORTAL_FEED.event]);
         setContentStatus("unavailable");
         setGate("ready");
         return;
       }
 
+      const nextEvents = publishedEvents(portalContent);
+      if (!nextEvents?.length) throw new Error("Portal collection is empty");
       setView(registration);
-      setFeed(portalFeed);
+      setFeed({ status: "published", event: nextEvents[0] });
+      setEvents(nextEvents);
       setContentStatus("ready");
       setGate("ready");
     } catch {
       if (current === revision.current && mounted.current) setGate("error");
     }
-  }, [checkAccess, loadFeed, loadRegistration, onMissingAccess]);
+  }, [checkAccess, loadContent, loadRegistration, onMissingAccess]);
 
   useEffect(() => {
     mounted.current = true;
@@ -162,47 +196,43 @@ export function ParticipantPortalPage({
     async (asset: PdfAsset): Promise<PdfAsset | undefined> => {
       const current = revision.current;
       try {
-        const refreshedFeed = await loadFeed();
-        if (
-          current !== revision.current ||
-          !mounted.current ||
-          refreshedFeed.status !== "published"
-        ) {
+        const refreshedContent = await loadContent();
+        const refreshedEvents = publishedEvents(refreshedContent);
+        if (current !== revision.current || !mounted.current || !refreshedEvents?.length) {
           return undefined;
         }
-        const refreshedAsset = findScoreAsset(refreshedFeed, asset.id);
+        const refreshedAsset = findScoreAsset(refreshedEvents, asset.id);
         if (!refreshedAsset) return undefined;
-        setFeed(refreshedFeed);
+        setFeed({ status: "published", event: refreshedEvents[0] });
+        setEvents(refreshedEvents);
         return refreshedAsset;
       } catch {
         return undefined;
       }
     },
-    [loadFeed],
+    [loadContent],
   );
 
   const renewAudio = useCallback(
     async (audioId: string): Promise<AudioAsset | undefined> => {
       const current = revision.current;
       try {
-        const refreshedFeed = await loadFeed();
-        if (
-          current !== revision.current ||
-          !mounted.current ||
-          refreshedFeed.status !== "published"
-        ) {
+        const refreshedContent = await loadContent();
+        const refreshedEvents = publishedEvents(refreshedContent);
+        if (current !== revision.current || !mounted.current || !refreshedEvents?.length) {
           return undefined;
         }
-        const refreshedAudio = findAudioAsset(refreshedFeed, audioId);
+        const refreshedAudio = findAudioAsset(refreshedEvents, audioId);
         if (!refreshedAudio) return undefined;
-        setFeed(refreshedFeed);
+        setFeed({ status: "published", event: refreshedEvents[0] });
+        setEvents(refreshedEvents);
         setContentStatus("ready");
         return refreshedAudio;
       } catch {
         return undefined;
       }
     },
-    [loadFeed],
+    [loadContent],
   );
 
   async function logout() {
@@ -212,6 +242,7 @@ export function ParticipantPortalPage({
     flushSync(() => {
       setView(null);
       setFeed(null);
+      setEvents([]);
       setGate("leaving");
     });
     try {
@@ -231,9 +262,11 @@ export function ParticipantPortalPage({
         <ChoristerAppShell
           participant={view}
           feed={feed}
+          events={events}
           onChangePassword={() => setPasswordDialogOpen(true)}
           onDownloadReceipt={() => downloadReceipt(view)}
           onLogout={logout}
+          onOpenAdmin={onOpenAdmin}
           onPlay={() => undefined}
           onOpenSong={() => undefined}
           onOpenScore={renewScoreAsset}
@@ -241,6 +274,10 @@ export function ParticipantPortalPage({
           onRenewAudio={renewAudio}
           contentStatus={contentStatus}
           onRetryContent={() => void loadPortal()}
+          initialTab={initialTab}
+          initialEventId={initialEventId}
+          onTabChange={onTabChange}
+          onEventChange={onEventChange}
         />
         <ParticipantPasswordDialog
           open={passwordDialogOpen}
@@ -254,7 +291,7 @@ export function ParticipantPortalPage({
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+    <main className="chorister-app flex min-h-svh items-center justify-center bg-white px-4 py-10">
       <div className="w-full max-w-md space-y-4 text-center" aria-live="polite" aria-atomic="true">
         {gate === "checking" && (
           <>

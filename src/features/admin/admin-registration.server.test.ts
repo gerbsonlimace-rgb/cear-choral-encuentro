@@ -6,6 +6,7 @@ const { supabaseAdminMock } = vi.hoisted(() => ({
     from: (_table: string): unknown => {
       throw new Error("Unconfigured Supabase boundary");
     },
+    storage: undefined as unknown,
   },
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: supabaseAdminMock }));
@@ -17,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -40,17 +41,25 @@ const selectedRow = {
   paid_at: "2026-09-07T13:00:00Z",
 } satisfies Partial<RegistrationDatabaseRow>;
 
+type ResultRow = typeof selectedRow & { photo_path?: string | null };
 type DatabaseResult = {
-  data: (typeof selectedRow)[] | null;
+  data: unknown;
   error: { message: string; details: string; hint: string; code: string } | null;
   count: number | null;
   status: number;
   statusText: string;
 };
-const success = (data: (typeof selectedRow)[], count = data.length): DatabaseResult => ({
+const success = (data: ResultRow[], count = data.length): DatabaseResult => ({
   data,
   error: null,
   count,
+  status: 200,
+  statusText: "OK",
+});
+const singleSuccess = (data: unknown): DatabaseResult => ({
+  data,
+  error: null,
+  count: 1,
   status: 200,
   statusText: "OK",
 });
@@ -92,10 +101,9 @@ describe("registration export", () => {
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
     ]);
-    expect(trace.filter(([method]) => method === "eq")).toEqual([
-      ["eq", "payment_status", "paid"],
-      ["eq", "payment_status", "paid"],
-    ]);
+    // Payment filters are derived after candidate retrieval; no raw
+    // payment_status predicate may hide partially-paid registrations.
+    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
     expect(trace.filter(([method]) => method === "or")).toHaveLength(2);
     expect(trace.slice(-4)).toEqual([
       ["response", 200],
@@ -189,7 +197,84 @@ describe("registration export", () => {
     await expect(
       service.list({ search: "", paymentStatus: "pending", page: 1, pageSize: 10 }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
+    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
+  });
+});
+
+describe("manual payment confirmation", () => {
+  it("marks a pending registration as paid with an auditable admin marker", async () => {
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      amount_cents: 10000,
+      paid_amount_cents: null,
+      payment_method: null,
+      installments: null,
+      paid_at: null,
+    };
+    const { trace } = databaseHarness([
+      singleSuccess(pendingRow),
+      singleSuccess({ id: pendingRow.id }),
+    ]);
+    const service = createAdminRegistrationService(
+      createSupabaseAdminRegistrationRepository(),
+      () => new Date("2026-09-15T01:00:00Z"),
+    );
+
+    await expect(service.markPaid("registration-1", "admin-1")).resolves.toEqual({
+      status: "paid",
+      registrationId: "registration-1",
+    });
+    expect(trace).toContainEqual([
+      "update",
+      {
+        payment_status: "paid",
+        payment_origin: "manual",
+        manual_paid_by: "admin-1",
+        infinitepay_invoice_slug: null,
+        infinitepay_transaction_nsu: null,
+        payment_method: null,
+        installments: null,
+        paid_amount_cents: 10000,
+        receipt_url: null,
+        paid_at: expect.any(String),
+      },
+    ]);
     expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
+    expect(trace).toContainEqual(["is", "checkout_url", null]);
+  });
+
+  it("does not manually confirm a registration with an active checkout", async () => {
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      amount_cents: 10000,
+      checkout_url: "https://checkout.infinitepay.com.br/active",
+    };
+    databaseHarness([singleSuccess(pendingRow)]);
+    await expect(
+      createAdminRegistrationService(
+        createSupabaseAdminRegistrationRepository(),
+        () => new Date(),
+      ).markPaid("registration-1", "admin-1"),
+    ).rejects.toThrow("link de pagamento ativo");
+  });
+
+  it("retries participant provisioning after a durable manual confirmation", async () => {
+    const repository = {
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+      markPaid: vi.fn(async () => ({ status: "paid" as const, registrationId: "registration-1" })),
+    };
+    const provisionParticipant = vi.fn(async () => ({ status: "active" as const }));
+    await expect(
+      createAdminRegistrationService(repository, () => new Date(), provisionParticipant).markPaid(
+        "registration-1",
+        "admin-1",
+      ),
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+    expect(provisionParticipant).toHaveBeenCalledWith("registration-1");
   });
 });
 
@@ -220,6 +305,8 @@ describe("registration summary", () => {
             pricingType: "standard" as const,
             standardPriceCents: 3000,
             registrationPriceCents: 3000,
+            photoUrl: null,
+            regentName: null,
           },
         ];
       },
@@ -239,6 +326,243 @@ describe("registration summary", () => {
     });
   });
 });
+
+describe("derived registration listing", () => {
+  it("exports partial registrations while recording a database-compatible audit filter", async () => {
+    const base = {
+      ...selectedRow,
+      amount_cents: 10000,
+      paid_amount_cents: 10000,
+      pricing_type: "promotional",
+      standard_price_cents: 30000,
+      registration_price_cents: 10000,
+    } satisfies Partial<RegistrationDatabaseRow>;
+    const recordExport = vi.fn(async (event: { paymentStatusFilter: string | null }) => {
+      if (event.paymentStatusFilter !== "paid") {
+        throw new Error("incompatible audit filter");
+      }
+    });
+    const repository = {
+      listCandidates: vi
+        .fn()
+        .mockResolvedValue([
+          { row: { ...base, id: "partial-export" }, accountStatus: null, regentName: null },
+        ]),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "partial-export-complement",
+          registrationId: "partial-export",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-08T00:00:00Z",
+          paidAt: "2026-09-08T01:00:00Z",
+          initiatedByName: "Admin",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      recordExport,
+      list: vi.fn(),
+      listAll: vi.fn(),
+    };
+
+    await expect(
+      createAdminRegistrationService(repository, () => new Date()).export(
+        { search: "", paymentStatus: "partially_paid" },
+        "admin-1",
+      ),
+    ).resolves.toMatchObject({ fileName: expect.stringContaining("inscricoes-") });
+    expect(recordExport).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentStatusFilter: "paid", resultCount: 1 }),
+    );
+  });
+
+  it("filters derived states before pagination and signs only the final page", async () => {
+    const base = {
+      ...selectedRow,
+      amount_cents: 10000,
+      paid_amount_cents: 10000,
+      pricing_type: "promotional",
+      standard_price_cents: 30000,
+      registration_price_cents: 10000,
+    } satisfies Partial<RegistrationDatabaseRow>;
+    const candidates = [
+      {
+        row: { ...base, id: "partial" } as RegistrationDatabaseRow,
+        accountStatus: null,
+        regentName: null,
+      },
+      {
+        row: {
+          ...base,
+          id: "paid",
+          pricing_type: "standard",
+          standard_price_cents: 10000,
+          registration_price_cents: 10000,
+          amount_cents: 10000,
+        } as RegistrationDatabaseRow,
+        accountStatus: null,
+        regentName: null,
+      },
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "complement",
+          registrationId: "partial",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-08T00:00:00Z",
+          paidAt: "2026-09-08T01:00:00Z",
+          initiatedByName: "Admin",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const service = createAdminRegistrationService(repository, () => new Date());
+
+    const page = await service.list({
+      search: "Maria",
+      paymentStatus: "partially_paid",
+      page: 1,
+      pageSize: 1,
+    });
+    expect(page.total).toBe(1);
+    expect(page.rows[0].id).toBe("partial");
+    expect(page.rows[0].financialState?.pendingCents).toBe(12000);
+    expect(repository.listCandidates).toHaveBeenCalledWith("Maria");
+    expect(repository.listComplementPayments).toHaveBeenCalledWith(["partial"]);
+    expect(repository.signPhotos).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "partial" }),
+    ]);
+    expect(repository.signPhotos).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["all", ["legacy", "pending", "partial", "paid", "standard"]],
+    ["pending", ["pending"]],
+    ["partially_paid", ["partial"]],
+    ["paid", ["paid", "standard"]],
+    ["legacy", ["legacy"]],
+  ] as const)("applies the %s filter to derived state before paging", async (filter, expected) => {
+    const make = (id: string, overrides: Partial<RegistrationDatabaseRow>) => ({
+      row: { ...selectedRow, id, ...overrides } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [
+      make("legacy", {
+        payment_status: "legacy",
+        amount_cents: null,
+        pricing_type: null,
+        standard_price_cents: null,
+        registration_price_cents: null,
+      }),
+      make("pending", {
+        payment_status: "pending",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("partial", {
+        payment_status: "paid",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("paid", {
+        payment_status: "paid",
+        amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+      }),
+      make("standard", {
+        payment_status: "paid",
+        amount_cents: 30000,
+        pricing_type: "standard",
+        standard_price_cents: 30000,
+        registration_price_cents: 30000,
+      }),
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([
+        {
+          id: "partial-c",
+          registrationId: "partial",
+          amountCents: 8000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-01",
+          paidAt: "2026-09-01",
+          initiatedByName: "A",
+          initiatedAs: "admin" as const,
+        },
+        {
+          id: "paid-c",
+          registrationId: "paid",
+          amountCents: 20000,
+          status: "paid" as const,
+          checkoutUrl: null,
+          createdAt: "2026-09-01",
+          paidAt: "2026-09-01",
+          initiatedByName: "A",
+          initiatedAs: "admin" as const,
+        },
+      ]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: filter,
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(expected);
+    expect(page.total).toBe(expected.length);
+  });
+
+  it("bounds complement ID batches at 1,000", async () => {
+    const { trace } = databaseHarness([success([]), success([])]);
+    await createSupabaseAdminRegistrationRepository().listComplementPayments!(
+      Array.from({ length: 1001 }, (_, index) => `registration-${index}`),
+    );
+    const inCalls = trace.filter(([method]) => method === "in");
+    expect(inCalls).toHaveLength(2);
+    expect((inCalls[0]?.[2] as string[]).length).toBe(1000);
+    expect((inCalls[1]?.[2] as string[]).length).toBe(1);
+  });
+
+  it("includes participant-initiated payments in administrative accounting", async () => {
+    const row = {
+      id: "payment",
+      registration_id: "registration",
+      amount_cents: 8000,
+      status: "paid",
+      checkout_url: null,
+      created_at: "2026-09-14T00:00:00Z",
+      paid_at: "2026-09-14T00:01:00Z",
+      initiated_by_name: "Maria",
+      initiated_as: "participant",
+    };
+    databaseHarness([success([row as unknown as ResultRow])]);
+    await expect(
+      createSupabaseAdminRegistrationRepository().listComplementPayments!(["registration"]),
+    ).resolves.toMatchObject([{ initiatedAs: "participant", amountCents: 8000 }]);
+  });
+});
 const failure: DatabaseResult = {
   data: null,
   error: {
@@ -255,7 +579,18 @@ const failure: DatabaseResult = {
 function databaseHarness(results: DatabaseResult[]) {
   const trace: unknown[][] = [];
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "or", "order", "range", "insert"]) {
+  for (const method of [
+    "select",
+    "eq",
+    "or",
+    "in",
+    "order",
+    "range",
+    "insert",
+    "update",
+    "maybeSingle",
+    "is",
+  ]) {
     builder[method] = (...args: unknown[]) => {
       trace.push([method, ...args]);
       return builder;
@@ -343,6 +678,8 @@ describe("registration repository list", () => {
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
+          photoUrl: null,
+          regentName: null,
         },
       ],
       total: 51,
@@ -378,6 +715,29 @@ describe("registration repository list", () => {
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 25 });
     expect(trace).toContainEqual(["range", 0, 24]);
     expect(trace.some(([method]) => method === "or" || method === "eq")).toBe(false);
+  });
+
+  it("signs the participant photo for listed rows and skips signing in bulk reads", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: "https://storage.example/signed/foto.jpg" },
+      error: null,
+    });
+    supabaseAdminMock.storage = {
+      from: (bucket: string) => (bucket === "registration-photos" ? { createSignedUrl } : null),
+    };
+    const { trace } = databaseHarness([
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+      success([{ ...selectedRow, photo_path: "a/foto.jpg" }]),
+    ]);
+    const repository = createSupabaseAdminRegistrationRepository();
+
+    const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
+    expect(page.rows[0].photoUrl).toBe("https://storage.example/signed/foto.jpg");
+    expect(createSignedUrl).toHaveBeenCalledWith("a/foto.jpg", 3600);
+
+    await repository.listAll({ search: "", paymentStatus: "all" });
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+    expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
   });
 
   it("replaces database details with a generic query error", async () => {

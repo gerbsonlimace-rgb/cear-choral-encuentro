@@ -13,8 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
 
 export type AdminAccessState =
-  | { status: "authorized"; userId: string; email: string | null }
-  | { status: "forbidden" };
+  { status: "authorized"; userId: string; email: string | null } | { status: "forbidden" };
 
 export type AdminPageBootstrap<T> = {
   access: AdminAccessState;
@@ -190,4 +189,22 @@ export const resetParticipantInitialPassword = createServerFn({ method: "POST" }
       data,
       context.adminUserId,
     );
+  });
+
+export const createAdminRegistrationCheckoutLink = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(participantRegistrationIdSchema)
+  .handler(async ({ data }) => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().createCheckoutLink(data.registrationId);
+  });
+
+export const markAdminRegistrationPaid = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(participantRegistrationIdSchema)
+  .handler(async ({ data, context }) => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().markPaid(data.registrationId, context.adminUserId);
   });

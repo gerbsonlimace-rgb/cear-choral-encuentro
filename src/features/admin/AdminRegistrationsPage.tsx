@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { BadgeCheck, Banknote, ChartNoAxesCombined, Clock3, Link2 } from "lucide-react";
+import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -30,11 +33,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { BalancePaymentDialog, isSafeCheckoutUrl } from "@/features/regent/BalancePaymentDialog";
+import { startComplementCheckout } from "@/lib/regent.functions";
 import {
+  createAdminRegistrationCheckoutLink,
   exportAdminRegistrations,
   getAdminAccess,
   getAdminRegistrationSummary,
   listAdminRegistrations,
+  markAdminRegistrationPaid,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   type AdminAccessState,
@@ -49,7 +56,8 @@ import type {
   AdminRegistrationRow,
   AdminRegistrationSummary,
 } from "./admin.domain";
-import { AdminNavigation } from "./AdminNavigation";
+import { getAdminFinancialState } from "./admin.domain";
+import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type Props = {
   onSignedOut: () => void;
@@ -64,15 +72,33 @@ type Props = {
     status: "success";
     sessionsRevoked: false;
   }>;
+  createPaymentLink?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    reused: boolean;
+  }>;
+  markPaid?: (input: { data: { registrationId: string } }) => Promise<{
+    status: "paid";
+    registrationId: string;
+  }>;
+  copyToClipboard?: (value: string) => Promise<void>;
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
-  navigateTo?: (
-    to: "/admin/inscricoes" | "/admin/coros" | "/admin/patrocinadores" | "/regente",
-  ) => void;
+  startBalanceCheckout?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    orderNsu: string;
+  }>;
+  /** Test/embedding seam matching the shared dialog's naming. */
+  startCheckout?: (input: { data: { registrationId: string } }) => Promise<{
+    checkoutUrl: string;
+    orderNsu: string;
+  }>;
+  navigateToCheckout?: (url: string) => void;
+  navigateTo?: (to: AdminNavigationPath | "/regente") => void;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();
 const defaultSignOut = () => supabase.auth.signOut();
+const defaultCopyToClipboard = (value: string) => navigator.clipboard.writeText(value);
 const initialQuery: AdminRegistrationQuery = {
   search: "",
   paymentStatus: "all",
@@ -87,55 +113,47 @@ const date = (value: string | null) =>
 const money = (value: number | null) =>
   value === null ? "Não informado" : moneyFormatter.format(value / 100);
 
-function Status({ row }: { row: AdminRegistrationRow }) {
+function nameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "?";
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function ParticipantAvatar({ row }: { row: AdminRegistrationRow }) {
   return (
-    <Badge variant={row.paymentStatus === "paid" ? "default" : "secondary"}>
-      {{ legacy: "Histórico", pending: "Pendente", paid: "Pago" }[row.paymentStatus]}
+    <Avatar className="h-10 w-10 shrink-0 border border-border">
+      {row.photoUrl && <AvatarImage src={row.photoUrl} alt={`Foto de ${row.name}`} />}
+      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+        {nameInitials(row.name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+function Status({ row }: { row: AdminRegistrationRow }) {
+  const status = getAdminFinancialState(row).status;
+  return (
+    <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
+      {
+        {
+          legacy: "Histórico",
+          pending: "Pendente",
+          partially_paid: "Parcialmente pago",
+          paid: "Pago",
+        }[status]
+      }
     </Badge>
   );
 }
 
-function Payment({ row }: { row: AdminRegistrationRow }) {
-  const method =
-    row.paymentMethod === "pix"
-      ? "Pix"
-      : row.paymentMethod === "credit_card"
-        ? `Cartão${row.installments === null ? "" : ` · ${row.installments}x`}`
-        : "Não informado";
-  return (
-    <dl className="space-y-1 text-xs">
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Inscrição</dt>
-        <dd>
-          {row.pricingType === null
-            ? "Não informado"
-            : `${row.pricingType === "promotional" ? "Promocional" : "Normal"} · ${money(row.registrationPriceCents)}`}
-        </dd>
-      </div>
-      {row.pricingType === "promotional" && (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="text-muted-foreground">Valor normal</dt>
-          <dd>{money(row.standardPriceCents)}</dd>
-        </div>
-      )}
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Esperado</dt>
-        <dd>{money(row.amountCents)}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Valor pago</dt>
-        <dd>{money(row.paidAmountCents)}</dd>
-      </div>
-      <div>
-        <dt className="sr-only">Forma de pagamento</dt>
-        <dd>{method}</dd>
-      </div>
-      <div className="flex flex-wrap gap-x-2">
-        <dt className="text-muted-foreground">Pago em</dt>
-        <dd>{date(row.paidAt)}</dd>
-      </div>
-    </dl>
-  );
+function pendingAmountCents(row: AdminRegistrationRow): number | null {
+  return getAdminFinancialState(row).pendingCents;
+}
+
+function receivedAmountCents(row: AdminRegistrationRow): number | null {
+  const state = getAdminFinancialState(row);
+  return state.confirmedPrincipalCents ?? row.paidAmountCents;
 }
 
 function ParticipantAccessActions({
@@ -195,11 +213,17 @@ function RegistrationViews({
   participantActionBusy,
   onReprocess,
   onReset,
+  onBalancePayment,
+  onPaymentLink,
+  onMarkPaid,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
   onReprocess: (row: AdminRegistrationRow) => void;
   onReset: (row: AdminRegistrationRow) => Promise<void>;
+  onBalancePayment: (row: AdminRegistrationRow) => void;
+  onPaymentLink: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow) => void;
 }) {
   return (
     <>
@@ -207,46 +231,61 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
-              {["Inscrição", "Contato", "Coro/Diocese / origem", "Situação", "Pagamento"].map(
-                (label) => (
-                  <TableHead key={label} scope="col">
-                    {label}
-                  </TableHead>
-                ),
-              )}
+              {[
+                "Coralista",
+                "Valor pago",
+                "Valor pendente",
+                "WhatsApp",
+                "Coro",
+                "Regente",
+                "Ação",
+              ].map((label) => (
+                <TableHead key={label} scope="col">
+                  {label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="max-w-48 align-top">
-                  <p className="break-words font-medium">{row.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <TableCell className="max-w-56 align-top">
+                  <div className="flex items-center gap-3">
+                    <ParticipantAvatar row={row} />
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{row.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                      <div className="mt-1">
+                        <Status row={row} />
+                      </div>
+                      <ParticipantAccessActions
+                        row={row}
+                        busy={participantActionBusy}
+                        onReprocess={onReprocess}
+                        onReset={onReset}
+                      />
+                    </div>
+                  </div>
                 </TableCell>
-                <TableCell className="max-w-52 align-top">
-                  <p className="break-all">{row.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{row.phone}</p>
+                <TableCell className="align-top">{money(receivedAmountCents(row))}</TableCell>
+                <TableCell className="align-top">
+                  {pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}
                 </TableCell>
+                <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
-                  <p className="break-words">{row.city}</p>
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
-                    {row.institution || "Não informado"}
-                  </p>
-                  <p className="mt-1 text-xs">{row.role}</p>
+                </TableCell>
+                <TableCell className="max-w-44 align-top">
+                  <p className="break-words">{row.regentName ?? "Não informado"}</p>
                 </TableCell>
                 <TableCell className="align-top">
-                  <Status row={row} />
-                  <ParticipantAccessActions
+                  <BalanceAction
                     row={row}
+                    onBalancePayment={onBalancePayment}
+                    onPaymentLink={onPaymentLink}
+                    onMarkPaid={onMarkPaid}
                     busy={participantActionBusy}
-                    onReprocess={onReprocess}
-                    onReset={onReset}
                   />
-                </TableCell>
-                <TableCell className="align-top">
-                  <Payment row={row} />
                 </TableCell>
               </TableRow>
             ))}
@@ -258,38 +297,46 @@ function RegistrationViews({
           <Card key={row.id} className="shadow-none">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="break-words text-sm font-semibold">{row.name}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <ParticipantAvatar row={row} />
+                  <div className="min-w-0">
+                    <h2 className="break-words text-sm font-semibold">{row.name}</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                  </div>
                 </div>
                 <Status row={row} />
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs">
-                <div className="col-span-2 min-w-0">
-                  <dt className="text-muted-foreground">Contato</dt>
-                  <dd className="break-all">{row.email}</dd>
+                <div>
+                  <dt className="text-muted-foreground">Valor pago</dt>
+                  <dd>{money(receivedAmountCents(row))}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Valor pendente</dt>
+                  <dd>{pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">WhatsApp</dt>
                   <dd>{row.phone}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Coro/Diocese</dt>
+                  <dt className="text-muted-foreground">Coro</dt>
                   <dd className="break-words">{row.choirName}</dd>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Cidade</dt>
-                  <dd className="break-words">{row.city}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Função</dt>
-                  <dd className="break-words">{row.role}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Instituição</dt>
-                  <dd className="break-words">{row.institution || "Não informado"}</dd>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">Regente</dt>
+                  <dd className="break-words">{row.regentName ?? "Não informado"}</dd>
                 </div>
               </dl>
               <div className="border-t pt-3">
-                <Payment row={row} />
+                <BalanceAction
+                  row={row}
+                  onBalancePayment={onBalancePayment}
+                  onPaymentLink={onPaymentLink}
+                  onMarkPaid={onMarkPaid}
+                  busy={participantActionBusy}
+                />
                 <ParticipantAccessActions
                   row={row}
                   busy={participantActionBusy}
@@ -305,67 +352,114 @@ function RegistrationViews({
   );
 }
 
-function RegistrationSummary({ summary }: { summary: AdminRegistrationSummary }) {
-  const metrics = [
-    { label: "Total", value: String(summary.total), emphasis: true },
-    { label: "Pagas", value: String(summary.paid) },
-    { label: "Pendentes", value: String(summary.pending) },
-    { label: "Históricas", value: String(summary.legacy) },
-    { label: "Recebido", value: money(summary.receivedCents), emphasis: true },
-    { label: "Pendente do regente", value: money(summary.pendingRegentCents) },
-  ];
-
+function BalanceAction({
+  row,
+  onBalancePayment,
+  onPaymentLink,
+  onMarkPaid,
+  busy,
+}: {
+  row: AdminRegistrationRow;
+  onBalancePayment: (row: AdminRegistrationRow) => void;
+  onPaymentLink: (row: AdminRegistrationRow) => void;
+  onMarkPaid: (row: AdminRegistrationRow) => void;
+  busy: boolean;
+}) {
+  const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
+  const state = getAdminFinancialState(row);
+  const openUrl = row.openComplementPayment?.checkoutUrl;
+  if (openUrl && isSafeCheckoutUrl(openUrl)) {
+    return (
+      <Button asChild size="sm" variant="outline">
+        <a href={openUrl}>Continuar pagamento</a>
+      </Button>
+    );
+  }
+  if (row.openComplementPayment) {
+    return <span className="text-xs text-muted-foreground">Pagamento em processamento</span>;
+  }
+  if (state.status === "pending") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => onPaymentLink(row)}
+        >
+          <Link2 aria-hidden="true" className="mr-1.5 size-4" />
+          Gerar link de pagamento
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => setConfirmMarkPaid(true)}
+        >
+          <BadgeCheck aria-hidden="true" className="mr-1.5 size-4" />
+          Marcar como pago
+        </Button>
+        <AlertDialog open={confirmMarkPaid} onOpenChange={setConfirmMarkPaid}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido antes de
+                concluir esta ação.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction disabled={busy} onClick={() => void onMarkPaid(row)}>
+                Confirmar pagamento
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+  if (state.status !== "partially_paid" || state.pendingCents <= 0) return null;
   return (
-    <section
-      aria-label="Visão geral das inscrições"
-      className="overflow-hidden rounded-xl border bg-card"
-    >
-      <div className="p-4 sm:p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Visão geral</h2>
-          <p className="text-xs text-muted-foreground">Todos os registros</p>
-        </div>
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-          {metrics.map((metric) => (
-            <div key={metric.label}>
-              <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
-              <dd
-                className={`mt-1 text-2xl font-semibold tabular-nums ${
-                  metric.emphasis ? "text-primary" : "text-foreground"
-                }`}
-              >
-                {metric.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <div className="border-t bg-muted/30 p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-foreground">Inscritos por coro/diocese</h3>
-        {summary.byChoir.length ? (
-          <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.byChoir.map((item) => (
-              <li key={item.choirName} className="min-w-0 border-b border-border/70 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 text-sm font-medium text-foreground">
-                    {item.choirName}
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                    {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>Recebido: {money(item.receivedCents)}</span>
-                  <span>Pendente do regente: {money(item.pendingRegentCents)}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Nenhum coro/diocese com inscrições.</p>
-        )}
-      </div>
-    </section>
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => onBalancePayment(row)}>
+      Pagar saldo de {money(state.pendingCents)}
+    </Button>
+  );
+}
+
+function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
+  const financial = [
+    {
+      label: "Recebido",
+      value: money(summary.receivedCents),
+      hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
+      icon: Banknote,
+    },
+    {
+      label: "Pendente",
+      value: money(summary.pendingCents),
+      hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
+      icon: Clock3,
+    },
+    {
+      label: "Total previsto",
+      value: money(summary.expectedCents),
+      hint: "Recebido + pendente + regente",
+      icon: ChartNoAxesCombined,
+    },
+  ];
+  return (
+    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
+      {financial.map((metric) => (
+        <InternalMetricCard
+          key={metric.label}
+          label={metric.label}
+          value={metric.value}
+          detail={metric.hint}
+          icon={metric.icon}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -377,12 +471,19 @@ export function AdminRegistrationsPage({
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
+  createPaymentLink = createAdminRegistrationCheckoutLink,
+  markPaid = markAdminRegistrationPaid,
+  copyToClipboard = defaultCopyToClipboard,
   reprocessAccess = reprocessParticipantAccess,
   resetInitialPassword = resetParticipantInitialPassword,
+  startBalanceCheckout,
+  startCheckout,
+  navigateToCheckout,
   getSession = defaultGetSession,
   signOut = defaultSignOut,
   navigateTo,
 }: Props) {
+  const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
   >("checking");
@@ -398,6 +499,7 @@ export function AdminRegistrationsPage({
   const [announcement, setAnnouncement] = useState("");
   const [exporting, setExporting] = useState(false);
   const [participantActionBusy, setParticipantActionBusy] = useState(false);
+  const [balanceTarget, setBalanceTarget] = useState<AdminRegistrationRow | null>(null);
   const [retry, setRetry] = useState(0);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
@@ -439,15 +541,30 @@ export function AdminRegistrationsPage({
       setSummaryLoading(true);
       setListError("");
       setSummaryError("");
-      void loadInitialData()
-        .then((bootstrap) => {
+      // Without a local session the protected server fn would 401 and blank the page.
+      const bootstrap = async () => {
+        try {
+          const session = await getSession();
+          if (!session.error && !session.data.session) return null;
+        } catch {
+          /* An unavailable local session cannot prove expiry; try the server call. */
+        }
+        return loadInitialData();
+      };
+      void bootstrap()
+        .then((result) => {
           if (!active) return;
-          if (bootstrap.access.status !== "authorized" || !bootstrap.data) {
-            setGate(bootstrap.access.status);
+          if (!result) {
+            setGate("expired");
+            onMissingSession();
             return;
           }
-          setResult(bootstrap.data.registrations);
-          setSummary(bootstrap.data.summary);
+          if (result.access.status !== "authorized" || !result.data) {
+            setGate(result.access.status);
+            return;
+          }
+          setResult(result.data.registrations);
+          setSummary(result.data.summary);
           setBootstrapDataReady(true);
           setGate("authorized");
         })
@@ -609,6 +726,48 @@ export function AdminRegistrationsPage({
     }
   }
 
+  async function runPaymentLinkAction(row: AdminRegistrationRow): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await createPaymentLink({ data: { registrationId: row.id } });
+      if (!isSafeCheckoutUrl(result.checkoutUrl)) throw new Error("unsafe checkout URL");
+      await copyToClipboard(result.checkoutUrl);
+      setAnnouncement(
+        result.reused
+          ? "Link de pagamento copiado."
+          : "Novo link de pagamento gerado e copiado.",
+      );
+    } catch {
+      setActionError("Não foi possível gerar o link de pagamento. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
+  async function runMarkPaidAction(row: AdminRegistrationRow): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await markPaid({ data: { registrationId: row.id } });
+      if (result.status !== "paid") throw new Error("Unexpected payment result");
+      setAnnouncement("Inscrição marcada como paga.");
+      setRetry((value) => value + 1);
+    } catch {
+      setActionError("Não foi possível marcar a inscrição como paga. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
   async function logout() {
     if (actionBusy.current) return;
     actionBusy.current = true;
@@ -649,7 +808,7 @@ export function AdminRegistrationsPage({
             : "";
 
   return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -732,7 +891,7 @@ export function AdminRegistrationsPage({
                 </CardContent>
               </Card>
             ) : (
-              summary && <RegistrationSummary summary={summary} />
+              summary && <RegistrationFinancialSummary summary={summary} />
             )}
             <form
               onSubmit={search}
@@ -772,6 +931,7 @@ export function AdminRegistrationsPage({
                     <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="pending">Pendentes</SelectItem>
                     <SelectItem value="paid">Pagas</SelectItem>
+                    <SelectItem value="partially_paid">Parcialmente pagas</SelectItem>
                     <SelectItem value="legacy">Históricas</SelectItem>
                   </SelectContent>
                 </Select>
@@ -798,6 +958,9 @@ export function AdminRegistrationsPage({
                   participantActionBusy={participantActionBusy}
                   onReprocess={(row) => void runParticipantAction(row, "reprocess")}
                   onReset={(row) => runParticipantAction(row, "reset")}
+                  onBalancePayment={setBalanceTarget}
+                  onPaymentLink={(row) => void runPaymentLinkAction(row)}
+                  onMarkPaid={(row) => void runMarkPaidAction(row)}
                 />
               ) : (
                 <Card>
@@ -807,6 +970,23 @@ export function AdminRegistrationsPage({
                 </Card>
               ))
             )}
+            <BalancePaymentDialog
+              target={
+                balanceTarget && getAdminFinancialState(balanceTarget).status === "partially_paid"
+                  ? {
+                      id: balanceTarget.id,
+                      name: balanceTarget.name,
+                      balanceCents: getAdminFinancialState(balanceTarget).pendingCents ?? 0,
+                    }
+                  : null
+              }
+              open={balanceTarget !== null}
+              onOpenChange={(open) => {
+                if (!open) setBalanceTarget(null);
+              }}
+              startCheckout={openBalanceCheckout}
+              navigateToCheckout={navigateToCheckout}
+            />
             {result && (
               <nav
                 aria-label="Paginação de inscrições"

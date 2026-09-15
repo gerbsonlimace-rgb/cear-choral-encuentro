@@ -83,19 +83,195 @@ function setup() {
 describe("regent complement checkout service", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  const participant = {
+    role: "participant" as const,
+    userId: "participant-user",
+    registrationId,
+    name: "Maria Participante",
+  };
+
+  it("charges only the participant's current remaining balance and records the real actor", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      { id: "paid", orderNsu: "previous", amountCents: 4000, status: "paid", checkoutUrl: null },
+    ]);
+    await service.startCheckout({ registrationId }, participant);
+    expect(repository.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        registrationId,
+        amountCents: 6000,
+        initiatedBy: participant.userId,
+        initiatedAs: "participant",
+        initiatedByName: participant.name,
+      }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectPath: "/participante/pagamento",
+        items: [expect.objectContaining({ price: 6000, quantity: 1 })],
+      }),
+    );
+  });
+
+  it("denies another registration even when it belongs to the same choir", async () => {
+    const { service, repository, infinitePay } = setup();
+    await expect(
+      service.startCheckout(
+        { registrationId },
+        {
+          ...participant,
+          registrationId: "another-registration",
+        },
+      ),
+    ).rejects.toThrow("Acesso não autorizado");
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("resumes an existing safe checkout without reserving or charging again", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      {
+        id: "open",
+        orderNsu,
+        amountCents: 10000,
+        status: "pending",
+        checkoutUrl,
+        initiatedAs: "participant",
+      },
+    ]);
+    await expect(service.startCheckout({ registrationId }, participant)).resolves.toEqual({
+      orderNsu,
+      checkoutUrl,
+    });
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it.each(["creating", "pending"] as const)(
+    "blocks an unresolved or unsafe %s checkout",
+    async (status) => {
+      const { service, repository, infinitePay } = setup();
+      vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+        {
+          id: "open",
+          orderNsu,
+          amountCents: 10000,
+          status,
+          checkoutUrl: "https://unsafe.example/pay",
+        },
+      ]);
+      await expect(service.startCheckout({ registrationId }, participant)).rejects.toThrow();
+      expect(repository.reserve).not.toHaveBeenCalled();
+      expect(infinitePay.createCheckout).not.toHaveBeenCalled();
+    },
+  );
+
+  it("denies verification of another participant's order before calling the provider", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue({
+      id: "payment",
+      registrationId: "another-registration",
+      choirId,
+      orderNsu,
+      amountCents: 10000,
+      status: "pending",
+      checkoutUrl,
+      initiatedBy: participant.userId,
+      initiatedAs: "participant",
+      initiatedByName: participant.name,
+    });
+    await expect(service.reconcilePaymentForAccess(paymentLookup, participant)).rejects.toThrow(
+      "Acesso não autorizado",
+    );
+    expect(infinitePay.checkPayment).not.toHaveBeenCalled();
+    expect(repository.markPaid).not.toHaveBeenCalled();
+  });
+
+  it("lets the participant continue a safe checkout opened by the regent", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      {
+        id: "open",
+        orderNsu,
+        amountCents: 10000,
+        status: "pending",
+        checkoutUrl,
+        initiatedAs: "regent",
+      },
+    ]);
+    await expect(service.startCheckout({ registrationId }, participant)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu,
+    });
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("confirms the participant's own payment only after checking the provider amount", async () => {
+    const { service, repository, infinitePay } = setup();
+    const payment: RegentPaymentRecord = {
+      id: "payment",
+      registrationId,
+      choirId,
+      orderNsu,
+      amountCents: 8000,
+      status: "pending",
+      checkoutUrl,
+      initiatedBy: participant.userId,
+      initiatedAs: "participant",
+      initiatedByName: participant.name,
+    };
+    vi.mocked(repository.findByOrderNsu).mockResolvedValue(payment);
+    vi.mocked(infinitePay.checkPayment).mockResolvedValue({
+      paid: true,
+      amountCents: 8000,
+      paidAmountCents: 8000,
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    vi.mocked(repository.markPaid).mockResolvedValue({
+      ...payment,
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      transactionNsu: paymentLookup.transactionNsu,
+    });
+    await expect(
+      service.reconcilePaymentForAccess(paymentLookup, participant),
+    ).resolves.toMatchObject({ status: "paid", paymentMethod: "pix" });
+    expect(repository.markPaid).toHaveBeenCalledWith(
+      orderNsu,
+      expect.objectContaining({ amountCents: 8000, transactionNsu: paymentLookup.transactionNsu }),
+    );
+    vi.mocked(infinitePay.checkPayment).mockResolvedValue({
+      paid: true,
+      amountCents: 100,
+      paidAmountCents: 100,
+      paymentMethod: "pix",
+      installments: 1,
+    });
+    vi.mocked(repository.markPaid).mockClear();
+    await expect(service.reconcilePaymentForAccess(paymentLookup, participant)).rejects.toThrow(
+      "Valor do pagamento divergente",
+    );
+    expect(repository.markPaid).not.toHaveBeenCalled();
+  });
+
   it("reserves the current balance snapshot before creating a PII-free provider checkout", async () => {
     const { repository, infinitePay, service } = setup();
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).resolves.toEqual({ checkoutUrl, orderNsu });
+    await expect(service.startCheckout({ registrationId }, regent)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu,
+    });
 
     expect(repository.findRegistration).toHaveBeenCalledExactlyOnceWith(registrationId);
     expect(repository.listAccountingPayments).toHaveBeenCalledExactlyOnceWith(registrationId);
     expect(repository.reserve).toHaveBeenCalledExactlyOnceWith({
       registrationId,
       choirId,
-      amountCents: 5_000,
+      amountCents: 10_000,
       status: "creating",
       orderNsu,
       initiatedBy: regent.userId,
@@ -107,8 +283,8 @@ describe("regent complement checkout service", () => {
       items: [
         {
           quantity: 1,
-          price: 5_000,
-          description: "Complemento de inscrição — II Encontro de Coros",
+          price: 10_000,
+          description: "Saldo da inscrição — II Encontro de Coros",
         },
       ],
       redirectPath: "/regente/pagamento",
@@ -125,15 +301,15 @@ describe("regent complement checkout service", () => {
     );
   });
 
-  it("uses an administrator actor snapshot without participant data", async () => {
-    const { repository, service } = setup();
+  it("uses the current full balance and administrator return path without participant data", async () => {
+    const { repository, infinitePay, service } = setup();
     const admin: PortalAccess = {
       role: "admin",
       userId: "admin-user",
       email: "admin@example.com",
     };
 
-    await service.startCheckout({ registrationId, amountCents: 1 }, admin);
+    await service.startCheckout({ registrationId }, admin);
 
     expect(repository.reserve).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -141,6 +317,19 @@ describe("regent complement checkout service", () => {
         initiatedBy: "admin-user",
         initiatedByName: "admin@example.com",
         initiatedAs: "admin",
+        amountCents: 10_000,
+      }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          {
+            quantity: 1,
+            price: 10_000,
+            description: "Saldo da inscrição — II Encontro de Coros",
+          },
+        ],
+        redirectPath: "/admin/pagamento",
       }),
     );
   });
@@ -152,9 +341,9 @@ describe("regent complement checkout service", () => {
       choirId: "44444444-4444-4444-8444-444444444444",
     });
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow("A inscrição não pertence ao coro autorizado.");
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
+      "A inscrição não pertence ao coro autorizado.",
+    );
 
     expect(repository.listAccountingPayments).not.toHaveBeenCalled();
     expect(repository.reserve).not.toHaveBeenCalled();
@@ -172,23 +361,48 @@ describe("regent complement checkout service", () => {
     const { repository, infinitePay, service } = setup();
     vi.mocked(repository.findRegistration).mockResolvedValue({ ...registration, ...change });
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow(message);
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(message);
 
     expect(repository.reserve).not.toHaveBeenCalled();
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
-  it("rejects an amount above the freshly calculated balance", async () => {
+  it("charges exactly the current balance after confirmed historical complements", async () => {
     const { repository, infinitePay, service } = setup();
     vi.mocked(repository.listAccountingPayments).mockResolvedValue([
       { id: "paid-1", orderNsu: "paid-order", amountCents: 7_000, status: "paid", checkoutUrl },
     ]);
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 3_001 }, regent),
-    ).rejects.toThrow("O valor informado excede o saldo complementar disponível.");
+    await expect(service.startCheckout({ registrationId }, regent)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu,
+    });
+
+    expect(repository.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 3_000 }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          {
+            quantity: 1,
+            price: 3_000,
+            description: "Saldo da inscrição — II Encontro de Coros",
+          },
+        ],
+      }),
+    );
+  });
+
+  it("blocks a settled registration with no balance", async () => {
+    const { repository, infinitePay, service } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      { id: "paid-1", orderNsu: "paid-order", amountCents: 10_000, status: "paid", checkoutUrl },
+    ]);
+
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
+      "O complemento desta inscrição já está quitado.",
+    );
 
     expect(repository.reserve).not.toHaveBeenCalled();
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();
@@ -206,9 +420,9 @@ describe("regent complement checkout service", () => {
       },
     ]);
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow("Já existe um pagamento complementar em aberto.");
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
+      "Já existe um pagamento complementar em aberto.",
+    );
 
     expect(repository.reserve).not.toHaveBeenCalled();
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();
@@ -218,10 +432,7 @@ describe("regent complement checkout service", () => {
     const { repository, service } = setup();
 
     await expect(
-      service.startCheckout(
-        { registrationId, amountCents: 5_000 },
-        { ...regent, passwordChangeRequired: true },
-      ),
+      service.startCheckout({ registrationId }, { ...regent, passwordChangeRequired: true }),
     ).rejects.toThrow("Altere sua senha antes de acessar a área do regente.");
 
     expect(repository.findRegistration).not.toHaveBeenCalled();
@@ -233,9 +444,9 @@ describe("regent complement checkout service", () => {
       new InfinitePayProviderError("confirmed_rejection"),
     );
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow("Não foi possível comunicar com a InfinitePay.");
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
+      "Não foi possível comunicar com a InfinitePay.",
+    );
 
     expect(repository.markFailed).toHaveBeenCalledExactlyOnceWith(orderNsu);
     expect(repository.markPending).not.toHaveBeenCalled();
@@ -250,9 +461,7 @@ describe("regent complement checkout service", () => {
       ),
     );
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow(
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
       "O pagamento está temporariamente indisponível porque o checkout externo da InfinitePay ainda não foi ativado.",
     );
 
@@ -269,9 +478,7 @@ describe("regent complement checkout service", () => {
       new TypeError("failed transition could not be proven"),
     );
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow(
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
       "Não foi possível confirmar a liberação da reserva. Atualize a página e verifique o pagamento em aberto antes de tentar novamente.",
     );
 
@@ -285,9 +492,7 @@ describe("regent complement checkout service", () => {
     const { repository, infinitePay, service } = setup();
     vi.mocked(infinitePay.createCheckout).mockRejectedValue(new TypeError("response lost"));
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow(
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
       "A confirmação do checkout está pendente. Atualize a página antes de tentar novamente.",
     );
 
@@ -302,7 +507,7 @@ describe("regent complement checkout service", () => {
       id: "reserved-1",
       registrationId,
       choirId,
-      amountCents: 5_000,
+      amountCents: 10_000,
       status: "creating",
       orderNsu,
       checkoutUrl: null,
@@ -311,9 +516,10 @@ describe("regent complement checkout service", () => {
       initiatedAs: "regent",
     });
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).resolves.toEqual({ checkoutUrl, orderNsu });
+    await expect(service.startCheckout({ registrationId }, regent)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu,
+    });
 
     expect(infinitePay.createCheckout).toHaveBeenCalledOnce();
   });
@@ -323,9 +529,9 @@ describe("regent complement checkout service", () => {
     vi.mocked(repository.reserve).mockRejectedValue(new TypeError("response lost"));
     vi.mocked(repository.findByOrderNsu).mockResolvedValue(null);
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow("Não foi possível confirmar a reserva do pagamento.");
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
+      "Não foi possível confirmar a reserva do pagamento.",
+    );
 
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();
     expect(repository.markFailed).not.toHaveBeenCalled();
@@ -337,9 +543,7 @@ describe("regent complement checkout service", () => {
       url: "https://infinitepay.example.evil/checkout",
     });
 
-    await expect(
-      service.startCheckout({ registrationId, amountCents: 5_000 }, regent),
-    ).rejects.toThrow(
+    await expect(service.startCheckout({ registrationId }, regent)).rejects.toThrow(
       "A confirmação do checkout está pendente. Atualize a página antes de tentar novamente.",
     );
 
@@ -663,43 +867,51 @@ describe("Supabase complement payment repository", () => {
     });
   });
 
-  it("re-reads the registration snapshots and only paid or open ledger rows", async () => {
-    maybeSingle.mockResolvedValueOnce({
-      data: {
-        id: registrationId,
-        choir_id: choirId,
-        payment_status: "paid",
-        pricing_type: "promotional",
-        standard_price_cents: 20_000,
-        registration_price_cents: 10_000,
-      },
-      error: null,
-    });
-    inFilter.mockResolvedValueOnce({
-      data: [databasePayment, { ...databasePayment, id: "paid-1", status: "paid" }],
-      error: null,
-    });
-    const repository = createSupabaseRegentPaymentRepository();
+  it.each(["regent", "admin", "participant"])(
+    "reads accounting rows initiated by %s",
+    async (initiatedAs) => {
+      maybeSingle.mockResolvedValueOnce({
+        data: {
+          id: registrationId,
+          choir_id: choirId,
+          payment_status: "paid",
+          pricing_type: "promotional",
+          standard_price_cents: 20_000,
+          registration_price_cents: 10_000,
+        },
+        error: null,
+      });
+      inFilter.mockResolvedValueOnce({
+        data: [
+          { ...databasePayment, initiated_as: initiatedAs },
+          { ...databasePayment, initiated_as: initiatedAs, id: "paid-1", status: "paid" },
+        ],
+        error: null,
+      });
+      const repository = createSupabaseRegentPaymentRepository();
 
-    await expect(repository.findRegistration(registrationId)).resolves.toEqual(registration);
-    await expect(repository.listAccountingPayments(registrationId)).resolves.toEqual([
-      {
-        id: "payment-1",
-        orderNsu,
-        amountCents: 5_000,
-        status: "creating",
-        checkoutUrl: null,
-      },
-      {
-        id: "paid-1",
-        orderNsu,
-        amountCents: 5_000,
-        status: "paid",
-        checkoutUrl: null,
-      },
-    ]);
-    expect(inFilter).toHaveBeenCalledExactlyOnceWith("status", ["creating", "pending", "paid"]);
-  });
+      await expect(repository.findRegistration(registrationId)).resolves.toEqual(registration);
+      await expect(repository.listAccountingPayments(registrationId)).resolves.toEqual([
+        {
+          id: "payment-1",
+          orderNsu,
+          amountCents: 5_000,
+          status: "creating",
+          checkoutUrl: null,
+          initiatedAs,
+        },
+        {
+          id: "paid-1",
+          orderNsu,
+          amountCents: 5_000,
+          status: "paid",
+          checkoutUrl: null,
+          initiatedAs,
+        },
+      ]);
+      expect(inFilter).toHaveBeenCalledExactlyOnceWith("status", ["creating", "pending", "paid"]);
+    },
+  );
 
   it("reconciles a lost pending-update response from the exact persisted URL", async () => {
     maybeSingle.mockRejectedValueOnce(new TypeError("response lost")).mockResolvedValueOnce({

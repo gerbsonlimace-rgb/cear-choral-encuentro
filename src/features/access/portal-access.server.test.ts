@@ -29,7 +29,7 @@ describe("unified portal server adapter", () => {
 
     await expect(
       getUnifiedPortalAccessResolver().resolve("user-1", "admin@example.com"),
-    ).resolves.toEqual({ status: "authorized", destination: "/admin/inscricoes" });
+    ).resolves.toEqual({ status: "authorized", destination: "/admin/resumo" });
     expect(findPortal).toHaveBeenCalledExactlyOnceWith("user-1", "admin@example.com");
     expect(findParticipant).not.toHaveBeenCalled();
   });

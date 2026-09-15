@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const tabSchema = z.enum(["home", "cantos", "partituras", "perfil"]);
+export const tabSchema = z.enum(["home", "cantos", "documentos", "guia", "perfil"]);
 export type ChoristerTab = z.infer<typeof tabSchema>;
 
 const uuidSchema = z.string().uuid();
@@ -16,8 +16,14 @@ const dateSchema = z
       date.getUTCDate() === day
     );
   });
-const httpsUrlSchema = z.string().url().refine((value) => new URL(value).protocol === "https:");
-const futureTimestampSchema = z.string().datetime().refine((value) => Date.parse(value) > Date.now());
+const httpsUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => new URL(value).protocol === "https:");
+const futureTimestampSchema = z
+  .string()
+  .datetime()
+  .refine((value) => Date.parse(value) > Date.now());
 const signedAssetSchema = z
   .object({
     id: uuidSchema,
@@ -45,25 +51,43 @@ const documentSchema = signedAssetSchema
   .extend({
     kind: z.enum(["manual", "document"]),
     sortOrder: z.number().int().nonnegative(),
+    category: z.string().trim().min(2).max(60).optional(),
+  })
+  .strict();
+
+const eventSchema = z
+  .object({
+    id: uuidSchema,
+    name: z.string().trim().min(1).max(200),
+    date: dateSchema,
+    location: z.string().trim().min(1).max(200).nullable(),
+    coverImageUrl: httpsUrlSchema.nullable(),
+    songs: z.array(songSchema),
+    documents: z.array(documentSchema),
+    guide: z
+      .object({
+        notes: z.string().max(50_000).nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
 export const ChoristerPortalFeedSchema = z
   .object({
     status: z.literal("published"),
-    event: z
-      .object({
-        id: uuidSchema,
-        name: z.string().trim().min(1).max(200),
-        date: dateSchema,
-        location: z.string().trim().min(1).max(200).nullable(),
-        coverImageUrl: httpsUrlSchema.nullable(),
-        songs: z.array(songSchema),
-        documents: z.array(documentSchema),
-      })
-      .strict(),
+    event: eventSchema,
   })
   .strict();
+
+export const ChoristerPortalCollectionSchema = z
+  .object({
+    status: z.literal("published"),
+    events: z.array(eventSchema).min(1),
+  })
+  .strict();
+
+export type ChoristerPortalCollection = z.infer<typeof ChoristerPortalCollectionSchema>;
 
 const notPublishedSchema = z.object({ status: z.literal("not_published") }).strict();
 export const ChoristerPortalFeedStateSchema = z.union([
@@ -74,6 +98,10 @@ export const ChoristerPortalFeedStateSchema = z.union([
 export type ChoristerPortalFeed = z.infer<typeof ChoristerPortalFeedSchema>;
 export type ChoristerPortalFeedState =
   | ChoristerPortalFeed
+  | z.infer<typeof notPublishedSchema>
+  | { status: "unavailable" };
+export type ChoristerPortalCollectionState =
+  | ChoristerPortalCollection
   | z.infer<typeof notPublishedSchema>
   | { status: "unavailable" };
 

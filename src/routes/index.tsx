@@ -1,19 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 import claytonImage from "../assets/clayton-dias.jpg";
 import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
 import logoImage from "../assets/logo-coros-preto.png";
-import logoImageLight from "../assets/logo-coros-branco.png";
+
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
 import coroLogo from "../assets/organizacao-coro-diocesano-quixada.png";
-import ampliartLogo from "../assets/patrocinador-ampliart.png";
-import culturaLogo from "../assets/patrocinador-cultura-quixada.png";
-import nossoLogo from "../assets/patrocinador-nosso-atacarejo.png";
-import pinheiroLogo from "../assets/patrocinador-pinheiro.png";
-import unicatolicaLogo from "../assets/patrocinador-unicatolica.png";
+import { PublicSponsorsSection } from "@/features/sponsors/PublicSponsorsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Carousel,
   CarouselContent,
@@ -22,26 +26,25 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { RegistrationSection } from "@/features/registration/RegistrationSection";
+import { RegistrationCallout } from "@/features/registration/RegistrationCallout";
+import { PublicProgramme } from "@/features/event-activities/PublicProgramme";
+import { getPublicEventProgramme } from "@/lib/event-activity.functions";
 import {
   ArrowRight,
-  BadgeCheck,
   BookOpen,
   Calendar,
   Church,
   MapPin,
-  MapPinned,
+  Menu,
   Mic2,
   Music2,
-  Presentation,
   Users,
-  Utensils,
-  type LucideIcon,
 } from "lucide-react";
 const SITE_URL = "https://encontrocorosce.lovable.app";
 const SOCIAL_IMAGE_URL = `${SITE_URL}/og-coros-diocesanos-v7.jpg`;
 
 export const Route = createFileRoute("/")({
+  loader: () => getPublicEventProgramme(),
   component: Index,
   head: () => ({
     meta: [
@@ -118,57 +121,30 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const programme = Route.useLoaderData();
   return (
-    <div className="min-h-screen bg-background">
+    <div className="public-event-page min-h-screen bg-background">
       <Header />
       <main>
         <HeroSection />
         <AboutSection />
         <QuixadaSection />
-        <ProgramSection />
-        <RegistrationSection />
+        <PublicProgramme result={programme} />
+        <RegistrationCallout />
         <SponsorsSection />
       </main>
       <Footer />
     </div>
   );
 }
-
 function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const updateHeader = () => setIsScrolled(window.scrollY > 80);
-
-    updateHeader();
-    window.addEventListener("scroll", updateHeader, { passive: true });
-
-    return () => window.removeEventListener("scroll", updateHeader);
-  }, []);
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
-      <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
-        <Link
-          to="/"
-          className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground sm:gap-3 sm:text-lg"
+      <div className="container-event flex h-14 items-center justify-end gap-3 px-4 lg:h-[4.5rem] lg:px-0">
+        <nav
+          aria-label="Navegação principal"
+          className="hidden items-center gap-6 text-sm font-semibold lg:flex"
         >
-          <img
-            src={logoImageLight}
-            alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-            className={`h-9 w-auto shrink-0 transition-all duration-300 sm:h-11 sm:opacity-100 ${
-              isScrolled ? "scale-100 opacity-100" : "scale-75 opacity-0"
-            }`}
-          />
-          <span
-            className={`truncate transition-opacity duration-300 sm:opacity-100 ${
-              isScrolled ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            II ECD-NE1
-          </span>
-        </Link>
-        <nav className="hidden items-center gap-6 text-sm font-semibold lg:flex">
           <a href="#sobre" className="text-muted-foreground transition-colors hover:text-teal">
             Sobre
           </a>
@@ -190,45 +166,71 @@ function Header() {
             asChild
             variant="outline"
             size="sm"
-            className="h-10 min-h-10 rounded-full px-3 text-xs font-bold sm:h-11 sm:px-4 sm:text-sm lg:h-10"
+            className="hidden h-10 min-h-10 rounded-full px-3 text-xs font-bold sm:px-4 sm:text-sm lg:inline-flex lg:h-10"
           >
             <Link to="/acessar">Acessar portal</Link>
           </Button>
           <Button
             asChild
             size="sm"
-            className="h-10 min-h-10 rounded-full bg-amber px-4 text-sm font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 lg:h-10"
+            className="h-10 min-h-10 rounded-full bg-amber px-3 text-xs font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 sm:text-sm lg:h-10"
           >
-            <a href="#inscricao">Inscrever</a>
+            <Link to="/inscricao">Inscrever-se agora</Link>
           </Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Abrir menu"
+                className="size-10 shrink-0 rounded-full border-teal/20 text-teal hover:bg-teal/10 hover:text-teal lg:hidden"
+              >
+                <Menu className="size-5" aria-hidden="true" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              aria-label="Menu principal"
+              className="w-[min(88vw,22rem)] border-teal/10 bg-background px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6"
+            >
+              <SheetHeader className="pr-8 text-left">
+                <SheetTitle className="font-display text-xl font-extrabold">
+                  Menu principal
+                </SheetTitle>
+                <SheetDescription>Explore o encontro ou acesse sua inscrição.</SheetDescription>
+              </SheetHeader>
+              <nav aria-label="Navegação mobile" className="mt-6 grid gap-2">
+                {[
+                  ["Sobre", "#sobre"],
+                  ["Programação", "#programacao"],
+                  ["Quixadá", "#quixada"],
+                  ["Inscrição", "#inscricao"],
+                ].map(([label, href]) => (
+                  <SheetClose key={href} asChild>
+                    <a
+                      href={href}
+                      className="flex min-h-12 items-center rounded-xl border border-border px-4 text-base font-bold text-foreground transition-colors hover:border-teal hover:bg-teal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                    >
+                      {label}
+                    </a>
+                  </SheetClose>
+                ))}
+              </nav>
+              <div className="mt-6 border-t border-border pt-5">
+                <SheetClose asChild>
+                  <Link
+                    to="/acessar"
+                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-teal px-4 text-base font-bold text-teal transition-colors hover:bg-teal hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                  >
+                    Acessar portal
+                  </Link>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-      <nav
-        aria-label="Atalhos mobile"
-        className="scrollbar-none flex gap-1.5 overflow-x-auto border-t border-teal/10 px-4 py-2 text-xs font-bold text-muted-foreground sm:gap-2 lg:hidden"
-      >
-        <a href="#sobre" className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10">
-          Sobre
-        </a>
-        <a
-          href="#quixada"
-          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
-        >
-          Quixadá
-        </a>
-        <a
-          href="#programacao"
-          className="shrink-0 rounded-full bg-white px-4 py-2.5 active:bg-teal/10"
-        >
-          Programação
-        </a>
-        <a
-          href="#inscricao"
-          className="shrink-0 rounded-full bg-amber px-4 py-2.5 text-amber-foreground active:bg-amber/80"
-        >
-          Inscrição
-        </a>
-      </nav>
     </header>
   );
 }
@@ -244,10 +246,10 @@ function HeroSection() {
         size="lg"
         className="h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
       >
-        <a href="#inscricao" className="justify-center">
-          Faça sua inscrição
+        <Link to="/inscricao" className="justify-center">
+          Inscrever-se agora
           <ArrowRight className="ml-2 h-5 w-5" />
-        </a>
+        </Link>
       </Button>
       <Button
         asChild
@@ -353,7 +355,8 @@ function HeroSection() {
           <div className="mt-7 sm:mt-8">
             <div className="flex items-center gap-2 text-sm font-semibold text-white/90 sm:text-base">
               <Users aria-hidden="true" className="h-5 w-5 shrink-0 text-amber" />
-              <span>Coralistas, Instrumentistas e Regentes</span>
+              <span>Regentes coralistas e instrumentistas
+</span>
             </div>
           </div>
         </div>
@@ -393,40 +396,66 @@ function AboutSection() {
             Sobre o encontro
           </span>
           <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
-            Uma celebração da tradição musical sacra
+            Fé, música e comunhão
           </h2>
-          <div className="mt-5 space-y-4 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+          <div className="mx-auto mt-5 max-w-3xl space-y-4 text-left text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             <p>
-              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu para fortalecer a
-              música litúrgica e promover a comunhão entre os coros diocesanos. A iniciativa partiu
-              de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da
-              Comissão Episcopal para a Liturgia do Regional Nordeste 1, e foi idealizada e
-              organizada pelo Pe. Michael Johnny da Silva Souza.
+              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu do desejo de
+              fortalecer a música litúrgica e promover a comunhão entre os músicos que, nas
+              diversas dioceses do Ceará, colocam seus dons a serviço da liturgia.
             </p>
             <p>
-              Realizada pela primeira vez em 2025, em Viçosa do Ceará, a iniciativa reuniu regentes,
-              coralistas e instrumentistas em uma experiência de formação, partilha e fraternidade.
-              Em 2026, essa caminhada continua em Quixadá com o II Encontro, fortalecendo a
-              integração entre as dioceses e valorizando a música como parte essencial da liturgia e
-              instrumento de evangelização.
+              A iniciativa partiu de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e
+              Bispo Referencial da Comissão Episcopal para a Liturgia do Regional Nordeste 1, que
+              incentivou a criação de um espaço dedicado ao encontro, à formação e à integração
+              dos coros diocesanos. A proposta foi idealizada e organizada pelo Pe. Michael Johnny
+              da Silva Souza, que colaborou decisivamente para que esse projeto se tornasse
+              realidade.
+            </p>
+            <p>
+              A primeira edição aconteceu em 2025, na cidade de Viçosa do Ceará, reunindo
+              regentes, coralistas e instrumentistas das dioceses do Ceará. O encontro foi
+              promovido pela Comissão Episcopal para a Liturgia do Regional Nordeste 1 e
+              proporcionou aos participantes uma rica experiência de formação, partilha,
+              fraternidade e convivência.
+            </p>
+            <p>
+              Mais do que um encontro de músicos, a iniciativa tornou-se um espaço de
+              aprofundamento eclesial e formativo, favorecendo o conhecimento e a reflexão sobre
+              aspectos da música sacra e da música litúrgica, bem como sobre a missão daqueles que
+              exercem o ministério do canto e da música nas celebrações. Foi também uma
+              oportunidade para estreitar laços, compartilhar experiências e reconhecer a riqueza
+              dos diferentes coros que servem à Igreja no Ceará.
+            </p>
+            <p>
+              Em 2026, essa caminhada de comunhão e formação tem continuidade com a realização do
+              II Encontro de Coros Diocesanos do Regional Nordeste 1, que tem como sede a Diocese
+              de Quixadá. A segunda edição reafirma o compromisso de promover a formação dos
+              músicos, fortalecer a integração entre os coros das dioceses e valorizar a música
+              como parte essencial da ação litúrgica e como instrumento de evangelização.
+            </p>
+            <p>
+              De Viçosa do Ceará a Quixadá, o Encontro de Coros segue construindo uma história de
+              fé, música, formação, fraternidade e comunhão, fazendo ressoar, através da
+              diversidade de vozes, a unidade da Igreja presente nas dioceses do Ceará.
             </p>
           </div>
         </div>
 
-        <div className="mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
                 <BookOpen className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Formação</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Oficinas com músicos e liturgistas experientes.
+                Conferências e ensaios com o Prof. Clayton Dias.
               </p>
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10 sm:h-14 sm:w-14">
                 <Church className="h-6 w-6 text-emerald sm:h-7 sm:w-7" />
               </div>
@@ -434,37 +463,26 @@ function AboutSection() {
                 Celebração
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Missas e momentos de oração com música sacra.
+                Missas e Liturgias das Horas.
               </p>
             </CardContent>
           </Card>
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber/10 sm:h-14 sm:w-14">
                 <Mic2 className="h-6 w-6 text-amber sm:h-7 sm:w-7" />
               </div>
-              <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">Concerto</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Apresentação especial do repertório sacro.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
-            <CardContent className="p-4 sm:p-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
-                <Users className="h-6 w-6 text-teal sm:h-7 sm:w-7" />
-              </div>
               <h3 className="mt-4 font-display text-lg font-bold text-card-foreground">
-                Comunidade
+                Grande Concerto
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Espaço de encontro entre grupos de todo o Ceará.
+                Coros participantes do evento.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
+        <div className="about-speaker mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
           <img
             src={claytonImage}
             alt="Clayton Dias em interior de igreja"
@@ -478,12 +496,10 @@ function AboutSection() {
               Palestrante Principal
             </span>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
-              Clayton Dias aprofunda o eixo formativo do encontro
+              Clayton Dias
             </h3>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Maestro, pesquisador e professor, Clayton atua em música sacra, canto gregoriano,
-              regência, história da música sacra e musicologia litúrgica. Sua presença conecta
-              prática coral, tradição litúrgica e pesquisa musical.
+              Prof. Dr. Clayton Júnior Dias Doutor em Música (2016), Mestre em Música (2012) e Bacharel em Música com habilitação em Voz (2009) pela Universidade Estadual de Campinas (Unicamp). Atualmente está realizando o estágio de pós-doutorado como pesquisador colaborador do Departamento de História na Unicamp, desenvolvendo pesquisas sobre a música monódica medieval e a arte da memória. Especializou-se em Canto Gregoriano no Centro Francescano Studi di Canto Gregoriano (Assisi – Itália) e atualmente cursa o Master of Advanced Studies em Canto Gregoriano, Paleografia e Semiologia na Scuola Universitaria di Musica della Svizzera Italiana (Lugano – Suíça)
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-sm font-bold text-teal">
               <span className="rounded-full bg-teal/10 px-3 py-1">Canto gregoriano</span>
@@ -540,14 +556,6 @@ const quixadaSpots = [
   },
 ];
 
-const sponsors = [
-  { name: "Unicatolica", logo: unicatolicaLogo },
-  { name: "Pinheiro Supermercado", logo: pinheiroLogo },
-  { name: "Nosso Atacarejo", logo: nossoLogo },
-  { name: "Cultura Quixada", logo: culturaLogo },
-  { name: "Ampliart", logo: ampliartLogo },
-];
-
 const institutionalPartners = [
   { role: "Organização", name: "Coro Diocesano de Quixadá", logo: coroLogo },
   { role: "Apoio institucional", name: "Diocese de Quixadá", logo: dioceseLogo },
@@ -563,18 +571,13 @@ function QuixadaSection() {
               Quixadá, Ceará
             </span>
             <h2 className="mt-5 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-tight text-foreground md:text-5xl">
-              Uma cidade histórica cercada por monólitos
+              Conheça Quixadá
             </h2>
           </div>
           <div className="space-y-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             <p>
-              Fundada e emancipada em 27 de outubro de 1870, Quixadá chega aos 155 anos como uma das
-              paisagens mais reconhecíveis do sertão cearense.
-            </p>
-            <p>
-              A cidade mistura fé, música, literatura, natureza e aventura: entre o Açude Cedro, a
-              Pedra da Galinha Choca, o Santuário Rainha do Sertão e seus grandes monólitos, cada
-              visita tem um cenário próprio.
+              Entre igrejas, o Açude Cedro e os monólitos, Quixadá reúne fé, cultura e paisagens
+              marcantes do sertão cearense.
             </p>
           </div>
         </div>
@@ -613,365 +616,60 @@ function QuixadaSection() {
   );
 }
 
-type ScheduleCategory = "welcome" | "celebration" | "meal" | "conference" | "music" | "visit";
-
-type ScheduleDay = {
-  date: string;
-  weekday: string;
-  items: Array<{
-    time?: string;
-    title: string;
-    category: ScheduleCategory;
-  }>;
-};
-
-const scheduleCategoryPresentation: Record<
-  ScheduleCategory,
-  { label: string; icon: LucideIcon; className: string }
-> = {
-  welcome: {
-    label: "Acolhimento",
-    icon: BadgeCheck,
-    className: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
-  },
-  celebration: {
-    label: "Celebração",
-    icon: Church,
-    className: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
-  },
-  meal: {
-    label: "Refeição",
-    icon: Utensils,
-    className: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300",
-  },
-  conference: {
-    label: "Conferência",
-    icon: Presentation,
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-  },
-  music: {
-    label: "Música",
-    icon: Music2,
-    className: "bg-emerald/10 text-emerald",
-  },
-  visit: {
-    label: "Visita",
-    icon: MapPinned,
-    className: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-  },
-};
-
-const schedule: ScheduleDay[] = [
-  {
-    date: "20 de novembro",
-    weekday: "Sexta-feira",
-    items: [
-      {
-        time: "16h–18h",
-        title: "Credenciamento",
-        category: "welcome",
-      },
-      {
-        time: "18h",
-        title: "Vésperas",
-        category: "celebration",
-      },
-      {
-        time: "18h30",
-        title: "Jantar",
-        category: "meal",
-      },
-      {
-        time: "19h30",
-        title: "Abertura oficial",
-        category: "welcome",
-      },
-      {
-        time: "20h–21h",
-        title: "1ª Conferência",
-        category: "conference",
-      },
-      {
-        title: "Completas",
-        category: "celebration",
-      },
-    ],
-  },
-  {
-    date: "21 de novembro",
-    weekday: "Sábado",
-    items: [
-      {
-        time: "07h",
-        title: "Santa Missa",
-        category: "celebration",
-      },
-      {
-        time: "08h",
-        title: "Café da manhã",
-        category: "meal",
-      },
-      {
-        time: "09h",
-        title: "2ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "10h",
-        title: "Coffee break",
-        category: "meal",
-      },
-      {
-        time: "10h30",
-        title: "3ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "11h30",
-        title: "Ensaio 1",
-        category: "music",
-      },
-      {
-        time: "12h30",
-        title: "Almoço",
-        category: "meal",
-      },
-      {
-        time: "14h",
-        title: "4ª Conferência",
-        category: "conference",
-      },
-      {
-        time: "15h",
-        title: "Ensaio 2",
-        category: "music",
-      },
-      {
-        time: "16h",
-        title: "Coffee break",
-        category: "meal",
-      },
-      {
-        title: "Visita ao Santuário",
-        category: "visit",
-      },
-      {
-        time: "20h",
-        title: "Concerto na Catedral",
-        category: "music",
-      },
-      {
-        title: "Jantar",
-        category: "meal",
-      },
-    ],
-  },
-  {
-    date: "22 de novembro",
-    weekday: "Domingo",
-    items: [
-      {
-        time: "07h30",
-        title: "Laudes",
-        category: "celebration",
-      },
-      {
-        time: "08h",
-        title: "Café da manhã",
-        category: "meal",
-      },
-      {
-        time: "09h",
-        title: "Ensaio 3",
-        category: "music",
-      },
-      {
-        time: "10h",
-        title: "Missa Solene na Catedral",
-        category: "celebration",
-      },
-      {
-        time: "12h",
-        title: "Almoço e despedida",
-        category: "meal",
-      },
-    ],
-  },
-];
-
-function ProgramSection() {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [carouselHeight, setCarouselHeight] = useState<number>();
-
-  useEffect(() => {
-    if (!carouselApi) return;
-
-    const updateCarouselHeight = () => {
-      const selectedSlide = carouselApi.slideNodes()[carouselApi.selectedScrollSnap()];
-      setCarouselHeight(selectedSlide?.offsetHeight);
-    };
-
-    updateCarouselHeight();
-    carouselApi.on("select", updateCarouselHeight);
-    carouselApi.on("reInit", updateCarouselHeight);
-
-    return () => {
-      carouselApi.off("select", updateCarouselHeight);
-      carouselApi.off("reInit", updateCarouselHeight);
-    };
-  }, [carouselApi]);
-
-  return (
-    <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16">
-      <div className="container-event px-4 lg:px-0">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald">
-            <Calendar aria-hidden="true" className="h-4 w-4" />
-            20–22 NOV 2026
-          </span>
-          <h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Programação
-          </h2>
-          <p className="mt-2 text-base text-muted-foreground sm:text-lg">
-            Confira as atividades do encontro de 20 a 22 de novembro de 2026.
-          </p>
-        </div>
-        <Carousel
-          opts={{ align: "start", loop: false }}
-          setApi={setCarouselApi}
-          style={{ height: carouselHeight }}
-          className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"
-        >
-          <CarouselContent className="items-start">
-            {schedule.map((day, index) => (
-              <CarouselItem key={index} className="basis-[92%] sm:basis-[88%]">
-                <ProgramDayCard day={day} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-
-        <div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">
-          {schedule.map((day, index) => (
-            <ProgramDayCard key={index} day={day} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProgramDayCard({ day }: { day: (typeof schedule)[number] }) {
-  return (
-    <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
-      <div className="bg-teal px-5 py-3.5">
-        <p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p>
-        <h3 className="mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">
-          {day.date}
-        </h3>
-      </div>
-      <CardContent className="p-4 sm:p-5">
-        <div className="divide-y divide-border/70">
-          {day.items.map((item, itemIndex) => {
-            const category = scheduleCategoryPresentation[item.category];
-            const ActivityIcon = category.icon;
-
-            return (
-              <div
-                key={itemIndex}
-                className="grid grid-cols-[3.75rem_1.55rem_minmax(0,1fr)] items-center gap-2.5 py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-muted/45"
-              >
-                <span className="whitespace-nowrap font-body text-xs font-bold tabular-nums text-teal">
-                  {item.time ?? "Na sequência"}
-                </span>
-                <span
-                  role="img"
-                  aria-label={category.label}
-                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${category.className}`}
-                >
-                  <ActivityIcon aria-hidden="true" className="h-4 w-4" strokeWidth={2.25} />
-                </span>
-                <h4 className="min-w-0 font-body text-sm font-semibold leading-snug text-card-foreground sm:text-[0.95rem]">
-                  {item.title}
-                </h4>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function SponsorsSection() {
   return (
     <section id="patrocinadores" className="section-padding bg-muted/50">
-      <div className="container-event space-y-8 px-4 lg:px-0">
-        <div className="grid gap-6 rounded-xl bg-foreground p-5 text-white sm:p-7 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
-          <div>
+      <div className="container-event px-4 lg:px-0">
+        <div className="rounded-xl border border-border bg-card p-5 sm:p-7 lg:p-10">
+          <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/15 px-4 py-1.5 text-sm font-bold text-amber">
-              Apoio e organização
+              Apoio, organização e patrocínio
             </span>
-            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight sm:text-4xl">
-              Instituições que conduzem o encontro
+            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.75rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
+              Quem realiza o encontro
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/72 sm:text-lg">
-              A realização nasce do trabalho conjunto entre o Coro Diocesano de Quixadá e a Diocese
-              de Quixadá.
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Uma realização do Coro Diocesano de Quixadá e da Diocese de Quixadá, com o apoio de
+              nossos parceiros.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {institutionalPartners.map((partner) => (
-              <article
-                key={partner.name}
-                className="flex min-h-36 flex-col justify-between rounded-xl bg-white p-5 text-foreground"
-              >
-                <span className="text-sm font-bold text-teal">{partner.role}</span>
-                <div className="mt-4 flex min-h-24 items-center justify-center">
-                  <img
-                    src={partner.logo}
-                    alt={partner.name}
-                    className="max-h-24 w-full object-contain"
-                    loading="lazy"
-                  />
-                </div>
-                <h3 className="mt-4 font-display text-xl font-extrabold leading-tight">
-                  {partner.name}
+          <div className="mt-9 space-y-9 sm:mt-11 sm:space-y-11">
+            <div>
+              <div className="flex items-center gap-4">
+                <h3 className="shrink-0 font-body text-xs font-extrabold uppercase text-muted-foreground">
+                  Organização e apoio institucional
                 </h3>
-              </article>
-            ))}
-          </div>
-        </div>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                {institutionalPartners.map((partner) => (
+                  <article
+                    key={partner.name}
+                    className="group flex items-center gap-4 rounded-xl border border-border bg-background p-4 text-left text-foreground transition-all duration-300 hover:-translate-y-1.5 hover:border-amber hover:shadow-lg hover:shadow-amber/10 motion-reduce:transform-none motion-reduce:transition-none sm:gap-6 sm:p-6"
+                  >
+                    <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-2 transition-colors duration-300 group-hover:bg-amber/5 sm:h-24 sm:w-32 sm:p-3">
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground sm:text-xs">
+                        {partner.role}
+                      </p>
+                      <h4 className="mt-1 font-display text-base font-extrabold leading-tight sm:text-xl">
+                        {partner.name}
+                      </h4>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-8">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
-              Patrocinadores
-            </span>
-            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.5rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
-              Quem ajuda esta musica chegar mais longe
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-              O encontro tambem e construido por parceiros que valorizam cultura, formacao e vida
-              comunitaria em Quixada.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-            {sponsors.map((sponsor) => (
-              <article
-                key={sponsor.name}
-                className="flex min-h-24 items-center justify-center rounded-xl border border-border bg-card p-4 sm:min-h-32 sm:p-5"
-              >
-                <img
-                  src={sponsor.logo}
-                  alt={sponsor.name}
-                  className="max-h-16 w-full object-contain sm:max-h-20"
-                  loading="lazy"
-                />
-              </article>
-            ))}
+            <PublicSponsorsSection />
           </div>
         </div>
       </div>

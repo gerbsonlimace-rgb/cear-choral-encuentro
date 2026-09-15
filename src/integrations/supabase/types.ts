@@ -160,6 +160,241 @@ export type Database = {
         }
         Relationships: []
       }
+      coroapp_event_sources: {
+        Row: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          event_id?: string
+          event_name?: string
+          public_url?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      event_activities: {
+        Row: {
+          activity_date: string
+          category: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          qr_version: number
+          radius_meters: number | null
+          requires_qr: boolean
+          sort_order: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+          verify_location: boolean
+        }
+        Insert: {
+          activity_date: string
+          category: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          qr_version?: number
+          radius_meters?: number | null
+          requires_qr?: boolean
+          sort_order?: number
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+          verify_location?: boolean
+        }
+        Update: {
+          activity_date?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          qr_version?: number
+          radius_meters?: number | null
+          requires_qr?: boolean
+          sort_order?: number
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+          verify_location?: boolean
+        }
+        Relationships: []
+      }
+      event_activity_attendances: {
+        Row: {
+          accuracy_meters: number | null
+          activity_id: string
+          checked_in_at: string
+          distance_meters: number | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          participant_account_id: string
+          position_collected_at: string | null
+          qr_version: number
+          registration_id: string
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          activity_id: string
+          checked_in_at?: string
+          distance_meters?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          participant_account_id: string
+          position_collected_at?: string | null
+          qr_version: number
+          registration_id: string
+        }
+        Update: {
+          accuracy_meters?: number | null
+          activity_id?: string
+          checked_in_at?: string
+          distance_meters?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          participant_account_id?: string
+          position_collected_at?: string | null
+          qr_version?: number
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_activity_attendances_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "event_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_activity_attendances_participant_account_id_fkey"
+            columns: ["participant_account_id"]
+            isOneToOne: false
+            referencedRelation: "participant_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_activity_attendances_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_documents: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          id: string
+          mime_type: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          mime_type?: string
+          original_file_name: string
+          size_bytes: number
+          storage_path: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          mime_type?: string
+          original_file_name?: string
+          size_bytes?: number
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      event_notices: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          is_published?: boolean
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       event_registration_settings: {
         Row: {
           created_at: string
@@ -386,7 +621,9 @@ export type Database = {
           order_nsu: string | null
           paid_amount_cents: number | null
           paid_at: string | null
+          payment_origin?: string
           payment_method: string | null
+          manual_paid_by?: string | null
           payment_status: string
           phone: string
           photo_path: string | null
@@ -422,7 +659,9 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_origin?: string
           payment_method?: string | null
+          manual_paid_by?: string | null
           payment_status?: string
           phone: string
           photo_path?: string | null
@@ -458,7 +697,9 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_origin?: string
           payment_method?: string | null
+          manual_paid_by?: string | null
           payment_status?: string
           phone?: string
           photo_path?: string | null
@@ -545,6 +786,10 @@ export type Database = {
         Args: { p_claim_id: string; p_registration_id: string }
         Returns: boolean
       }
+      delete_admin_registration: {
+        Args: { p_admin_user_id: string; p_registration_id: string }
+        Returns: string
+      }
       finish_choir_regent_password_operation: {
         Args: {
           p_membership_id: string
@@ -553,6 +798,35 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      increment_event_activity_qr_version: {
+        Args: { p_activity_id: string }
+        Returns: {
+          activity_date: string
+          category: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          qr_version: number
+          radius_meters: number | null
+          requires_qr: boolean
+          sort_order: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+          verify_location: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_activities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mark_choir_regent_admin_password_operation_retryable: {
         Args: {
@@ -571,6 +845,24 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      record_event_activity_attendance: {
+        Args: {
+          p_accuracy_meters?: number
+          p_activity_id: string
+          p_latitude?: number
+          p_longitude?: number
+          p_participant_account_id: string
+          p_position_collected_at?: string
+          p_qr_version: number
+          p_registration_id: string
+        }
+        Returns: {
+          activity_title: string
+          checked_in_at: string
+          distance_meters: number
+          status: string
+        }[]
       }
       release_choir_regent_admin_password_candidate_operation: {
         Args: {
@@ -630,6 +922,23 @@ export type Database = {
           to: "choir_regents"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      replace_coroapp_event_sources: {
+        Args: { p_admin_user_id: string; p_sources: Json }
+        Returns: {
+          event_id: string
+          event_name: string
+          public_url: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "coroapp_event_sources"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       verify_choir_regent_password_operation_candidate: {

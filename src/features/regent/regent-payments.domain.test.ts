@@ -98,25 +98,30 @@ describe("complement balance", () => {
       }),
     ).toMatchObject({ totalCents: 20_000, paidCents: 2_000, balanceCents: 18_000, openPayment });
   });
+
+  it("preserves a one-cent complement balance through the shared financial state", () => {
+    expect(
+      calculateComplementState({
+        ...paidPromotionalRegistration,
+        confirmedComplementCents: 19_999,
+      }),
+    ).toEqual({
+      eligible: true,
+      totalCents: 20_000,
+      paidCents: 19_999,
+      balanceCents: 1,
+    });
+  });
 });
 
 describe("complement checkout and presentation", () => {
-  it("accepts only a strict UUID and positive integer cents", () => {
+  it("accepts only a strict registration UUID and rejects a browser amount", () => {
     const registrationId = "11111111-1111-4111-8111-111111111111";
+    expect(complementCheckoutSchema.safeParse({ registrationId }).success).toBe(true);
     expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 1 }).success).toBe(
-      true,
-    );
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 0 }).success).toBe(
       false,
     );
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: 1.5 }).success).toBe(
-      false,
-    );
-    expect(
-      complementCheckoutSchema.safeParse({ registrationId: "registration-1", amountCents: 1 })
-        .success,
-    ).toBe(false);
-    expect(complementCheckoutSchema.safeParse({ registrationId, amountCents: -1 }).success).toBe(
+    expect(complementCheckoutSchema.safeParse({ registrationId: "registration-1" }).success).toBe(
       false,
     );
   });

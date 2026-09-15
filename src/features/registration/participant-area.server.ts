@@ -20,9 +20,9 @@ export type ParticipantLoginResult =
   | { ok: false; message: string };
 
 export const INVALID_PARTICIPANT_CREDENTIALS =
-  "E-mail ou senha incorretos. A senha é o seu CPF seguido da data de nascimento (ex.: 12345678909 20031990).";
+  "E-mail ou senha incorretos. A senha inicial é o seu CPF seguido do ano de nascimento com quatro dígitos (ex.: 12345678909 1990).";
 
-/** Accepted password shapes: CPF digits + birth date as ddmmyyyy, yyyymmdd or ddmmyy. */
+/** Accept the current initial password (CPF digits + four-digit birth year) and legacy formats. */
 export function participantPasswordMatches(input: string, cpf: string, birthDate: string) {
   const digits = input.replace(/\D/g, "");
   const cpfDigits = cpf.replace(/\D/g, "");
@@ -30,6 +30,7 @@ export function participantPasswordMatches(input: string, cpf: string, birthDate
   if (!year || !month || !day) return false;
 
   const candidates = [
+    `${cpfDigits}${year}`,
     `${cpfDigits}${day}${month}${year}`,
     `${cpfDigits}${year}${month}${day}`,
     `${cpfDigits}${day}${month}${year.slice(2)}`,

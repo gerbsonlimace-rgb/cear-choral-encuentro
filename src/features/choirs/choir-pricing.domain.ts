@@ -68,9 +68,12 @@ export const displayedQuoteSchema = z
   })
   .strict();
 
+export const raffleChoiceSchema = z.enum(["participate", "full_price"]);
+
 export type PricingSettings = z.infer<typeof pricingSettingsSchema>;
 export type ChoirMutation = z.infer<typeof choirMutationSchema>;
 export type DisplayedQuote = z.infer<typeof displayedQuoteSchema>;
+export type RaffleChoice = z.infer<typeof raffleChoiceSchema>;
 export type ResolvedChoirPrice = DisplayedQuote;
 
 export type AdminChoir = ChoirMutation & {
@@ -140,5 +143,23 @@ export function resolveChoirPrice(
     pricingType: "standard",
     standardPriceCents: settings.standardPriceCents,
     registrationPriceCents: settings.standardPriceCents,
+  };
+}
+
+export function applyRaffleChoice(
+  availableQuote: DisplayedQuote,
+  choice: RaffleChoice,
+): DisplayedQuote {
+  if (choice === "participate") {
+    if (availableQuote.pricingType !== "promotional") {
+      throw new Error("O programa de rifas não está disponível para este coro.");
+    }
+    return availableQuote;
+  }
+
+  return {
+    pricingType: "standard",
+    standardPriceCents: availableQuote.standardPriceCents,
+    registrationPriceCents: availableQuote.standardPriceCents,
   };
 }

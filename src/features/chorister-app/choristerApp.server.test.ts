@@ -35,6 +35,7 @@ function createServer(
 ) {
   return createChoristerAppServer({
     participantAccess: access,
+    eventId: body.event.id,
     fetchImpl,
     clock: () => now,
     env: {
@@ -45,10 +46,61 @@ function createServer(
 }
 
 describe("chorister app server", () => {
+  it.each([502, 503, 504])("recovers automatically from a transient HTTP %s", async (status) => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({}, status))
+      .mockResolvedValueOnce(response(body));
+    await expect(createServer(fetchImpl, undefined,
+      `https://coroapp-retry-${status}.example.test/feed`).load()).resolves.toEqual(body);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers automatically from a network failure", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(response(body));
+    await expect(createServer(fetchImpl, undefined,
+      "https://coroapp-network-retry.example.test/feed").load()).resolves.toEqual(body);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("limits automatic attempts and records only safe diagnostic fields", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({ secret: "PRIVATE_DETAIL" }, 503));
+    await expect(createServer(fetchImpl, undefined,
+      "https://coroapp-retry-limit.example.test/feed").load()).resolves.toEqual({ status: "unavailable" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith("[CoroApp feed]", expect.objectContaining({
+      eventId: body.event.id, reason: "http_error", httpStatus: 503, attempt: 2,
+    }));
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/PRIVATE_DETAIL|shared-secret/);
+  });
+
+  it("does not retry an authentication rejection", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({}, 401));
+    await expect(createServer(fetchImpl, undefined,
+      "https://coroapp-unauthorized.example.test/feed").load()).resolves.toEqual({ status: "unavailable" });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("reports missing server configuration without contacting the upstream service", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const fetchImpl = vi.fn<typeof fetch>();
+    await expect(createChoristerAppServer({
+      participantAccess: access, eventId: body.event.id, fetchImpl,
+      clock: () => new Date(), env: {},
+    }).load()).resolves.toEqual({ status: "unavailable" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith("[CoroApp feed]", expect.objectContaining({
+      reason: "configuration_missing", endpointConfigured: false, secretConfigured: false,
+    }));
+  });
+
   it("does not call CoroApp without authorized participant access", async () => {
     const fetchImpl = vi.fn<typeof fetch>();
     const server = createChoristerAppServer({
       participantAccess: { status: "unavailable" },
+      eventId: body.event.id,
       fetchImpl,
       clock: () => new Date("2026-01-01T00:00:00.000Z"),
       env: process.env,
@@ -58,18 +110,20 @@ describe("chorister app server", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("signs the fixed POST feed request and returns only validated feed data", async () => {
+  it("binds the configured event identifier into the signed feed path", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response(body));
     const server = createServer(fetchImpl);
 
     await expect(server.load()).resolves.toEqual(body);
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe("https://coroapp.example.test/functions/v1/chorister-portal-feed");
+    expect(url).toBe(
+      `https://coroapp.example.test/functions/v1/chorister-portal-feed/${body.event.id}`,
+    );
     expect(init?.method).toBe("POST");
     expect(init?.body).toBeUndefined();
     expect(new Headers(init?.headers).get("x-portal-timestamp")).toBe("1767225600");
     expect(new Headers(init?.headers).get("x-portal-signature")).toBe(
-      "388231693f934c0a5c87a3a5372bbbdd4e634ccad63cdc05c1cebff32b6cb86f",
+      "85a2fd6627cfa0406c740e592f1d3e6de166c5615c3d432ec1c99a5172a5ea6b",
     );
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
@@ -79,6 +133,7 @@ describe("chorister app server", () => {
     let now = new Date("2026-01-01T00:00:00.000Z");
     const server = createChoristerAppServer({
       participantAccess: access,
+      eventId: body.event.id,
       fetchImpl,
       clock: () => now,
       env: {

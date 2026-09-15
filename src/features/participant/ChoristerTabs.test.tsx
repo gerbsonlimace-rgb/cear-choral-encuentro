@@ -58,6 +58,20 @@ const feed: ChoristerPortalFeed = {
             signedUrl: "https://assets.example.test/tenor.mp3",
             expiresAt: future,
           },
+          {
+            id: "12121212-1212-4212-8212-121212121212",
+            title: "Contralto",
+            voicePart: "contralto",
+            signedUrl: "https://assets.example.test/contralto.mp3",
+            expiresAt: future,
+          },
+          {
+            id: "13131313-1313-4313-8313-131313131313",
+            title: "Baixo",
+            voicePart: "baixo",
+            signedUrl: "https://assets.example.test/baixo.mp3",
+            expiresAt: future,
+          },
         ],
         sheetMusic: [
           {
@@ -157,6 +171,183 @@ function setup() {
 }
 
 describe("ChoristerSongsTab", () => {
+  it.each([false, true])(
+    "downloads the selected voice without starting playback (expired: %s)",
+    async (expired) => {
+      const user = userEvent.setup();
+      const songs = feed.event.songs.map((song) => ({
+        ...song,
+        audios: song.audios.map((audio) => ({
+          ...audio,
+          expiresAt: expired ? "2020-01-01T00:00:00Z" : future,
+        })),
+      }));
+      const onPlay = vi.fn();
+      const tenor = feed.event.songs[1].audios[1];
+      const renew = vi
+        .fn()
+        .mockResolvedValue({
+          ...tenor,
+          signedUrl: "https://assets.example.test/renewed-tenor.mp3?token=example",
+        });
+      const downloads: { href: string; filename: string }[] = [];
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, filename: this.download });
+      });
+      render(
+        <ChoristerSongsTab
+          songs={songs}
+          onPlay={onPlay}
+          onOpenSong={vi.fn()}
+          onOpenScore={vi.fn()}
+          onRenewAudio={renew}
+        />,
+      );
+      await user.click(screen.getByRole("radio", { name: "Tenor" }));
+      await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+      await user.click(screen.getByRole("menuitem", { name: "Baixar áudio" }));
+      await waitFor(() => expect(downloads).toHaveLength(1));
+      const url = new URL(downloads[0].href);
+      expect(url.pathname).toBe(expired ? "/renewed-tenor.mp3" : "/tenor.mp3");
+      expect(url.searchParams.get("download")).toBe("Canto de entrada - Tenor.mp3");
+      expect(downloads[0].filename).toBe("Canto de entrada - Tenor.mp3");
+      if (expired) {
+        expect(url.searchParams.get("token")).toBe("example");
+        expect(renew).toHaveBeenCalledExactlyOnceWith(tenor.id);
+      } else expect(renew).not.toHaveBeenCalled();
+      expect(onPlay).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not download an expired audio when renewal fails", async () => {
+    const user = userEvent.setup();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const songs = feed.event.songs.map((song) => ({
+      ...song,
+      audios: song.audios.map((audio) => ({ ...audio, expiresAt: "2020-01-01T00:00:00Z" })),
+    }));
+    render(
+      <ChoristerSongsTab
+        songs={songs}
+        onPlay={vi.fn()}
+        onOpenSong={vi.fn()}
+        onOpenScore={vi.fn()}
+        onRenewAudio={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Baixar áudio" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível baixar o áudio");
+    expect(click).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Opções de Salmo responsorial" }));
+    expect(screen.getByRole("menuitem", { name: "Baixar áudio" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("discards a pending download when leaving the song list", async () => {
+    const user = userEvent.setup();
+    const audio = feed.event.songs[1].audios[0];
+    let resolveRenewal!: (asset: typeof audio) => void;
+    const pending = new Promise<typeof audio>((resolve) => {
+      resolveRenewal = resolve;
+    });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const songs = feed.event.songs.map((song) => ({
+      ...song,
+      audios: song.audios.map((item) => ({ ...item, expiresAt: "2020-01-01T00:00:00Z" })),
+    }));
+    const view = render(
+      <ChoristerSongsTab
+        songs={songs}
+        onPlay={vi.fn()}
+        onOpenSong={vi.fn()}
+        onOpenScore={vi.fn()}
+        onRenewAudio={() => pending}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Baixar áudio" }));
+    view.unmount();
+    await act(async () => {
+      resolveRenewal(audio);
+      await pending;
+    });
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it("matches the compact CoroApp song-group browser", () => {
+    setup();
+
+    const playlist = screen.getByRole("region", { name: "Músicas do evento" });
+    expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
+    expect(screen.getByText("2 cantos")).toBeInTheDocument();
+    expect(within(playlist).getByText("Entrada")).toBeInTheDocument();
+    expect(
+      within(playlist).queryByRole("img", {
+        name: "Miniatura musical neutra de Canto de entrada",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Contralto de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Tenor de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tocar Baixo de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tocar Principal" })).not.toBeInTheDocument();
+    for (const voice of ["Soprano", "Contralto", "Tenor", "Baixo"]) {
+      expect(screen.getByRole("radio", { name: voice })).toHaveAttribute(
+        "aria-checked",
+        voice === "Soprano" ? "true" : "false",
+      );
+    }
+    expect(screen.getByText("Sem áudio para Soprano.")).toBeInTheDocument();
+  });
+
+  it("selects the useful first-available voice when the participant has no voice", () => {
+    setup();
+
+    expect(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" })).toHaveClass(
+      "size-11",
+      "rounded-lg",
+      "bg-zinc-100",
+    );
+    expect(screen.getByRole("radio", { name: "Soprano" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("starts with the authenticated participant voice when that voice is available", () => {
+    render(
+      <ChoristerSongsTab
+        songs={feed.event.songs}
+        initialVoicePart="contralto"
+        onPlay={vi.fn()}
+        onOpenSong={vi.fn()}
+        onOpenScore={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: "Contralto" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Tocar Contralto de Canto de entrada" }),
+    ).toBeInTheDocument();
+  });
+
   it("orders songs from the feed and filters them locally by search", async () => {
     const { user } = setup();
     expect(
@@ -175,25 +366,33 @@ describe("ChoristerSongsTab", () => {
   it("filters available audio by voice and emits only asset identifiers for read-only actions", async () => {
     const { onOpenScore, onOpenSong, onPlay, user } = setup();
 
-    await user.click(screen.getByRole("combobox", { name: "Filtrar por naipe" }));
-    await user.click(await screen.findByRole("option", { name: "Tenor" }));
-    expect(screen.queryByRole("button", { name: "Tocar Soprano" })).not.toBeInTheDocument();
-    const playButton = screen.getByRole("button", { name: "Tocar Tenor" });
-    expect(playButton).toHaveClass("min-h-11");
+    await user.click(screen.getByRole("radio", { name: "Tenor" }));
+    expect(
+      screen.queryByRole("button", { name: "Tocar Soprano de Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Salmo responsorial", level: 3 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Sem áudio para Tenor.")).toBeInTheDocument();
+    const playButton = screen.getByRole("button", { name: "Tocar Tenor de Canto de entrada" });
+    expect(playButton).toHaveClass("size-11", "rounded-lg", "bg-zinc-100");
     await user.click(playButton);
-    await user.click(screen.getByRole("button", { name: "Abrir canto Canto de entrada" }));
-    await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
+    expect(
+      screen.queryByRole("button", { name: "Abrir canto Canto de entrada" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abrir partitura de Canto de entrada" }),
+    ).not.toBeInTheDocument();
 
     expect(onPlay).toHaveBeenCalledExactlyOnceWith("55555555-5555-4555-8555-555555555555");
-    expect(onOpenSong).toHaveBeenCalledExactlyOnceWith("33333333-3333-4333-8333-333333333333");
-    expect(onOpenScore).toHaveBeenCalledExactlyOnceWith("66666666-6666-4666-8666-666666666666");
+    expect(onOpenSong).not.toHaveBeenCalled();
+    expect(onOpenScore).not.toHaveBeenCalled();
   });
 
-  it("keeps every voice option at the 44px minimum touch target", async () => {
-    const { user } = setup();
+  it("keeps every CoroApp voice filter at the 44px minimum touch target", () => {
+    setup();
 
-    await user.click(screen.getByRole("combobox", { name: "Filtrar por naipe" }));
-    for (const option of screen.getAllByRole("option")) {
+    for (const option of screen.getAllByRole("radio")) {
       expect(option).toHaveClass("min-h-11");
     }
   });
@@ -205,13 +404,25 @@ describe("ChoristerSongsTab", () => {
       screen.queryByRole("button", { name: /enviar|upload|editar|remover/i }),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Cantos publicados" })).getAllByRole("button")
+      within(screen.getByRole("region", { name: "Músicas do evento" })).getAllByRole("button")
         .length,
     ).toBeGreaterThan(0);
   });
 });
 
 describe("ChoristerScoresTab", () => {
+  it("opens a valid PDF immediately without renewing and reloading its iframe", async () => {
+    const onOpen = vi.fn();
+    const user = userEvent.setup();
+    render(<ChoristerScoresTab event={scoreFeed.event} onOpen={onOpen} onDownload={vi.fn()} />);
+    await user.click(screen.getAllByRole("button", { name: "Abrir" })[0]);
+    expect(screen.getByTitle("PDF Partitura")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/score.pdf",
+    );
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it("groups published scores by song and documents by their feed order", () => {
     const onOpen = vi.fn();
     const onDownload = vi.fn();
@@ -312,12 +523,9 @@ describe("ChoristerScoresTab", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps one renewal per viewer when an iframe fails before its initial request resolves", async () => {
+  it("ignores a failed viewer's pending renewal after switching to another valid PDF", async () => {
     const firstAsset = scoreFeed.event.songs[1].sheetMusic[0];
-    const newerAsset = {
-      ...scoreFeed.event.songs[2].sheetMusic[0],
-      signedUrl: "https://assets.example.test/newer-score.pdf",
-    };
+    const newerAsset = scoreFeed.event.songs[2].sheetMusic[0];
     let resolveFirst: (asset: typeof firstAsset) => void = () => undefined;
     const firstRequest = new Promise<typeof firstAsset>((resolve) => {
       resolveFirst = resolve;
@@ -335,9 +543,7 @@ describe("ChoristerScoresTab", () => {
     const firstViewer = await within(view.container).findByTitle("PDF Partitura");
     fireEvent(firstViewer, new Event("error", { bubbles: true }));
 
-    expect(await within(view.container).findByRole("alert")).toHaveTextContent(
-      "Não foi possível abrir este PDF",
-    );
+    expect(within(view.container).getByText("Atualizando acesso ao PDF…")).toBeInTheDocument();
     expect(onOpen.mock.calls.filter(([asset]) => asset.id === firstAsset.id)).toHaveLength(1);
 
     await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[1]);
@@ -534,6 +740,33 @@ describe("ChoristerScoresTab", () => {
 });
 
 describe("ChoristerProfileTab", () => {
+  it("offers a return to administration only for a participant who is also an admin", async () => {
+    const onOpenAdmin = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Ir para administração" })).not.toBeInTheDocument();
+
+    rerender(
+      <ChoristerProfileTab
+        participant={participant}
+        onChangePassword={vi.fn()}
+        onDownloadReceipt={vi.fn()}
+        onLogout={vi.fn()}
+        onOpenAdmin={onOpenAdmin}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Ir para administração" }));
+    expect(onOpenAdmin).toHaveBeenCalledOnce();
+  });
+
   it("keeps the existing neutral identity fallback when a private profile photo is unavailable", () => {
     render(
       <ChoristerProfileTab

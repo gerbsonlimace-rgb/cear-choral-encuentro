@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useLayoutEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PaymentLookup } from "./registration.domain";
+import { REGISTRATION_DRAFT_STORAGE_KEY } from "./registration-draft";
 import { PaymentConfirmationPage } from "./PaymentConfirmationPage";
 
 const lookup: PaymentLookup = {
@@ -20,6 +21,39 @@ const nextLookup: PaymentLookup = {
 };
 
 describe("PaymentConfirmationPage", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("offers portal and WhatsApp shortcuts after payment verification", async () => {
+    const whatsappGroupUrl = "https://chat.whatsapp.com/example-invite";
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      participantAccessStatus: "active",
+      whatsappGroupUrl,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Acessar portal" })).toHaveAttribute("href", "/acessar");
+    const groupLink = screen.getByRole("link", { name: "Entrar no grupo do WhatsApp" });
+    expect(groupLink).toHaveAttribute("href", whatsappGroupUrl);
+    expect(groupLink).toHaveAttribute("target", "_blank");
+    expect(groupLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not invent a group invitation when the server returns none", async () => {
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={vi.fn().mockResolvedValue({
+      status: "paid", paymentMethod: "pix", installments: 1, participantAccessStatus: "active",
+    })} />);
+
+    await screen.findByText("Inscrição confirmada");
+    expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
+  });
+
   it("explains when the payment lookup is missing and offers a way home", () => {
     render(<PaymentConfirmationPage lookup={null} verifyPayment={vi.fn()} />);
 
@@ -41,6 +75,58 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.queryByText("transaction-123")).not.toBeInTheDocument();
   });
 
+  it("clears the saved registration draft after payment is confirmed", async () => {
+    window.localStorage.setItem(REGISTRATION_DRAFT_STORAGE_KEY, "saved draft");
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(window.localStorage.getItem(REGISTRATION_DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it("shows an honest paid promotional pre-registration confirmation", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      pricingType: "promotional" as const,
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
+    expect(screen.getByText("Acesso ao app liberado")).toBeVisible();
+    expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
+    expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+    expect(screen.queryByText("Vaga confirmada")).not.toBeInTheDocument();
+  });
+
+  it("shows a settled standard registration without a remaining-value message", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      pricingType: "standard" as const,
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
+    expect(screen.getByText("Vaga confirmada")).toBeVisible();
+    expect(screen.queryByText(/Valor restante:/)).not.toBeInTheDocument();
+  });
+
   it("shows a branded confirmation with registration details, export, and Coralista access", async () => {
     const downloadReceipt = vi.fn().mockResolvedValue(undefined);
     const verifyPayment = vi.fn().mockResolvedValue({
@@ -49,6 +135,7 @@ describe("PaymentConfirmationPage", () => {
       installments: 1,
       participantAccessStatus: "active" as const,
       participantName: "Maria de Lourdes",
+      participantEmail: "maria@example.com",
       choirName: "Coro Diocesano de Quixadá",
       amountCents: 12000,
       paidAmountCents: 12000,
@@ -76,7 +163,73 @@ describe("PaymentConfirmationPage", () => {
     await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(1));
   });
 
-  it("shows the portal link and initial password only after participant access is active", async () => {
+  it("keeps processing and confirmed states in one animated shell", async () => {
+    let resolvePayment!: (status: {
+      status: "paid";
+      paymentMethod: "pix";
+      installments: 1;
+      participantAccessStatus: "active";
+      pricingType: "standard";
+      standardPriceCents: 30000;
+      registrationPriceCents: 30000;
+    }) => void;
+    const verifyPayment = vi.fn(
+      () =>
+        new Promise<{
+          status: "paid";
+          paymentMethod: "pix";
+          installments: 1;
+          participantAccessStatus: "active";
+          pricingType: "standard";
+          standardPriceCents: 30000;
+          registrationPriceCents: 30000;
+        }>((resolve) => {
+          resolvePayment = resolve;
+        }),
+    );
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+    const shell = screen.getByTestId("payment-confirmation-shell");
+    expect(shell).toHaveAttribute("data-confirmation-state", "processing");
+
+    resolvePayment({
+      status: "paid",
+      paymentMethod: "pix",
+      installments: 1,
+      participantAccessStatus: "active",
+      pricingType: "standard",
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
+    });
+
+    await waitFor(() => expect(shell).toHaveAttribute("data-confirmation-state", "paid"));
+    expect(screen.getByText("Inscrição confirmada")).toBeVisible();
+  });
+
+  it("shows the participant app credentials guidance in a second column", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "active" as const,
+      participantEmail: "maria@example.com",
+    });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Acesso ao App do Coralista" }),
+    ).toBeVisible();
+    expect(screen.getByTestId("confirmation-columns")).toHaveClass("lg:grid-cols-2");
+    expect(screen.getByText("maria@example.com")).toBeVisible();
+    expect(screen.getByText("CPF + ano de nascimento (AAAA)")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Acessar o app do Coralista" })).toHaveAttribute(
+      "href",
+      "/acessar",
+    );
+  });
+
+  it("offers unified portal access only after participant access is active", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
       paymentMethod: "pix" as const,
@@ -94,6 +247,35 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.getByText("Senha inicial")).toBeVisible();
     expect(screen.getByText("5299822472515011990")).toBeVisible();
   });
+
+  it.each([
+    [
+      "pending",
+      "Seu pagamento foi confirmado. Estamos preparando seu acesso à área do participante.",
+    ],
+    ["conflict", "Seu acesso precisa de atendimento da organização."],
+  ] as const)(
+    "keeps a paid promotional pre-registration honest while access is %s",
+    async (participantAccessStatus, message) => {
+      const verifyPayment = vi.fn().mockResolvedValue({
+        status: "paid" as const,
+        paymentMethod: "pix" as const,
+        installments: 1,
+        participantAccessStatus,
+        pricingType: "promotional" as const,
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+      });
+
+      render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+      expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
+      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
+      expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+      expect(screen.queryByText("Acesso ao app liberado")).not.toBeInTheDocument();
+    },
+  );
 
   it.each([
     [
