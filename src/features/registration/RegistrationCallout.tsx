@@ -8,6 +8,7 @@ import {
   Check,
   CreditCard,
   Music2,
+  Send,
   ShoppingBag,
   Sparkles,
   Ticket,
@@ -24,35 +25,31 @@ const benefits = [
   { icon: ShoppingBag, label: "Kit do evento" },
 ];
 
-const raffleSteps = [
+const raffleSummary = [
   {
     icon: CreditCard,
-    title: "Faça o pagamento inicial",
-    description: "Pague agora R$ 100 no Pix ou cartão.",
+    label: "Pague R$ 100",
+    detail: "agora",
   },
   {
     icon: CalendarDays,
-    title: "Receba seus blocos de rifas",
-    description: "Agende com seu regente um momento para receber os blocos de rifas.",
+    label: "Agende com o regente",
+    detail: "e receba os blocos",
   },
   {
     icon: Ticket,
-    title: "Venda as rifas",
-    description:
-      "Venda pelo menos 25 rifas, no valor de R$ 10 cada, e entregue ao seu regente todo o valor arrecadado até 30/10.",
+    label: "Venda 25 rifas",
+    detail: "de R$ 10 cada",
   },
   {
-    icon: Award,
-    title: "Confirme sua inscrição e participe da venda extra",
-    description:
-      "A venda mínima de 25 rifas é obrigatória para subsidiar e confirmar sua inscrição no evento.",
-    extra:
-      "Quer vender mais? Solicite blocos adicionais ao seu regente. O coralista que vender mais rifas ganhará um Pix de R$ 500.",
+    icon: Send,
+    label: "Entregue até 30/10",
+    detail: "ao seu regente",
   },
   {
     icon: Trophy,
-    title: "Acompanhe o sorteio",
-    description: "O sorteio do prêmio de R$ 1.000 será realizado online no dia 08/11.",
+    label: "Sorteio R$ 1.000 em 08/11",
+    detail: "online",
   },
 ];
 
@@ -125,7 +122,7 @@ export function RegistrationCallout() {
           <div
             role="radiogroup"
             aria-label="Opções de inscrição"
-            className="mt-7 grid grid-cols-1 items-stretch gap-4"
+            className="mt-7 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2"
           >
             <label
               htmlFor="registration-option-integral"
@@ -225,61 +222,46 @@ export function RegistrationCallout() {
               <div className="contents">
                 <p
                   id="raffle-option-summary"
-                  className="mt-7 max-w-4xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+                  className="mt-7 max-w-4xl font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl"
                 >
                   R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10
                 </p>
-                <p className="mt-3 text-sm font-semibold text-white/65">
+                <p className="mt-3 text-xs font-semibold text-white/65">
                   Disponível para coros participantes.
                 </p>
 
                 <ol
-                  aria-label="Passo a passo do programa de rifas"
-                  className="mx-auto mt-5 w-full max-w-4xl"
+                  aria-label="Resumo do programa de rifas"
+                  className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5"
                 >
-                  {raffleSteps.map(({ icon: Icon, title, description, extra }, index) => (
+                  {raffleSummary.map(({ icon: Icon, label, detail }, index) => (
                     <li
-                      key={title}
-                      className="relative grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-4 last:pb-0"
+                      key={label}
+                      className="flex min-w-0 flex-col items-center rounded-xl border border-white/10 bg-white/[0.05] px-2 py-3 text-center"
                     >
-                      {index < raffleSteps.length - 1 ? (
-                        <span
-                          aria-hidden="true"
-                          className="absolute bottom-0 left-[1.21875rem] top-10 w-px bg-[#ffc400]/35"
-                        />
-                      ) : null}
-                      <span className="relative z-10 inline-flex size-10 items-center justify-center rounded-full bg-[#ffc400] font-display text-lg font-extrabold text-black">
-                        {index + 1}
+                      <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#ffc400] text-black">
+                        <Icon className="size-4" strokeWidth={2.5} aria-hidden="true" />
                       </span>
-                      <div
-                        className={`rounded-xl border p-4 ${
-                          extra
-                            ? "border-[#ffc400]/60 bg-[#ffc400]/10"
-                            : "border-white/10 bg-white/[0.05]"
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <Icon
-                            className="mt-0.5 size-4 shrink-0 text-[#ffc400]"
-                            strokeWidth={2.5}
-                            aria-hidden="true"
-                          />
-                          <div>
-                            <p className="font-bold leading-snug text-white">{title}</p>
-                            <p className="mt-1.5 text-sm leading-relaxed text-white/70">
-                              {description}
-                            </p>
-                          </div>
-                        </div>
-                        {extra ? (
-                          <p className="mt-3 rounded-lg bg-[#ffc400] px-3 py-2.5 text-sm font-bold leading-relaxed text-black">
-                            {extra}
-                          </p>
-                        ) : null}
-                      </div>
+                      <span className="mt-2 text-[11px] font-extrabold leading-tight text-white">
+                        <span className="sr-only">Etapa {index + 1}: </span>
+                        {label}
+                      </span>
+                      <span className="mt-1 text-[10px] leading-tight text-white/55">{detail}</span>
                     </li>
                   ))}
                 </ol>
+
+                <div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/65">
+                  <p>
+                    <strong className="text-white">Condições:</strong> venda mínima de 25 rifas de
+                    R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua
+                    inscrição.
+                  </p>
+                  <p>
+                    <strong className="text-white">Venda extra:</strong> solicite blocos adicionais
+                    ao regente. Quem vender mais ganha um Pix de R$ 500.
+                  </p>
+                </div>
               </div>
             </label>
           </div>
