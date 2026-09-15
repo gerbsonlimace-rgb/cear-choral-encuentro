@@ -21,6 +21,8 @@ import {
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const REGISTRATION_CPF_CONFLICT_MESSAGE = "Já existe uma inscrição para este CPF.";
+const CHECKOUT_CLAIM_PREFIX = "https://pending.invalid/creating/";
+const CHECKOUT_CLAIM_TTL_MS = 2 * 60 * 1000;
 
 export type RegistrationPaymentRecord = {
   id: string;
@@ -77,9 +79,10 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
+      checkoutClaim?: string;
     },
   ): Promise<void>;
-  saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
+  saveCheckoutUrl(orderNsu: string, checkoutUrl: string, checkoutClaim?: string): Promise<void>;
   updatePending(
     input: Omit<RegistrationInput, "photo" | "displayedQuote"> & {
       registrationId: string;
@@ -91,6 +94,7 @@ export type RegistrationRepository = {
       standardPriceCents: number;
       registrationPriceCents: number;
       expectedOrderNsu: string;
+      checkoutClaim?: string;
     },
   ): Promise<void>;
   clearPendingPhoto(orderNsu: string): Promise<void>;
@@ -128,12 +132,13 @@ export function createRegistrationPaymentService(deps: {
 }) {
   const toPaidPublicStatus = async (
     registration: RegistrationPaymentRecord,
+    includeCredentials = true,
   ): Promise<PublicPaymentStatus> => {
     let participantAccessStatus: ParticipantAccessStatus = "pending";
     let participantCredentials: ParticipantInitialCredentials | null = null;
     try {
       participantAccessStatus = (await deps.provisionParticipant(registration.id)).status;
-      if (participantAccessStatus === "active" && deps.getParticipantCredentials) {
+      if (includeCredentials && participantAccessStatus === "active" && deps.getParticipantCredentials) {
         participantCredentials = await deps.getParticipantCredentials(registration.id);
       }
     } catch {
@@ -152,7 +157,14 @@ export function createRegistrationPaymentService(deps: {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
       }
       if (existing?.paymentStatus === "pending" && existing.checkoutUrl && existing.orderNsu) {
-        return { checkoutUrl: existing.checkoutUrl, orderNsu: existing.orderNsu };
+        if (!isCheckoutClaim(existing.checkoutUrl)) {
+          return { checkoutUrl: existing.checkoutUrl, orderNsu: existing.orderNsu };
+        }
+        if (!isCheckoutClaimStale(existing.checkoutUrl, deps.now())) {
+          const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+          if (ready) return ready;
+          throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+        }
       }
 
       const selection = await deps.resolveChoirSelection(input.choirId);
@@ -165,6 +177,7 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const orderNsu = deps.randomUUID();
+      const checkoutClaim = createCheckoutClaim(orderNsu, deps.now());
       const amountCents = calculateOrderAmountCents(input, selection.quote);
       const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
       const { photo: _photo, ...registrationData } = input;
@@ -178,6 +191,7 @@ export function createRegistrationPaymentService(deps: {
         pricingType: selection.quote.pricingType,
         standardPriceCents: selection.quote.standardPriceCents,
         registrationPriceCents: selection.quote.registrationPriceCents,
+        checkoutClaim,
       };
 
       try {
@@ -197,6 +211,14 @@ export function createRegistrationPaymentService(deps: {
               latest.checkoutUrl &&
               latest.orderNsu
             ) {
+              if (isCheckoutClaim(latest.checkoutUrl)) {
+                const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+                if (!ready) {
+                  throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+                }
+                await deps.photoStorage.remove(photoPath).catch(() => undefined);
+                return ready;
+              }
               await deps.photoStorage.remove(photoPath).catch(() => undefined);
               return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
             }
@@ -217,7 +239,7 @@ export function createRegistrationPaymentService(deps: {
           items: buildCheckoutItems(input, selection.quote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
-        await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+        await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
       } catch (caught) {
         await Promise.allSettled([
           deps.repository.clearPendingPhoto(orderNsu),
@@ -237,7 +259,7 @@ export function createRegistrationPaymentService(deps: {
         if (registration.transactionNsu !== lookup.transactionNsu) {
           throw new Error("Transação divergente para pedido já confirmado.");
         }
-        return toPaidPublicStatus(registration);
+        return toPaidPublicStatus(registration, false);
       }
 
       const checked = await deps.infinitePay.checkPayment(lookup);
@@ -297,6 +319,40 @@ function toPublicPaymentStatus(
     ...(record.participantName ? { participantName: record.participantName } : {}),
     ...(record.choirName ? { choirName: record.choirName } : {}),
   };
+}
+
+function createCheckoutClaim(orderNsu: string, now: string) {
+  return `${CHECKOUT_CLAIM_PREFIX}${orderNsu}/${Date.parse(now) || Date.now()}`;
+}
+
+function isCheckoutClaim(value: string) {
+  return value.startsWith(CHECKOUT_CLAIM_PREFIX);
+}
+
+function isCheckoutClaimStale(value: string, now: string) {
+  const timestamp = Number(value.slice(CHECKOUT_CLAIM_PREFIX.length).split("/").at(-1));
+  return !Number.isFinite(timestamp) || Date.parse(now) - timestamp > CHECKOUT_CLAIM_TTL_MS;
+}
+
+async function waitForCheckoutUrl(
+  repository: RegistrationRepository,
+  cpf: string,
+  now: () => string,
+): Promise<{ checkoutUrl: string; orderNsu: string } | null> {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const latest = await repository.findByCpf?.(cpf);
+    if (
+      latest?.paymentStatus === "pending" &&
+      latest.orderNsu &&
+      latest.checkoutUrl &&
+      !isCheckoutClaim(latest.checkoutUrl)
+    ) {
+      return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
+    }
+    if (latest?.checkoutUrl && isCheckoutClaimStale(latest.checkoutUrl, now())) return null;
+  }
+  return null;
 }
 
 const paymentColumns =
@@ -408,6 +464,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         amount_cents: input.amountCents,
         payment_status: "pending",
         order_nsu: input.orderNsu,
+        ...(input.checkoutClaim ? { checkout_url: input.checkoutClaim } : {}),
       });
 
       if (error?.code === "23505" && error.message.includes("registrations_cpf_uidx")) {
@@ -423,14 +480,22 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       }
     },
 
-    saveCheckoutUrl: async (orderNsu, checkoutUrl) => {
-      const { error } = await supabaseAdmin
+    saveCheckoutUrl: async (orderNsu, checkoutUrl, checkoutClaim) => {
+      let query = supabaseAdmin
         .from("registrations")
         .update({ checkout_url: checkoutUrl })
         .eq("order_nsu", orderNsu)
         .eq("payment_status", "pending");
+      if (checkoutClaim) query = query.eq("checkout_url", checkoutClaim);
+      if (!checkoutClaim) {
+        const { error } = await query;
+        if (error) throw new Error("Não foi possível salvar o checkout.");
+        return;
+      }
+      const { data, error } = await query.select("id").maybeSingle();
 
       if (error) throw new Error("Não foi possível salvar o checkout.");
+      if (!data) throw new Error("O checkout não está mais reservado para esta tentativa.");
     },
 
     updatePending: async (input) => {
@@ -453,7 +518,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
           amount_cents: input.amountCents,
           payment_status: "pending",
           order_nsu: input.orderNsu,
-          checkout_url: null,
+          checkout_url: input.checkoutClaim ?? null,
         })
         .eq("id", input.registrationId)
         .eq("payment_status", "pending")

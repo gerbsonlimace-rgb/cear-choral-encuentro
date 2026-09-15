@@ -323,16 +323,18 @@ describe("registration payment service", () => {
       "createCheckout",
       "saveCheckoutUrl",
     ]);
-    expect(fixture.repository.createPending).toHaveBeenCalledWith({
-      ...baseRegistrationInput,
-      orderNsu: fixedOrderNsu,
-      amountCents: 10000,
-      choirName: "Coro Diocesano de Quixadá",
-      photoPath: registrationPhotoPath,
-      pricingType: "promotional",
-      standardPriceCents: 30000,
-      registrationPriceCents: 10000,
-    });
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...baseRegistrationInput,
+        orderNsu: fixedOrderNsu,
+        amountCents: 10000,
+        choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
+        pricingType: "promotional",
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+      }),
+    );
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
       orderNsu: fixedOrderNsu,
       items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
@@ -693,6 +695,22 @@ describe("registration payment service", () => {
   });
 
   it("returns participant portal credentials only after confirmed provisioning", async () => {
+    fixture.setRecord(pendingRecord());
+    fixture.getParticipantCredentials.mockResolvedValue({
+      portalUrl: "/acessar",
+      initialPassword: "5299822472515011990",
+    });
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
+      status: "paid",
+      participantAccessStatus: "active",
+      participantPortalUrl: "/acessar",
+      participantInitialPassword: "5299822472515011990",
+    });
+    expect(fixture.getParticipantCredentials).toHaveBeenCalledWith("registration-1");
+  });
+
+  it("does not repeat participant credentials when a paid return URL is replayed", async () => {
     fixture.setRecord({
       ...pendingRecord(),
       paymentStatus: "paid",
@@ -708,10 +726,10 @@ describe("registration payment service", () => {
     await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
       status: "paid",
       participantAccessStatus: "active",
-      participantPortalUrl: "/acessar",
-      participantInitialPassword: "5299822472515011990",
     });
-    expect(fixture.getParticipantCredentials).toHaveBeenCalledWith("registration-1");
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.not.toHaveProperty(
+      "participantInitialPassword",
+    );
   });
 });
 
