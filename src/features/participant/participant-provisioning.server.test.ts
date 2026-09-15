@@ -76,6 +76,31 @@ function setup() {
 }
 
 describe("participant provisioning service", () => {
+  it("keeps magic-link redirects on the public participant portal when a local site override is set", async () => {
+    const { repository, auth, service } = setup();
+    vi.mocked(repository.findByRegistration).mockResolvedValue({
+      ...claimedAccount,
+      accessStatus: "active",
+      userId: createdUserId,
+      provisioningClaimId: null,
+    });
+    const previousSiteUrl = process.env.PUBLIC_SITE_URL;
+    process.env.PUBLIC_SITE_URL = "http://localhost:3000";
+
+    try {
+      await expect(service.getPortalAccessLink(registrationId)).resolves.toContain(
+        "https://example.supabase.co/auth/v1/verify",
+      );
+      expect(auth.createMagicLink).toHaveBeenCalledWith(
+        paidRegistration.email,
+        "https://encontrocorosce.lovable.app/participante",
+      );
+    } finally {
+      if (previousSiteUrl === undefined) delete process.env.PUBLIC_SITE_URL;
+      else process.env.PUBLIC_SITE_URL = previousSiteUrl;
+    }
+  });
+
   it("does not provision when the raw initial payment_status is pending", async () => {
     const { repository, auth, service } = setup();
     vi.mocked(repository.findPaidRegistration).mockImplementation(async () => null);
