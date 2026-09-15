@@ -264,26 +264,21 @@ describe("landing page access", () => {
     expect(within(integralCard).getByText("Simples e rápido")).toBeVisible();
     expect(within(integralCard).getByText("Inscrição confirmada na hora")).toBeVisible();
     expect(within(raffleCard).queryByText("Concorra a R$ 1.000")).not.toBeInTheDocument();
-    const raffleSteps = within(raffleCard).getByRole("list", {
-      name: "Passo a passo do programa de rifas",
+    const raffleSummary = within(raffleCard).getByRole("list", {
+      name: "Resumo do programa de rifas",
     });
-    const steps = within(raffleSteps).getAllByRole("listitem");
-    expect(steps).toHaveLength(5);
-    expect(steps[0]).toHaveTextContent("Pague agora R$ 100 no Pix ou cartão.");
-    expect(steps[1]).toHaveTextContent(
-      "Agende com seu regente um momento para receber os blocos de rifas.",
+    const summaryItems = within(raffleSummary).getAllByRole("listitem");
+    expect(summaryItems).toHaveLength(5);
+    expect(summaryItems[0]).toHaveTextContent("Pague R$ 100");
+    expect(summaryItems[1]).toHaveTextContent("Agende com o regente");
+    expect(summaryItems[2]).toHaveTextContent("Venda 25 rifas");
+    expect(summaryItems[3]).toHaveTextContent("Entregue até 30/10");
+    expect(summaryItems[4]).toHaveTextContent("Sorteio R$ 1.000 em 08/11");
+    expect(raffleCard).toHaveTextContent(
+      "Condições: venda mínima de 25 rifas de R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua inscrição.",
     );
-    expect(steps[2]).toHaveTextContent(
-      "Venda pelo menos 25 rifas, no valor de R$ 10 cada, e entregue ao seu regente todo o valor arrecadado até 30/10.",
-    );
-    expect(steps[3]).toHaveTextContent(
-      "A venda mínima de 25 rifas é obrigatória para subsidiar e confirmar sua inscrição no evento.",
-    );
-    expect(steps[3]).toHaveTextContent(
-      "O coralista que vender mais rifas ganhará um Pix de R$ 500.",
-    );
-    expect(steps[4]).toHaveTextContent(
-      "O sorteio do prêmio de R$ 1.000 será realizado online no dia 08/11.",
+    expect(raffleCard).toHaveTextContent(
+      "Venda extra: solicite blocos adicionais ao regente. Quem vender mais ganha um Pix de R$ 500.",
     );
     expect(within(registration!).getByText("Selecione uma opção para comparar.")).toBeVisible();
     expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
@@ -310,8 +305,7 @@ describe("landing page access", () => {
     const integralCard = integralOption.closest("label") ?? integralOption;
     const raffleCard = raffleOption.closest("label") ?? raffleOption;
 
-    expect(options).toHaveClass("grid-cols-1");
-    expect(options).not.toHaveClass("md:grid-cols-2");
+    expect(options).toHaveClass("grid-cols-1", "md:grid-cols-2");
     expect(integralCard).toHaveClass("w-full");
     expect(raffleCard).toHaveClass("w-full");
     expect(integralOption).toHaveAttribute("type", "radio");
@@ -320,7 +314,7 @@ describe("landing page access", () => {
     expect(within(integralCard).getByText("R$ 300,00")).toHaveClass("text-4xl", "sm:text-5xl");
     expect(
       within(raffleCard).getByText("R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10"),
-    ).toHaveClass("text-3xl", "sm:text-4xl");
+    ).toHaveClass("text-2xl", "sm:text-3xl");
     expect(raffleOption).toHaveAccessibleDescription(
       "R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10",
     );
