@@ -88,7 +88,7 @@ export function RegistrationCallout() {
                 Como você deseja participar?
               </h3>
             </div>
-            <p className="text-sm text-white/60">Toque em uma opção para comparar.</p>
+            <p className="text-sm text-white/60">Selecione uma opção para comparar.</p>
           </div>
 
           <div
@@ -96,18 +96,25 @@ export function RegistrationCallout() {
             aria-label="Opções de inscrição"
             className="mt-7 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2"
           >
-            <button
-              type="button"
-              role="radio"
-              aria-checked={selectedOption === "integral"}
-              aria-label="Inscrição integral"
-              onClick={() => setSelectedOption("integral")}
-              className={`relative flex min-h-[320px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
+            <label
+              htmlFor="registration-option-integral"
+              className={`relative flex min-h-[320px] cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
                 selectedOption === "integral"
                   ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.16),rgba(255,196,0,0.05))] shadow-[0_0_0_1px_rgba(255,196,0,0.28),0_16px_30px_rgba(0,0,0,0.22)]"
                   : "border-white/15 bg-white/[0.05] hover:border-[#ffc400]/55 hover:bg-white/[0.07]"
               }`}
             >
+              <input
+                id="registration-option-integral"
+                type="radio"
+                name="registrationOption"
+                value="integral"
+                aria-label="Inscrição integral"
+                aria-describedby="integral-option-details"
+                checked={selectedOption === "integral"}
+                onChange={() => setSelectedOption("integral")}
+                className="peer sr-only"
+              />
               <span
                 aria-hidden="true"
                 className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
@@ -124,30 +131,40 @@ export function RegistrationCallout() {
                 </span>
                 <p className="text-base font-bold">Inscrição integral</p>
               </div>
-              <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
-                R$ 300,00
-              </p>
-              <p className="mt-4 text-sm leading-relaxed text-white/70">
-                Pague à vista no Pix ou em até <strong className="text-white">5x no cartão</strong>.
-              </p>
-              <p className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/65">
-                <Check className="size-4 text-[#ffc400]" aria-hidden="true" />
-                Inscrição quitada na hora
-              </p>
-            </button>
+              <div id="integral-option-details" className="contents">
+                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
+                  R$ 300,00
+                </p>
+                <p className="mt-4 text-sm leading-relaxed text-white/70">
+                  Pague à vista no Pix ou em até{" "}
+                  <strong className="text-white">5x no cartão</strong>.
+                </p>
+                <p className="mt-auto flex items-center gap-2 pt-6 text-sm font-semibold text-white/65">
+                  <Check className="size-4 text-[#ffc400]" aria-hidden="true" />
+                  Inscrição quitada na hora
+                </p>
+              </div>
+            </label>
 
-            <button
-              type="button"
-              role="radio"
-              aria-checked={selectedOption === "raffles"}
-              aria-label="Programa de rifas"
-              onClick={() => setSelectedOption("raffles")}
-              className={`relative flex min-h-[320px] flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffc400] focus-visible:ring-offset-2 focus-visible:ring-offset-[#11100e] sm:p-6 ${
+            <label
+              htmlFor="registration-option-raffles"
+              className={`relative flex min-h-[320px] cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
                 selectedOption === "raffles"
                   ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.2),rgba(255,196,0,0.07))] shadow-[0_0_0_1px_rgba(255,196,0,0.32),0_16px_30px_rgba(0,0,0,0.22)]"
                   : "border-[#ffc400]/60 bg-[linear-gradient(145deg,rgba(255,196,0,0.1),rgba(255,255,255,0.04))] hover:border-[#ffc400]"
               }`}
             >
+              <input
+                id="registration-option-raffles"
+                type="radio"
+                name="registrationOption"
+                value="raffles"
+                aria-label="Programa de rifas"
+                aria-describedby="raffle-option-details"
+                checked={selectedOption === "raffles"}
+                onChange={() => setSelectedOption("raffles")}
+                className="peer sr-only"
+              />
               <span
                 aria-hidden="true"
                 className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
@@ -165,45 +182,47 @@ export function RegistrationCallout() {
                 <p className="text-base font-bold">Programa de rifas</p>
               </div>
 
-              <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
-                R$ 100,00
-              </p>
-              <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ffc400]">
-                Agora
-              </p>
+              <div id="raffle-option-details" className="contents">
+                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
+                  R$ 100,00
+                </p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ffc400]">
+                  Agora
+                </p>
 
-              <div className="mt-5 rounded-2xl bg-[#ffc400] p-4 text-black shadow-[0_12px_24px_rgba(255,196,0,0.18)]">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-black text-[#ffc400]">
-                    <Trophy className="size-5" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="font-display text-2xl font-extrabold leading-none">
-                      Concorra a R$ 1.000
-                    </p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm font-bold">
-                      <CalendarDays className="size-4" aria-hidden="true" />
-                      Sorteio online em 08/11
-                    </p>
+                <div className="mt-5 rounded-2xl bg-[#ffc400] p-4 text-black shadow-[0_12px_24px_rgba(255,196,0,0.18)]">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-black text-[#ffc400]">
+                      <Trophy className="size-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="font-display text-2xl font-extrabold leading-none">
+                        Concorra a R$ 1.000
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm font-bold">
+                        <CalendarDays className="size-4" aria-hidden="true" />
+                        Sorteio online em 08/11
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                <p className="flex items-center gap-2 text-sm font-bold">
-                  <Ticket className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
-                  25 rifas de R$ 10
-                </p>
-                <p className="flex items-center gap-2 text-sm font-bold">
-                  <Send className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
-                  Envie os R$ 250 até 30/10
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+                  <p className="flex items-center gap-2 text-sm font-bold">
+                    <Ticket className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
+                    25 rifas de R$ 10
+                  </p>
+                  <p className="flex items-center gap-2 text-sm font-bold">
+                    <Send className="size-4 shrink-0 text-[#ffc400]" aria-hidden="true" />
+                    Envie os valores arrecadados até 30/10
+                  </p>
+                </div>
+                <p className="mt-auto border-t border-white/10 pt-4 text-xs font-semibold leading-relaxed text-white/60">
+                  Disponível para coros participantes. A adesão ao programa depende da venda das 25
+                  rifas e do envio dos valores dentro do prazo.
                 </p>
               </div>
-              <p className="mt-auto border-t border-white/10 pt-4 text-xs font-semibold leading-relaxed text-white/60">
-                A adesão ao programa depende da venda das 25 rifas e do envio do valor dentro do
-                prazo.
-              </p>
-            </button>
+            </label>
           </div>
 
           <Button

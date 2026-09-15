@@ -246,28 +246,32 @@ describe("landing page access", () => {
     const raffleOption = within(options).getByRole("radio", {
       name: "Programa de rifas",
     });
+    const integralCard = integralOption.closest("label") ?? integralOption;
+    const raffleCard = raffleOption.closest("label") ?? raffleOption;
     expect(integralOption).toBeVisible();
     expect(raffleOption).toBeVisible();
-    expect(integralOption).toHaveAttribute("aria-checked", "true");
-    expect(raffleOption).toHaveAttribute("aria-checked", "false");
+    expect(integralOption).toBeChecked();
+    expect(raffleOption).not.toBeChecked();
     await user.click(raffleOption);
-    expect(integralOption).toHaveAttribute("aria-checked", "false");
-    expect(raffleOption).toHaveAttribute("aria-checked", "true");
+    expect(integralOption).not.toBeChecked();
+    expect(raffleOption).toBeChecked();
     expect(within(options).getByText("R$ 300,00")).toBeVisible();
     expect(within(options).getByText("R$ 100,00")).toBeVisible();
     expect(within(options).getByText("Agora")).toBeVisible();
-    expect(integralOption).toHaveTextContent("Pix");
-    expect(integralOption).toHaveTextContent("5x no cartão");
-    expect(within(raffleOption).getByText("Concorra a R$ 1.000")).toBeVisible();
-    expect(within(raffleOption).getByText("Sorteio online em 08/11")).toBeVisible();
-    expect(within(raffleOption).getByText("25 rifas de R$ 10")).toBeVisible();
-    expect(within(raffleOption).getByText("Envie os R$ 250 até 30/10")).toBeVisible();
-    expect(raffleOption).toHaveTextContent(/adesão ao programa depende/i);
+    expect(integralCard).toHaveTextContent("Pix");
+    expect(integralCard).toHaveTextContent("5x no cartão");
+    expect(within(raffleCard).getByText("Concorra a R$ 1.000")).toBeVisible();
+    expect(within(raffleCard).getByText("Sorteio online em 08/11")).toBeVisible();
+    expect(within(raffleCard).getByText("25 rifas de R$ 10")).toBeVisible();
+    expect(within(raffleCard).getByText("Envie os valores arrecadados até 30/10")).toBeVisible();
+    expect(raffleCard).toHaveTextContent(/adesão ao programa depende/i);
+    expect(within(registration!).getByText("Selecione uma opção para comparar.")).toBeVisible();
     expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
     expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
   });
 
-  it("gives both registration choices strong and responsive visual prominence", () => {
+  it("gives both registration choices native keyboard behavior and responsive prominence", async () => {
+    const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -283,13 +287,21 @@ describe("landing page access", () => {
     const raffleOption = within(options).getByRole("radio", {
       name: "Programa de rifas",
     });
+    const integralCard = integralOption.closest("label") ?? integralOption;
+    const raffleCard = raffleOption.closest("label") ?? raffleOption;
 
     expect(options).toHaveClass("grid-cols-1", "md:grid-cols-2");
-    expect(integralOption).toHaveClass("min-h-[320px]");
-    expect(raffleOption).toHaveClass("min-h-[320px]");
-    expect(within(integralOption).getByText("R$ 300,00")).toHaveClass("text-4xl", "sm:text-5xl");
-    expect(within(raffleOption).getByText("R$ 100,00")).toHaveClass("text-4xl", "sm:text-5xl");
-    expect(within(raffleOption).getByText("Agora")).toBeVisible();
+    expect(integralCard).toHaveClass("min-h-[320px]");
+    expect(raffleCard).toHaveClass("min-h-[320px]");
+    expect(integralOption).toHaveAttribute("type", "radio");
+    expect(raffleOption).toHaveAttribute("type", "radio");
+    expect(raffleOption).toHaveAttribute("aria-describedby", "raffle-option-details");
+    expect(within(integralCard).getByText("R$ 300,00")).toHaveClass("text-4xl", "sm:text-5xl");
+    expect(within(raffleCard).getByText("R$ 100,00")).toHaveClass("text-4xl", "sm:text-5xl");
+    expect(within(raffleCard).getByText("Agora")).toBeVisible();
+    integralOption.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(raffleOption).toBeChecked();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
