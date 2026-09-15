@@ -4,6 +4,7 @@ import {
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
   type RegistrationInput,
+  type RegistrationLookupResult,
 } from "./registration.domain";
 
 const { storageFromMock, storageRemoveMock, storageUploadMock, supabaseAdminMock } = vi.hoisted(
@@ -209,9 +210,11 @@ function createFixture() {
     orderNsu: string | null;
     checkoutUrl: string | null;
   } | null = null;
+  let lookupResult = null as RegistrationLookupResult | null;
 
   const repository: RegistrationRepository = {
     findByCpf: vi.fn(async () => identityRecord),
+    findRegistrationByIdentity: vi.fn(async () => lookupResult),
     createPending: vi.fn(async (input) => {
       calls.push("createPending");
       record = {
@@ -300,6 +303,9 @@ function createFixture() {
     setIdentityRecord(next: typeof identityRecord) {
       identityRecord = next;
     },
+    setLookupResult(next: RegistrationLookupResult | null) {
+      lookupResult = next;
+    },
     setRecord(next: RegistrationPaymentRecord | null) {
       record = next;
     },
@@ -312,6 +318,27 @@ describe("registration payment service", () => {
   beforeEach(() => {
     supabaseAdminMock.from.mockReset();
     fixture = createFixture();
+  });
+
+  it("looks up saved participant data by CPF and birth date", async () => {
+    fixture.setLookupResult({
+      status: "found",
+      name: "Maria da Silva",
+      email: "maria@example.com",
+      phone: "88999999999",
+      choirId,
+      voicePart: "soprano",
+      hasPhoto: true,
+      paymentStatus: "pending",
+    });
+
+    await expect(
+      fixture.service.lookupRegistration({ cpf, birthDate: "1990-01-02" }),
+    ).resolves.toEqual(expect.objectContaining({ status: "found", name: "Maria da Silva" }));
+    expect(fixture.repository.findRegistrationByIdentity).toHaveBeenCalledWith(
+      cpf,
+      "1990-01-02",
+    );
   });
 
   it("stores a pending registration before requesting checkout", async () => {

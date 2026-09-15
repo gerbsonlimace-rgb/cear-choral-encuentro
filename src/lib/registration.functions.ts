@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   paymentLookupSchema,
+  registrationLookupSchema,
   registrationResumeSchema,
   registrationSchema,
 } from "@/features/registration/registration.domain";
+import type { RegistrationLookupResult } from "@/features/registration/registration.domain";
 
 export type RegistrationResumeResult =
   | { status: "pending"; checkoutUrl: string }
@@ -59,6 +61,14 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
               : "Não foi possível preparar o pagamento. Tente novamente.",
       };
     }
+  });
+
+export const lookupRegistration = createServerFn({ method: "POST" })
+  .validator(registrationLookupSchema)
+  .handler(async ({ data }): Promise<RegistrationLookupResult> => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().lookupRegistration(data);
   });
 
 export const resumeRegistrationCheckout = createServerFn({ method: "POST" })

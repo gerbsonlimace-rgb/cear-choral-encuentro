@@ -16,6 +16,7 @@ import {
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
   type RegistrationInput,
+  type RegistrationLookupResult,
   type RegistrationPhotoInput,
 } from "./registration.domain";
 
@@ -70,6 +71,10 @@ export type RegistrationResumeResult =
 
 export type RegistrationRepository = {
   findByCpf?: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
+  findRegistrationByIdentity?: (
+    cpf: string,
+    birthDate: string,
+  ) => Promise<RegistrationLookupResult | null>;
   createPending(
     input: Omit<RegistrationInput, "photo"> & {
       orderNsu: string;
@@ -79,6 +84,7 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
+      remainingPriceCents?: number;
       checkoutClaim?: string;
     },
   ): Promise<void>;
@@ -93,6 +99,7 @@ export type RegistrationRepository = {
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
+      remainingPriceCents?: number;
       expectedOrderNsu: string;
       checkoutClaim?: string;
     },
@@ -148,6 +155,13 @@ export function createRegistrationPaymentService(deps: {
   };
 
   return {
+    lookupRegistration: async (input: {
+      cpf: string;
+      birthDate: string;
+    }): Promise<RegistrationLookupResult> => {
+      const result = await deps.repository.findRegistrationByIdentity?.(input.cpf, input.birthDate);
+      return result ?? { status: "not_found" };
+    },
     startCheckout: async (input: RegistrationInput) => {
       const existing = await deps.repository.findByCpf?.(input.cpf);
       if (
@@ -171,7 +185,9 @@ export function createRegistrationPaymentService(deps: {
       const quoteChanged =
         input.displayedQuote.pricingType !== selection.quote.pricingType ||
         input.displayedQuote.standardPriceCents !== selection.quote.standardPriceCents ||
-        input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents;
+        input.displayedQuote.registrationPriceCents !== selection.quote.registrationPriceCents ||
+        (input.displayedQuote.remainingPriceCents ?? null) !==
+          (selection.quote.remainingPriceCents ?? null);
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
@@ -191,6 +207,9 @@ export function createRegistrationPaymentService(deps: {
         pricingType: selection.quote.pricingType,
         standardPriceCents: selection.quote.standardPriceCents,
         registrationPriceCents: selection.quote.registrationPriceCents,
+        ...(selection.quote.remainingPriceCents !== undefined
+          ? { remainingPriceCents: selection.quote.remainingPriceCents }
+          : {}),
         checkoutClaim,
       };
 
@@ -395,6 +414,10 @@ function mapPaymentRow(row: {
 
 export type SupabaseRegistrationRepository = RegistrationRepository & {
   findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
+  findRegistrationByIdentity: (
+    cpf: string,
+    birthDate: string,
+  ) => Promise<RegistrationLookupResult | null>;
 };
 
 export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
@@ -437,8 +460,48 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     return data ? mapPaymentRow(data) : null;
   };
 
+  const findRegistrationByIdentity = async (cpf: string, birthDate: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select("name,email,phone,birth_date,choir_id,voice_part,photo_path,payment_status")
+      .eq("cpf", cpf)
+      .eq("birth_date", birthDate)
+      .maybeSingle();
+    if (error) throw new Error("Não foi possível consultar os dados salvos.");
+    if (!data) return null;
+    if (
+      typeof data.name !== "string" ||
+      typeof data.email !== "string" ||
+      typeof data.phone !== "string" ||
+      typeof data.birth_date !== "string" ||
+      !["legacy", "pending", "paid"].includes(data.payment_status)
+    ) {
+      throw new Error("Registro de inscrição inválido.");
+    }
+    return {
+      status: "found" as const,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      choirId: typeof data.choir_id === "string" ? data.choir_id : null,
+      voicePart: (
+        data.voice_part === "soprano" ||
+        data.voice_part === "contralto" ||
+        data.voice_part === "tenor" ||
+        data.voice_part === "baixo" ||
+        data.voice_part === "nao_sei_informar"
+          ? data.voice_part
+          : null) as RegistrationLookupResult extends { status: "found"; voicePart: infer T }
+          ? T
+          : never,
+      hasPhoto: typeof data.photo_path === "string" && data.photo_path.length > 0,
+      paymentStatus: data.payment_status as "legacy" | "pending" | "paid",
+    };
+  };
+
   return {
     findByCpf,
+    findRegistrationByIdentity,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
@@ -460,6 +523,9 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         pricing_type: input.pricingType,
         standard_price_cents: input.standardPriceCents,
         registration_price_cents: input.registrationPriceCents,
+        ...(input.remainingPriceCents !== undefined
+          ? { remaining_price_cents: input.remainingPriceCents }
+          : {}),
         shirt_price_cents: null,
         amount_cents: input.amountCents,
         payment_status: "pending",
@@ -515,6 +581,9 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
           pricing_type: input.pricingType,
           standard_price_cents: input.standardPriceCents,
           registration_price_cents: input.registrationPriceCents,
+          ...(input.remainingPriceCents !== undefined
+            ? { remaining_price_cents: input.remainingPriceCents }
+            : {}),
           amount_cents: input.amountCents,
           payment_status: "pending",
           order_nsu: input.orderNsu,

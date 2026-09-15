@@ -110,6 +110,24 @@ describe("choir pricing domain", () => {
     });
   });
 
+  it("resolves the configured promotional amount still due", () => {
+    expect(
+      resolveChoirPrice(
+        { ...baseChoir, usesPromotionalPrice: true },
+        {
+          standardPriceCents: 30000,
+          promotionalPriceCents: 10000,
+          promotionalRemainingPriceCents: 15000,
+        },
+      ),
+    ).toEqual({
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      remainingPriceCents: 15000,
+    });
+  });
+
   it("hides inactive or incompletely configured choirs", () => {
     expect(
       resolveChoirPrice(

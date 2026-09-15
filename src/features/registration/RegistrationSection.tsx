@@ -27,22 +27,29 @@ import {
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
+  lookupRegistration,
   startRegistrationCheckout,
   type StartRegistrationCheckoutResult,
 } from "@/lib/registration.functions";
 import {
   getFortalezaCalendarDate,
+  registrationLookupSchema,
   registrationSchema,
   voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
   type VoicePart,
 } from "./registration.domain";
+import type { RegistrationLookupResult } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
   startCheckout?: (input: RegistrationInput) => Promise<StartRegistrationCheckoutResult>;
+  lookupRegistration?: (input: {
+    cpf: string;
+    birthDate: string;
+  }) => Promise<RegistrationLookupResult>;
   navigateToCheckout?: (url: string) => void;
 };
 
@@ -87,6 +94,7 @@ function RegistrationPriceSummary({
   const discountCents = selectedChoir
     ? selectedChoir.standardPriceCents - selectedChoir.registrationPriceCents
     : null;
+  const remainingCents = selectedChoir?.remainingPriceCents ?? null;
 
   return (
     <aside
@@ -126,6 +134,20 @@ function RegistrationPriceSummary({
                     {formatCurrency(selectedChoir.registrationPriceCents)}
                   </span>
                 </div>
+                {remainingCents !== null && (
+                  <div className="flex items-center justify-between gap-4 text-background/80">
+                    <span>Valor restante</span>
+                    <span className="font-bold">{formatCurrency(remainingCents)}</span>
+                  </div>
+                )}
+                {remainingCents !== null && (
+                  <div className="flex items-center justify-between gap-4 border-t border-background/15 pt-2 text-background">
+                    <span className="font-bold">Total da inscrição</span>
+                    <span className="font-bold">
+                      {formatCurrency(selectedChoir.registrationPriceCents + remainingCents)}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="mt-4 flex items-end justify-between gap-4 border-t border-background/15 pt-4">
@@ -169,6 +191,7 @@ function RegistrationPriceSummary({
 export function RegistrationSection({
   loadConfiguration = defaultLoadConfiguration,
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
+  lookupRegistration: lookupSavedRegistration = (input) => lookupRegistration({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
@@ -180,6 +203,8 @@ export function RegistrationSection({
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found">("idle");
+  const lookupKey = useRef("");
   const mounted = useRef(false);
 
   const refreshConfiguration = useCallback(
@@ -223,7 +248,42 @@ export function RegistrationSection({
   );
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
+    if (field === "cpf" || field === "birthDate") {
+      lookupKey.current = "";
+      setLookupState("idle");
+    }
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const lookupSavedData = async () => {
+    const parsed = registrationLookupSchema.safeParse({
+      cpf: form.cpf,
+      birthDate: form.birthDate,
+    });
+    if (!parsed.success) return;
+    const key = `${parsed.data.cpf}:${parsed.data.birthDate}`;
+    if (lookupKey.current === key) return;
+    lookupKey.current = key;
+    setLookupState("loading");
+    try {
+      const result = await lookupSavedRegistration(parsed.data);
+      if (result.status === "found") {
+        setForm((previous) => ({
+          ...previous,
+          name: result.name,
+          email: result.email,
+          phone: result.phone,
+          choirId: result.choirId ?? previous.choirId,
+          voicePart: result.voicePart ?? previous.voicePart,
+        }));
+        setLookupState("found");
+      } else {
+        setLookupState("not_found");
+      }
+    } catch {
+      lookupKey.current = "";
+      setLookupState("idle");
+    }
   };
 
   const handlePhotoChange = async (file: File | undefined) => {
@@ -263,6 +323,9 @@ export function RegistrationSection({
         pricingType: selectedChoir.pricingType,
         standardPriceCents: selectedChoir.standardPriceCents,
         registrationPriceCents: selectedChoir.registrationPriceCents,
+        ...(selectedChoir.remainingPriceCents !== undefined
+          ? { remainingPriceCents: selectedChoir.remainingPriceCents }
+          : {}),
       },
     });
     if (!parsedForm.success) {
@@ -360,7 +423,7 @@ export function RegistrationSection({
                         aria-level={3}
                         className="block font-display text-lg font-extrabold text-foreground"
                       >
-                        Dados pessoais
+                        Conte-nos quem é você!
                       </span>
                       <span className="block text-xs font-normal text-muted-foreground">
                         Informe os dados da pessoa participante.
@@ -369,7 +432,7 @@ export function RegistrationSection({
                   </legend>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1.5">
+                    <div className="order-3 space-y-1.5">
                       <Label htmlFor="name" className="font-semibold">
                         Nome completo
                       </Label>
@@ -391,7 +454,7 @@ export function RegistrationSection({
                       {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="order-4 space-y-1.5">
                       <Label htmlFor="email" className="font-semibold">
                         E-mail
                       </Label>
@@ -414,7 +477,7 @@ export function RegistrationSection({
                       {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="order-1 space-y-1.5">
                       <Label htmlFor="cpf" className="font-semibold">
                         CPF
                       </Label>
@@ -431,7 +494,7 @@ export function RegistrationSection({
                       {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="order-5 space-y-1.5">
                       <Label htmlFor="phone" className="font-semibold">
                         WhatsApp
                       </Label>
@@ -454,7 +517,7 @@ export function RegistrationSection({
                       {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="order-2 space-y-1.5">
                       <Label htmlFor="birthDate" className="font-semibold">
                         Data de nascimento
                       </Label>
@@ -470,6 +533,7 @@ export function RegistrationSection({
                           max={getFortalezaCalendarDate()}
                           value={form.birthDate}
                           onChange={(event) => handleChange("birthDate", event.target.value)}
+                          onBlur={() => void lookupSavedData()}
                           className={inputClassName}
                         />
                       </div>
@@ -582,6 +646,17 @@ export function RegistrationSection({
                     </div>
                   </div>
                 </fieldset>
+
+                {lookupState === "loading" && (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    Consultando seus dados salvos…
+                  </p>
+                )}
+                {lookupState === "found" && (
+                  <p role="status" className="text-sm text-emerald-foreground">
+                    Encontramos seus dados salvos e preenchemos o formulário.
+                  </p>
+                )}
 
                 {checkoutError && (
                   <p role="alert" aria-live="polite" className="text-sm text-destructive">

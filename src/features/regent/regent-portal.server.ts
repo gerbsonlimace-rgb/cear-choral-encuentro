@@ -12,9 +12,9 @@ const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const PHOTO_URL_EXPIRY_SECONDS = 300;
 const INTERNAL_BATCH_SIZE = 1_000;
 const registrationColumns =
-  "id,name,cpf,phone,photo_path,payment_status,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,name,cpf,phone,photo_path,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const summaryRegistrationColumns =
-  "id,payment_status,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const paymentColumns =
   "id,registration_id,amount_cents,status,checkout_url,created_at,paid_at,initiated_by_name,initiated_as" as const;
 const summaryPaymentColumns = "registration_id,amount_cents" as const;
@@ -37,11 +37,17 @@ export type PortalRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
 };
 
 export type PortalSummaryRegistrationRow = Pick<
   PortalRegistrationRow,
-  "id" | "paymentStatus" | "pricingType" | "standardPriceCents" | "registrationPriceCents"
+  | "id"
+  | "paymentStatus"
+  | "pricingType"
+  | "standardPriceCents"
+  | "registrationPriceCents"
+  | "remainingPriceCents"
 >;
 
 export type PortalComplementLedgerRow = ComplementPaymentRow & { registrationId: string };
@@ -82,6 +88,7 @@ type RegistrationDatabaseRow = {
   pricing_type: string | null;
   standard_price_cents: number | null;
   registration_price_cents: number | null;
+  remaining_price_cents?: number | null;
 };
 
 type PaymentDatabaseRow = {
@@ -112,7 +119,8 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     !isPaymentStatus(row.payment_status) ||
     !isPricingType(row.pricing_type) ||
     !isNullableSafeInteger(row.standard_price_cents) ||
-    !isNullableSafeInteger(row.registration_price_cents)
+    !isNullableSafeInteger(row.registration_price_cents) ||
+    !isNullableSafeInteger(row.remaining_price_cents ?? null)
   ) {
     throw new Error("Não foi possível consultar os participantes.");
   }
@@ -126,6 +134,7 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     pricingType: row.pricing_type,
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
+    remainingPriceCents: row.remaining_price_cents ?? null,
   };
 }
 
@@ -251,6 +260,7 @@ export function createSupabaseRegentPortalRepository(): RegentPortalRepository {
           pricingType: mapped.pricingType,
           standardPriceCents: mapped.standardPriceCents,
           registrationPriceCents: mapped.registrationPriceCents,
+          remainingPriceCents: mapped.remainingPriceCents,
         };
       });
     },
@@ -352,6 +362,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
               pricingType: row.pricingType,
               standardPriceCents: row.standardPriceCents,
               registrationPriceCents: row.registrationPriceCents,
+              remainingPriceCents: row.remainingPriceCents,
               confirmedComplementCents: confirmedPrincipal(participantPayments),
               openPayment,
             }),
@@ -383,6 +394,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
           pricingType: registration.pricingType,
           standardPriceCents: registration.standardPriceCents,
           registrationPriceCents: registration.registrationPriceCents,
+          remainingPriceCents: registration.remainingPriceCents,
           confirmedComplementCents: 0,
           openPayment: null,
         });
@@ -394,6 +406,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
           pricingType: registration.pricingType,
           standardPriceCents: registration.standardPriceCents,
           registrationPriceCents: registration.registrationPriceCents,
+          remainingPriceCents: registration.remainingPriceCents,
           confirmedComplementCents: confirmed,
           openPayment: null,
         });

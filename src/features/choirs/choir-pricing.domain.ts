@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const optionalPositiveCentsSchema = z.number().int().positive().nullable();
+const optionalNonNegativeCentsSchema = z.number().int().nonnegative().nullable();
 
 export const pricingTypeSchema = z.enum(["standard", "promotional"]);
 
@@ -8,6 +9,7 @@ export const pricingSettingsSchema = z
   .object({
     standardPriceCents: optionalPositiveCentsSchema,
     promotionalPriceCents: optionalPositiveCentsSchema,
+    promotionalRemainingPriceCents: optionalNonNegativeCentsSchema.optional(),
   })
   .strict()
   .superRefine((settings, context) => {
@@ -20,6 +22,20 @@ export const pricingSettingsSchema = z
         code: "custom",
         path: ["promotionalPriceCents"],
         message: "O valor promocional deve ser menor que o valor normal.",
+      });
+    }
+    if (
+      settings.promotionalRemainingPriceCents !== undefined &&
+      settings.promotionalRemainingPriceCents !== null &&
+      settings.standardPriceCents !== null &&
+      settings.promotionalPriceCents !== null &&
+      settings.promotionalRemainingPriceCents >
+        settings.standardPriceCents - settings.promotionalPriceCents
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["promotionalRemainingPriceCents"],
+        message: "O valor restante não pode superar a diferença entre os valores.",
       });
     }
   });
@@ -48,6 +64,7 @@ export const displayedQuoteSchema = z
     pricingType: pricingTypeSchema,
     standardPriceCents: z.number().int().positive(),
     registrationPriceCents: z.number().int().positive(),
+    remainingPriceCents: z.number().int().nonnegative().optional(),
   })
   .strict();
 
@@ -68,6 +85,7 @@ export type PublicChoirOption = {
   pricingType: DisplayedQuote["pricingType"];
   standardPriceCents: number;
   registrationPriceCents: number;
+  remainingPriceCents?: number;
 };
 
 export type PublicRegistrationConfiguration = {
@@ -111,6 +129,10 @@ export function resolveChoirPrice(
       pricingType: "promotional",
       standardPriceCents: settings.standardPriceCents,
       registrationPriceCents: settings.promotionalPriceCents,
+      ...(settings.promotionalRemainingPriceCents === undefined ||
+      settings.promotionalRemainingPriceCents === null
+        ? {}
+        : { remainingPriceCents: settings.promotionalRemainingPriceCents }),
     };
   }
 

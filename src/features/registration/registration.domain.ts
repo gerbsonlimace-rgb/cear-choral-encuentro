@@ -77,6 +77,21 @@ export const registrationResumeSchema = z
 
 export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 
+export const registrationLookupSchema = registrationResumeSchema;
+export type RegistrationLookupInput = z.infer<typeof registrationLookupSchema>;
+export type RegistrationLookupResult =
+  | {
+      status: "found";
+      name: string;
+      email: string;
+      phone: string;
+      choirId: string | null;
+      voicePart: VoicePart | null;
+      hasPhoto: boolean;
+      paymentStatus: "legacy" | "pending" | "paid";
+    }
+  | { status: "not_found" };
+
 
 
 export const MAX_REGISTRATION_PHOTO_BYTES = 5 * 1024 * 1024;

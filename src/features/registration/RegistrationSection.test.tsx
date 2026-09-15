@@ -57,7 +57,8 @@ describe("RegistrationSection", () => {
 
     await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
     expect(screen.getByRole("heading", { name: "Realize sua inscrição" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Dados pessoais" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Conte-nos quem é você!" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Já fez sua inscrição?" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Participação" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeRequired();
     expect(screen.getByLabelText("CPF")).toHaveClass("min-h-11");
@@ -67,6 +68,58 @@ describe("RegistrationSection", () => {
     expect(screen.queryByLabelText("Prévia do crachá")).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /camisa/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Camisa oficial")).not.toBeInTheDocument();
+  });
+
+  it("starts the personal form with CPF and birth date", async () => {
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+
+    const fieldOrder = [
+      ["CPF", "order-1"],
+      ["Data de nascimento", "order-2"],
+      ["Nome completo", "order-3"],
+      ["E-mail", "order-4"],
+      ["WhatsApp", "order-5"],
+    ] as const;
+    for (const [label, orderClass] of fieldOrder) {
+      expect(screen.getByLabelText(label).closest(`.${orderClass}`)).toBeInTheDocument();
+    }
+  });
+
+  it("prefills saved participant data after CPF and birth date lookup", async () => {
+    const user = userEvent.setup();
+    const lookupRegistration = vi.fn(async () => ({
+      status: "found" as const,
+      name: "Maria da Silva",
+      email: "maria@example.com",
+      phone: "85999999999",
+      choirId: quixadaId,
+      voicePart: "soprano" as const,
+      hasPhoto: true,
+      paymentStatus: "pending" as const,
+    }));
+    render(
+      <RegistrationSection
+        loadConfiguration={loadConfiguration}
+        lookupRegistration={lookupRegistration}
+      />,
+    );
+    await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" });
+
+    await user.type(screen.getByLabelText("CPF"), "52998224725");
+    await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
+    await user.tab();
+
+    await waitFor(() => expect(lookupRegistration).toHaveBeenCalledWith({
+      cpf: "52998224725",
+      birthDate: "1990-05-20",
+    }));
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+    expect(screen.getByLabelText("E-mail")).toHaveValue("maria@example.com");
+    expect(screen.getByLabelText("WhatsApp")).toHaveValue("85999999999");
+    expect(screen.getByLabelText("Coro/Diocese")).toHaveValue(quixadaId);
+    expect(screen.getByLabelText("Perfil musical")).toHaveValue("soprano");
+    expect(screen.getByText(/dados salvos e preenchemos/i)).toBeInTheDocument();
   });
 
   it("shows the promotional discount calculation and raffle message for the selected choir", async () => {

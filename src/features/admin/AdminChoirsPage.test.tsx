@@ -88,7 +88,7 @@ describe("AdminChoirsPage", () => {
     await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
     expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByLabelText("Valor promocional")).toHaveValue("");
-    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(2);
+    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(3);
   });
 
   it("converts and saves all global currency values", async () => {
@@ -98,6 +98,7 @@ describe("AdminChoirsPage", () => {
     await user.click(await screen.findByRole("tab", { name: "Valores do evento" }));
     await user.type(await screen.findByLabelText("Valor normal"), "300,00");
     await user.type(screen.getByLabelText("Valor promocional"), "100,00");
+    await user.type(screen.getByLabelText("Valor restante promocional"), "150,00");
     await user.click(screen.getByRole("button", { name: "Salvar valores" }));
 
     await waitFor(() =>
@@ -105,6 +106,7 @@ describe("AdminChoirsPage", () => {
         data: {
           standardPriceCents: 30000,
           promotionalPriceCents: 10000,
+          promotionalRemainingPriceCents: 15000,
         },
       }),
     );

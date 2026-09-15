@@ -87,16 +87,19 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
   };
 }
 
-const settingsColumns = "standard_price_cents,promotional_price_cents" as const;
+const settingsColumns =
+  "standard_price_cents,promotional_price_cents,promotional_remaining_price_cents" as const;
 const choirColumns = "id,name,uses_promotional_price,is_active,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
   promotional_price_cents: number | null;
+  promotional_remaining_price_cents: number | null;
 }): PricingSettings {
   return pricingSettingsSchema.parse({
     standardPriceCents: row.standard_price_cents,
     promotionalPriceCents: row.promotional_price_cents,
+    promotionalRemainingPriceCents: row.promotional_remaining_price_cents,
   });
 }
 
@@ -152,6 +155,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
         .update({
           standard_price_cents: input.standardPriceCents,
           promotional_price_cents: input.promotionalPriceCents,
+          promotional_remaining_price_cents: input.promotionalRemainingPriceCents ?? null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", true)

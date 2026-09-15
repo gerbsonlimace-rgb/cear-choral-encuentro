@@ -147,7 +147,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,name,cpf,phone,photo_path,payment_status,pricing_type,standard_price_cents,registration_price_cents",
+        "id,name,cpf,phone,photo_path,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
         { count: "exact" },
       ],
       ["eq", "choir_id", authorizedChoirId],
@@ -191,7 +191,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,payment_status,pricing_type,standard_price_cents,registration_price_cents",
+        "id,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
         undefined,
       ],
       ["eq", "choir_id", authorizedChoirId],
