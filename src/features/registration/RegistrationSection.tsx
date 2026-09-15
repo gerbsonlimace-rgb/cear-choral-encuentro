@@ -389,6 +389,15 @@ export function RegistrationSection({
     return raffleChoice ? applyRaffleChoice(availableQuote, raffleChoice) : null;
   }, [form.raffleChoice, selectedChoir]);
 
+  useEffect(() => {
+    if (!configuration || currentStep !== 3 || selectedChoir) return;
+    setErrors((previous) => ({
+      ...previous,
+      choirId: "Selecione um coro/diocese.",
+    }));
+    setCurrentStep(2);
+  }, [configuration, currentStep, selectedChoir]);
+
   const handleChoirChange = (choirId: string) => {
     setForm((previous) => {
       const previousChoir = configuration?.choirs.find((choir) => choir.id === previous.choirId);
@@ -424,16 +433,24 @@ export function RegistrationSection({
     const key = `${parsed.data.cpf}:${parsed.data.birthDate}`;
     if (lookupKey.current === key) return;
     lookupKey.current = key;
+    const choirIdAtLookupStart = form.choirId;
     setLookupState("loading");
     try {
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
+        const savedChoirId =
+          result.choirId && configuration?.choirs.some((choir) => choir.id === result.choirId)
+            ? result.choirId
+            : null;
         setForm((previous) => ({
           ...previous,
           name: result.name,
           email: result.email,
           phone: result.phone,
-          choirId: result.choirId ?? previous.choirId,
+          choirId:
+            previous.choirId === choirIdAtLookupStart
+              ? (savedChoirId ?? previous.choirId)
+              : previous.choirId,
           voicePart: result.voicePart ?? previous.voicePart,
         }));
         setLookupState("found");
@@ -528,6 +545,7 @@ export function RegistrationSection({
     }
     if (!selectedChoir) {
       setErrors((previous) => ({ ...previous, choirId: "Selecione um coro/diocese." }));
+      setCurrentStep(2);
       return;
     }
     if (!photo) {
@@ -1145,7 +1163,8 @@ export function RegistrationSection({
                     disabled={
                       isSubmitting ||
                       !configuration ||
-                      configuration.choirs.length === 0
+                      configuration.choirs.length === 0 ||
+                      (currentStep === 3 && (!selectedChoir || !displayedQuote))
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PublicRegistrationConfiguration } from "@/features/choirs/choir-pricing.domain";
 import { RegistrationSection } from "./RegistrationSection";
+import { saveRegistrationDraft } from "./registration-draft";
 
 const safeUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
@@ -173,6 +174,82 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(lookup).toHaveBeenCalledWith({ cpf: "52998224725", birthDate: "1990-05-20" });
     expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the choir selected while a slower saved-registration lookup finishes", async () => {
+    const user = userEvent.setup();
+    let resolveLookup!: (value: {
+      status: "found";
+      name: string;
+      email: string;
+      phone: string;
+      choirId: string;
+      voicePart: "soprano";
+      hasPhoto: boolean;
+      paymentStatus: "pending";
+    }) => void;
+    const lookup = vi.fn(
+      () =>
+        new Promise<Parameters<typeof resolveLookup>[0]>((resolve) => {
+          resolveLookup = resolve;
+        }),
+    );
+
+    render(
+      <RegistrationSection
+        lookupRegistration={lookup}
+        loadConfiguration={loadConfiguration}
+      />,
+    );
+    await fillPersonalData(user);
+    await waitFor(() => expect(resolveLookup).toBeTypeOf("function"));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Sua participação" });
+
+    const choir = screen.getByLabelText("Coro/Diocese");
+    await user.selectOptions(choir, sobralId);
+    resolveLookup({
+      status: "found",
+      name: "Maria da Silva",
+      email: "maria@example.com",
+      phone: "85999999999",
+      choirId: "44444444-4444-4444-8444-444444444444",
+      voicePart: "soprano",
+      hasPhoto: true,
+      paymentStatus: "pending",
+    });
+
+    await waitFor(() => expect(choir).toHaveValue(sobralId));
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
+    expect(screen.getAllByText("Coro Diocesano de Sobral").length).toBeGreaterThan(0);
+  });
+
+  it("returns an inconsistent saved review to the choir selection step", async () => {
+    saveRegistrationDraft({
+      form: {
+        name: "Maria da Silva",
+        cpf: "529.982.247-25",
+        email: "maria@example.com",
+        phone: "(85) 99999-9999",
+        birthDate: "1990-05-20",
+        choirId: "44444444-4444-4444-8444-444444444444",
+        raffleChoice: "full_price",
+        voicePart: "soprano",
+      },
+      photo: { contentType: "image/jpeg", dataBase64: "dGVzdA==" },
+      photoFileName: "maria.jpg",
+      currentStep: 3,
+    });
+
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeVisible();
+    expect(screen.getByLabelText("Coro/Diocese")).toHaveValue("");
+    expect(screen.getByText("Selecione um coro/diocese.")).toBeVisible();
   });
 
   it("loads configured choirs and all musical profiles in participation", async () => {
