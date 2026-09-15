@@ -140,7 +140,7 @@ type SupabaseQueryBuilder = {
 
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
 const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
@@ -315,6 +315,7 @@ function createFixture() {
     portalUrl: "/acessar";
     initialPassword: string;
   } | null);
+  const findAuthUserByEmail = vi.fn(async () => null as { id: string } | null);
 
   const service = createRegistrationPaymentService({
     repository,
@@ -325,6 +326,7 @@ function createFixture() {
     resolveChoirSelection: vi.fn(async () => trustedSelection),
     provisionParticipant,
     getParticipantCredentials,
+    findAuthUserByEmail,
   });
 
   return {
@@ -333,6 +335,7 @@ function createFixture() {
     photoStorage,
     provisionParticipant,
     getParticipantCredentials,
+    findAuthUserByEmail,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
@@ -414,6 +417,17 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("blocks checkout when the email already belongs to an Auth user", async () => {
+    fixture.findAuthUserByEmail.mockResolvedValue({ id: "existing-auth-user" });
+
+    await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow(
+      "Já existe um acesso com este e-mail.",
+    );
+    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
+    expect(fixture.repository.createPending).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
   it("resumes the persisted checkout when CPF and birth date match", async () => {
@@ -1093,6 +1107,7 @@ describe("Supabase registration repository", () => {
       createUser: async () => ({ id: "33333333-3333-4333-8333-333333333333" }),
       deleteUser: async () => {},
       updatePassword: async () => {},
+      createMagicLink: async () => "https://example.supabase.co/auth/v1/verify?token=one-time",
     };
 
     await expect(

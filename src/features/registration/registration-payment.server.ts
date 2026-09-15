@@ -47,6 +47,7 @@ export type RegistrationPaymentRecord = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
 };
 
 export type PublicPaymentStatus =
@@ -70,6 +71,7 @@ export type PublicPaymentStatus =
       pricingType: "standard" | "promotional";
       standardPriceCents: number;
       registrationPriceCents: number;
+      remainingPriceCents?: number;
     };
 
 export type RegistrationIdentityRecord = {
@@ -168,6 +170,8 @@ export function createRegistrationPaymentService(deps: {
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
   provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
+  findAuthUserByEmail?: (email: string) => Promise<{ id: string } | null>;
+  getParticipantPortalAccessLink?: (registrationId: string) => Promise<string | null>;
   getParticipantCredentials?: (
     registrationId: string,
   ) => Promise<ParticipantInitialCredentials | null>;
@@ -196,6 +200,38 @@ export function createRegistrationPaymentService(deps: {
       : payment;
   };
 
+  const reconcilePayment = async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
+    const registration = await deps.repository.findPayment(lookup.orderNsu);
+    if (!registration) throw new Error("Pedido não encontrado.");
+
+    if (registration.paymentStatus === "paid") {
+      if (registration.transactionNsu !== lookup.transactionNsu) {
+        throw new Error("Transação divergente para pedido já confirmado.");
+      }
+      return toPaidPublicStatus(registration, false);
+    }
+
+    const checked = await deps.infinitePay.checkPayment(lookup);
+    if (!checked.paid) return { status: "pending" };
+    if (checked.amountCents !== registration.amountCents) {
+      throw new Error("Valor do pagamento divergente.");
+    }
+    if (checked.paidAmountCents < registration.amountCents) {
+      throw new Error("Valor pago é inferior ao valor do pedido.");
+    }
+
+    const confirmed = await deps.repository.markPaid(lookup.orderNsu, {
+      transactionNsu: lookup.transactionNsu,
+      invoiceSlug: lookup.slug,
+      paymentMethod: checked.paymentMethod,
+      installments: checked.installments,
+      paidAmountCents: checked.paidAmountCents,
+      receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
+      paidAt: deps.now(),
+    });
+    return toPaidPublicStatus(confirmed);
+  };
+
   return {
     lookupRegistration: async (input: {
       cpf: string;
@@ -206,11 +242,17 @@ export function createRegistrationPaymentService(deps: {
     },
     startCheckout: async (input: RegistrationInput) => {
       const existing = await deps.repository.findByCpf?.(input.cpf);
+      const canResumeExisting =
+        existing?.paymentStatus === "pending" && existing.birthDate === input.birthDate;
       if (
         existing &&
         (existing.paymentStatus !== "pending" || existing.birthDate !== input.birthDate)
       ) {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+      }
+      if (!canResumeExisting && deps.findAuthUserByEmail) {
+        const authUser = await deps.findAuthUserByEmail(input.email.trim().toLowerCase());
+        if (authUser) throw new Error("Já existe um acesso com este e-mail.");
       }
       if (existing?.paymentStatus === "pending" && existing.checkoutUrl && existing.orderNsu) {
         if (!isCheckoutClaim(existing.checkoutUrl)) {
@@ -384,36 +426,20 @@ export function createRegistrationPaymentService(deps: {
       throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
     },
 
-    reconcilePayment: async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
+    reconcilePayment,
+
+    createParticipantPortalAccessLink: async (lookup: PaymentLookup) => {
+      const payment = await reconcilePayment(lookup);
+      if (payment.status !== "paid") {
+        return { ok: false as const, message: "O pagamento ainda está sendo confirmado." };
+      }
       const registration = await deps.repository.findPayment(lookup.orderNsu);
-      if (!registration) throw new Error("Pedido não encontrado.");
-
-      if (registration.paymentStatus === "paid") {
-        if (registration.transactionNsu !== lookup.transactionNsu) {
-          throw new Error("Transação divergente para pedido já confirmado.");
-        }
-        return toPaidPublicStatus(registration, false);
-      }
-
-      const checked = await deps.infinitePay.checkPayment(lookup);
-      if (!checked.paid) return { status: "pending" };
-      if (checked.amountCents !== registration.amountCents) {
-        throw new Error("Valor do pagamento divergente.");
-      }
-      if (checked.paidAmountCents < registration.amountCents) {
-        throw new Error("Valor pago é inferior ao valor do pedido.");
-      }
-
-      const confirmed = await deps.repository.markPaid(lookup.orderNsu, {
-        transactionNsu: lookup.transactionNsu,
-        invoiceSlug: lookup.slug,
-        paymentMethod: checked.paymentMethod,
-        installments: checked.installments,
-        paidAmountCents: checked.paidAmountCents,
-        receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
-        paidAt: deps.now(),
-      });
-      return toPaidPublicStatus(confirmed);
+      const actionLink = registration && deps.getParticipantPortalAccessLink
+        ? await deps.getParticipantPortalAccessLink(registration.id)
+        : null;
+      return actionLink
+        ? { ok: true as const, actionLink }
+        : { ok: false as const, message: "Seu acesso ainda está sendo preparado. Tente novamente." };
     },
 
     getPublicStatus: async (orderNsu: string): Promise<PublicPaymentStatus> => {
@@ -452,6 +478,9 @@ function toPublicPaymentStatus(
     pricingType: record.pricingType,
     standardPriceCents: record.standardPriceCents,
     registrationPriceCents: record.registrationPriceCents,
+    ...(typeof record.remainingPriceCents === "number"
+      ? { remainingPriceCents: record.remainingPriceCents }
+      : {}),
     ...(participantCredentials
       ? {
           participantPortalUrl: participantCredentials.portalUrl,
@@ -502,7 +531,7 @@ async function waitForCheckoutUrl(
 }
 
 const paymentColumns =
-  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
 const checkoutLinkColumns =
@@ -525,6 +554,7 @@ function mapPaymentRow(row: {
   pricing_type?: string | null;
   standard_price_cents?: number | null;
   registration_price_cents?: number | null;
+  remaining_price_cents?: number | null;
 }): RegistrationPaymentRecord {
   if (!row.order_nsu || !row.amount_cents || !["pending", "paid"].includes(row.payment_status)) {
     throw new Error("Registro de pagamento inválido.");
@@ -550,6 +580,9 @@ function mapPaymentRow(row: {
         : null,
     standardPriceCents: row.standard_price_cents ?? null,
     registrationPriceCents: row.registration_price_cents ?? null,
+    ...(typeof row.remaining_price_cents === "number"
+      ? { remainingPriceCents: row.remaining_price_cents }
+      : {}),
   };
 }
 
@@ -909,6 +942,11 @@ export function getRegistrationPaymentService() {
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
+      findAuthUserByEmail: async (email) => {
+        const { createSupabaseParticipantAuthAdmin } =
+          await import("@/features/participant/participant-provisioning.server");
+        return createSupabaseParticipantAuthAdmin().findUserByEmail(email);
+      },
       provisionParticipant: async (registrationId) => {
         const { getParticipantProvisioningService } =
           await import("@/features/participant/participant-provisioning.server");
@@ -918,6 +956,11 @@ export function getRegistrationPaymentService() {
         const { getParticipantProvisioningService } =
           await import("@/features/participant/participant-provisioning.server");
         return getParticipantProvisioningService().getInitialCredentials(registrationId);
+      },
+      getParticipantPortalAccessLink: async (registrationId) => {
+        const { getParticipantProvisioningService } =
+          await import("@/features/participant/participant-provisioning.server");
+        return getParticipantProvisioningService().getPortalAccessLink(registrationId);
       },
     });
   }

@@ -58,6 +58,7 @@ export type ParticipantProvisioningRepository = {
     },
   ): Promise<void>;
   findByRegistration(id: string): Promise<ParticipantAccountRow | null>;
+  findByUserId(userId: string): Promise<ParticipantAccountRow | null>;
   appendEvent(event: ParticipantAccessEventInput): Promise<void>;
 };
 
@@ -70,6 +71,7 @@ export type ParticipantAuthAdmin = {
   }): Promise<{ id: string }>;
   deleteUser(userId: string): Promise<void>;
   updatePassword(userId: string, password: string): Promise<void>;
+  createMagicLink(email: string, redirectTo: string): Promise<string>;
 };
 
 export type ParticipantProvisioningResult = {
@@ -209,6 +211,78 @@ export function createParticipantProvisioningService({
     return markFailed(account, claimId, "pending", "LINK_REJECTED", "provisioning_pending");
   }
 
+  async function reconcileExistingActivation(
+    account: ParticipantAccountRow,
+    claimId: string,
+    userId: string,
+    outcome: "confirmed_rejection" | "unknown",
+  ): Promise<ParticipantProvisioningResult> {
+    let reconciled: ParticipantAccountRow | null;
+    try {
+      reconciled = await repository.findByRegistration(account.registrationId);
+    } catch {
+      return { status: "pending" };
+    }
+
+    if (reconciled?.accessStatus === "active") {
+      if (reconciled.userId === userId) {
+        await appendOutcomeEvent({
+          registrationId: account.registrationId,
+          participantAccountId: reconciled.id,
+          eventType: "provisioned",
+        });
+        return { status: "active" };
+      }
+      return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+    }
+
+    return markFailed(
+      account,
+      claimId,
+      "pending",
+      outcome === "unknown" ? "LINK_OUTCOME_UNKNOWN" : "LINK_REJECTED",
+      "provisioning_pending",
+    );
+  }
+
+  async function reuseExistingUser(
+    account: ParticipantAccountRow,
+    claimId: string,
+    userId: string,
+  ): Promise<ParticipantProvisioningResult> {
+    let linkedAccount: ParticipantAccountRow | null;
+    try {
+      linkedAccount = await repository.findByUserId(userId);
+    } catch {
+      return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
+    }
+    if (linkedAccount) {
+      return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+    }
+
+    try {
+      const activated = await repository.activate({
+        accountId: account.id,
+        registrationId: account.registrationId,
+        claimId,
+        userId,
+      });
+      if (activated) {
+        await appendOutcomeEvent({
+          registrationId: account.registrationId,
+          participantAccountId: account.id,
+          eventType: "provisioned",
+        });
+        return { status: "active" };
+      }
+      return reconcileExistingActivation(account, claimId, userId, "confirmed_rejection");
+    } catch (error) {
+      const outcome =
+        error instanceof ParticipantLinkFailure ? error.outcome : ("unknown" as const);
+      return reconcileExistingActivation(account, claimId, userId, outcome);
+    }
+  }
+
   async function provision(registrationId: string): Promise<ParticipantProvisioningResult> {
     const registration = await repository.findPaidRegistration(registrationId);
     if (!registration) return { status: "pending" };
@@ -235,7 +309,15 @@ export function createParticipantProvisioningService({
       createdUserId = created.id;
     } catch (error) {
       if (error instanceof ParticipantAuthFailure && error.outcome === "email_conflict") {
-        return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+        try {
+          const existing = await auth.findUserByEmail(email);
+          if (existing) {
+            return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+          }
+        } catch {
+          // A transient lookup failure remains pending and can be retried later.
+        }
+        return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
       }
       return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
     }
@@ -266,6 +348,15 @@ export function createParticipantProvisioningService({
 
   return {
     provision,
+    async getPortalAccessLink(registrationId: string): Promise<string | null> {
+      const registration = await repository.findPaidRegistration(registrationId);
+      const account = await repository.findByRegistration(registrationId);
+      if (!registration || !account || account.accessStatus !== "active" || !account.userId) {
+        return null;
+      }
+      const siteUrl = process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosce.lovable.app";
+      return auth.createMagicLink(registration.email, `${siteUrl}/participante`);
+    },
     async getInitialCredentials(
       registrationId: string,
     ): Promise<ParticipantInitialCredentials | null> {
@@ -444,6 +535,15 @@ export function createSupabaseParticipantProvisioningRepository(): ParticipantPr
       if (!data) throw new Error("Participant claim is no longer owned");
     },
     findByRegistration: findAccountByRegistration,
+    async findByUserId(userId) {
+      const { data, error } = await supabaseAdmin
+        .from("participant_accounts")
+        .select(accountColumns)
+        .eq("user_id", userId)
+        .maybeSingle();
+      checkError(error);
+      return data ? mapAccount(data) : null;
+    },
     async appendEvent(event) {
       const { error } = await supabaseAdmin.from("participant_access_events").insert({
         registration_id: event.registrationId,
@@ -498,6 +598,17 @@ export function createSupabaseParticipantAuthAdmin(): ParticipantAuthAdmin {
       const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
       checkError(error);
       if (!data.user) throw new Error("Participant Auth user was not updated");
+    },
+    async createMagicLink(email, redirectTo) {
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email: normalizeEmail(email),
+        options: { redirectTo },
+      });
+      checkError(error);
+      const actionLink = data?.properties?.action_link;
+      if (!actionLink) throw new Error("Participant Auth link was not generated");
+      return actionLink;
     },
   };
 }

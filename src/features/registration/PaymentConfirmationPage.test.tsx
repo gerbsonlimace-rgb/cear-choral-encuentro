@@ -38,11 +38,42 @@ describe("PaymentConfirmationPage", () => {
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
     expect(screen.queryByRole("link", { name: /grupo do WhatsApp/i })).not.toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "Acessar portal" })).toHaveAttribute("href", "/acessar");
+    expect(await screen.findByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
     const groupLink = screen.getByRole("link", { name: "Entrar no grupo do WhatsApp" });
     expect(groupLink).toHaveAttribute("href", whatsappGroupUrl);
     expect(groupLink).toHaveAttribute("target", "_blank");
     expect(groupLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("offers automatic portal access even while participant provisioning is pending", async () => {
+    const getPortalAccessLink = vi.fn().mockResolvedValue({
+      ok: true as const,
+      actionLink: "https://example.supabase.co/auth/v1/verify?token=one-time",
+    });
+    const redirectToPortal = vi.fn();
+    const verifyPayment = vi.fn().mockResolvedValue({
+      status: "paid" as const,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      participantAccessStatus: "pending" as const,
+    });
+
+    render(
+      <PaymentConfirmationPage
+        lookup={lookup}
+        verifyPayment={verifyPayment}
+        getPortalAccessLink={getPortalAccessLink}
+        redirectToPortal={redirectToPortal}
+      />,
+    );
+
+    const accessButton = await screen.findByRole("button", { name: "Acessar portal do participante" });
+    fireEvent.click(accessButton);
+
+    await waitFor(() => expect(getPortalAccessLink).toHaveBeenCalledWith(lookup));
+    expect(redirectToPortal).toHaveBeenCalledWith(
+      "https://example.supabase.co/auth/v1/verify?token=one-time",
+    );
   });
 
   it("does not invent a group invitation when the server returns none", async () => {
@@ -154,10 +185,8 @@ describe("PaymentConfirmationPage", () => {
     expect(await screen.findByText("Maria de Lourdes")).toBeVisible();
     expect(screen.getByText("Coro Diocesano de Quixadá")).toBeVisible();
     expect(screen.getByText("R$ 120,00")).toBeVisible();
-    expect(screen.getByText(/seu acesso ao portal está pronto/i)).toBeVisible();
-
-    const accessLink = screen.getByRole("link", { name: "Acessar o portal do participante" });
-    expect(accessLink).toHaveAttribute("href", "/acessar");
+    expect(screen.getByText(/acesso ao portal do participante/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Baixar comprovante em PDF" }));
     await waitFor(() => expect(downloadReceipt).toHaveBeenCalledTimes(1));
@@ -218,17 +247,14 @@ describe("PaymentConfirmationPage", () => {
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
     expect(
-      await screen.findByRole("heading", { name: "Seu acesso ao portal está pronto" }),
+      await screen.findByRole("heading", { name: "Acesso ao portal do participante" }),
     ).toBeVisible();
     expect(screen.getByTestId("confirmation-columns")).toHaveClass("lg:grid-cols-2");
-    expect(screen.getByText("Acesse o portal do participante para consultar as partituras, manuais e demais materiais do evento.")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Acessar o portal do participante" })).toHaveAttribute(
-      "href",
-      "/acessar",
-    );
+    expect(screen.getByText(/Clique abaixo para entrar automaticamente/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
   });
 
-  it("offers unified portal access only after participant access is active", async () => {
+  it("offers unified portal access without exposing a password", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
       paymentMethod: "pix" as const,
@@ -240,11 +266,8 @@ describe("PaymentConfirmationPage", () => {
 
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
-    expect(
-      await screen.findByRole("link", { name: "Acessar o portal do participante" }),
-    ).toHaveAttribute("href", "/acessar");
-    expect(screen.getByText("Senha inicial")).toBeVisible();
-    expect(screen.getByText("529982247251990")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
+    expect(screen.queryByText("Senha inicial")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -269,7 +292,8 @@ describe("PaymentConfirmationPage", () => {
       render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
       expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
-      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
       expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
       expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
       expect(screen.queryByText("Acesso ao app liberado")).not.toBeInTheDocument();
@@ -294,10 +318,8 @@ describe("PaymentConfirmationPage", () => {
 
       render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
-      expect(await screen.findByText(message)).toBeVisible();
-      expect(
-        screen.queryByRole("link", { name: "Acessar o portal do participante" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Acessar portal do participante" })).toBeVisible();
       expect(screen.queryByText("Senha inicial")).not.toBeInTheDocument();
       expect(screen.queryByText("Não faça outro pagamento.")).not.toBeInTheDocument();
     },
