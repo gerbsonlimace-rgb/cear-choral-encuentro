@@ -208,7 +208,7 @@ export function createRegistrationPaymentService(deps: {
       if (registration.transactionNsu !== lookup.transactionNsu) {
         throw new Error("Transação divergente para pedido já confirmado.");
       }
-      return toPaidPublicStatus(registration, false);
+      return toPaidPublicStatus(registration);
     }
 
     const checked = await deps.infinitePay.checkPayment(lookup);

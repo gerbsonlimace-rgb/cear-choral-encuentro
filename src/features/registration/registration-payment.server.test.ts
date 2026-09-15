@@ -910,7 +910,7 @@ describe("registration payment service", () => {
     expect(fixture.getParticipantCredentials).toHaveBeenCalledWith("registration-1");
   });
 
-  it("does not repeat participant credentials when a paid return URL is replayed", async () => {
+  it("includes participant credentials when a paid confirmation URL is replayed", async () => {
     fixture.setRecord({
       ...pendingRecord(),
       paymentStatus: "paid",
@@ -926,10 +926,9 @@ describe("registration payment service", () => {
     await expect(fixture.service.reconcilePayment(lookup)).resolves.toMatchObject({
       status: "paid",
       participantAccessStatus: "active",
+      participantPortalUrl: "/acessar",
+      participantInitialPassword: "5299822472515011990",
     });
-    await expect(fixture.service.reconcilePayment(lookup)).resolves.not.toHaveProperty(
-      "participantInitialPassword",
-    );
   });
 });
 

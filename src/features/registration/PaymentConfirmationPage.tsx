@@ -1,13 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2, Download, ExternalLink, LogIn, LoaderCircle, MessageCircle } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, KeyRound, Link2, LoaderCircle, MessageCircle } from "lucide-react";
 
 import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  createParticipantPortalAccessLink,
-  verifyRegistrationPayment,
-} from "@/lib/registration.functions";
+import { verifyRegistrationPayment } from "@/lib/registration.functions";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
 import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
@@ -18,19 +15,13 @@ type PaidPayment = Extract<PublicPaymentStatus, { status: "paid" }>;
 type PaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment?: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
-  getPortalAccessLink?: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
-  redirectToPortal?: (actionLink: string) => void;
   downloadReceipt?: (payment: PaidPayment) => Promise<void>;
   retryDelayMs?: number;
 };
 
-type PortalAccessLinkResult = { ok: true; actionLink: string } | { ok: false; message: string };
-
 type ResolvedPaymentConfirmationPageProps = {
   lookup: PaymentLookup | null;
   verifyPayment: (lookup: PaymentLookup) => Promise<PublicPaymentStatus>;
-  getPortalAccessLink: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
-  redirectToPortal: (actionLink: string) => void;
   downloadReceipt: (payment: PaidPayment) => Promise<void>;
   retryDelayMs: number;
 };
@@ -43,22 +34,13 @@ type ConfirmationState =
 
 const MAX_VERIFICATION_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 2000;
+const DEFAULT_PARTICIPANT_PORTAL_URL = "https://encontrocorosce.lovable.app/acessar";
 const defaultVerifyPayment = (lookup: PaymentLookup) => verifyRegistrationPayment({ data: lookup });
 const defaultDownloadReceipt = (payment: PaidPayment) => downloadReceiptPdf(payment);
-const defaultGetPortalAccessLink = async (lookup: PaymentLookup): Promise<PortalAccessLinkResult> => {
-  try {
-    return await createParticipantPortalAccessLink({ data: lookup });
-  } catch {
-    return { ok: false, message: "Não foi possível preparar o acesso agora. Tente novamente." };
-  }
-};
-const defaultRedirectToPortal = (actionLink: string) => window.location.assign(actionLink);
 
 export function PaymentConfirmationPage({
   lookup,
   verifyPayment = defaultVerifyPayment,
-  getPortalAccessLink = defaultGetPortalAccessLink,
-  redirectToPortal = defaultRedirectToPortal,
   downloadReceipt = defaultDownloadReceipt,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 }: PaymentConfirmationPageProps) {
@@ -73,8 +55,6 @@ export function PaymentConfirmationPage({
       key={lookupKey}
       lookup={lookup}
       verifyPayment={verifyPayment}
-      getPortalAccessLink={getPortalAccessLink}
-      redirectToPortal={redirectToPortal}
       downloadReceipt={downloadReceipt}
       retryDelayMs={retryDelayMs}
     />
@@ -84,8 +64,6 @@ export function PaymentConfirmationPage({
 function PaymentConfirmationCycle({
   lookup,
   verifyPayment,
-  getPortalAccessLink,
-  redirectToPortal,
   downloadReceipt,
   retryDelayMs,
 }: ResolvedPaymentConfirmationPageProps) {
@@ -161,9 +139,6 @@ function PaymentConfirmationCycle({
         ) : state.kind === "paid" ? (
           <ConfirmedPayment
             payment={state.payment}
-            lookup={lookup!}
-            getPortalAccessLink={getPortalAccessLink}
-            redirectToPortal={redirectToPortal}
             downloadReceipt={downloadReceipt}
           />
         ) : state.kind === "pending" ? (
@@ -216,20 +191,13 @@ function PaymentMessage({
 
 function ConfirmedPayment({
   payment,
-  lookup,
-  getPortalAccessLink,
-  redirectToPortal,
   downloadReceipt,
 }: {
   payment: PaidPayment;
-  lookup: PaymentLookup;
-  getPortalAccessLink: (lookup: PaymentLookup) => Promise<PortalAccessLinkResult>;
-  redirectToPortal: (actionLink: string) => void;
   downloadReceipt: (payment: PaidPayment) => Promise<void>;
 }) {
   const [downloading, setDownloading] = useState(false);
-  const [openingPortal, setOpeningPortal] = useState(false);
-  const [portalError, setPortalError] = useState<string | null>(null);
+  const participantPortalUrl = getParticipantPortalUrl(payment.participantPortalUrl);
   const rows = buildReceiptRows(payment);
   const isPreRegistration =
     payment.pricingType === "promotional" &&
@@ -247,21 +215,6 @@ function ConfirmedPayment({
       await downloadReceipt(payment);
     } finally {
       setDownloading(false);
-    }
-  };
-
-  const handlePortalAccess = async () => {
-    setOpeningPortal(true);
-    setPortalError(null);
-    try {
-      const result = await getPortalAccessLink(lookup);
-      if (result.ok) {
-        redirectToPortal(result.actionLink);
-      } else {
-        setPortalError(result.message);
-      }
-    } finally {
-      setOpeningPortal(false);
     }
   };
 
@@ -407,7 +360,7 @@ function ConfirmedPayment({
               >
                 <div className="flex items-start gap-4">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber text-amber-foreground">
-                    <LogIn className="size-5" aria-hidden="true" />
+                    <KeyRound className="size-5" aria-hidden="true" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-foreground">
@@ -420,21 +373,36 @@ function ConfirmedPayment({
                       Acesso ao portal do participante
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Clique abaixo para entrar automaticamente no portal do participante. Não é
-                      necessário informar senha.
+                      Use as informações abaixo para entrar no portal do participante.
                     </p>
-                    {portalError && (
-                      <p className="mt-3 text-sm font-semibold text-destructive">{portalError}</p>
-                    )}
-                    <Button
-                      type="button"
-                      disabled={openingPortal}
-                      onClick={() => void handlePortalAccess()}
-                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {openingPortal ? "Preparando acesso…" : "Acessar portal do participante"}
-                      <LogIn className="size-4" aria-hidden="true" />
-                    </Button>
+                    <div className="mt-4 space-y-3 rounded-2xl border border-amber/40 bg-card/80 p-4 text-sm">
+                      <p className="flex items-start gap-2">
+                        <Link2 className="mt-0.5 size-4 shrink-0 text-amber-foreground" aria-hidden="true" />
+                        <span>
+                          <strong className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">Link do portal</strong>
+                          <a
+                            href={participantPortalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 block break-all font-bold text-teal underline underline-offset-4"
+                          >
+                            {participantPortalUrl}
+                          </a>
+                        </span>
+                      </p>
+                      <p>
+                        <strong className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">Login (e-mail cadastrado)</strong>
+                        <span className="mt-1 block break-all font-bold text-foreground">
+                          {payment.participantEmail ?? "e-mail cadastrado na inscrição"}
+                        </span>
+                      </p>
+                      <p>
+                        <strong className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">Senha (6 primeiros dígitos do CPF)</strong>
+                        <span className="mt-1 block font-bold text-foreground">
+                          {payment.participantInitialPassword ?? "os 6 primeiros dígitos do CPF"}
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -443,6 +411,22 @@ function ConfirmedPayment({
         </Card>
     </div>
   );
+}
+
+function getParticipantPortalUrl(portalUrl?: string): string {
+  if (!portalUrl) return DEFAULT_PARTICIPANT_PORTAL_URL;
+  try {
+    const parsed = new URL(portalUrl, DEFAULT_PARTICIPANT_PORTAL_URL);
+    if (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      !/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/i.test(parsed.href)
+    ) {
+      return parsed.href;
+    }
+  } catch {
+    // Fall back to the public event portal when a stored value is malformed.
+  }
+  return DEFAULT_PARTICIPANT_PORTAL_URL;
 }
 
 function DuplicatePaymentWarning() {
