@@ -374,35 +374,35 @@ function ConfirmedPayment({
                       id="material-title"
                       className="font-display text-xl font-bold text-foreground"
                     >
-                      Acesso ao App do Coralista
+                      Seu acesso ao portal está pronto
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Seu material estará no app do Coralista. Entre para consultar partituras,
-                      manuais e os demais materiais do evento.
+                      Acesse o portal do participante para consultar as partituras, manuais e demais
+                      materiais do evento.
                     </p>
-                    {payment.participantEmail && (
-                      <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                        <div className="rounded-2xl border border-amber/30 bg-[#fffaf0]/70 p-3">
+                    {payment.participantInitialPassword && (
+                      <dl className="mt-4 grid gap-3 rounded-2xl border border-amber/30 bg-background/60 p-4 sm:grid-cols-2">
+                        <div>
                           <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Usuário
+                            Link do portal
                           </dt>
-                          <dd className="mt-1 break-all text-sm font-bold text-foreground">
-                            {payment.participantEmail}
+                          <dd className="mt-1 text-sm font-bold text-foreground">
+                            {payment.participantPortalUrl ?? "/acessar"}
                           </dd>
                         </div>
-                        <div className="rounded-2xl border border-amber/30 bg-[#fffaf0]/70 p-3">
+                        <div>
                           <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                             Senha inicial
                           </dt>
-                          <dd className="mt-1 text-sm font-bold text-foreground">
-                            CPF + ano de nascimento (AAAA)
+                          <dd className="mt-1 break-all font-mono text-sm font-bold text-foreground">
+                            {payment.participantInitialPassword}
                           </dd>
                         </div>
                       </dl>
                     )}
                     <a
-                      href="/acessar"
-                      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      href={payment.participantPortalUrl ?? "/acessar"}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Acessar o portal do participante
                       <LogIn className="size-4" aria-hidden="true" />

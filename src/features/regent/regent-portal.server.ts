@@ -49,6 +49,7 @@ export type PortalSummaryRegistrationRow = Pick<
   | "pricingType"
   | "standardPriceCents"
   | "registrationPriceCents"
+  | "remainingPriceCents"
   | "initialAmountCents"
 >;
 

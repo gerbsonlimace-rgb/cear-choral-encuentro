@@ -57,7 +57,6 @@ const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const cpf = "52998224725";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
-const existingCheckoutUrl = "https://checkout.infinitepay.com.br/existing";
 const choirId = "22222222-2222-4222-8222-222222222222";
 const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" };
 const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
@@ -142,7 +141,7 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents";
-const identityColumns = "id";
+const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -222,7 +221,14 @@ function createSupabaseHarness(
 function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
-  let identityRecord: { id: string } | null = null;
+  let identityRecord: {
+    id: string;
+    paymentStatus: "pending" | "paid" | "legacy";
+    birthDate: string;
+    orderNsu: string | null;
+    checkoutUrl: string | null;
+  } | null = null;
+  let lookupResult = null as RegistrationLookupResult | null;
   let resumeIdentityRecord: {
     birthDate: string;
     paymentStatus: "pending" | "paid" | "legacy";
@@ -331,6 +337,9 @@ function createFixture() {
     service,
     setIdentityRecord(next: typeof identityRecord) {
       identityRecord = next;
+    },
+    setLookupResult(next: RegistrationLookupResult | null) {
+      lookupResult = next;
     },
     setResumeIdentityRecord(next: typeof resumeIdentityRecord) {
       resumeIdentityRecord = next;
@@ -553,6 +562,7 @@ describe("registration payment service", () => {
       pricingType: "standard",
       standardPriceCents: 30000,
       registrationPriceCents: 30000,
+      checkoutClaim: expect.any(String),
     });
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({

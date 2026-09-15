@@ -154,7 +154,7 @@ describe("PaymentConfirmationPage", () => {
     expect(await screen.findByText("Maria de Lourdes")).toBeVisible();
     expect(screen.getByText("Coro Diocesano de Quixadá")).toBeVisible();
     expect(screen.getByText("R$ 120,00")).toBeVisible();
-    expect(screen.getByText(/acesso ao portal está pronto/i)).toBeVisible();
+    expect(screen.getByText(/seu acesso ao portal está pronto/i)).toBeVisible();
 
     const accessLink = screen.getByRole("link", { name: "Acessar o portal do participante" });
     expect(accessLink).toHaveAttribute("href", "/acessar");
@@ -206,7 +206,7 @@ describe("PaymentConfirmationPage", () => {
     expect(screen.getByText("Inscrição confirmada")).toBeVisible();
   });
 
-  it("shows the participant app credentials guidance in a second column", async () => {
+  it("shows the participant portal guidance in a second column", async () => {
     const verifyPayment = vi.fn().mockResolvedValue({
       status: "paid" as const,
       paymentMethod: "pix" as const,
@@ -218,12 +218,11 @@ describe("PaymentConfirmationPage", () => {
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
 
     expect(
-      await screen.findByRole("heading", { name: "Acesso ao App do Coralista" }),
+      await screen.findByRole("heading", { name: "Seu acesso ao portal está pronto" }),
     ).toBeVisible();
     expect(screen.getByTestId("confirmation-columns")).toHaveClass("lg:grid-cols-2");
-    expect(screen.getByText("maria@example.com")).toBeVisible();
-    expect(screen.getByText("CPF + ano de nascimento (AAAA)")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Acessar o app do Coralista" })).toHaveAttribute(
+    expect(screen.getByText("Acesse o portal do participante para consultar as partituras, manuais e demais materiais do evento.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Acessar o portal do participante" })).toHaveAttribute(
       "href",
       "/acessar",
     );
@@ -236,7 +235,7 @@ describe("PaymentConfirmationPage", () => {
       installments: 1,
       participantAccessStatus: "active" as const,
       participantPortalUrl: "/acessar",
-      participantInitialPassword: "5299822472515011990",
+      participantInitialPassword: "529982247251990",
     });
 
     render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
@@ -245,7 +244,7 @@ describe("PaymentConfirmationPage", () => {
       await screen.findByRole("link", { name: "Acessar o portal do participante" }),
     ).toHaveAttribute("href", "/acessar");
     expect(screen.getByText("Senha inicial")).toBeVisible();
-    expect(screen.getByText("5299822472515011990")).toBeVisible();
+    expect(screen.getByText("529982247251990")).toBeVisible();
   });
 
   it.each([

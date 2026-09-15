@@ -39,9 +39,8 @@ import {
 } from "@/features/choirs/choir-pricing.domain";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import {
-  checkRegistrationAvailability,
+  lookupRegistration,
   startRegistrationCheckout,
-  type RegistrationAvailabilityResult,
   type StartRegistrationCheckoutResult,
 } from "@/lib/registration.functions";
 import {
@@ -58,7 +57,6 @@ import {
 import type { RegistrationLookupResult } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
 import { loadRegistrationDraft, saveRegistrationDraft } from "./registration-draft";
-import { RegistrationResumeCard } from "./RegistrationResumeCard";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -68,10 +66,8 @@ type RegistrationSectionProps = {
     birthDate: string;
   }) => Promise<RegistrationLookupResult>;
   navigateToCheckout?: (url: string) => void;
-  checkAvailability?: (input: {
-    cpf: string;
-    email: string;
-  }) => Promise<RegistrationAvailabilityResult>;
+  /** Kept for compatibility with callers using the previous prop. */
+  checkAvailability?: (input: { cpf: string; email: string }) => Promise<unknown>;
 };
 
 type RegistrationForm = Omit<
@@ -285,7 +281,6 @@ export function RegistrationSection({
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
   lookupRegistration: lookupSavedRegistration = (input) => lookupRegistration({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
-  checkAvailability = (input) => checkRegistrationAvailability({ data: input }),
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
@@ -295,11 +290,13 @@ export function RegistrationSection({
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
-  const [identityConflict, setIdentityConflict] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [draftReady, setDraftReady] = useState(false);
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found">(
+    "idle",
+  );
+  const lookupKey = useRef("");
   const mounted = useRef(false);
   const paymentButtonClick = useRef(false);
 
@@ -383,6 +380,9 @@ export function RegistrationSection({
       pricingType: selectedChoir.pricingType,
       standardPriceCents: selectedChoir.standardPriceCents,
       registrationPriceCents: selectedChoir.registrationPriceCents,
+      ...(selectedChoir.remainingPriceCents !== undefined
+        ? { remainingPriceCents: selectedChoir.remainingPriceCents }
+        : {}),
     };
     const raffleChoice =
       selectedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
@@ -413,7 +413,6 @@ export function RegistrationSection({
       setLookupState("idle");
     }
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
-    if (field === "cpf" || field === "email") setIdentityConflict(false);
   };
 
   const lookupSavedData = async () => {
@@ -503,32 +502,8 @@ export function RegistrationSection({
   const goToNextStep = async () => {
     if (currentStep === 1) {
       if (!validateStep(1)) return;
-      setIsCheckingAvailability(true);
-      setIdentityConflict(false);
-      try {
-        const availability = await checkAvailability({
-          cpf: form.cpf.replace(/\D/g, ""),
-          email: form.email.trim(),
-        });
-        const conflictErrors: Partial<Record<RegistrationFormField, string>> = {};
-        if (availability.cpfTaken) {
-          conflictErrors.cpf = "Já existe uma inscrição para este CPF.";
-        }
-        if (availability.emailTaken) {
-          conflictErrors.email = "Já existe uma inscrição para este e-mail.";
-        }
-        if (Object.keys(conflictErrors).length > 0) {
-          setErrors((previous) => ({ ...previous, ...conflictErrors }));
-          setIdentityConflict(true);
-          focusFirstError(conflictErrors);
-          return;
-        }
-        setCurrentStep(2);
-      } catch {
-        setCheckoutError("Não foi possível verificar seus dados. Tente novamente.");
-      } finally {
-        setIsCheckingAvailability(false);
-      }
+      await lookupSavedData();
+      setCurrentStep(2);
       return;
     }
     if (currentStep === 2 && validateStep(2)) setCurrentStep(3);
@@ -710,7 +685,7 @@ export function RegistrationSection({
                     </legend>
 
                     <div className="registration-personal-fields grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
-                      <div className="space-y-1.5">
+                      <div className="order-1 space-y-1.5">
                         <Label htmlFor="cpf" className="font-semibold">
                           CPF
                         </Label>
@@ -724,25 +699,10 @@ export function RegistrationSection({
                           placeholder="000.000.000-00"
                           className={inputClassName}
                         />
-                        {errors.cpf && (
-                          <p className="text-sm text-destructive">
-                            {errors.cpf}
-                            {identityConflict && errors.cpf.includes("Já existe") && (
-                              <>
-                                {" "}
-                                <a
-                                  href="#retomar-pagamento"
-                                  className="font-bold underline underline-offset-4"
-                                >
-                                  Retomar pagamento
-                                </a>
-                              </>
-                            )}
-                          </p>
-                        )}
+                        {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="order-3 space-y-1.5">
                         <Label htmlFor="name" className="font-semibold">
                           Nome completo
                         </Label>
@@ -764,7 +724,7 @@ export function RegistrationSection({
                         {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="order-4 space-y-1.5">
                         <Label htmlFor="email" className="font-semibold">
                           E-mail
                         </Label>
@@ -784,25 +744,10 @@ export function RegistrationSection({
                             className={inputClassName}
                           />
                         </div>
-                        {errors.email && (
-                          <p className="text-sm text-destructive">
-                            {errors.email}
-                            {identityConflict && errors.email.includes("Já existe") && (
-                              <>
-                                {" "}
-                                <a
-                                  href="#retomar-pagamento"
-                                  className="font-bold underline underline-offset-4"
-                                >
-                                  Retomar pagamento
-                                </a>
-                              </>
-                            )}
-                          </p>
-                        )}
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="order-5 space-y-1.5">
                         <Label htmlFor="phone" className="font-semibold">
                           WhatsApp
                         </Label>
@@ -829,7 +774,7 @@ export function RegistrationSection({
                         {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="order-2 space-y-1.5">
                         <Label htmlFor="birthDate" className="font-semibold">
                           Data de nascimento
                         </Label>
@@ -845,6 +790,7 @@ export function RegistrationSection({
                             max={getFortalezaCalendarDate()}
                             value={form.birthDate}
                             onChange={(event) => handleChange("birthDate", event.target.value)}
+                            onBlur={() => void lookupSavedData()}
                             className={inputClassName}
                           />
                         </div>
@@ -892,6 +838,16 @@ export function RegistrationSection({
                       </div>
                     </div>
                   </fieldset>
+                  {lookupState === "loading" && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Consultando seus dados salvos…
+                    </p>
+                  )}
+                  {lookupState === "found" && (
+                    <p role="status" className="text-sm text-emerald-foreground">
+                      Encontramos seus dados salvos e preenchemos o formulário.
+                    </p>
+                  )}
                   <details className="registration-badge-preview rounded-xl border border-border p-3">
                     <summary className="cursor-pointer py-2 text-sm font-semibold">
                       Ver prévia do crachá
@@ -1156,17 +1112,6 @@ export function RegistrationSection({
                   className="mt-5 rounded-xl bg-destructive/10 p-4 text-sm text-destructive"
                 >
                   {checkoutError}
-                  {hasCpfConflict && (
-                    <>
-                      {" "}
-                      <a
-                        href="#retomar-pagamento"
-                        className="font-bold underline underline-offset-4"
-                      >
-                        Retomar pagamento
-                      </a>
-                    </>
-                  )}
                 </p>
               )}
 
@@ -1196,7 +1141,6 @@ export function RegistrationSection({
                     }
                     disabled={
                       isSubmitting ||
-                      isCheckingAvailability ||
                       !configuration ||
                       configuration.choirs.length === 0
                     }
@@ -1205,13 +1149,11 @@ export function RegistrationSection({
                     <span className="min-w-0 break-words">
                       {isSubmitting
                         ? "Preparando seu pagamento…"
-                        : isCheckingAvailability
-                          ? "Verificando seus dados…"
-                          : currentStep === 3
-                            ? "Pagar com segurança na InfinitePay"
-                            : "Continuar"}
+                        : currentStep === 3
+                          ? "Pagar com segurança na InfinitePay"
+                          : "Continuar"}
                     </span>
-                    {!isSubmitting && !isCheckingAvailability && (
+                    {!isSubmitting && (
                       <ArrowRight className="ml-2 size-5" aria-hidden="true" />
                     )}
                   </Button>
@@ -1230,7 +1172,6 @@ export function RegistrationSection({
             </form>
           </CardContent>
         </Card>
-        <RegistrationResumeCard />
       </div>
     </section>
   );

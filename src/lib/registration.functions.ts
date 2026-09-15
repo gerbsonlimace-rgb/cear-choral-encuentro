@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   paymentLookupSchema,
   registrationAvailabilitySchema,
+  registrationLookupSchema,
   registrationResumeSchema,
   registrationSchema,
 } from "@/features/registration/registration.domain";
@@ -76,6 +77,14 @@ export const checkRegistrationAvailability = createServerFn({ method: "POST" })
       repository.findByEmail(data.email),
     ]);
     return { cpfTaken: Boolean(cpfRecord), emailTaken: Boolean(emailRecord) };
+  });
+
+export const lookupRegistration = createServerFn({ method: "POST" })
+  .validator(registrationLookupSchema)
+  .handler(async ({ data }): Promise<RegistrationLookupResult> => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().lookupRegistration(data);
   });
 
 export const resumeRegistrationCheckout = createServerFn({ method: "POST" })

@@ -118,7 +118,7 @@ describe("participant provisioning service", () => {
 
     await expect(service.getInitialCredentials(registrationId)).resolves.toEqual({
       portalUrl: "/acessar",
-      initialPassword: "5299822472515011990",
+      initialPassword: "529982247251990",
     });
   });
 

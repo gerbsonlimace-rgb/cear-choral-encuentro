@@ -125,6 +125,7 @@ export function calculateComplementState(
     pricingType: input.pricingType,
     standardPriceCents: input.standardPriceCents,
     registrationPriceCents: input.registrationPriceCents,
+    remainingPriceCents: input.remainingPriceCents,
     confirmedComplementCents: input.confirmedComplementCents,
   });
   if (financialState.status === "legacy") {
