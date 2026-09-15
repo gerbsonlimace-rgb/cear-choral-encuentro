@@ -4,15 +4,12 @@ import {
   ArrowRight,
   Award,
   BedDouble,
-  CalendarDays,
   Check,
   CreditCard,
   Music2,
-  Send,
   ShoppingBag,
   Sparkles,
   Ticket,
-  Trophy,
   Utensils,
 } from "lucide-react";
 
@@ -27,29 +24,24 @@ const benefits = [
 
 const raffleSummary = [
   {
-    icon: CreditCard,
-    label: "Pague R$ 100",
-    detail: "agora",
+    label: "Pagamento inicial",
+    description: "Pague R$ 100 agora no Pix ou cartão.",
   },
   {
-    icon: CalendarDays,
-    label: "Agende com o regente",
-    detail: "e receba os blocos",
+    label: "Blocos de rifas",
+    description: "Agende com seu regente um momento para receber os blocos.",
   },
   {
-    icon: Ticket,
-    label: "Venda 25 rifas",
-    detail: "de R$ 10 cada",
+    label: "Venda mínima",
+    description: "Venda pelo menos 25 rifas de R$ 10 cada.",
   },
   {
-    icon: Send,
-    label: "Entregue até 30/10",
-    detail: "ao seu regente",
+    label: "Entrega dos valores",
+    description: "Envie todo o valor arrecadado ao seu regente até 30/10.",
   },
   {
-    icon: Trophy,
-    label: "Sorteio R$ 1.000 em 08/11",
-    detail: "online",
+    label: "Sorteio",
+    description: "Sorteio online do prêmio de R$ 1.000 em 08/11.",
   },
 ];
 
@@ -232,21 +224,11 @@ export function RegistrationCallout() {
 
                 <ol
                   aria-label="Resumo do programa de rifas"
-                  className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5"
+                  className="mt-5 space-y-2 border-t border-white/10 pt-4"
                 >
-                  {raffleSummary.map(({ icon: Icon, label, detail }, index) => (
-                    <li
-                      key={label}
-                      className="flex min-w-0 flex-col items-center rounded-xl border border-white/10 bg-white/[0.05] px-2 py-3 text-center"
-                    >
-                      <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#ffc400] text-black">
-                        <Icon className="size-4" strokeWidth={2.5} aria-hidden="true" />
-                      </span>
-                      <span className="mt-2 text-[11px] font-extrabold leading-tight text-white">
-                        <span className="sr-only">Etapa {index + 1}: </span>
-                        {label}
-                      </span>
-                      <span className="mt-1 text-[10px] leading-tight text-white/55">{detail}</span>
+                  {raffleSummary.map(({ label, description }) => (
+                    <li key={label} className="text-xs leading-relaxed text-white/70">
+                      <strong className="text-white">{label}:</strong> {description}
                     </li>
                   ))}
                 </ol>
