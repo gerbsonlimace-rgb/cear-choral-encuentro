@@ -140,14 +140,7 @@ function Index() {
 function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
-      <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
-        <Link
-          to="/"
-          className="flex min-w-0 items-center gap-2 font-display text-base font-bold text-foreground sm:gap-3 sm:text-lg"
-        >
-          <span className="truncate">
-</span>
-        </Link>
+      <div className="container-event flex h-14 items-center justify-end gap-3 px-4 lg:h-[4.5rem] lg:px-0">
         <nav
           aria-label="Navegação principal"
           className="hidden items-center gap-6 text-sm font-semibold lg:flex"
