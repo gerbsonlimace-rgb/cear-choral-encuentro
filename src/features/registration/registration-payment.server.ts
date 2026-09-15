@@ -107,7 +107,7 @@ export type RegistrationRepository = {
       registrationPriceCents: number;
     },
   ): Promise<void>;
-  saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<void>;
+  saveCheckoutUrl(orderNsu: string, checkoutUrl: string): Promise<boolean>;
   clearPendingPhoto(orderNsu: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
@@ -201,7 +201,10 @@ export function createRegistrationPaymentService(deps: {
           items: buildCheckoutItems(input, appliedQuote),
           customer: { name: input.name, email: input.email, phoneNumber: input.phone },
         });
-        await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+        const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url);
+        if (!saved) {
+          throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
+        }
       } catch (caught) {
         await Promise.allSettled([
           deps.repository.clearPendingPhoto(orderNsu),
@@ -259,8 +262,19 @@ export function createRegistrationPaymentService(deps: {
           phoneNumber: registration.phone,
         },
       });
-      await deps.repository.saveCheckoutUrl(registration.orderNsu, checkout.url);
-      return { checkoutUrl: checkout.url, reused: false as const };
+      const saved = await deps.repository.saveCheckoutUrl(registration.orderNsu, checkout.url);
+      if (saved) return { checkoutUrl: checkout.url, reused: false as const };
+
+      // A manual confirmation may have won the race while InfinitePay was
+      // creating the checkout. Never return a link unless it is still tied to
+      // a pending registration.
+      const current = await deps.repository.findForCheckoutLink?.(registrationId);
+      if (current?.paymentStatus === "pending" && current.checkoutUrl) {
+        if (isSafeInfinitePayCheckoutUrl(current.checkoutUrl)) {
+          return { checkoutUrl: current.checkoutUrl, reused: true as const };
+        }
+      }
+      throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
     },
 
     reconcilePayment: async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
@@ -539,13 +553,17 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     },
 
     saveCheckoutUrl: async (orderNsu, checkoutUrl) => {
-      const { error } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from("registrations")
         .update({ checkout_url: checkoutUrl })
         .eq("order_nsu", orderNsu)
-        .eq("payment_status", "pending");
+        .eq("payment_status", "pending")
+        .is("checkout_url", null)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw new Error("Não foi possível salvar o checkout.");
+      return data !== null;
     },
 
     clearPendingPhoto: async (orderNsu) => {

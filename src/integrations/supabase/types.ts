@@ -618,7 +618,9 @@ export type Database = {
           order_nsu: string | null
           paid_amount_cents: number | null
           paid_at: string | null
+          payment_origin?: string
           payment_method: string | null
+          manual_paid_by?: string | null
           payment_status: string
           phone: string
           photo_path: string | null
@@ -653,7 +655,9 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_origin?: string
           payment_method?: string | null
+          manual_paid_by?: string | null
           payment_status?: string
           phone: string
           photo_path?: string | null
@@ -688,7 +692,9 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_origin?: string
           payment_method?: string | null
+          manual_paid_by?: string | null
           payment_status?: string
           phone?: string
           photo_path?: string | null

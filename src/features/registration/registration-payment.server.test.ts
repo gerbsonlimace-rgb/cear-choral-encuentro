@@ -129,6 +129,7 @@ type SupabaseQueryBuilder = {
   update: (values: unknown) => SupabaseQueryBuilder;
   select: (columns: string) => SupabaseQueryBuilder;
   eq: (column: string, value: unknown) => SupabaseQueryBuilder;
+  is: (column: string, value: unknown) => SupabaseQueryBuilder;
   maybeSingle: () => Promise<DatabaseResult>;
   then: (
     onFulfilled: (value: DatabaseResult) => unknown,
@@ -188,6 +189,10 @@ function createSupabaseHarness(
       trace.push(["eq", column, value]);
       return builder;
     }),
+    is: vi.fn((column: string, value: unknown) => {
+      trace.push(["is", column, value]);
+      return builder;
+    }),
     maybeSingle: vi.fn(async () => {
       trace.push(["maybeSingle"]);
       return maybeSingleResults.shift() ?? successfulDatabaseResult;
@@ -243,6 +248,7 @@ function createFixture() {
     }),
     saveCheckoutUrl: vi.fn(async () => {
       calls.push("saveCheckoutUrl");
+      return true;
     }),
     clearPendingPhoto: vi.fn(async () => {
       calls.push("clearPendingPhoto");
@@ -457,6 +463,36 @@ describe("registration payment service", () => {
       customer: { name: "Maria", email: "maria@example.com", phoneNumber: "85999999999" },
     });
     expect(fixture.repository.saveCheckoutUrl).toHaveBeenCalledWith(fixedOrderNsu, checkoutUrl);
+  });
+
+  it("does not return a checkout created after a concurrent manual confirmation", async () => {
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: null,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+    vi.mocked(fixture.repository.saveCheckoutUrl).mockImplementationOnce(async () => {
+      fixture.setCheckoutLinkRecord({
+        id: "registration-1",
+        orderNsu: fixedOrderNsu,
+        amountCents: 10000,
+        paymentStatus: "paid",
+        checkoutUrl: null,
+        name: "Maria",
+        email: "maria@example.com",
+        phone: "85999999999",
+      });
+      return false;
+    });
+
+    await expect((fixture.service as any).createCheckoutLink("registration-1")).rejects.toThrow(
+      "confirmada antes de salvar",
+    );
   });
 
   it("uses the trusted full-price quote when the participant opts out of raffles", async () => {
@@ -1129,7 +1165,7 @@ describe("Supabase registration repository", () => {
     ]);
   });
 
-  it("saves the checkout URL only while the order is pending", async () => {
+  it("saves the checkout URL only while the order is pending and has no link", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
 
@@ -1140,13 +1176,15 @@ describe("Supabase registration repository", () => {
       ["update", { checkout_url: checkoutUrl }],
       ["eq", "order_nsu", fixedOrderNsu],
       ["eq", "payment_status", "pending"],
-      ["execute"],
+      ["is", "checkout_url", null],
+      ["select", "id"],
+      ["maybeSingle"],
     ]);
   });
 
   it("surfaces a checkout URL update failure", async () => {
     createSupabaseHarness({
-      executeResults: [{ data: null, error: { message: "update failed" } }],
+      maybeSingleResults: [{ data: null, error: { message: "update failed" } }],
     });
     const repository = createSupabaseRegistrationRepository();
 

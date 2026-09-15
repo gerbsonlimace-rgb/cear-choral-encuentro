@@ -229,14 +229,52 @@ describe("manual payment confirmation", () => {
       "update",
       {
         payment_status: "paid",
-        infinitepay_transaction_nsu: expect.stringContaining("manual-admin:admin-1:"),
-        payment_method: "pix",
-        installments: 1,
+        payment_origin: "manual",
+        manual_paid_by: "admin-1",
+        infinitepay_invoice_slug: null,
+        infinitepay_transaction_nsu: null,
+        payment_method: null,
+        installments: null,
         paid_amount_cents: 10000,
+        receipt_url: null,
         paid_at: expect.any(String),
       },
     ]);
     expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
+    expect(trace).toContainEqual(["is", "checkout_url", null]);
+  });
+
+  it("does not manually confirm a registration with an active checkout", async () => {
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      amount_cents: 10000,
+      checkout_url: "https://checkout.infinitepay.com.br/active",
+    };
+    databaseHarness([singleSuccess(pendingRow)]);
+    await expect(
+      createAdminRegistrationService(
+        createSupabaseAdminRegistrationRepository(),
+        () => new Date(),
+      ).markPaid("registration-1", "admin-1"),
+    ).rejects.toThrow("link de pagamento ativo");
+  });
+
+  it("retries participant provisioning after a durable manual confirmation", async () => {
+    const repository = {
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+      markPaid: vi.fn(async () => ({ status: "paid" as const, registrationId: "registration-1" })),
+    };
+    const provisionParticipant = vi.fn(async () => ({ status: "active" as const }));
+    await expect(
+      createAdminRegistrationService(repository, () => new Date(), provisionParticipant).markPaid(
+        "registration-1",
+        "admin-1",
+      ),
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+    expect(provisionParticipant).toHaveBeenCalledWith("registration-1");
   });
 });
 
@@ -551,6 +589,7 @@ function databaseHarness(results: DatabaseResult[]) {
     "insert",
     "update",
     "maybeSingle",
+    "is",
   ]) {
     builder[method] = (...args: unknown[]) => {
       trace.push([method, ...args]);

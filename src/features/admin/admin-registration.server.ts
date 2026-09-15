@@ -258,7 +258,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
     async markPaid(registrationId, adminUserId) {
       const { data: current, error: readError } = await supabaseAdmin
         .from("registrations")
-        .select("id,amount_cents,payment_status")
+        .select("id,amount_cents,payment_status,checkout_url")
         .eq("id", registrationId)
         .maybeSingle();
       if (readError) throw new Error("Não foi possível consultar a inscrição.");
@@ -266,25 +266,34 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       if (current.payment_status !== "pending") {
         throw new Error("A inscrição não está pendente.");
       }
+      if (current.checkout_url) {
+        throw new Error(
+          "Esta inscrição já possui um link de pagamento ativo. Aguarde a confirmação automática.",
+        );
+      }
       const amountCents = current.amount_cents;
       if (typeof amountCents !== "number" || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
         throw new Error("Não foi possível confirmar o valor da inscrição.");
       }
 
       const paidAt = new Date().toISOString();
-      const marker = `manual-admin:${adminUserId}:${paidAt}`;
       const { data, error } = await supabaseAdmin
         .from("registrations")
         .update({
           payment_status: "paid",
-          infinitepay_transaction_nsu: marker,
-          payment_method: "pix",
-          installments: 1,
+          payment_origin: "manual",
+          manual_paid_by: adminUserId,
+          infinitepay_invoice_slug: null,
+          infinitepay_transaction_nsu: null,
+          payment_method: null,
+          installments: null,
           paid_amount_cents: amountCents,
+          receipt_url: null,
           paid_at: paidAt,
         })
         .eq("id", registrationId)
         .eq("payment_status", "pending")
+        .is("checkout_url", null)
         .select("id")
         .maybeSingle();
       if (error || !data) {
@@ -299,6 +308,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
 export function createAdminRegistrationService(
   repository: AdminRegistrationRepository,
   now: () => Date,
+  provisionParticipant?: (registrationId: string) => Promise<{ status: "active" | "pending" | "conflict" }>,
 ) {
   async function listEnriched(query: AdminRegistrationQuery, includePhotos: boolean) {
     if (!repository.listCandidates || !repository.listComplementPayments) {
@@ -380,7 +390,11 @@ export function createAdminRegistrationService(
     },
     async markPaid(registrationId: string, adminUserId: string) {
       if (!repository.markPaid) throw new Error("Ação administrativa indisponível.");
-      return repository.markPaid(registrationId, adminUserId);
+      const result = await repository.markPaid(registrationId, adminUserId);
+      // Payment truth is durable even if access provisioning is temporarily
+      // unavailable; the admin can retry from the existing recovery action.
+      await provisionParticipant?.(registrationId).catch(() => undefined);
+      return result;
     },
   };
 
@@ -420,6 +434,11 @@ export function getAdminRegistrationService() {
     adminRegistrationService = createAdminRegistrationService(
       createSupabaseAdminRegistrationRepository(),
       () => new Date(),
+      async (registrationId) => {
+        const { getParticipantProvisioningService } =
+          await import("@/features/participant/participant-provisioning.server");
+        return getParticipantProvisioningService().provision(registrationId);
+      },
     );
   }
   return adminRegistrationService;
