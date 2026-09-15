@@ -9,6 +9,8 @@ vi.mock("@/lib/admin.functions", () => ({
   getAdminRegistrationSummary: vi.fn(),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
+  createAdminRegistrationCheckoutLink: vi.fn(),
+  markAdminRegistrationPaid: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
 }));
@@ -159,6 +161,48 @@ describe("AdminRegistrationsPage read-only views", () => {
     await waitFor(() => expect(screen.getAllByText("Daniela Parcial")).toHaveLength(2));
     expect(screen.getAllByText("Pagamento em processamento")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Pagar saldo/ })).not.toBeInTheDocument();
+  });
+
+  it("lets an administrator generate a payment link or mark a pending registration as paid", async () => {
+    const createPaymentLink = vi.fn().mockResolvedValue({
+      checkoutUrl: "https://checkout.infinitepay.com.br/registration-pending",
+      reused: false,
+    });
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
+      registrationId: "pending",
+    });
+    const copyToClipboard = vi.fn().mockResolvedValue(undefined);
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      createPaymentLink,
+      markPaid,
+      copyToClipboard,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Gerar link de pagamento" }));
+    await waitFor(() =>
+      expect(copyToClipboard).toHaveBeenCalledWith(
+        "https://checkout.infinitepay.com.br/registration-pending",
+      ),
+    );
+
+    await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Marcar inscrição como paga");
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Confirmar pagamento" }),
+    );
+    await waitFor(() =>
+      expect(markPaid).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+    );
+    expect(await screen.findByText("Inscrição marcada como paga.")).toBeInTheDocument();
+    expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
   });
 
   it("renders derived states on desktop and mobile and opens the exact server-owned balance", async () => {

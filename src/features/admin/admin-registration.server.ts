@@ -100,6 +100,10 @@ export type AdminRegistrationRepository = {
   ): Promise<AdminRegistrationPage>;
   listAll(query: AdminRegistrationExportQuery): Promise<AdminRegistrationRow[]>;
   recordExport(event: AdminExportAuditEvent): Promise<void>;
+  markPaid?: (
+    registrationId: string,
+    adminUserId: string,
+  ) => Promise<{ status: "paid"; registrationId: string }>;
 };
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
@@ -251,6 +255,43 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       });
       if (error) throw new Error("Não foi possível registrar a exportação.");
     },
+    async markPaid(registrationId, adminUserId) {
+      const { data: current, error: readError } = await supabaseAdmin
+        .from("registrations")
+        .select("id,amount_cents,payment_status")
+        .eq("id", registrationId)
+        .maybeSingle();
+      if (readError) throw new Error("Não foi possível consultar a inscrição.");
+      if (!current) throw new Error("Inscrição não encontrada.");
+      if (current.payment_status !== "pending") {
+        throw new Error("A inscrição não está pendente.");
+      }
+      const amountCents = current.amount_cents;
+      if (typeof amountCents !== "number" || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
+        throw new Error("Não foi possível confirmar o valor da inscrição.");
+      }
+
+      const paidAt = new Date().toISOString();
+      const marker = `manual-admin:${adminUserId}:${paidAt}`;
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({
+          payment_status: "paid",
+          infinitepay_transaction_nsu: marker,
+          payment_method: "pix",
+          installments: 1,
+          paid_amount_cents: amountCents,
+          paid_at: paidAt,
+        })
+        .eq("id", registrationId)
+        .eq("payment_status", "pending")
+        .select("id")
+        .maybeSingle();
+      if (error || !data) {
+        throw new Error("Não foi possível marcar a inscrição como paga.");
+      }
+      return { status: "paid", registrationId: data.id };
+    },
   };
   return repository;
 }
@@ -336,6 +377,10 @@ export function createAdminRegistrationService(
         resultCount: rows.length,
       });
       return file;
+    },
+    async markPaid(registrationId: string, adminUserId: string) {
+      if (!repository.markPaid) throw new Error("Ação administrativa indisponível.");
+      return repository.markPaid(registrationId, adminUserId);
     },
   };
 

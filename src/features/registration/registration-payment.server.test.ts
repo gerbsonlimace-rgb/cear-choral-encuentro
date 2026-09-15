@@ -221,6 +221,16 @@ function createFixture() {
     paymentStatus: "pending" | "paid" | "legacy";
     checkoutUrl: string | null;
   } | null = null;
+  let checkoutLinkRecord: {
+    id: string;
+    orderNsu: string;
+    amountCents: number;
+    paymentStatus: "pending" | "paid" | "legacy";
+    checkoutUrl: string | null;
+    name: string;
+    email: string;
+    phone: string;
+  } | null = null;
 
   const repository: RegistrationRepository = {
     createPending: vi.fn(async (input) => {
@@ -252,6 +262,7 @@ function createFixture() {
       return record;
     }),
     findForResume: vi.fn(async () => resumeIdentityRecord),
+    findForCheckoutLink: vi.fn(async () => checkoutLinkRecord),
   };
 
   const infinitePay: InfinitePayClient = {
@@ -304,6 +315,9 @@ function createFixture() {
     },
     setResumeIdentityRecord(next: typeof resumeIdentityRecord) {
       resumeIdentityRecord = next;
+    },
+    setCheckoutLinkRecord(next: typeof checkoutLinkRecord) {
+      checkoutLinkRecord = next;
     },
     setRecord(next: RegistrationPaymentRecord | null) {
       record = next;
@@ -400,6 +414,49 @@ describe("registration payment service", () => {
     await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).rejects.toThrow(
       "Procure a organização para continuar o pagamento.",
     );
+  });
+
+  it("reuses a safe checkout URL when an administrator requests a payment link", async () => {
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: checkoutUrl,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+
+    await expect((fixture.service as any).createCheckoutLink("registration-1")).resolves.toEqual({
+      checkoutUrl,
+      reused: true,
+    });
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("generates and persists a checkout URL when the pending registration has none", async () => {
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: fixedOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: null,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+
+    await expect((fixture.service as any).createCheckoutLink("registration-1")).resolves.toEqual({
+      checkoutUrl,
+      reused: false,
+    });
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith({
+      orderNsu: fixedOrderNsu,
+      items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
+      customer: { name: "Maria", email: "maria@example.com", phoneNumber: "85999999999" },
+    });
+    expect(fixture.repository.saveCheckoutUrl).toHaveBeenCalledWith(fixedOrderNsu, checkoutUrl);
   });
 
   it("uses the trusted full-price quote when the participant opts out of raffles", async () => {

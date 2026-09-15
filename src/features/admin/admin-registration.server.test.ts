@@ -43,7 +43,7 @@ const selectedRow = {
 
 type ResultRow = typeof selectedRow & { photo_path?: string | null };
 type DatabaseResult = {
-  data: ResultRow[] | null;
+  data: unknown;
   error: { message: string; details: string; hint: string; code: string } | null;
   count: number | null;
   status: number;
@@ -53,6 +53,13 @@ const success = (data: ResultRow[], count = data.length): DatabaseResult => ({
   data,
   error: null,
   count,
+  status: 200,
+  statusText: "OK",
+});
+const singleSuccess = (data: unknown): DatabaseResult => ({
+  data,
+  error: null,
+  count: 1,
   status: 200,
   statusText: "OK",
 });
@@ -191,6 +198,45 @@ describe("registration export", () => {
       service.list({ search: "", paymentStatus: "pending", page: 1, pageSize: 10 }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
     expect(trace.filter(([method]) => method === "eq")).toEqual([]);
+  });
+});
+
+describe("manual payment confirmation", () => {
+  it("marks a pending registration as paid with an auditable admin marker", async () => {
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      amount_cents: 10000,
+      paid_amount_cents: null,
+      payment_method: null,
+      installments: null,
+      paid_at: null,
+    };
+    const { trace } = databaseHarness([
+      singleSuccess(pendingRow),
+      singleSuccess({ id: pendingRow.id }),
+    ]);
+    const service = createAdminRegistrationService(
+      createSupabaseAdminRegistrationRepository(),
+      () => new Date("2026-09-15T01:00:00Z"),
+    );
+
+    await expect(service.markPaid("registration-1", "admin-1")).resolves.toEqual({
+      status: "paid",
+      registrationId: "registration-1",
+    });
+    expect(trace).toContainEqual([
+      "update",
+      {
+        payment_status: "paid",
+        infinitepay_transaction_nsu: expect.stringContaining("manual-admin:admin-1:"),
+        payment_method: "pix",
+        installments: 1,
+        paid_amount_cents: 10000,
+        paid_at: expect.any(String),
+      },
+    ]);
+    expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
   });
 });
 
@@ -495,7 +541,17 @@ const failure: DatabaseResult = {
 function databaseHarness(results: DatabaseResult[]) {
   const trace: unknown[][] = [];
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "or", "in", "order", "range", "insert"]) {
+  for (const method of [
+    "select",
+    "eq",
+    "or",
+    "in",
+    "order",
+    "range",
+    "insert",
+    "update",
+    "maybeSingle",
+  ]) {
     builder[method] = (...args: unknown[]) => {
       trace.push([method, ...args]);
       return builder;

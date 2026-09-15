@@ -7,6 +7,7 @@ import { applyRaffleChoice } from "@/features/choirs/choir-pricing.domain";
 import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
 import {
   createInfinitePayClient,
+  isSafeInfinitePayCheckoutUrl,
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
 } from "./infinitepay.server";
@@ -80,9 +81,21 @@ export type RegistrationResumeResult =
   | { status: "pending"; checkoutUrl: string }
   | { status: "paid" };
 
+export type RegistrationCheckoutLinkRecord = {
+  id: string;
+  orderNsu: string;
+  amountCents: number;
+  paymentStatus: "pending" | "paid" | "legacy";
+  checkoutUrl: string | null;
+  name: string;
+  email: string;
+  phone: string;
+};
+
 export type RegistrationRepository = {
   findByCpf?: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
   findForResume?: (cpf: string) => Promise<RegistrationResumeRecord | null>;
+  findForCheckoutLink?: (registrationId: string) => Promise<RegistrationCheckoutLinkRecord | null>;
   createPending(
     input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
       orderNsu: string;
@@ -214,6 +227,42 @@ export function createRegistrationPaymentService(deps: {
       throw new Error("Procure a organização para continuar o pagamento.");
     },
 
+    createCheckoutLink: async (registrationId: string) => {
+      const registration = await deps.repository.findForCheckoutLink?.(registrationId);
+      if (!registration) throw new Error("Inscrição não encontrada.");
+      if (registration.paymentStatus !== "pending") {
+        throw new Error("A inscrição não está pendente.");
+      }
+      if (registration.checkoutUrl && isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
+        return { checkoutUrl: registration.checkoutUrl, reused: true as const };
+      }
+      if (
+        !registration.orderNsu ||
+        !Number.isSafeInteger(registration.amountCents) ||
+        registration.amountCents <= 0
+      ) {
+        throw new Error("Não foi possível preparar o pagamento desta inscrição.");
+      }
+
+      const checkout = await deps.infinitePay.createCheckout({
+        orderNsu: registration.orderNsu,
+        items: [
+          {
+            quantity: 1,
+            price: registration.amountCents,
+            description: "Inscrição — II Encontro de Coros",
+          },
+        ],
+        customer: {
+          name: registration.name,
+          email: registration.email,
+          phoneNumber: registration.phone,
+        },
+      });
+      await deps.repository.saveCheckoutUrl(registration.orderNsu, checkout.url);
+      return { checkoutUrl: checkout.url, reused: false as const };
+    },
+
     reconcilePayment: async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
       const registration = await deps.repository.findPayment(lookup.orderNsu);
       if (!registration) throw new Error("Pedido não encontrado.");
@@ -294,6 +343,8 @@ const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents" as const;
 const identityColumns = "id" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
+const checkoutLinkColumns =
+  "id,order_nsu,amount_cents,payment_status,checkout_url,name,email,phone" as const;
 
 function mapPaymentRow(row: {
   id: string;
@@ -344,6 +395,7 @@ export type SupabaseRegistrationRepository = RegistrationRepository & {
   findByCpf: (cpf: string) => Promise<RegistrationIdentityRecord | null>;
   findByEmail: (email: string) => Promise<RegistrationIdentityRecord | null>;
   findForResume: (cpf: string) => Promise<RegistrationResumeRecord | null>;
+  findForCheckoutLink: (registrationId: string) => Promise<RegistrationCheckoutLinkRecord | null>;
 };
 
 export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepository {
@@ -396,6 +448,40 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     };
   };
 
+  const findForCheckoutLink = async (registrationId: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registrations")
+      .select(checkoutLinkColumns)
+      .eq("id", registrationId)
+      .maybeSingle();
+    if (error) throw new Error("Não foi possível consultar a inscrição.");
+    if (!data) return null;
+    const amountCents = data.amount_cents;
+    if (
+      typeof data.id !== "string" ||
+      typeof data.order_nsu !== "string" ||
+      typeof amountCents !== "number" ||
+      !Number.isSafeInteger(amountCents) ||
+      !["pending", "paid", "legacy"].includes(data.payment_status) ||
+      (data.checkout_url !== null && typeof data.checkout_url !== "string") ||
+      typeof data.name !== "string" ||
+      typeof data.email !== "string" ||
+      typeof data.phone !== "string"
+    ) {
+      throw new Error("Registro de inscrição inválido.");
+    }
+    return {
+      id: data.id,
+      orderNsu: data.order_nsu,
+      amountCents,
+      paymentStatus: data.payment_status as RegistrationCheckoutLinkRecord["paymentStatus"],
+      checkoutUrl: data.checkout_url,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+    };
+  };
+
   const findPayment = async (orderNsu: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
@@ -410,6 +496,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
   return {
     findByCpf,
     findByEmail,
+    findForCheckoutLink,
     findForResume,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
