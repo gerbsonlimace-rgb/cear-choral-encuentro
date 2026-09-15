@@ -83,6 +83,8 @@ export type ParticipantInitialCredentials = {
   initialPassword: string;
 };
 
+const DEFAULT_PUBLIC_SITE_URL = "https://encontrocorosce.lovable.app";
+
 export class ParticipantLinkFailure extends Error {
   constructor(readonly outcome: "confirmed_rejection" | "unknown") {
     super("Participant link was not confirmed");
@@ -97,6 +99,14 @@ export class ParticipantAuthFailure extends Error {
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function getPublicSiteUrl(): string {
+  const configured = process.env.PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (!configured || /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/i.test(configured)) {
+    return DEFAULT_PUBLIC_SITE_URL;
+  }
+  return configured;
 }
 
 function statusOf(account: ParticipantAccountRow): ParticipantProvisioningResult {
@@ -354,8 +364,7 @@ export function createParticipantProvisioningService({
       if (!registration || !account || account.accessStatus !== "active" || !account.userId) {
         return null;
       }
-      const siteUrl = process.env.PUBLIC_SITE_URL?.trim() || "https://encontrocorosce.lovable.app";
-      return auth.createMagicLink(registration.email, `${siteUrl}/participante`);
+      return auth.createMagicLink(registration.email, `${getPublicSiteUrl()}/participante`);
     },
     async getInitialCredentials(
       registrationId: string,
