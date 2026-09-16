@@ -193,7 +193,8 @@ function Header() {
           <Button
             asChild
             size="sm"
-            className="h-10 min-h-10 rounded-full bg-amber px-3 text-xs font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 sm:text-sm lg:h-10"
+            data-public-gold-action="true"
+            className="public-gold-action h-10 min-h-10 rounded-full bg-amber px-3 text-xs font-bold text-amber-foreground hover:bg-amber/90 sm:h-11 sm:px-5 sm:text-sm lg:h-10"
           >
             <Link to="/inscricao">Inscrever-se agora</Link>
           </Button>
@@ -266,7 +267,8 @@ function HeroSection() {
       <Button
         asChild
         size="lg"
-        className="h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
+        data-public-gold-action="true"
+        className="public-gold-action h-12 w-full rounded-full bg-amber px-7 text-base font-extrabold text-amber-foreground hover:bg-amber/90 sm:h-14 sm:w-auto sm:px-8"
       >
         <Link to="/inscricao" className="justify-center">
           Inscrever-se agora
