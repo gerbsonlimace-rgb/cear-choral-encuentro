@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Ticket,
   UserRound,
-  WalletCards,
   X,
 } from "lucide-react";
 
@@ -1368,32 +1367,15 @@ export function RegistrationSection({
                       )}
 
                       <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
-                        <Label htmlFor="voicePart" className="font-semibold">
-                          Perfil musical
-                        </Label>
-                        <div className="relative">
-                          <Music2
-                            className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          <select
-                            id="voicePart"
-                            required
-                            value={form.voicePart}
-                            onChange={(event) => handleChange("voicePart", event.target.value)}
-                            className="registration-voice-select sr-only"
-                          >
-                            <option value="">Selecione seu perfil</option>
-                            {voicePartOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="registration-voice-heading">
+                          <Music2 className="size-4" aria-hidden="true" />
+                          <span id="voicePart-label" className="font-semibold">
+                            Naipe vocal
+                          </span>
                         </div>
                         <div
                           role="radiogroup"
-                          aria-label="Naipe vocal"
+                          aria-labelledby="voicePart-label"
                           aria-required="true"
                           aria-describedby={errors.voicePart ? "voicePart-error" : undefined}
                           className="registration-voice-grid mt-3 grid grid-cols-2 gap-3"
@@ -1525,6 +1507,32 @@ export function RegistrationSection({
                         </div>
                       ))}
                     </dl>
+                    <div className="registration-review-section-heading registration-review-edit-panel">
+                      <div className="flex items-center gap-2">
+                        <span className="registration-icon-box size-8">
+                          <Music2 className="size-4" aria-hidden="true" />
+                        </span>
+                        <span role="heading" aria-level={4} className="text-xs font-extrabold uppercase tracking-[0.12em] text-registration-ink">
+                          Participação e pagamento
+                        </span>
+                      </div>
+                      <div className="registration-review-edit-actions">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          className="registration-edit-button"
+                        >
+                          Editar coro e perfil
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(3)}
+                          className="registration-edit-button"
+                        >
+                          Editar pagamento
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <RegistrationPriceSummary
                     selectedChoir={displayedChoir}

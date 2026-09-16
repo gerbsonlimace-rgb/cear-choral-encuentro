@@ -45,6 +45,13 @@
   color: var(--registration-ink);
 }
 
+.registration-shell .registration-surface {
+  border: 1px solid var(--registration-line);
+  border-radius: 1rem;
+  background: var(--registration-white);
+  box-shadow: 0 8px 24px -4px rgb(168 107 4 / 8%);
+}
+
 .registration-shell .text-registration-ink {
   color: var(--registration-ink);
 }
@@ -199,6 +206,18 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.registration-shell .registration-voice-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  color: var(--registration-ink);
+}
+
+.registration-shell .registration-voice-heading svg {
+  color: var(--registration-amber-dark);
+}
+
 .registration-shell .registration-voice-card {
   display: flex;
   min-height: 6.25rem;
@@ -318,6 +337,13 @@
   color: var(--registration-ink);
   outline: 2px solid rgba(244, 175, 19, 0.65);
   outline-offset: 2px;
+}
+
+.registration-shell .registration-review-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .registration-shell .registration-actions {
@@ -446,6 +472,10 @@
   .registration-shell .registration-review-section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .registration-shell .registration-review-edit-actions {
+    justify-content: flex-start;
   }
 
   .registration-shell .registration-actions {
