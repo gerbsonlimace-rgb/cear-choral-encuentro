@@ -601,7 +601,6 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null
-          badge_name?: string | null
           birth_date: string
           checkout_url: string | null
           choir_id: string | null
@@ -622,20 +621,14 @@ export type Database = {
           order_nsu: string | null
           paid_amount_cents: number | null
           paid_at: string | null
-          payment_origin?: string
           payment_method: string | null
-          manual_paid_by?: string | null
-          manual_receipt_path?: string | null
-          manual_receipt_file_name?: string | null
-          manual_receipt_mime_type?: string | null
-          manual_receipt_size_bytes?: number | null
           payment_status: string
           phone: string
           photo_path: string | null
           pricing_type: string | null
           receipt_url: string | null
           registration_price_cents: number | null
-          remaining_price_cents?: number | null
+          remaining_price_cents: number | null
           role: string | null
           shirt_price_cents: number | null
           shirt_size: string | null
@@ -644,7 +637,6 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
-          badge_name?: string | null
           birth_date: string
           checkout_url?: string | null
           choir_id?: string | null
@@ -665,13 +657,7 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
-          payment_origin?: string
           payment_method?: string | null
-          manual_paid_by?: string | null
-          manual_receipt_path?: string | null
-          manual_receipt_file_name?: string | null
-          manual_receipt_mime_type?: string | null
-          manual_receipt_size_bytes?: number | null
           payment_status?: string
           phone: string
           photo_path?: string | null
@@ -687,7 +673,6 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
-          badge_name?: string | null
           birth_date?: string
           checkout_url?: string | null
           choir_id?: string | null
@@ -708,13 +693,7 @@ export type Database = {
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
-          payment_origin?: string
           payment_method?: string | null
-          manual_paid_by?: string | null
-          manual_receipt_path?: string | null
-          manual_receipt_file_name?: string | null
-          manual_receipt_mime_type?: string | null
-          manual_receipt_size_bytes?: number | null
           payment_status?: string
           phone?: string
           photo_path?: string | null
