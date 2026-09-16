@@ -206,6 +206,38 @@ describe("landing page access", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("promotes the two-book giveaway before the registration choices", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+
+    const giveaway = within(registration!).getByRole("region", {
+      name: "Sorteio especial para inscrições até 30 de setembro",
+    });
+    expect(
+      within(giveaway).getByText("Inscreva-se até 30/09 e concorra aos dois livros"),
+    ).toBeVisible();
+    expect(
+      within(giveaway).getByRole("img", {
+        name: "Capa do livro Canto Gregoriano — Teoria e prática na Liturgia",
+      }),
+    ).toBeVisible();
+    expect(
+      within(giveaway).getByRole("img", {
+        name: "Capa do livro Cristo, nossa esperança — Caderno de Partituras",
+      }),
+    ).toBeVisible();
+
+    const options = within(registration!).getByRole("radiogroup", {
+      name: "Opções de inscrição",
+    });
+    expect(
+      giveaway.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("presents the included benefits before a full-width registration choice", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
@@ -213,8 +245,6 @@ describe("landing page access", () => {
 
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
-    expect(registration!.querySelector("img")).toBeNull();
-
     expect(
       within(registration!).getByRole("heading", { name: "Faça agora sua inscrição" }),
     ).toBeVisible();
