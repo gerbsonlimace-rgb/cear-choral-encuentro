@@ -172,7 +172,7 @@ describe("ParticipantPortalPage", () => {
     );
 
     await screen.findByRole("heading", { name: "Maria da Silva" });
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     expect(screen.getByText(publishedFeed.event.name)).toBeInTheDocument();
     expect(screen.getByText("Solenidade de Cristo Rei")).toBeInTheDocument();
   });
@@ -323,8 +323,9 @@ describe("ParticipantPortalPage", () => {
     const { user } = setup({ loadFeed });
 
     await screen.findByRole("heading", { name: "Maria da Silva" });
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
-    await user.click(screen.getByRole("button", { name: "Abrir partitura de Canto de entrada" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
+    await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
+    await user.click(screen.getByRole("menuitem", { name: "Abrir partitura" }));
 
     expect(await screen.findByTitle("PDF Partitura")).toHaveAttribute(
       "src",
@@ -493,13 +494,13 @@ describe("ParticipantPortalPage", () => {
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos", "Meu Perfil"]);
+    ).toEqual(["Home", "Agenda", "Áudios", "Partituras", "Meu Perfil"]);
     expect(screen.queryByRole("button", { name: /playlist|certificado/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     expect(screen.getByRole("heading", { name: "Músicas" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Documentos" }));
-    expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    expect(screen.getByRole("heading", { name: "Partituras", level: 1 })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Agenda" }));
     expect(screen.getByRole("heading", { name: "Guia do evento" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));

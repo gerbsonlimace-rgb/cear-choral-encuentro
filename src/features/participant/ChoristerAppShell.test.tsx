@@ -112,8 +112,8 @@ describe("ChoristerAppShell", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([
-    ["Explorar cantos", "Kit Ensaio"],
-    ["Ver documentos", "Documentos"],
+    ["Explorar cantos", "Áudios"],
+    ["Ver partituras", "Partituras"],
     ["Consultar programação", "Agenda"],
   ])("opens the corresponding tab from the home shortcut %s", async (shortcut, tab) => {
     const { user } = setup();
@@ -141,7 +141,7 @@ describe("ChoristerAppShell", () => {
     };
     const { user } = setup({ feed: detailedFeed });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
     await user.click(screen.getByRole("menuitem", { name: "Letra e cifra" }));
 
@@ -154,15 +154,15 @@ describe("ChoristerAppShell", () => {
     expect(screen.queryByRole("dialog", { name: "Canto de entrada" })).not.toBeInTheDocument();
   });
 
-  it("opens a score viewer in Documentos from a song shortcut", async () => {
+  it("opens a score viewer in Partituras from a song shortcut", async () => {
     const onOpenScore = vi.fn().mockImplementation((asset) => asset);
     const { user } = setup({ onOpenScore });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
     await user.click(screen.getByRole("menuitem", { name: "Abrir partitura" }));
 
-    expect(screen.getByRole("heading", { name: "Documentos", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Partituras", level: 1 })).toBeInTheDocument();
     expect(
       await screen.findByRole("region", { name: "Visualizador de Partitura" }),
     ).toBeInTheDocument();
@@ -181,7 +181,7 @@ describe("ChoristerAppShell", () => {
       within(navigation)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos", "Meu Perfil"]);
+    ).toEqual(["Home", "Agenda", "Áudios", "Partituras", "Meu Perfil"]);
     expect(within(navigation).getByRole("button", { name: "Home" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -194,7 +194,7 @@ describe("ChoristerAppShell", () => {
       within(mobileNavigation)
         .getAllByTestId("internal-mobile-primary-item")
         .map((button) => button.textContent),
-    ).toEqual(["Home", "Agenda", "Kit Ensaio", "Documentos"]);
+    ).toEqual(["Home", "Agenda", "Áudios", "Partituras"]);
     expect(within(mobileNavigation).getByRole("button", { name: /mais/i })).toBeInTheDocument();
   });
 
@@ -298,7 +298,7 @@ describe("ChoristerAppShell", () => {
     };
     const { user } = setup({ events: [feed.event, secondEvent], onEventChange });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
 
     expect(
       screen.getByRole("button", { name: `Abrir evento ${feed.event.name}` }),
@@ -335,21 +335,18 @@ describe("ChoristerAppShell", () => {
     expect(screen.getByRole("img", { name: "Foto não disponível" })).toBeInTheDocument();
     expect(screen.queryByText("Evento oficial")).not.toBeInTheDocument();
     expect(screen.queryByText("Grande Concerto")).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).toHaveTextContent(
+    expect(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).not.toHaveTextContent(
       "Saldo indisponível",
     );
     expect(
       screen.queryByRole("button", { name: "Abrir cantos e partituras" }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     expect(
       screen.getByRole("button", { name: "Abrir evento Grande Concerto" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kit Ensaio" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(screen.getByRole("button", { name: "Áudios" })).toHaveAttribute("aria-current", "page");
   });
 
   it("renders the mobile event chooser as two-column image tiles", async () => {
@@ -364,7 +361,7 @@ describe("ChoristerAppShell", () => {
       ],
     });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     const card = screen.getByRole("button", { name: `Abrir evento ${coveredEvent.name}` });
     const cover = card.querySelector("img");
     expect(card.parentElement).toHaveClass("grid-cols-2");
@@ -377,11 +374,11 @@ describe("ChoristerAppShell", () => {
     expect(detail.querySelector("img")).toHaveAttribute("src", coveredEvent.coverImageUrl);
   });
 
-  it("lists only general event documents in Documentos and keeps profile in navigation", async () => {
+  it("lists only general event documents in Partituras and keeps profile in navigation", async () => {
     const { onChangePassword, onDownloadReceipt, onLogout, onOpenScore, user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Documentos" }));
-    expect(screen.queryByRole("heading", { name: "Partituras" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Partituras" }));
+    expect(screen.getByRole("heading", { name: "Partituras" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Canto de entrada" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Manual do encontro", level: 3 }),
@@ -411,7 +408,7 @@ describe("ChoristerAppShell", () => {
     const load = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
@@ -466,7 +463,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup({ feed: expiredFeed, onRenewAudio });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     await waitFor(() =>
@@ -483,7 +480,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     const audio = screen.getByLabelText("Reprodutor de áudio") as HTMLAudioElement;
     Object.defineProperty(audio, "duration", { configurable: true, value: 120 });
@@ -512,7 +509,7 @@ describe("ChoristerAppShell", () => {
     });
     const { user } = setup({ onLogout });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     expect(screen.getByLabelText("Reprodutor de áudio")).toHaveAttribute(
       "src",
@@ -557,7 +554,7 @@ describe("ChoristerAppShell", () => {
     const openWindow = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     const { user } = setup({ feed: expiredFeed, onOpenScore });
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Opções de Canto de entrada" }));
     await user.click(screen.getByRole("menuitem", { name: "Abrir partitura" }));
     await user.click(await screen.findByRole("button", { name: "Abrir em nova guia" }));
@@ -582,7 +579,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     const audio = screen.getByLabelText("Reprodutor de áudio");
 
@@ -613,7 +610,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("radio", { name: "Tenor" }));
@@ -642,7 +639,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
     await waitFor(() => expect(play).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: "Pausar Soprano de Canto de entrada" }));
@@ -667,7 +664,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     await waitFor(() =>
@@ -685,7 +682,7 @@ describe("ChoristerAppShell", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const { user } = setup();
 
-    await user.click(screen.getByRole("button", { name: "Kit Ensaio" }));
+    await user.click(screen.getByRole("button", { name: "Áudios" }));
     await user.click(screen.getByRole("button", { name: "Tocar Soprano de Canto de entrada" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(

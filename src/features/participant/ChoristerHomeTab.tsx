@@ -29,7 +29,7 @@ type ChoristerHomeTabProps = {
 
 function ShortcutIllustration({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 96 64" className="mb-2 h-14 w-20">
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 96 64" className="mb-1.5 h-10 w-14">
       <ellipse cx="46" cy="57" rx="29" ry="4" fill="currentColor" opacity=".08" />
       <circle cx="46" cy="30" r="27" fill="currentColor" opacity=".08" />
       <rect
@@ -65,7 +65,7 @@ function ShortcutIllustration({ icon: Icon }: { icon: LucideIcon }) {
 }
 
 const shortcutClassName =
-  "group relative flex min-h-36 min-w-0 flex-col items-start rounded-2xl p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-4";
+  "group relative flex min-h-28 min-w-0 flex-col items-start rounded-2xl p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-3";
 
 export function ChoristerHomeTab({
   participant,
@@ -75,10 +75,10 @@ export function ChoristerHomeTab({
   onNavigate,
 }: ChoristerHomeTabProps) {
   return (
-    <section aria-labelledby="chorister-home-title" className="space-y-6">
+    <section aria-labelledby="chorister-home-title" className="space-y-4">
       <ChoristerWelcomeCard participant={participant} />
 
-      <section aria-labelledby="home-shortcuts-title" className="space-y-3">
+      <section aria-labelledby="home-shortcuts-title" className="space-y-2">
         <h2 id="home-shortcuts-title" className="text-sm font-semibold text-zinc-900">
           Seu encontro, à mão
         </h2>
@@ -100,7 +100,7 @@ export function ChoristerHomeTab({
               {
                 tab: "cantos",
                 label: "Explorar cantos",
-                title: "Kit ensaio",
+                title: "Áudios",
                 description: "Ouça os áudios, baixe as partituras e imprima para estudar.",
                 icon: Music2,
                 tone: "bg-violet-50 text-violet-600 hover:bg-violet-100",
@@ -115,8 +115,8 @@ export function ChoristerHomeTab({
               },
               {
                 tab: "documentos",
-                label: "Ver documentos",
-                title: "Documentos",
+                label: "Ver partituras",
+                title: "Partituras",
                 description: "Abra e baixe os guias e materiais disponibilizados para você.",
                 icon: Files,
                 tone: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
@@ -135,7 +135,7 @@ export function ChoristerHomeTab({
                   className="absolute right-3 top-3 size-4 opacity-50"
                 />
                 <span className="text-sm font-bold text-zinc-900">{title}</span>
-                <span className="mt-1 text-xs leading-5 text-zinc-600">{description}</span>
+                <span className="mt-0.5 text-xs leading-4 text-zinc-600">{description}</span>
               </button>
             ))}
         </div>

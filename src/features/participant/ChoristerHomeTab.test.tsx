@@ -34,23 +34,18 @@ const participant: ParticipantRegistrationView = {
 };
 
 describe("ChoristerHomeTab welcome", () => {
-  it("keeps only the outstanding balance and current status in a compact row", () => {
+  it("does not show the outstanding balance or payment action on Home", () => {
     render(<ChoristerHomeTab participant={participant} />);
-    const card = screen.getByRole("region", { name: "Situação da inscrição" });
-    expect(within(card).getByText("Valor pendente")).toBeInTheDocument();
-    expect(within(card).getByText("R$ 80,00")).toBeInTheDocument();
-    expect(within(card).queryByRole("status")).not.toBeInTheDocument();
-    expect(within(card).getByRole("link", { name: "Pagar" })).toHaveAttribute(
-      "href",
-      "/participante/pagamento",
-    );
-    expect(within(card).getByText("R$ 80,00")).toHaveClass("text-red-600");
-    expect(within(card).queryByText("Parcialmente pago")).not.toBeInTheDocument();
-    expect(within(card).queryByText("Programa de rifas")).not.toBeInTheDocument();
-    expect(within(card).queryByText("Pago")).not.toBeInTheDocument();
-    expect(within(card).queryByText("Total")).not.toBeInTheDocument();
-    expect(within(card).queryByRole("progressbar")).not.toBeInTheDocument();
-    expect(within(card).queryByText("Vaga confirmada após a quitação.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Situação da inscrição" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Valor pendente")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$ 80,00")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pagar" })).not.toBeInTheDocument();
+  });
+
+  it("renders compact shortcut cards on Home", () => {
+    render(<ChoristerHomeTab participant={participant} onNavigate={() => undefined} />);
+
+    expect(screen.getByRole("button", { name: "Explorar cantos" })).toHaveClass("min-h-28");
   });
 
   it("keeps identity details in the welcome card", () => {
@@ -68,7 +63,7 @@ describe("ChoristerHomeTab welcome", () => {
       "/participante/minha-foto",
     );
   });
-  it("shows a settled raffle registration", () => {
+  it("does not show settled payment status on Home", () => {
     render(
       <ChoristerHomeTab
         participant={{
@@ -81,8 +76,8 @@ describe("ChoristerHomeTab welcome", () => {
       />,
     );
     expect(
-      within(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).getByRole("status"),
-    ).toHaveTextContent("Pago");
+      within(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).queryByRole("status"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Rifas quitadas")).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
@@ -112,7 +107,7 @@ describe("ChoristerHomeTab welcome", () => {
         }}
       />,
     );
-    expect(screen.getByText("Saldo indisponível")).toBeInTheDocument();
+    expect(screen.queryByText("Saldo indisponível")).not.toBeInTheDocument();
     expect(screen.queryByText("Não informado")).not.toBeInTheDocument();
     expect(screen.queryByText("Pago")).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();

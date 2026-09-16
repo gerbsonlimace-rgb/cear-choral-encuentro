@@ -60,8 +60,8 @@ export type ChoristerAppShellProps = {
 const tabs = [
   { id: "home", label: "Home", description: "Visão geral do seu encontro", icon: Home },
   { id: "guia", label: "Agenda", description: "Agenda completa do encontro", icon: CalendarDays },
-  { id: "cantos", label: "Kit Ensaio", description: "Áudios, letras e partituras", icon: Music2 },
-  { id: "documentos", label: "Documentos", description: "Guias e materiais publicados", icon: Files },
+  { id: "cantos", label: "Áudios", description: "Áudios, letras e partituras", icon: Music2 },
+  { id: "documentos", label: "Partituras", description: "Guias e materiais publicados", icon: Files },
   { id: "perfil", label: "Meu Perfil", description: "Conta, acesso e segurança", icon: UserRound },
 ] as const satisfies ReadonlyArray<{
   id: ChoristerTab;
@@ -642,7 +642,7 @@ export function ChoristerAppShell({
             <section aria-labelledby="documents-title" className="space-y-5">
               <header className="border-b border-zinc-200 pb-3">
                 <h1 id="documents-title" className="text-2xl font-semibold tracking-tight">
-                  Documentos
+                  Partituras
                 </h1>
                 <p className="mt-1 text-sm text-zinc-600">
                   Guias, livros e materiais gerais.

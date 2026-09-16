@@ -1,34 +1,14 @@
-import { CheckCircle2, CircleHelp, Clock3 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ParticipantRegistrationView } from "./participant.domain";
-
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export function ChoristerWelcomeCard({
   participant,
 }: {
   participant: ParticipantRegistrationView;
 }) {
-  const { identity, registration, payment } = participant;
+  const { identity, registration } = participant;
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
-  const financial = payment.financialState;
-  const known = financial != null && financial.status !== "legacy";
-  const paid = known && financial.status === "paid";
-  const StatusIcon = paid ? CheckCircle2 : known ? Clock3 : CircleHelp;
-  const status = paid
-    ? "Pago"
-    : known
-      ? financial.status === "partially_paid"
-        ? ""
-        : "Pendente"
-      : "Saldo indisponível";
-  const tone = paid
-    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-    : known
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-zinc-200 bg-zinc-50 text-zinc-600";
 
   return (
     <section aria-label="Boas-vindas e inscrição">
@@ -101,41 +81,6 @@ export function ChoristerWelcomeCard({
           </p>
         </div>
       </header>
-      <section
-        aria-label="Situação da inscrição"
-        className="flex min-h-10 items-center justify-between gap-3 rounded-b-2xl border-x border-b border-zinc-200/70 bg-zinc-50/70 px-3 py-2"
-      >
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="shrink-0 text-[11px] text-zinc-500">Valor pendente</span>
-          {known &&
-            (financial.pendingCents > 0 ? (
-              <>
-                <span className="app-metric truncate text-[11px] font-semibold leading-4 text-red-600 tabular-nums">
-                  {money.format(financial.pendingCents / 100)}
-                </span>
-                <Link
-                  to="/participante/pagamento"
-                  className="rounded-sm text-[11px] font-semibold leading-4 text-red-600 underline decoration-red-300 underline-offset-2 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
-                >
-                  Pagar
-                </Link>
-              </>
-            ) : (
-              <span className="app-metric truncate text-[11px] font-semibold leading-4 text-zinc-700 tabular-nums">
-                {money.format(financial.pendingCents / 100)}
-              </span>
-            ))}
-        </div>
-        {status && (
-          <span
-            role="status"
-            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4 ${tone}`}
-          >
-            <StatusIcon aria-hidden="true" className="size-3" />
-            {status}
-          </span>
-        )}
-      </section>
     </section>
   );
 }
