@@ -150,6 +150,13 @@ const stepFields: Record<1 | 2 | 3, RegistrationFormField[]> = {
   3: ["raffleChoice"],
 };
 
+const registrationSteps = [
+  { number: 1, label: "Meus dados" },
+  { number: 2, label: "Coro e perfil" },
+  { number: 3, label: "Pagamento" },
+  { number: 4, label: "Revisão" },
+] as const;
+
 function RegistrationPriceSummary({
   selectedChoir,
   appliedQuote,
@@ -161,8 +168,8 @@ function RegistrationPriceSummary({
 }) {
   const remainingCents =
     appliedQuote && raffleChoice === "participate"
-      ? appliedQuote.remainingPriceCents ??
-        (appliedQuote.standardPriceCents - appliedQuote.registrationPriceCents)
+      ? (appliedQuote.remainingPriceCents ??
+        appliedQuote.standardPriceCents - appliedQuote.registrationPriceCents)
       : null;
 
   return (
@@ -648,9 +655,9 @@ export function RegistrationSection({
           ? message
           : emailConflict
             ? message
-          : shouldRefresh
-            ? "A configuração de preços mudou. Confira o valor e tente novamente."
-            : "Não foi possível preparar o pagamento. Tente novamente.",
+            : shouldRefresh
+              ? "A configuração de preços mudou. Confira o valor e tente novamente."
+              : "Não foi possível preparar o pagamento. Tente novamente.",
       );
       if (shouldRefresh) await refreshConfiguration(true);
     } finally {
@@ -661,7 +668,7 @@ export function RegistrationSection({
   return (
     <section
       id="inscricao"
-      className="relative isolate overflow-hidden bg-foreground px-4 py-6 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
+      className="relative isolate overflow-x-clip bg-foreground px-4 py-6 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
     >
       <div className="container-event">
         <div className="registration-intro mx-auto max-w-4xl text-center">
@@ -672,8 +679,8 @@ export function RegistrationSection({
           <h2 className="mt-2 font-display text-[clamp(2rem,5vw,2.6rem)] font-bold leading-tight text-background">
             Realize sua inscrição
           </h2>
-              <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
-                São apenas quatro etapas. Você poderá conferir tudo antes de pagar.
+          <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
+            São apenas quatro etapas. Você poderá conferir tudo antes de pagar.
           </p>
         </div>
 
@@ -693,11 +700,15 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="registration-card relative mx-auto mt-5 max-w-5xl overflow-hidden rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
-          <div className="h-1.5 bg-amber" aria-hidden="true" />
+        <Card className="registration-card relative mx-auto mt-5 max-w-5xl overflow-visible rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
+          <div className="h-1.5 rounded-t-2xl bg-amber" aria-hidden="true" />
           <CardContent className="registration-card-content p-4 sm:p-6 lg:p-7">
+            <p className="registration-progress-mobile md:hidden" aria-live="polite">
+              Etapa {currentStep} de {registrationSteps.length} ·{" "}
+              {registrationSteps[currentStep - 1].label}
+            </p>
             <nav aria-label="Etapas da inscrição" className="mb-5">
-              <ol className="grid grid-cols-4 gap-2 sm:gap-4">
+              <ol className="registration-progress-desktop grid grid-cols-4 gap-2 sm:gap-4">
                 {[
                   { number: 1, label: "Meus dados" },
                   { number: 2, label: "Coro e perfil" },
@@ -739,8 +750,8 @@ export function RegistrationSection({
             <form onSubmit={handleSubmit} noValidate>
               {currentStep === 1 && (
                 <div className="registration-personal-layout grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
-                  <fieldset className="min-w-0 space-y-4">
-                    <legend className="flex items-center gap-3">
+                  <fieldset className="registration-step-fieldset min-w-0 space-y-4">
+                    <legend className="registration-step-legend flex items-center gap-3">
                       <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-foreground text-background">
                         <UserRound className="size-5" aria-hidden="true" />
                       </span>
@@ -987,9 +998,9 @@ export function RegistrationSection({
               )}
 
               {(currentStep === 2 || currentStep === 3) && (
-                <div className="mx-auto max-w-2xl">
-                  <fieldset className="space-y-6">
-                    <legend className="flex items-center gap-3">
+                <div className="registration-step-panel mx-auto max-w-2xl">
+                  <fieldset className="registration-step-fieldset space-y-6">
+                    <legend className="registration-step-legend flex items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
                         <Music2 className="size-5" aria-hidden="true" />
                       </span>
@@ -1139,103 +1150,108 @@ export function RegistrationSection({
 
                       {currentStep === 3 && displayedChoir && (
                         <div className="mx-auto max-w-2xl">
-                        <fieldset
-                          id="raffleChoice"
-                          role="radiogroup"
-                          tabIndex={-1}
-                          aria-describedby={errors.raffleChoice ? "raffleChoice-error" : undefined}
-                          className="rounded-xl border border-border bg-muted/35 p-4 outline-none"
-                        >
-                          <legend className="font-semibold text-foreground">
-                            Como deseja realizar sua inscrição?
-                          </legend>
-                          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                            {isOtherChoir
-                              ? "Para coros informados manualmente, a inscrição é realizada pelo valor integral."
-                              : "Escolha a opção que funciona melhor para você. Confira abaixo quanto pagar agora e quando sua vaga será confirmada."}
-                          </p>
-                          <div
-                            className={`mt-4 grid gap-3 ${isOtherChoir ? "max-w-md" : "sm:grid-cols-2"}`}
+                          <fieldset
+                            id="raffleChoice"
+                            role="radiogroup"
+                            tabIndex={-1}
+                            aria-describedby={
+                              errors.raffleChoice ? "raffleChoice-error" : undefined
+                            }
+                            className="rounded-xl border border-border bg-muted/35 p-4 outline-none"
                           >
-                            {selectedChoir?.pricingType === "promotional" && (
-                            <label className="cursor-pointer">
-                              <input
-                                type="radio"
-                                name="raffleChoice"
-                                value="participate"
-                                aria-label="Quero participar do Programa de Venda de Rifas"
-                                checked={form.raffleChoice === "participate"}
-                                onChange={(event) =>
-                                  handleChange("raffleChoice", event.target.value)
-                                }
-                                className="peer sr-only"
-                              />
-                              <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
-                                <span className="flex items-start gap-3">
-                                  <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
-                                    <Ticket className="size-5" aria-hidden="true" />
-                                  </span>
-                                  <span className="font-bold leading-snug">
-                                    Participar do Programa de Venda de Rifas
-                                  </span>
-                                </span>
-                                <strong className="mt-4 block font-display text-xl font-extrabold">
-                                  Pague {formatCurrency(selectedChoir.registrationPriceCents)} agora
-                                </strong>
-                                <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
-                                  Você faz sua pré-inscrição, participa da venda de 25 rifas e envia
-                                  o restante de{" "}
-                                  {formatCurrency(
-                                    selectedChoir.remainingPriceCents ??
-                                      (selectedChoir.standardPriceCents -
-                                        selectedChoir.registrationPriceCents),
-                                  )}{" "}
-                                  até 30 de outubro. Sua vaga será confirmada após esse pagamento.
-                                </span>
-                              </span>
-                            </label>
-                            )}
-                            <label className="cursor-pointer">
-                              <input
-                                type="radio"
-                                name="raffleChoice"
-                                value="full_price"
-                                aria-label="Prefiro pagar a inscrição integral"
-                                checked={form.raffleChoice === "full_price"}
-                                onChange={(event) =>
-                                  handleChange("raffleChoice", event.target.value)
-                                }
-                                className="peer sr-only"
-                              />
-                              <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
-                                <span className="flex items-start gap-3">
-                                  <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
-                                    <CreditCard className="size-5" aria-hidden="true" />
-                                  </span>
-                                  <span className="font-bold leading-snug">
-                                    Pagar a inscrição integral
-                                  </span>
-                                </span>
-                                <strong className="mt-4 block font-display text-xl font-extrabold">
-                                  Pague {formatCurrency(displayedChoir.standardPriceCents)} agora
-                                </strong>
-                                <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
-                                  Conclua sua inscrição em um único pagamento via Pix ou em até 5x
-                                  no cartão. Sua vaga será confirmada após a aprovação do pagamento.
-                                </span>
-                              </span>
-                            </label>
-                          </div>
-                          {errors.raffleChoice && (
-                            <p
-                              id="raffleChoice-error"
-                              role="alert"
-                              className="mt-3 text-sm text-destructive"
-                            >
-                              {errors.raffleChoice}
+                            <legend className="font-semibold text-foreground">
+                              Como deseja realizar sua inscrição?
+                            </legend>
+                            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                              {isOtherChoir
+                                ? "Para coros informados manualmente, a inscrição é realizada pelo valor integral."
+                                : "Escolha a opção que funciona melhor para você. Confira abaixo quanto pagar agora e quando sua vaga será confirmada."}
                             </p>
-                          )}
-                        </fieldset>
+                            <div
+                              className={`registration-choice-grid mt-4 grid gap-3 ${isOtherChoir ? "max-w-md" : "sm:grid-cols-2"}`}
+                            >
+                              {selectedChoir?.pricingType === "promotional" && (
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="raffleChoice"
+                                    value="participate"
+                                    aria-label="Quero participar do Programa de Venda de Rifas"
+                                    checked={form.raffleChoice === "participate"}
+                                    onChange={(event) =>
+                                      handleChange("raffleChoice", event.target.value)
+                                    }
+                                    className="peer sr-only"
+                                  />
+                                  <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                                    <span className="flex items-start gap-3">
+                                      <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
+                                        <Ticket className="size-5" aria-hidden="true" />
+                                      </span>
+                                      <span className="font-bold leading-snug">
+                                        Participar do Programa de Venda de Rifas
+                                      </span>
+                                    </span>
+                                    <strong className="mt-4 block font-display text-xl font-extrabold">
+                                      Pague {formatCurrency(selectedChoir.registrationPriceCents)}{" "}
+                                      agora
+                                    </strong>
+                                    <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
+                                      Você faz sua pré-inscrição, participa da venda de 25 rifas e
+                                      envia o restante de{" "}
+                                      {formatCurrency(
+                                        selectedChoir.remainingPriceCents ??
+                                          selectedChoir.standardPriceCents -
+                                            selectedChoir.registrationPriceCents,
+                                      )}{" "}
+                                      até 30 de outubro. Sua vaga será confirmada após esse
+                                      pagamento.
+                                    </span>
+                                  </span>
+                                </label>
+                              )}
+                              <label className="cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="raffleChoice"
+                                  value="full_price"
+                                  aria-label="Prefiro pagar a inscrição integral"
+                                  checked={form.raffleChoice === "full_price"}
+                                  onChange={(event) =>
+                                    handleChange("raffleChoice", event.target.value)
+                                  }
+                                  className="peer sr-only"
+                                />
+                                <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                                  <span className="flex items-start gap-3">
+                                    <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
+                                      <CreditCard className="size-5" aria-hidden="true" />
+                                    </span>
+                                    <span className="font-bold leading-snug">
+                                      Pagar a inscrição integral
+                                    </span>
+                                  </span>
+                                  <strong className="mt-4 block font-display text-xl font-extrabold">
+                                    Pague {formatCurrency(displayedChoir.standardPriceCents)} agora
+                                  </strong>
+                                  <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
+                                    Conclua sua inscrição em um único pagamento via Pix ou em até 5x
+                                    no cartão. Sua vaga será confirmada após a aprovação do
+                                    pagamento.
+                                  </span>
+                                </span>
+                              </label>
+                            </div>
+                            {errors.raffleChoice && (
+                              <p
+                                id="raffleChoice-error"
+                                role="alert"
+                                className="mt-3 text-sm text-destructive"
+                              >
+                                {errors.raffleChoice}
+                              </p>
+                            )}
+                          </fieldset>
                         </div>
                       )}
 
@@ -1273,7 +1289,7 @@ export function RegistrationSection({
               )}
 
               {currentStep === 4 && (
-                <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+                <div className="registration-review grid items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
                   <div className="space-y-6">
                     <div className="flex items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
@@ -1347,19 +1363,20 @@ export function RegistrationSection({
 
               <div
                 ref={actionBarRef}
-                className="registration-actions mt-5 space-y-2 border-t border-border pt-4"
+                role="group"
+                aria-label="Ações da inscrição"
+                className="registration-actions registration-actions--sticky mt-5 space-y-2 border-t border-border pt-4"
               >
                 <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
-                  {currentStep > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={goToPreviousStep}
-                      className="min-h-14 rounded-xl px-7 text-base font-bold"
-                    >
-                      <ArrowLeft className="size-5" aria-hidden="true" /> Voltar
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goToPreviousStep}
+                    disabled={currentStep === 1 || isSubmitting}
+                    className="min-h-12 rounded-lg px-5 text-base font-bold sm:min-h-14 sm:px-7"
+                  >
+                    <ArrowLeft className="size-5" aria-hidden="true" /> Voltar
+                  </Button>
                   <Button
                     type={currentStep === 4 ? "submit" : "button"}
                     onClick={
@@ -1384,9 +1401,7 @@ export function RegistrationSection({
                           ? "Pagar com segurança na InfinitePay"
                           : "Continuar"}
                     </span>
-                    {!isSubmitting && (
-                      <ArrowRight className="ml-2 size-5" aria-hidden="true" />
-                    )}
+                    {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
                   </Button>
                 </div>
                 {currentStep === 4 && (

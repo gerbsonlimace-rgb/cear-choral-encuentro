@@ -139,13 +139,22 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Coro e perfil");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Pagamento");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
+    expect(screen.getByText(/Etapa 1 de 4/)).toBeInTheDocument();
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
     expect(screen.getByLabelText("Diocese")).toBeRequired();
+    const actions = screen.getByRole("group", { name: "Ações da inscrição" });
+    expect(actions).toHaveClass("registration-actions--sticky");
+    expect(within(actions).getByRole("button", { name: "Voltar" })).toBeDisabled();
+    expect(within(actions).getByRole("button", { name: "Continuar" })).toBeVisible();
     expect(screen.queryByText("Ver exemplo de crachá")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Exemplo de crachá")).not.toBeInTheDocument();
     expect(screen.getByText("Nome completo usado no certificado.")).toBeInTheDocument();
-    expect(screen.getByText("Nome curto que aparecerá no crachá. Ex.: Antonio Lima.")).toBeInTheDocument();
-    expect(screen.getByText("Foto recente, de frente, mostrando apenas o rosto.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Nome curto que aparecerá no crachá. Ex.: Antonio Lima."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Foto recente, de frente, mostrando apenas o rosto."),
+    ).toBeInTheDocument();
     await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
     expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
@@ -155,7 +164,9 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
 
-    expect(screen.getByLabelText("Nome completo para certificado").closest("fieldset")).toHaveClass("min-w-0");
+    expect(screen.getByLabelText("Nome completo para certificado").closest("fieldset")).toHaveClass(
+      "min-w-0",
+    );
   });
 
   it("validates the current step before advancing", async () => {
@@ -183,10 +194,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       paymentStatus: "pending" as const,
     }));
     render(
-      <RegistrationSection
-        lookupRegistration={lookup}
-        loadConfiguration={loadConfiguration}
-      />,
+      <RegistrationSection lookupRegistration={lookup} loadConfiguration={loadConfiguration} />,
     );
     await fillPersonalData(user);
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -218,10 +226,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
 
     render(
-      <RegistrationSection
-        lookupRegistration={lookup}
-        loadConfiguration={loadConfiguration}
-      />,
+      <RegistrationSection lookupRegistration={lookup} loadConfiguration={loadConfiguration} />,
     );
     await fillPersonalData(user);
     await waitFor(() => expect(resolveLookup).toBeTypeOf("function"));
@@ -830,7 +835,9 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToReview(user);
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível preparar o pagamento");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível preparar o pagamento",
+    );
     expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
   });
 
