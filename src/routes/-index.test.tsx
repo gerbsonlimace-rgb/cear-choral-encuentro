@@ -647,6 +647,7 @@ describe("landing page visual direction", () => {
 
     const header = screen.getByRole("banner");
     expect(header).toHaveAttribute("data-public-header", "true");
+    expect(header).toHaveAttribute("data-public-header-tone", "light");
     expect(header).toHaveClass("public-event-header");
     expect(
       within(header).getByRole("img", {
@@ -660,6 +661,7 @@ describe("landing page visual direction", () => {
     const heroPhoto = hero?.querySelector("[data-hero-photo-position=full-background]");
     expect(heroPhoto).not.toBeNull();
     expect(heroPhoto).toHaveAttribute("data-hero-photo-visibility", "visible");
+    expect(hero?.querySelector("[data-hero-overlay-tone=light]")).not.toBeNull();
     const heroLogoFrame = hero?.querySelector("[data-hero-logo-frame]");
     expect(heroLogoFrame).toHaveAttribute("data-hero-logo-frame", "none");
     expect(heroLogoFrame).not.toHaveClass("rounded-full");

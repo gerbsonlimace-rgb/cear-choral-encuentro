@@ -144,6 +144,7 @@ function Header() {
   return (
     <header
       data-public-header="true"
+      data-public-header-tone="light"
       className="public-event-header sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85"
     >
       <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
@@ -211,13 +212,13 @@ function Header() {
             <SheetContent
               side="right"
               aria-label="Menu principal"
-              className="w-[min(88vw,22rem)] border-white/10 bg-[#11161f] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 text-white"
+              className="public-event-menu-sheet w-[min(88vw,22rem)] border-stone-200 bg-[#fbf9f5] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 text-stone-900"
             >
               <SheetHeader className="pr-8 text-left">
-                <SheetTitle className="font-display text-xl font-extrabold text-white">
+                <SheetTitle className="font-display text-xl font-extrabold text-stone-900">
                   Menu principal
                 </SheetTitle>
-                <SheetDescription className="text-white/65">
+                <SheetDescription className="text-stone-600">
                   Explore o encontro ou acesse sua inscrição.
                 </SheetDescription>
               </SheetHeader>
@@ -231,18 +232,18 @@ function Header() {
                   <SheetClose key={href} asChild>
                     <a
                       href={href}
-                      className="flex min-h-12 items-center rounded-xl border border-white/10 px-4 text-base font-bold text-white transition-colors hover:border-amber hover:bg-amber/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                      className="flex min-h-12 items-center rounded-xl border border-stone-200 px-4 text-base font-bold text-stone-900 transition-colors hover:border-amber hover:bg-amber/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
                     >
                       {label}
                     </a>
                   </SheetClose>
                 ))}
               </nav>
-              <div className="mt-6 border-t border-white/10 pt-5">
+              <div className="mt-6 border-t border-stone-200 pt-5">
                 <SheetClose asChild>
                   <Link
                     to="/acessar"
-                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-amber px-4 text-base font-bold text-amber transition-colors hover:bg-amber hover:text-amber-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-amber px-4 text-base font-bold text-amber-800 transition-colors hover:bg-amber hover:text-amber-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
                   >
                     Acessar portal
                   </Link>
@@ -307,7 +308,10 @@ function HeroSection() {
         />
       </div>
 
-      <div className="hero-color-overlay absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
+      <div
+        data-hero-overlay-tone="light"
+        className="hero-color-overlay absolute inset-0 bg-[rgba(3,7,6,0.42)]"
+      />
       <div className="hero-gradient-overlay absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
 
       <div
