@@ -18,6 +18,7 @@
 - Rework /admin/inscricoes with financial summary (received, pending, total expected — overall and per diocese) and participant avatars.
 - Make the administrative summary the `/admin` home page and correct its fixed-navigation layout.
 - Apply black navigation with white and gold states across desktop and mobile internal modules.
+- Simplify `/admin/inscricoes` with e-mail, one payment column, no regent column, and row actions in a three-dot menu.
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).

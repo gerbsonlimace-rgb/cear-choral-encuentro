@@ -187,14 +187,16 @@ describe("AdminRegistrationsPage read-only views", () => {
     });
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
-    await user.click(within(table).getByRole("button", { name: "Gerar link de pagamento" }));
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Gerar link de pagamento" }));
     await waitFor(() =>
       expect(copyToClipboard).toHaveBeenCalledWith(
         "https://checkout.infinitepay.com.br/registration-pending",
       ),
     );
 
-    await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("Marcar inscrição como paga");
     await user.upload(
@@ -234,7 +236,8 @@ describe("AdminRegistrationsPage read-only views", () => {
     });
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
-    await user.click(within(table).getByRole("button", { name: "Marcar como pago" }));
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
     const dialog = screen.getByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", { name: "Confirmar pagamento" });
     expect(confirm).toBeDisabled();
@@ -278,7 +281,8 @@ describe("AdminRegistrationsPage read-only views", () => {
     });
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
-    await user.click(within(table).getByRole("button", { name: "Ver comprovante" }));
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Clara Paga" }));
+    await user.click(screen.getByRole("menuitem", { name: "Ver comprovante" }));
 
     await waitFor(() =>
       expect(getReceiptUrl).toHaveBeenCalledWith({ data: { registrationId: "paid" } }),
@@ -318,16 +322,14 @@ describe("AdminRegistrationsPage read-only views", () => {
       screen.getByRole("region", { name: "Cartões de inscrições" }),
     ]) {
       expect(within(view).getByText("Parcialmente pago")).toBeInTheDocument();
-      expect(within(view).getAllByText("Valor pendente").length).toBeGreaterThan(0);
+      expect(within(view).getAllByText("Pagamento").length).toBeGreaterThan(0);
       expect(within(view).getAllByText(/R\$\s*120,00/).length).toBeGreaterThan(0);
-      expect(
-        within(view).getByRole("button", { name: /Pagar saldo de R\$\s*120,00/ }),
-      ).toBeInTheDocument();
     }
     expect(screen.getAllByText("Pendente").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/R\$\s*0,00/).length).toBeGreaterThan(0);
 
-    await user.click(screen.getAllByRole("button", { name: /Pagar saldo de R\$\s*120,00/ })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Mais ações para Eduarda Parcial" })[0]);
+    await user.click(screen.getByRole("menuitem", { name: /Pagar saldo de R\$\s*120,00/ }));
     expect(screen.getByRole("dialog")).toHaveTextContent("Eduarda Parcial");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     await user.click(
@@ -418,7 +420,8 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getAllByText("R$ 139,90").length).toBe(1);
       expect(scope.getAllByText("R$ 100,00").length).toBe(1);
       expect(scope.getAllByText("85999990000").length).toBe(3);
-      expect(scope.getAllByText("Regente").length).toBeGreaterThan(0);
+      expect(scope.queryByText("Regente")).not.toBeInTheDocument();
+      expect(scope.getAllByText("ana@example.com").length).toBe(3);
     }
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");
@@ -452,12 +455,11 @@ describe("AdminRegistrationsPage access and interactions", () => {
     const reprocessAccess = vi.fn().mockResolvedValue({ status: "active" });
     const { user } = setup({ loadRegistrations, reprocessAccess });
 
-    expect(await screen.findAllByText("Aguardando criação")).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: "Reprocessar acesso" })).toHaveLength(2);
-    expect(
-      screen.queryByRole("button", { name: "Redefinir senha inicial" }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Reprocessar acesso" })[0]);
+    await screen.findByRole("table");
+    expect(screen.queryByText("Aguardando criação")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Mais ações para Clara Paga" })[0]);
+    expect(screen.queryByRole("menuitem", { name: "Redefinir senha inicial" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Reprocessar acesso" }));
     await waitFor(() =>
       expect(reprocessAccess).toHaveBeenCalledWith({
         data: { registrationId: "paid" },
@@ -473,7 +475,8 @@ describe("AdminRegistrationsPage access and interactions", () => {
     const { user } = setup({ resetInitialPassword });
     await screen.findByRole("table");
 
-    await user.click(screen.getAllByRole("button", { name: "Redefinir senha inicial" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Mais ações para Clara Paga" })[0]);
+    await user.click(screen.getByRole("menuitem", { name: "Redefinir senha inicial" }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Confirmar redefinição" }));
     await waitFor(() => expect(resetInitialPassword).toHaveBeenCalled());

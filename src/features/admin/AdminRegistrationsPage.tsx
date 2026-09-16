@@ -6,6 +6,9 @@ import {
   Clock3,
   ExternalLink,
   Link2,
+  MoreHorizontal,
+  RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
@@ -32,6 +35,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -198,54 +208,17 @@ function readReceipt(file: File): Promise<ManualPaymentReceipt> {
   });
 }
 
-function ParticipantAccessActions({
-  row,
-  busy,
-  onReprocess,
-  onReset,
-}: {
-  row: AdminRegistrationRow;
-  busy: boolean;
-  onReprocess: (row: AdminRegistrationRow) => void;
-  onReset: (row: AdminRegistrationRow) => Promise<void>;
-}) {
-  const [confirmReset, setConfirmReset] = useState(false);
-  const access = row.participantAccess;
-  if (!access) return null;
+function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
+  const received = receivedAmountCents(row);
+  const pending = pendingAmountCents(row);
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <Badge variant={access.label === "Ativo" ? "default" : "secondary"}>{access.label}</Badge>
-      {access.canReprocess && (
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => onReprocess(row)}>
-          Reprocessar acesso
-        </Button>
-      )}
-      {access.canReset && (
-        <>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirmReset(true)}>
-            Redefinir senha inicial
-          </Button>
-          <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Redefinir senha inicial?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  A pessoa poderá usar novamente a senha inicial no próximo acesso.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={busy}
-                  onClick={() => void onReset(row).then(() => setConfirmReset(false))}
-                >
-                  Confirmar redefinição
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
-      )}
+    <div className="space-y-1.5">
+      <Status row={row} />
+      <div className="space-y-0.5 text-xs text-muted-foreground">
+        {received !== null && <p>Recebido: <span className="font-medium text-foreground">{money(received)}</span></p>}
+        {pending !== null && <p>Pendente: <span className="font-medium text-foreground">{money(pending)}</span></p>}
+        {received === null && pending === null && <p>Valores não informados</p>}
+      </div>
     </div>
   );
 }
@@ -277,12 +250,11 @@ function RegistrationViews({
             <TableRow>
               {[
                 "Coralista",
-                "Valor pago",
-                "Valor pendente",
+                "E-mail",
+                "Pagamento",
                 "WhatsApp",
                 "Coro",
-                "Regente",
-                "Ação",
+                "Mais",
               ].map((label) => (
                 <TableHead key={label} scope="col">
                   {label}
@@ -299,32 +271,20 @@ function RegistrationViews({
                     <div className="min-w-0">
                       <p className="break-words font-medium">{row.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                      <div className="mt-1">
-                        <Status row={row} />
-                      </div>
-                      <ParticipantAccessActions
-                        row={row}
-                        busy={participantActionBusy}
-                        onReprocess={onReprocess}
-                        onReset={onReset}
-                      />
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="align-top">{money(receivedAmountCents(row))}</TableCell>
-                <TableCell className="align-top">
-                  {pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}
-                </TableCell>
+                <TableCell className="max-w-52 break-all align-top">{row.email}</TableCell>
+                <TableCell className="min-w-36 align-top"><PaymentSummary row={row} /></TableCell>
                 <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
                 </TableCell>
-                <TableCell className="max-w-44 align-top">
-                  <p className="break-words">{row.regentName ?? "Não informado"}</p>
-                </TableCell>
-                <TableCell className="align-top">
-                  <BalanceAction
+                <TableCell className="w-16 text-right align-top">
+                  <RegistrationActions
                     row={row}
+                    onReprocess={onReprocess}
+                    onReset={onReset}
                     onBalancePayment={onBalancePayment}
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
@@ -350,16 +310,25 @@ function RegistrationViews({
                     <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
                   </div>
                 </div>
-                <Status row={row} />
+                <RegistrationActions
+                  row={row}
+                  onReprocess={onReprocess}
+                  onReset={onReset}
+                  onBalancePayment={onBalancePayment}
+                  onPaymentLink={onPaymentLink}
+                  onMarkPaid={onMarkPaid}
+                  onViewReceipt={onViewReceipt}
+                  busy={participantActionBusy}
+                />
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <dt className="text-muted-foreground">Valor pago</dt>
-                  <dd>{money(receivedAmountCents(row))}</dd>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">E-mail</dt>
+                  <dd className="break-all">{row.email}</dd>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Valor pendente</dt>
-                  <dd>{pendingAmountCents(row) === null ? "—" : money(pendingAmountCents(row))}</dd>
+                <div className="col-span-2">
+                  <dt className="mb-1 text-muted-foreground">Pagamento</dt>
+                  <dd><PaymentSummary row={row} /></dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">WhatsApp</dt>
@@ -369,27 +338,7 @@ function RegistrationViews({
                   <dt className="text-muted-foreground">Coro</dt>
                   <dd className="break-words">{row.choirName}</dd>
                 </div>
-                <div className="col-span-2">
-                  <dt className="text-muted-foreground">Regente</dt>
-                  <dd className="break-words">{row.regentName ?? "Não informado"}</dd>
-                </div>
               </dl>
-              <div className="border-t pt-3">
-                <BalanceAction
-                  row={row}
-                  onBalancePayment={onBalancePayment}
-                  onPaymentLink={onPaymentLink}
-                  onMarkPaid={onMarkPaid}
-                  onViewReceipt={onViewReceipt}
-                  busy={participantActionBusy}
-                />
-                <ParticipantAccessActions
-                  row={row}
-                  busy={participantActionBusy}
-                  onReprocess={onReprocess}
-                  onReset={onReset}
-                />
-              </div>
             </CardContent>
           </Card>
         ))}
@@ -398,8 +347,10 @@ function RegistrationViews({
   );
 }
 
-function BalanceAction({
+function RegistrationActions({
   row,
+  onReprocess,
+  onReset,
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
@@ -407,6 +358,8 @@ function BalanceAction({
   busy,
 }: {
   row: AdminRegistrationRow;
+  onReprocess: (row: AdminRegistrationRow) => void;
+  onReset: (row: AdminRegistrationRow) => Promise<void>;
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
@@ -414,16 +367,12 @@ function BalanceAction({
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
   const state = getAdminFinancialState(row);
   const openUrl = row.openComplementPayment?.checkoutUrl;
-  const viewReceipt = row.hasManualReceipt ? (
-    <Button size="sm" variant="outline" disabled={busy} onClick={() => onViewReceipt(row)}>
-      <ExternalLink aria-hidden="true" className="mr-1.5 size-4" />
-      Ver comprovante
-    </Button>
-  ) : null;
+  const access = row.participantAccess;
   const selectReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -448,35 +397,63 @@ function BalanceAction({
     setReceiptError("");
     setConfirmMarkPaid(true);
   };
-  if (openUrl && isSafeCheckoutUrl(openUrl)) {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {viewReceipt}
-        <Button asChild size="sm" variant="outline">
-          <a href={openUrl}>Continuar pagamento</a>
-        </Button>
-      </div>
-    );
-  }
-  if (row.openComplementPayment) {
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        {viewReceipt}
-        <span className="text-xs text-muted-foreground">Pagamento em processamento</span>
-      </div>
-    );
-  }
-  if (state.status === "pending") {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => onPaymentLink(row)}>
-          <Link2 aria-hidden="true" className="mr-1.5 size-4" />
-          Gerar link de pagamento
-        </Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={openMarkPaid}>
-          <BadgeCheck aria-hidden="true" className="mr-1.5 size-4" />
-          Marcar como pago
-        </Button>
+  const hasActions = row.hasManualReceipt || (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
+    state.status === "pending" || (state.status === "partially_paid" && state.pendingCents > 0) ||
+    access?.canReprocess || access?.canReset;
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={busy || !hasActions}
+            aria-label={`Mais ações para ${row.name}`}
+          >
+            <MoreHorizontal aria-hidden="true" className="size-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {row.hasManualReceipt && (
+            <DropdownMenuItem onSelect={() => onViewReceipt(row)}>
+              <ExternalLink aria-hidden="true" /> Ver comprovante
+            </DropdownMenuItem>
+          )}
+          {openUrl && isSafeCheckoutUrl(openUrl) && (
+            <DropdownMenuItem asChild><a href={openUrl}>Continuar pagamento</a></DropdownMenuItem>
+          )}
+          {state.status === "pending" && (
+            <>
+              <DropdownMenuItem onSelect={() => onPaymentLink(row)}>
+                <Link2 aria-hidden="true" /> Gerar link de pagamento
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openMarkPaid}>
+                <BadgeCheck aria-hidden="true" /> Marcar como pago
+              </DropdownMenuItem>
+            </>
+          )}
+          {state.status === "partially_paid" && state.pendingCents > 0 && !row.openComplementPayment && (
+            <DropdownMenuItem onSelect={() => onBalancePayment(row)}>
+              <Banknote aria-hidden="true" /> Pagar saldo de {money(state.pendingCents)}
+            </DropdownMenuItem>
+          )}
+          {(access?.canReprocess || access?.canReset) && <DropdownMenuSeparator />}
+          {access?.canReprocess && (
+            <DropdownMenuItem onSelect={() => onReprocess(row)}>
+              <RefreshCw aria-hidden="true" /> Reprocessar acesso
+            </DropdownMenuItem>
+          )}
+          {access?.canReset && (
+            <DropdownMenuItem onSelect={() => setConfirmReset(true)}>
+              <KeyRound aria-hidden="true" /> Redefinir senha inicial
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {row.openComplementPayment && !isSafeCheckoutUrl(openUrl ?? null) && (
+        <span className="sr-only">Pagamento em processamento</span>
+      )}
         <AlertDialog
           open={confirmMarkPaid}
           onOpenChange={(open) => {
@@ -533,17 +510,23 @@ function BalanceAction({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    );
-  }
-  if (state.status !== "partially_paid" || state.pendingCents <= 0) return viewReceipt;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {viewReceipt}
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => onBalancePayment(row)}>
-        Pagar saldo de {money(state.pendingCents)}
-      </Button>
-    </div>
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Redefinir senha inicial?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A pessoa poderá usar novamente a senha inicial no próximo acesso.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => void onReset(row).then(() => setConfirmReset(false))}>
+              Confirmar redefinição
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
