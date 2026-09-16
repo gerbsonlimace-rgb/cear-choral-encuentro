@@ -33,7 +33,7 @@ export type RegistrationDraft = {
   photo: RegistrationPhotoInput | null;
   photoFileName: string;
   birthDateInput?: string;
-  currentStep: 1 | 2 | 3;
+  currentStep: 1 | 2 | 3 | 4;
 };
 
 const draftSchema = z
@@ -64,7 +64,7 @@ const draftSchema = z
       .nullable(),
     photoFileName: z.string().max(255),
     birthDateInput: z.string().max(10).optional(),
-    currentStep: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    currentStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   })
   .strict();
 
