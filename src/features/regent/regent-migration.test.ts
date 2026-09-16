@@ -8,6 +8,9 @@ const files = readdirSync(migrations).filter((name) => name.endsWith("_create_re
 const passwordProofFiles = readdirSync(migrations).filter((name) =>
   name.endsWith("_add_regent_password_change_proof.sql"),
 );
+const configuredRemainingFiles = readdirSync(migrations).filter((name) =>
+  name.endsWith("_allow_configured_promotional_remaining_price.sql"),
+);
 
 describe("regent portal migration contract", () => {
   it("models both tables while retaining participant-specific target columns", () => {
@@ -91,6 +94,16 @@ describe("regent portal migration contract", () => {
     expect(normalized).toContain("old.status = 'creating' and new.status in ('pending', 'failed')");
     expect(normalized).toContain("old.status = 'pending' and new.status in ('paid', 'failed', 'expired')");
     expect(normalized).toContain("old.status in ('paid', 'failed', 'expired')");
+  });
+
+  it("allows configured promotional remaining snapshots above the derived discount", () => {
+    expect(configuredRemainingFiles).toHaveLength(1);
+    const sql = readFileSync(path.join(migrations, configuredRemainingFiles[0]), "utf8")
+      .replace(/--[^\n]*/g, "")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+    expect(sql).toContain("remaining_price_cents >= 0");
+    expect(sql).not.toContain("between 0 and standard_price_cents - registration_price_cents");
   });
 });
 

@@ -121,6 +121,24 @@ describe("choir pricing domain", () => {
     });
   });
 
+  it("propagates the configured promotional remaining balance into the quote", () => {
+    expect(
+      resolveChoirPrice(
+        { ...baseChoir, usesPromotionalPrice: true },
+        {
+          standardPriceCents: 30000,
+          promotionalPriceCents: 10000,
+          promotionalRemainingPriceCents: 25000,
+        },
+      ),
+    ).toEqual({
+      pricingType: "promotional",
+      standardPriceCents: 30000,
+      registrationPriceCents: 10000,
+      remainingPriceCents: 25000,
+    });
+  });
+
   it("applies the participant raffle choice to a promotional quote", () => {
     const promotionalQuote = {
       pricingType: "promotional" as const,
