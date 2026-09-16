@@ -32,6 +32,7 @@ export type RegistrationDraft = {
   form: RegistrationDraftForm;
   photo: RegistrationPhotoInput | null;
   photoFileName: string;
+  birthDateInput?: string;
   currentStep: 1 | 2 | 3;
 };
 
@@ -62,6 +63,7 @@ const draftSchema = z
       .strict()
       .nullable(),
     photoFileName: z.string().max(255),
+    birthDateInput: z.string().max(10).optional(),
     currentStep: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   })
   .strict();
@@ -88,11 +90,12 @@ export function loadRegistrationDraft(now = Date.now()): RegistrationDraft | nul
       return null;
     }
 
-    const { form, photo, photoFileName } = parsed.data;
+    const { form, photo, photoFileName, birthDateInput } = parsed.data;
     return {
       form,
       photo,
       photoFileName,
+      birthDateInput,
       currentStep: photo ? parsed.data.currentStep : 1,
     };
   } catch {
@@ -108,6 +111,7 @@ export function saveRegistrationDraft(draft: RegistrationDraft, now = Date.now()
   const hasEnteredData =
     draft.photo !== null ||
     draft.currentStep !== 1 ||
+    Boolean(draft.birthDateInput) ||
     Object.values(draft.form).some((value) => value.length > 0);
   if (!hasEnteredData) {
     storage.removeItem(REGISTRATION_DRAFT_STORAGE_KEY);

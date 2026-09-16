@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
-  CalendarDays,
   Camera,
   Check,
   CreditCard,
@@ -46,7 +45,6 @@ import {
   birthDateSchema,
   cpfSchema,
   dioceseOptions,
-  getFortalezaCalendarDate,
   registrationLookupSchema,
   registrationSchema,
   voicePartOptions,
@@ -111,6 +109,21 @@ function formatPhone(value: string): string {
   return digits.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
 }
 
+function formatBirthDateInput(value: string): string {
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function birthDateInputToIso(value: string): string {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : "";
+}
+
 const initialForm: Omit<RegistrationForm, "photo"> = {
   name: "",
   badgeName: "",
@@ -131,8 +144,8 @@ const inputClassName =
   "min-h-11 rounded-lg border-border bg-background pl-10 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
-  1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "photo"],
-  2: ["diocese", "choirId", "otherChoirName", "raffleChoice", "voicePart"],
+  1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "diocese", "photo"],
+  2: ["choirId", "otherChoirName", "raffleChoice", "voicePart"],
 };
 
 function RegistrationPriceSummary({
@@ -247,6 +260,7 @@ export function RegistrationSection({
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
   const [configurationError, setConfigurationError] = useState("");
   const [form, setForm] = useState<RegistrationForm>(initialForm);
+  const [birthDateInput, setBirthDateInput] = useState("");
   const [photo, setPhoto] = useState<RegistrationPhotoInput | null>(null);
   const [photoFileName, setPhotoFileName] = useState("");
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
@@ -318,6 +332,7 @@ export function RegistrationSection({
     const draft = loadRegistrationDraft();
     if (draft) {
       setForm(draft.form);
+      setBirthDateInput(draft.birthDateInput ?? formatBirthDateInput(draft.form.birthDate));
       setPhoto(draft.photo);
       setPhotoFileName(draft.photoFileName);
       setCurrentStep(draft.currentStep);
@@ -331,16 +346,12 @@ export function RegistrationSection({
 
   useEffect(() => {
     if (!draftReady) return;
-    saveRegistrationDraft({ form, photo, photoFileName, currentStep });
-  }, [currentStep, draftReady, form, photo, photoFileName]);
+    saveRegistrationDraft({ form, photo, photoFileName, birthDateInput, currentStep });
+  }, [birthDateInput, currentStep, draftReady, form, photo, photoFileName]);
 
   const selectedChoir = useMemo(
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,
     [configuration, form.choirId],
-  );
-  const filteredChoirs = useMemo(
-    () => configuration?.choirs.filter((choir) => choir.diocese === form.diocese) ?? [],
-    [configuration, form.diocese],
   );
   const isOtherChoir = form.choirId === OTHER_CHOIR_VALUE;
   const displayedChoir = useMemo<PublicChoirOption | null>(() => {
@@ -380,25 +391,13 @@ export function RegistrationSection({
   }, [configuration, currentStep, displayedChoir]);
 
   const handleDioceseChange = (diocese: "" | Diocese) => {
-    const firstChoir = configuration?.choirs.find((choir) => choir.diocese === diocese);
-    const choirId = diocese ? (firstChoir?.id ?? OTHER_CHOIR_VALUE) : "";
-    const raffleChoice =
-      choirId === OTHER_CHOIR_VALUE || firstChoir?.pricingType === "standard"
-        ? "full_price"
-        : "";
     setForm((previous) => ({
       ...previous,
       diocese,
-      choirId,
-      otherChoirName: "",
-      raffleChoice,
     }));
     setErrors((previous) => ({
       ...previous,
       diocese: undefined,
-      choirId: undefined,
-      otherChoirName: undefined,
-      raffleChoice: undefined,
     }));
   };
 
@@ -431,11 +430,25 @@ export function RegistrationSection({
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
-    if (field === "cpf" || field === "birthDate") {
+    if (field === "cpf") {
       lookupKey.current = "";
       setLookupState("idle");
     }
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const handleBirthDateChange = (value: string) => {
+    const formatted = formatBirthDateInput(value);
+    setBirthDateInput(formatted);
+    setForm((previous) => ({
+      ...previous,
+      birthDate: birthDateInputToIso(formatted),
+    }));
+    lookupKey.current = "";
+    setLookupState("idle");
+    if (errors.birthDate) {
+      setErrors((previous) => ({ ...previous, birthDate: undefined }));
+    }
   };
 
   const lookupSavedData = async () => {
@@ -453,10 +466,7 @@ export function RegistrationSection({
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
         const savedChoirId =
-          result.choirId &&
-          configuration?.choirs.some(
-            (choir) => choir.id === result.choirId && choir.diocese === result.diocese,
-          )
+          result.choirId && configuration?.choirs.some((choir) => choir.id === result.choirId)
             ? result.choirId
             : result.otherChoirName
               ? OTHER_CHOIR_VALUE
@@ -526,9 +536,9 @@ export function RegistrationSection({
       if (form.phone.trim().length < 8) nextErrors.phone = "Informe um WhatsApp válido.";
       const birthDateResult = birthDateSchema.safeParse(form.birthDate);
       if (!birthDateResult.success) nextErrors.birthDate = birthDateResult.error.issues[0]?.message;
+      if (!form.diocese) nextErrors.diocese = "Selecione sua diocese.";
       if (!photo) nextErrors.photo = "Envie uma foto do participante.";
     } else {
-      if (!form.diocese) nextErrors.diocese = "Selecione sua diocese.";
       if (!selectedChoir && !isOtherChoir) nextErrors.choirId = "Selecione um coro.";
       if (isOtherChoir && form.otherChoirName.trim().length < 2) {
         nextErrors.otherChoirName = "Informe o nome do coro.";
@@ -681,7 +691,7 @@ export function RegistrationSection({
             <nav aria-label="Etapas da inscrição" className="mb-5">
               <ol className="grid grid-cols-3 gap-2 sm:gap-4">
                 {[
-                  { number: 1, label: "Seus dados" },
+                  { number: 1, label: "Meus dados" },
                   { number: 2, label: "Participação" },
                   { number: 3, label: "Revisão" },
                 ].map((step) => {
@@ -863,24 +873,52 @@ export function RegistrationSection({
                         <Label htmlFor="birthDate" className="font-semibold">
                           Data de nascimento
                         </Label>
+                        <Input
+                          id="birthDate"
+                          type="text"
+                          required
+                          inputMode="numeric"
+                          autoComplete="bday"
+                          maxLength={10}
+                          value={birthDateInput}
+                          onChange={(event) => handleBirthDateChange(event.target.value)}
+                          onBlur={() => void lookupSavedData()}
+                          placeholder="dd/mm/aaaa"
+                          className="min-h-11 rounded-lg border-border bg-background px-3 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
+                        />
+                        {errors.birthDate && (
+                          <p className="text-sm text-destructive">{errors.birthDate}</p>
+                        )}
+                      </div>
+
+                      <div className="order-5 space-y-1.5">
+                        <Label htmlFor="diocese" className="font-semibold">
+                          Diocese
+                        </Label>
                         <div className="relative">
-                          <CalendarDays
+                          <ShieldCheck
                             className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
                             aria-hidden="true"
                           />
-                          <Input
-                            id="birthDate"
-                            type="date"
+                          <select
+                            id="diocese"
                             required
-                            max={getFortalezaCalendarDate()}
-                            value={form.birthDate}
-                            onChange={(event) => handleChange("birthDate", event.target.value)}
-                            onBlur={() => void lookupSavedData()}
-                            className={inputClassName}
-                          />
+                            value={form.diocese}
+                            onChange={(event) =>
+                              handleDioceseChange(event.target.value as "" | Diocese)
+                            }
+                            className="min-h-11 w-full rounded-lg border border-border bg-background pl-10 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
+                          >
+                            <option value="">Selecione sua diocese</option>
+                            {dioceseOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        {errors.birthDate && (
-                          <p className="text-sm text-destructive">{errors.birthDate}</p>
+                        {errors.diocese && (
+                          <p className="text-sm text-destructive">{errors.diocese}</p>
                         )}
                       </div>
 
@@ -955,83 +993,107 @@ export function RegistrationSection({
                           Sua participação
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
-                          Escolha sua diocese, coro e perfil musical.
+                          Escolha seu coro e perfil musical.
                         </span>
                       </span>
                     </legend>
                     <div className="grid gap-5">
                       <div className="space-y-1.5">
-                        <Label htmlFor="diocese" className="font-semibold">
-                          Diocese
-                        </Label>
-                        <div className="relative">
-                          <ShieldCheck
-                            className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          <select
-                            id="diocese"
-                            required
-                            value={form.diocese}
-                            onChange={(event) =>
-                              handleDioceseChange(event.target.value as "" | Diocese)
-                            }
-                            className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
-                          >
-                            <option value="">Selecione sua diocese</option>
-                            {dioceseOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        {errors.diocese && (
-                          <p className="text-sm text-destructive">{errors.diocese}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="choirId" className="font-semibold">
+                        <p id="choir-label" className="font-semibold">
                           Coro
-                        </Label>
-                        <div className="relative">
-                          <Music2
-                            className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          <select
+                        </p>
+                        {isLoadingConfiguration ? (
+                          <p className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                            Carregando coros…
+                          </p>
+                        ) : (
+                          <div
                             id="choirId"
-                            required
-                            value={form.choirId}
-                            onChange={(event) => handleChoirChange(event.target.value)}
-                            disabled={
-                              !configuration ||
-                              !form.diocese ||
-                              configuration.standardPriceCents === null
-                            }
-                            className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30 disabled:cursor-not-allowed disabled:opacity-50"
+                            role="radiogroup"
+                            aria-labelledby="choir-label"
+                            aria-required="true"
+                            aria-invalid={Boolean(errors.choirId)}
+                            aria-describedby={errors.choirId ? "choirId-error" : undefined}
+                            tabIndex={-1}
+                            className="grid gap-3 sm:grid-cols-2"
                           >
-                            <option value="">
-                              {isLoadingConfiguration
-                                ? "Carregando coros…"
-                                : "Selecione o coro"}
-                            </option>
-                            {filteredChoirs.map((choir) => (
-                              <option key={choir.id} value={choir.id}>
-                                {choir.name}
-                              </option>
-                            ))}
-                            <option value={OTHER_CHOIR_VALUE}>Outros</option>
-                          </select>
-                        </div>
+                            {configuration?.choirs.map((choir) => {
+                              const selected = form.choirId === choir.id;
+                              return (
+                                <label
+                                  key={choir.id}
+                                  className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                    selected
+                                      ? "border-amber bg-amber/10 shadow-sm"
+                                      : "border-border bg-background hover:border-amber/60"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="choirId"
+                                    value={choir.id}
+                                    checked={selected}
+                                    disabled={configuration.standardPriceCents === null}
+                                    onChange={() => handleChoirChange(choir.id)}
+                                    className="sr-only"
+                                  />
+                                  <span
+                                    className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${
+                                      selected
+                                        ? "border-amber bg-amber text-amber-foreground"
+                                        : "border-muted-foreground/40 bg-card"
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    {selected && <Check className="size-4" />}
+                                  </span>
+                                  <span className="font-semibold leading-snug text-foreground">
+                                    {choir.name}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                            <label
+                              className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                isOtherChoir
+                                  ? "border-amber bg-amber/10 shadow-sm"
+                                  : "border-border bg-background hover:border-amber/60"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="choirId"
+                                value={OTHER_CHOIR_VALUE}
+                                checked={isOtherChoir}
+                                disabled={
+                                  !configuration || configuration.standardPriceCents === null
+                                }
+                                onChange={() => handleChoirChange(OTHER_CHOIR_VALUE)}
+                                className="sr-only"
+                              />
+                              <span
+                                className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${
+                                  isOtherChoir
+                                    ? "border-amber bg-amber text-amber-foreground"
+                                    : "border-muted-foreground/40 bg-card"
+                                }`}
+                                aria-hidden="true"
+                              >
+                                {isOtherChoir && <Check className="size-4" />}
+                              </span>
+                              <span className="font-semibold text-foreground">Outros</span>
+                            </label>
+                          </div>
+                        )}
                         {configuration?.standardPriceCents === null && (
                           <p className="text-sm text-muted-foreground">
                             As inscrições estarão disponíveis após o cadastro do valor normal.
                           </p>
                         )}
                         {errors.choirId && (
-                          <p className="text-sm text-destructive">{errors.choirId}</p>
+                          <p id="choirId-error" role="alert" className="text-sm text-destructive">
+                            {errors.choirId}
+                          </p>
                         )}
                       </div>
 

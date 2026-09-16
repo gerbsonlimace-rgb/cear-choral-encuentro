@@ -51,11 +51,12 @@ async function fillPersonalData(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("CPF"), "52998224725");
   await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
   await user.type(screen.getByLabelText("WhatsApp"), "85999999999");
-  await user.type(screen.getByLabelText("Data de nascimento"), "1990-05-20");
+  await user.type(screen.getByLabelText("Data de nascimento"), "20051990");
   await user.upload(
     screen.getByLabelText("Foto do participante"),
     new File(["photo"], "maria.jpg", { type: "image/jpeg" }),
   );
+  await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
   await screen.findByText("maria.jpg");
 }
 
@@ -66,11 +67,9 @@ async function goToParticipation(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function fillParticipation(user: ReturnType<typeof userEvent.setup>, choirId = quixadaId) {
-  await user.selectOptions(
-    screen.getByLabelText("Diocese"),
-    choirId === sobralId ? "Diocese de Sobral" : "Diocese de Quixadá",
-  );
-  await user.selectOptions(screen.getByLabelText("Coro"), choirId);
+  const choirName = configuration.choirs.find((choir) => choir.id === choirId)?.name;
+  if (!choirName) throw new Error(`Unknown choir fixture: ${choirId}`);
+  await user.click(screen.getByRole("radio", { name: choirName }));
   await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
 }
 
@@ -134,11 +133,11 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
         .slice(0, 3)
         .map((input) => input.id),
     ).toEqual(["cpf", "name", "badgeName"]);
-    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Seus dados");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Meus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
-    expect(screen.queryByLabelText("Diocese")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Diocese")).toBeRequired();
     expect(screen.queryByText("Ver exemplo de crachá")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Exemplo de crachá")).not.toBeInTheDocument();
     expect(screen.getByText("Nome completo usado no certificado.")).toBeInTheDocument();
@@ -174,7 +173,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       badgeName: "Maria Silva",
       email: "maria@example.com",
       phone: "85999999999",
-      choirId: quixadaId,
+      choirId: sobralId,
+      diocese: "Diocese de Quixadá" as const,
       voicePart: "soprano" as const,
       hasPhoto: true,
       paymentStatus: "pending" as const,
@@ -189,6 +189,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(lookup).toHaveBeenCalledWith({ cpf: "52998224725", birthDate: "1990-05-20" });
     expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" })).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByDisplayValue("Maria Silva")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Retomar pagamento" })).not.toBeInTheDocument();
@@ -224,9 +225,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByRole("heading", { name: "Sua participação" });
 
-    const choir = screen.getByLabelText("Coro");
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
-    await user.selectOptions(choir, sobralId);
+    const choir = screen.getByRole("radio", { name: "Coro Diocesano de Sobral" });
+    await user.click(choir);
     resolveLookup({
       status: "found",
       name: "Maria da Silva",
@@ -238,7 +238,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       paymentStatus: "pending",
     });
 
-    await waitFor(() => expect(choir).toHaveValue(sobralId));
+    await waitFor(() => expect(choir).toBeChecked());
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
@@ -270,18 +270,18 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeVisible();
-    expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
-    expect(screen.getByLabelText("Coro")).toHaveValue("");
+    expect(screen.queryByLabelText("Diocese")).not.toBeInTheDocument();
+    for (const choice of screen.getAllByRole("radio", { name: /Coro|Outros/ })) {
+      expect(choice).not.toBeChecked();
+    }
     expect(screen.getByText("Selecione um coro.")).toBeVisible();
   });
 
-  it("loads configured choirs and all musical profiles in participation", async () => {
+  it("keeps Diocese in Meus dados and loads every choir as a selectable card", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
-    expect(screen.queryByLabelText("Diocese")).not.toBeInTheDocument();
-    await goToParticipation(user);
     const diocese = screen.getByLabelText("Diocese");
     expect(diocese).toBeRequired();
     for (const label of [
@@ -298,14 +298,25 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     ]) {
       expect(within(diocese).getByRole("option", { name: label })).toBeInTheDocument();
     }
-    expect(screen.getByRole("option", { name: "Outros" })).toBeInTheDocument();
+    await goToParticipation(user);
+    expect(screen.queryByLabelText("Diocese")).not.toBeInTheDocument();
+    const choirChoices = screen.getByRole("radiogroup", { name: "Coro" });
+    for (const label of [
+      "Coro Diocesano de Quixadá",
+      "Coro Diocesano de Sobral",
+      "Coro Diocesano de Canindé",
+      "Outros",
+    ]) {
+      expect(within(choirChoices).getByRole("radio", { name: label })).toBeInTheDocument();
+    }
+    expect(within(choirChoices).getAllByRole("radio")).toHaveLength(4);
     const profile = screen.getByLabelText("Perfil musical");
     for (const label of ["Soprano", "Contralto", "Tenor", "Baixo", "Não sei informar"]) {
       expect(within(profile).getByRole("option", { name: label })).toBeInTheDocument();
     }
   });
 
-  it("filters and preselects choirs by diocese while allowing an informed other choir", async () => {
+  it("requires an explicit choir card and allows an informed other choir", async () => {
     const user = userEvent.setup();
     const startCheckout = vi
       .fn()
@@ -320,14 +331,22 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToParticipation(user);
 
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
-    expect(screen.getByLabelText("Coro")).toHaveValue(quixadaId);
-    expect(screen.queryByRole("option", { name: "Coro Diocesano de Sobral" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" })).not.toBeChecked();
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    const choirChoices = screen.getByRole("radiogroup", { name: "Coro" });
+    expect(choirChoices).toHaveAttribute("aria-required", "true");
+    expect(choirChoices).toHaveAttribute("aria-invalid", "true");
+    expect(choirChoices).toHaveAccessibleDescription("Selecione um coro.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Selecione um coro.");
 
-    await user.selectOptions(screen.getByLabelText("Coro"), "other");
+    await user.click(screen.getByRole("radio", { name: "Outros" }));
     const otherChoir = screen.getByLabelText("Informe o nome do coro");
     expect(otherChoir).toBeRequired();
-    expect(screen.queryByLabelText("Quero participar do Programa de Venda de Rifas")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Quero participar do Programa de Venda de Rifas"),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
     await user.type(otherChoir, "Coral Santa Cecília");
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
@@ -352,15 +371,16 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
   });
 
-  it("selects Outros automatically when the diocese has no configured choir", async () => {
+  it("does not preselect a choir even when the selected diocese has no configured choir", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
-    await goToParticipation(user);
-
+    await fillPersonalData(user);
     await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Baturité");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Sua participação" });
 
-    expect(screen.getByLabelText("Coro")).toHaveValue("other");
-    expect(screen.getByLabelText("Informe o nome do coro")).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Outros" })).not.toBeChecked();
+    expect(screen.queryByLabelText("Informe o nome do coro")).not.toBeInTheDocument();
   });
 
   it("explains both payment choices before the participant continues", async () => {
@@ -369,8 +389,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
     await goToParticipation(user);
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
-    await user.selectOptions(screen.getByLabelText("Coro"), quixadaId);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
 
     const choices = screen.getByRole("radiogroup", {
       name: "Como deseja realizar sua inscrição?",
@@ -389,8 +408,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
     await goToParticipation(user);
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
-    await user.selectOptions(screen.getByLabelText("Coro"), quixadaId);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     const raffleChoice = screen.getByRole("radiogroup", {
@@ -447,8 +465,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
     await goToParticipation(user);
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
-    await user.selectOptions(screen.getByLabelText("Coro"), sobralId);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent(
@@ -467,18 +484,16 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToParticipation(user);
 
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
-    const choir = screen.getByLabelText("Coro");
-    await user.selectOptions(choir, quixadaId);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
     await user.click(screen.getByLabelText("Prefiro pagar a inscrição integral"));
-    await user.selectOptions(choir, canindeId);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Canindé" }));
     expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
 
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
     expect(
       screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
     ).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
     expect(
       screen.getByLabelText("Quero participar do Programa de Venda de Rifas"),
     ).not.toBeChecked();
@@ -494,9 +509,9 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
     expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Voltar" }));
-    expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
-    expect(screen.getByLabelText("Coro")).toHaveValue(quixadaId);
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" })).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
     expect(screen.getByLabelText("Nome completo para certificado")).toHaveValue("Maria da Silva");
     expect(screen.getByText("maria.jpg")).toBeInTheDocument();
   });
@@ -509,6 +524,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
 
     await user.type(screen.getByLabelText("Nome completo para certificado"), "Maria da Silva");
     await user.type(screen.getByLabelText("E-mail"), "maria@example.com");
+    await user.type(screen.getByLabelText("Data de nascimento"), "2005");
     firstPage.unmount();
 
     render(
@@ -517,6 +533,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
 
     expect(screen.getByLabelText("Nome completo para certificado")).toHaveValue("Maria da Silva");
     expect(screen.getByLabelText("E-mail")).toHaveValue("maria@example.com");
+    expect(screen.getByLabelText("Data de nascimento")).toHaveValue("20/05");
   });
 
   it("returns to the completed review with its photo after leaving for InfinitePay", async () => {
@@ -551,13 +568,19 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
   });
 
-  it("limits birth dates to the current day in Fortaleza", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-08T01:30:00.000Z"));
+  it("uses masked numeric typing for the birth date without a native calendar", async () => {
+    const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
     );
-    expect(screen.getByLabelText("Data de nascimento")).toHaveAttribute("max", "2026-09-07");
+    const birthDate = screen.getByLabelText("Data de nascimento");
+    expect(birthDate).toHaveAttribute("type", "text");
+    expect(birthDate).toHaveAttribute("inputmode", "numeric");
+    expect(birthDate).toHaveAttribute("placeholder", "dd/mm/aaaa");
+    expect(birthDate).toHaveAttribute("maxlength", "10");
+
+    await user.type(birthDate, "20051990");
+    expect(birthDate).toHaveValue("20/05/1990");
   });
 
   it("offers a retry when configuration loading fails", async () => {
@@ -571,8 +594,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(retry).toHaveBeenCalledTimes(2));
     await goToParticipation(user);
-    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
-    expect(screen.getByRole("option", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
   });
 
   it("explains the secure InfinitePay redirection on the review step", async () => {
