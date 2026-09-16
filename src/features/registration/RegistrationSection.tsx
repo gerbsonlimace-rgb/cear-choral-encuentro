@@ -11,12 +11,15 @@ import {
   LockKeyhole,
   Mail,
   MapPin,
+  Mic2,
   Music2,
   Phone,
+  Piano,
   Search,
   ShieldCheck,
   Ticket,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 
@@ -165,14 +168,6 @@ const registrationSteps = [
   { number: 3, label: "Pagamento" },
   { number: 4, label: "Revisão" },
 ] as const;
-
-const voicePartDetails: Record<VoicePart, { range: string; description: string }> = {
-  soprano: { range: "C4 – C6", description: "Agudo feminino" },
-  contralto: { range: "F3 – E5", description: "Grave feminino" },
-  tenor: { range: "C3 – A4", description: "Agudo masculino" },
-  baixo: { range: "E2 – E4", description: "Grave profundo" },
-  nao_sei_informar: { range: "A definir", description: "Definir no acolhimento" },
-};
 
 const photoDataUrl = (photo: RegistrationPhotoInput | null) =>
   photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
@@ -1106,68 +1101,6 @@ export function RegistrationSection({
                     </legend>
                     <div className="grid gap-5">
                       <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
-                        <div className="registration-voice-heading">
-                          <Music2 className="size-4" aria-hidden="true" />
-                          <span id="musicalProfile-label" className="font-semibold">
-                            Perfil musical
-                          </span>
-                        </div>
-                        <div
-                          id="musicalProfile"
-                          role="radiogroup"
-                          aria-labelledby="musicalProfile-label"
-                          aria-required="true"
-                          aria-invalid={Boolean(errors.musicalProfile)}
-                          aria-describedby={
-                            errors.musicalProfile ? "musicalProfile-error" : undefined
-                          }
-                          tabIndex={-1}
-                          className="registration-profile-list mt-3"
-                        >
-                          {musicalProfileOptions.map((option) => {
-                            const selected = form.musicalProfile === option.value;
-                            return (
-                              <label
-                                key={option.value}
-                                data-surface="clear"
-                                className={`registration-profile-option ${
-                                  selected ? "registration-profile-option--selected" : ""
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name="musicalProfile"
-                                  value={option.value}
-                                  aria-label={option.label}
-                                  checked={selected}
-                                  onChange={() => handleMusicalProfileChange(option.value)}
-                                  className="sr-only"
-                                />
-                                <span>
-                                  <span className="block text-sm font-bold text-registration-ink">
-                                    {option.label}
-                                  </span>
-                                  <span className="mt-0.5 block text-xs text-registration-muted">
-                                    {option.value === "coralista"
-                                      ? "Escolha seu naipe vocal em seguida."
-                                      : "ParticipaÃ§Ã£o sem seleÃ§Ã£o de naipe vocal."}
-                                  </span>
-                                </span>
-                                <span className="registration-radio-indicator" aria-hidden="true">
-                                  {selected && <Check className="size-3.5" />}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                        {errors.musicalProfile && (
-                          <p id="musicalProfile-error" className="text-sm text-destructive">
-                            {errors.musicalProfile}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
                         <div className="flex items-center justify-between gap-3">
                           <p id="choir-label" className="font-semibold">
                             <span aria-hidden="true">Selecione o seu Coro</span>
@@ -1303,6 +1236,84 @@ export function RegistrationSection({
                         {errors.choirId && (
                           <p id="choirId-error" role="alert" className="text-sm text-destructive">
                             {errors.choirId}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
+                        <div className="registration-voice-heading">
+                          <Music2 className="size-4" aria-hidden="true" />
+                          <span id="musicalProfile-label" className="font-semibold">
+                            Perfil musical
+                          </span>
+                        </div>
+                        <div
+                          id="musicalProfile"
+                          role="radiogroup"
+                          aria-labelledby="musicalProfile-label"
+                          aria-required="true"
+                          aria-invalid={Boolean(errors.musicalProfile)}
+                          aria-describedby={
+                            errors.musicalProfile ? "musicalProfile-error" : undefined
+                          }
+                          tabIndex={-1}
+                          data-selection-layout="list"
+                          className="registration-profile-list mt-3"
+                        >
+                          {musicalProfileOptions.map((option) => {
+                            const selected = form.musicalProfile === option.value;
+                            return (
+                              <label
+                                key={option.value}
+                                data-surface="clear"
+                                className={`registration-profile-option ${
+                                  selected ? "registration-profile-option--selected" : ""
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="musicalProfile"
+                                  value={option.value}
+                                  aria-label={option.label}
+                                  checked={selected}
+                                  onChange={() => handleMusicalProfileChange(option.value)}
+                                  className="sr-only"
+                                />
+                                <span className="flex min-w-0 items-center gap-3">
+                                  <span
+                                    data-testid="musical-profile-icon"
+                                    className="registration-icon-box size-9"
+                                    aria-hidden="true"
+                                  >
+                                    {option.value === "regente" ? (
+                                      <Mic2 className="size-4" />
+                                    ) : option.value === "instrumentista" ? (
+                                      <Piano className="size-4" />
+                                    ) : (
+                                      <UsersRound className="size-4" />
+                                    )}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-bold text-registration-ink">
+                                      {option.label}
+                                    </span>
+                                    {option.value === "coralista" && (
+                                      <span className="mt-0.5 block text-xs text-registration-muted">
+                                        Escolha seu naipe vocal em seguida.
+                                      </span>
+                                    )}
+                                  </span>
+                                </span>
+                                <span className="registration-radio-indicator" aria-hidden="true">
+                                  {selected && <Check className="size-3.5" />}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {errors.musicalProfile && (
+                          <p id="musicalProfile-error" className="text-sm text-destructive">
+                            {errors.musicalProfile}
                           </p>
                         )}
                       </div>
@@ -1459,70 +1470,62 @@ export function RegistrationSection({
 
                       {currentStep === 2 && form.musicalProfile === "coralista" && (
                         <div className="space-y-1.5">
-                        <div className="registration-voice-heading">
-                          <Music2 className="size-4" aria-hidden="true" />
-                          <span id="voicePart-label" className="font-semibold">
-                            Naipe vocal
-                          </span>
-                        </div>
-                        <div
-                          role="radiogroup"
-                          aria-labelledby="voicePart-label"
-                          aria-required="true"
-                          aria-describedby={errors.voicePart ? "voicePart-error" : undefined}
-                          className="registration-voice-grid mt-3 grid grid-cols-2 gap-3"
-                        >
-                          {voicePartOptions.map((option) => {
-                            const selected = form.voicePart === option.value;
-                            const details = voicePartDetails[option.value];
-                            return (
-                              <label
-                                key={option.value}
-                                data-surface="clear"
-                                className={`registration-voice-card ${option.value === "nao_sei_informar" ? "col-span-2" : ""} ${selected ? "registration-voice-card--selected" : ""}`}
-                              >
-                                <input
-                                  type="radio"
-                                  name="voicePartCard"
-                                  value={option.value}
-                                  aria-label={option.label}
-                                  checked={selected}
-                                  onChange={(event) => handleChange("voicePart", event.target.value)}
-                                  className="sr-only"
-                                />
-                                <span className="flex items-center justify-between gap-2">
-                                  <span className="registration-icon-box size-8">
-                                    {option.value === "nao_sei_informar" ? (
-                                      <CircleHelp className="size-4" aria-hidden="true" />
-                                    ) : (
-                                      <Music2 className="size-4" aria-hidden="true" />
-                                    )}
-                                  </span>
-                                  <span className="registration-voice-range">{details.range}</span>
-                                </span>
-                                <span className="mt-3 flex items-end justify-between gap-2">
-                                  <span>
-                                    <span className="block text-sm font-bold text-registration-ink">
-                                      {option.label}
+                          <div className="registration-voice-heading">
+                            <Music2 className="size-4" aria-hidden="true" />
+                            <span id="voicePart-label" className="font-semibold">
+                              Naipe vocal
+                            </span>
+                          </div>
+                          <div
+                            role="radiogroup"
+                            aria-labelledby="voicePart-label"
+                            aria-required="true"
+                            aria-describedby={errors.voicePart ? "voicePart-error" : undefined}
+                            data-selection-layout="list"
+                            className="registration-voice-list mt-3"
+                          >
+                            {voicePartOptions.map((option) => {
+                              const selected = form.voicePart === option.value;
+                              return (
+                                <label
+                                  key={option.value}
+                                  data-surface="clear"
+                                  className={`registration-voice-option ${selected ? "registration-voice-option--selected" : ""}`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="voicePartCard"
+                                    value={option.value}
+                                    aria-label={option.label}
+                                    checked={selected}
+                                    onChange={(event) => handleChange("voicePart", event.target.value)}
+                                    className="sr-only"
+                                  />
+                                  <span className="flex min-w-0 items-center gap-3">
+                                    <span className="registration-icon-box size-8" aria-hidden="true">
+                                      {option.value === "nao_sei_informar" ? (
+                                        <CircleHelp className="size-4" />
+                                      ) : (
+                                        <Music2 className="size-4" />
+                                      )}
                                     </span>
-                                    <span className="mt-0.5 block text-[11px] text-registration-muted">
-                                      {details.description}
+                                    <span className="text-sm font-bold text-registration-ink">
+                                      {option.label}
                                     </span>
                                   </span>
                                   <span className="registration-radio-indicator" aria-hidden="true">
                                     {selected && <Check className="size-3.5" />}
                                   </span>
-                                </span>
-                              </label>
-                            );
-                          })}
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {errors.voicePart && (
+                            <p id="voicePart-error" className="text-sm text-destructive">
+                              {errors.voicePart}
+                            </p>
+                          )}
                         </div>
-                        {errors.voicePart && (
-                          <p id="voicePart-error" className="text-sm text-destructive">
-                            {errors.voicePart}
-                          </p>
-                        )}
-                      </div>
                       )}
                     </div>
                   </fieldset>

@@ -202,10 +202,6 @@
   border-color: rgba(244, 175, 19, 0.75);
 }
 
-.registration-shell .registration-voice-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .registration-shell .registration-choir-list,
 .registration-shell .registration-profile-list {
   display: grid;
@@ -248,6 +244,43 @@
   background: var(--registration-amber);
 }
 
+.registration-shell .registration-voice-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.registration-shell .registration-voice-option {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  border: 1px solid var(--registration-line);
+  border-radius: 0.875rem;
+  background: var(--registration-white);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.registration-shell .registration-voice-option:hover,
+.registration-shell .registration-voice-option:focus-within {
+  border-color: rgba(244, 175, 19, 0.75);
+}
+
+.registration-shell .registration-voice-option--selected {
+  border: 2px solid var(--registration-amber);
+  background: rgba(244, 175, 19, 0.08);
+  box-shadow: 0 8px 20px rgba(244, 175, 19, 0.16);
+}
+
+.registration-shell .registration-voice-option--selected .registration-radio-indicator {
+  border-color: var(--registration-amber);
+  background: var(--registration-amber);
+}
+
 .registration-shell .registration-voice-heading {
   display: flex;
   align-items: center;
@@ -260,30 +293,6 @@
   color: var(--registration-amber-dark);
 }
 
-.registration-shell .registration-voice-card {
-  display: flex;
-  min-height: 6.25rem;
-  flex-direction: column;
-  justify-content: space-between;
-  cursor: pointer;
-  border: 1px solid var(--registration-line);
-  border-radius: 0.875rem;
-  background: var(--registration-white);
-  padding: 0.875rem;
-  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
-}
-
-.registration-shell .registration-voice-card:hover,
-.registration-shell .registration-voice-card:focus-within {
-  border-color: rgba(244, 175, 19, 0.75);
-}
-
-.registration-shell .registration-voice-card--selected {
-  border: 2px solid var(--registration-amber);
-  box-shadow: 0 8px 20px rgba(244, 175, 19, 0.16);
-}
-
 .registration-shell .registration-icon-box {
   display: inline-grid;
   flex-shrink: 0;
@@ -291,16 +300,6 @@
   border-radius: 0.625rem;
   background: #fff5dc;
   color: var(--registration-amber-dark);
-}
-
-.registration-shell .registration-voice-range {
-  border-radius: 0.25rem;
-  background: var(--registration-subtle);
-  padding: 0.125rem 0.375rem;
-  color: var(--registration-muted);
-  font-size: 0.625rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
 }
 
 .registration-shell .registration-radio-indicator {
@@ -312,11 +311,6 @@
   border: 2px solid #d8d4ca;
   border-radius: 9999px;
   color: var(--registration-white);
-}
-
-.registration-shell .registration-voice-card--selected .registration-radio-indicator {
-  border-color: var(--registration-amber);
-  background: var(--registration-amber);
 }
 
 .registration-shell .registration-choice-grid {
@@ -498,13 +492,8 @@
     font-size: 1rem;
   }
 
-  .registration-shell .registration-choice-grid,
-  .registration-shell .registration-voice-grid {
+  .registration-shell .registration-choice-grid {
     grid-template-columns: 1fr;
-  }
-
-  .registration-shell .registration-voice-card.col-span-2 {
-    grid-column: auto;
   }
 
   .registration-shell .registration-payment-option {

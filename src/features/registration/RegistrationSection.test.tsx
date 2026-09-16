@@ -293,7 +293,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByText("Selecione um coro.")).toBeVisible();
   });
 
-  it("keeps Diocese in Meus dados and loads every choir as a selectable card", async () => {
+  it("keeps Diocese in Meus dados and loads every choir as a selectable row", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
@@ -337,7 +337,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     }
   });
 
-  it("requires an explicit choir card and allows an informed other choir", async () => {
+  it("requires an explicit choir row and allows an informed other choir", async () => {
     const user = userEvent.setup();
     const startCheckout = vi
       .fn()
@@ -892,7 +892,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     ).toHaveAttribute("src", expect.stringContaining("data:image/jpeg;base64,"));
   });
 
-  it("filters clear-surface choir cards and exposes vocal profile cards", async () => {
+  it("filters clear-surface choir rows and exposes vocal profile rows", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
@@ -941,7 +941,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: "Dados do participante" })).toBeInTheDocument();
   });
 
-  it("uses the profile list to reveal the visible vocal cards", async () => {
+  it("uses the profile list to reveal the visible vocal rows", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
@@ -976,18 +976,30 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: "Pagamento" })).toBeInTheDocument();
   });
 
-  it("shows the musical profile first and reveals voice parts only for coralistas", async () => {
+  it("shows the choir first, uses simple lists, and adds visual profile cues", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToParticipation(user);
 
-    const choirChoices = screen.getByRole("radiogroup", { name: "Coro" });
+    const radioGroups = screen.getAllByRole("radiogroup");
+    expect(radioGroups[0]).toHaveAccessibleName("Coro");
+    expect(radioGroups[0]).toHaveAttribute("data-selection-layout", "list");
+    expect(radioGroups[1]).toHaveAccessibleName("Perfil musical");
+    expect(radioGroups[1]).toHaveAttribute("data-selection-layout", "list");
+
+    const choirChoices = radioGroups[0];
     expect(choirChoices).toHaveAttribute("data-selection-layout", "list");
-    expect(screen.getByRole("radiogroup", { name: "Perfil musical" })).toBeInTheDocument();
+    const profile = radioGroups[1];
+    expect(profile).toBeInTheDocument();
+    expect(within(profile).getAllByTestId("musical-profile-icon")).toHaveLength(3);
+    expect(screen.queryByText(/sem\s+sele.*naipe vocal/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: "Naipe vocal" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
-    expect(screen.getByRole("radiogroup", { name: "Naipe vocal" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Naipe vocal" })).toHaveAttribute(
+      "data-selection-layout",
+      "list",
+    );
 
     await user.click(screen.getByRole("radio", { name: "Regente" }));
     expect(screen.queryByRole("radiogroup", { name: "Naipe vocal" })).not.toBeInTheDocument();
