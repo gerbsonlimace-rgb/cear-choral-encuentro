@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { dioceseOptions, type Diocese } from "@/features/dioceses/diocese.domain";
 import type { AdminAccessState } from "@/lib/admin.functions";
 import {
   createAdminChoir,
@@ -37,6 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   formatCentsForInput,
   parseCurrencyToCents,
+  choirMutationSchema,
   pricingSettingsSchema,
   type AdminChoir,
   type ChoirMutation,
@@ -73,8 +75,11 @@ type SettingsDraft = {
   promotionalRemaining: string;
 };
 
-const emptyChoirDraft: ChoirMutation = {
+type ChoirDraft = Omit<ChoirMutation, "diocese"> & { diocese: "" | Diocese };
+
+const emptyChoirDraft: ChoirDraft = {
   name: "",
+  diocese: "",
   usesPromotionalPrice: false,
   isActive: true,
 };
@@ -133,7 +138,7 @@ export function AdminChoirsPage({
   const [editing, setEditing] = useState<AdminChoir | null>(null);
   const [pendingInactivation, setPendingInactivation] = useState<AdminChoir | null>(null);
   const [regentChoir, setRegentChoir] = useState<AdminChoir | null>(null);
-  const [choirDraft, setChoirDraft] = useState<ChoirMutation>(emptyChoirDraft);
+  const [choirDraft, setChoirDraft] = useState<ChoirDraft>(emptyChoirDraft);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
 
   const load = useCallback(async () => {
@@ -250,6 +255,7 @@ export function AdminChoirsPage({
     setEditing(choir);
     setChoirDraft({
       name: choir.name,
+      diocese: choir.diocese ?? "",
       usesPromotionalPrice: choir.usesPromotionalPrice,
       isActive: choir.isActive,
     });
@@ -262,9 +268,10 @@ export function AdminChoirsPage({
     setSaving(true);
     setError("");
     try {
+      const parsedDraft = choirMutationSchema.parse(choirDraft);
       const saved = editing
-        ? await updateChoir({ data: { id: editing.id, ...choirDraft } })
-        : await createChoir({ data: choirDraft });
+        ? await updateChoir({ data: { id: editing.id, ...parsedDraft } })
+        : await createChoir({ data: parsedDraft });
       setData((previous) => {
         if (!previous) return previous;
         const withoutSaved = previous.choirs.filter((choir) => choir.id !== saved.id);
@@ -338,9 +345,7 @@ export function AdminChoirsPage({
             </Button>
           )}
         </header>
-        {gate === "authorized" && (
-          <AdminNavigation current={section} navigateTo={navigateTo} />
-        )}
+        {gate === "authorized" && <AdminNavigation current={section} navigateTo={navigateTo} />}
         <div aria-live="polite" className="text-sm text-muted-foreground">
           {message}
         </div>
@@ -359,114 +364,113 @@ export function AdminChoirsPage({
         {gate === "error" && <p role="alert">Não foi possível verificar seu acesso.</p>}
         {gate === "authorized" && loading && <Skeleton className="h-64 w-full" />}
         {gate === "authorized" && !loading && data && section === "choirs" && (
-              <section className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-xl">Coros/Dioceses</h2>
-                    <p className="text-sm text-muted-foreground">
-                      A promoção é aplicada automaticamente no formulário público.
-                    </p>
-                  </div>
-                  <Button onClick={openCreate}>Cadastrar coro</Button>
-                </div>
-                {data.choirs.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-6 text-center text-sm">
-                      Nenhum coro cadastrado.
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-xl">Coros/Dioceses</h2>
+                <p className="text-sm text-muted-foreground">
+                  A promoção é aplicada automaticamente no formulário público.
+                </p>
+              </div>
+              <Button onClick={openCreate}>Cadastrar coro</Button>
+            </div>
+            {data.choirs.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-sm">
+                  Nenhum coro cadastrado.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {data.choirs.map((choir) => (
+                  <Card key={choir.id}>
+                    <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold">{choir.name}</h3>
+                          <Badge variant={choir.isActive ? "default" : "secondary"}>
+                            {choir.isActive ? "Ativo" : "Inativo"}
+                          </Badge>
+                          {choir.usesPromotionalPrice && (
+                            <Badge variant="outline">Promocional</Badge>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {choir.diocese ?? "Diocese não informada"}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {choirAvailability(choir, data.settings)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setRegentChoir(choir)}>
+                          Gerenciar regente
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => {
+                            if (choir.isActive) setPendingInactivation(choir);
+                            else void changeActive(choir, true);
+                          }}
+                        >
+                          {choir.isActive ? "Inativar" : "Reativar"}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
-                ) : (
-                  <div className="grid gap-3">
-                    {data.choirs.map((choir) => (
-                      <Card key={choir.id}>
-                        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold">{choir.name}</h3>
-                              <Badge variant={choir.isActive ? "default" : "secondary"}>
-                                {choir.isActive ? "Ativo" : "Inativo"}
-                              </Badge>
-                              {choir.usesPromotionalPrice && (
-                                <Badge variant="outline">Promocional</Badge>
-                              )}
-                            </div>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {choirAvailability(choir, data.settings)}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setRegentChoir(choir)}
-                            >
-                              Gerenciar regente
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => openEdit(choir)}>
-                              Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={saving}
-                              onClick={() => {
-                                if (choir.isActive) setPendingInactivation(choir);
-                                else void changeActive(choir, true);
-                              }}
-                            >
-                              {choir.isActive ? "Inativar" : "Reativar"}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
+                ))}
+              </div>
+            )}
+          </section>
         )}
         {gate === "authorized" && !loading && data && section === "settings" && (
           <div className="space-y-5">
-              <Card>
-                <CardContent className="p-5 sm:p-6">
-                  <div className="mb-5">
-                    <h2 className="font-display text-xl">Valores do evento</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Deixe vazio para manter uma opção indisponível ao público.
-                    </p>
+            <Card>
+              <CardContent className="p-5 sm:p-6">
+                <div className="mb-5">
+                  <h2 className="font-display text-xl">Valores do evento</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Deixe vazio para manter uma opção indisponível ao público.
+                  </p>
+                </div>
+                <form onSubmit={submitSettings} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {(
+                      [
+                        ["standard", "Valor normal"],
+                        ["promotional", "Valor promocional"],
+                        ["promotionalRemaining", "Valor restante promocional"],
+                      ] as const
+                    ).map(([field, label]) => (
+                      <div className="space-y-2" key={field}>
+                        <Label htmlFor={`price-${field}`}>{label}</Label>
+                        <Input
+                          id={`price-${field}`}
+                          inputMode="decimal"
+                          placeholder="Não configurado"
+                          value={settings[field]}
+                          onChange={(event) =>
+                            setSettings((previous) => ({
+                              ...previous,
+                              [field]: event.target.value,
+                            }))
+                          }
+                          disabled={saving}
+                        />
+                      </div>
+                    ))}
                   </div>
-                  <form onSubmit={submitSettings} className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {(
-                        [
-                          ["standard", "Valor normal"],
-                          ["promotional", "Valor promocional"],
-                          ["promotionalRemaining", "Valor restante promocional"],
-                        ] as const
-                      ).map(([field, label]) => (
-                        <div className="space-y-2" key={field}>
-                          <Label htmlFor={`price-${field}`}>{label}</Label>
-                          <Input
-                            id={`price-${field}`}
-                            inputMode="decimal"
-                            placeholder="Não configurado"
-                            value={settings[field]}
-                            onChange={(event) =>
-                              setSettings((previous) => ({
-                                ...previous,
-                                [field]: event.target.value,
-                              }))
-                            }
-                            disabled={saving}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <Button type="submit" disabled={saving}>
-                      {saving ? "Salvando…" : "Salvar valores"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Salvando…" : "Salvar valores"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
             <AdminCoroAppIntegrationPage
               embedded
               checkAdmin={checkAdmin}
@@ -498,6 +502,29 @@ export function AdminChoirsPage({
                   setChoirDraft((previous) => ({ ...previous, name: event.target.value }))
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="choir-diocese">Diocese</Label>
+              <select
+                id="choir-diocese"
+                required
+                value={choirDraft.diocese}
+                onChange={(event) =>
+                  setChoirDraft((previous) => ({
+                    ...previous,
+                    diocese: event.target.value as "" | Diocese,
+                  }))
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                disabled={saving}
+              >
+                <option value="">Selecione a diocese</option>
+                {dioceseOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
               <Label htmlFor="choir-promotional">Aplicar valor promocional</Label>
@@ -540,11 +567,7 @@ export function AdminChoirsPage({
             </DialogDescription>
           </DialogHeader>
           {regentChoir && data && (
-            <AdminRegentsPanel
-              key={regentChoir.id}
-              choirId={regentChoir.id}
-              choirs={data.choirs}
-            />
+            <AdminRegentsPanel key={regentChoir.id} choirId={regentChoir.id} choirs={data.choirs} />
           )}
         </DialogContent>
       </Dialog>

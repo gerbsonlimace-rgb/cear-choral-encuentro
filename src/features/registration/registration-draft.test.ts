@@ -17,7 +17,9 @@ const draft: RegistrationDraft = {
     email: "maria@example.com",
     phone: "(85) 99999-9999",
     birthDate: "1990-05-20",
+    diocese: "Diocese de Quixadá",
     choirId: "11111111-1111-4111-8111-111111111111",
+    otherChoirName: "",
     raffleChoice: "participate",
     voicePart: "soprano",
   },
@@ -36,6 +38,17 @@ describe("registration draft", () => {
     saveRegistrationDraft(draft, savedAt);
 
     expect(loadRegistrationDraft(savedAt + 1)).toEqual(draft);
+  });
+
+  it("round-trips an other-choir draft", () => {
+    const otherDraft = {
+      ...draft,
+      form: { ...draft.form, choirId: "other", otherChoirName: "Coral Santa Cecília" },
+    };
+
+    saveRegistrationDraft(otherDraft, savedAt);
+
+    expect(loadRegistrationDraft(savedAt + 1)).toEqual(otherDraft);
   });
 
   it("discards a draft after 24 hours", () => {

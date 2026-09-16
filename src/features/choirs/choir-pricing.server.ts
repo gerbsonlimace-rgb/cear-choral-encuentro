@@ -7,6 +7,7 @@ import {
   type PricingSettings,
   type PublicRegistrationConfiguration,
 } from "./choir-pricing.domain";
+import { dioceseSchema } from "@/features/dioceses/diocese.domain";
 
 export type ChoirPricingRepository = {
   getSettings(): Promise<PricingSettings>;
@@ -42,10 +43,25 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
       ]);
 
       return {
+        standardPriceCents: settings.standardPriceCents,
         choirs: sortChoirs(choirs).flatMap((choir) => {
           const quote = resolveChoirPrice(choir, settings);
-          return quote ? [{ id: choir.id, name: choir.name, ...quote }] : [];
+          return quote
+            ? [{ id: choir.id, name: choir.name, diocese: choir.diocese, ...quote }]
+            : [];
         }),
+      };
+    },
+
+    async resolveStandardRegistrationQuote() {
+      const settings = await repository.getSettings();
+      if (settings.standardPriceCents === null) {
+        throw new Error("O valor normal da inscrição não está disponível.");
+      }
+      return {
+        pricingType: "standard" as const,
+        standardPriceCents: settings.standardPriceCents,
+        registrationPriceCents: settings.standardPriceCents,
       };
     },
 
@@ -89,7 +105,8 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
 
 const settingsColumns =
   "standard_price_cents,promotional_price_cents,promotional_remaining_price_cents" as const;
-const choirColumns = "id,name,uses_promotional_price,is_active,created_at,updated_at" as const;
+const choirColumns =
+  "id,name,diocese,uses_promotional_price,is_active,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
@@ -106,6 +123,7 @@ function mapSettings(row: {
 function mapChoir(row: {
   id: string;
   name: string;
+  diocese: string | null;
   uses_promotional_price: boolean;
   is_active: boolean;
   created_at: string;
@@ -114,6 +132,7 @@ function mapChoir(row: {
   return {
     id: row.id,
     name: row.name,
+    diocese: dioceseSchema.nullable().parse(row.diocese),
     usesPromotionalPrice: row.uses_promotional_price,
     isActive: row.is_active,
     createdAt: row.created_at,
@@ -188,6 +207,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
           .from("choirs")
           .insert({
             name: input.name,
+            diocese: input.diocese,
             uses_promotional_price: input.usesPromotionalPrice,
             is_active: input.isActive,
           })
@@ -202,6 +222,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
           .from("choirs")
           .update({
             name: input.name,
+            diocese: input.diocese,
             uses_promotional_price: input.usesPromotionalPrice,
             is_active: input.isActive,
             updated_at: new Date().toISOString(),

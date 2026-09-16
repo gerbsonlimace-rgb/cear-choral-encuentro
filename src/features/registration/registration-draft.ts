@@ -3,8 +3,10 @@ import { z } from "zod";
 import { raffleChoiceSchema, type RaffleChoice } from "@/features/choirs/choir-pricing.domain";
 import {
   MAX_REGISTRATION_PHOTO_BYTES,
+  dioceseSchema,
   voicePartSchema,
   type RegistrationPhotoInput,
+  type Diocese,
   type VoicePart,
 } from "./registration.domain";
 
@@ -19,7 +21,9 @@ export type RegistrationDraftForm = {
   email: string;
   phone: string;
   birthDate: string;
+  diocese: "" | Diocese;
   choirId: string;
+  otherChoirName: string;
   raffleChoice: "" | RaffleChoice;
   voicePart: "" | VoicePart;
 };
@@ -43,7 +47,9 @@ const draftSchema = z
         email: z.string().max(254),
         phone: z.string().max(30),
         birthDate: z.string().max(10),
+        diocese: z.union([z.literal(""), dioceseSchema]).default(""),
         choirId: z.string().max(100),
+        otherChoirName: z.string().max(120).default(""),
         raffleChoice: z.union([z.literal(""), raffleChoiceSchema]),
         voicePart: z.union([z.literal(""), voicePartSchema]),
       })

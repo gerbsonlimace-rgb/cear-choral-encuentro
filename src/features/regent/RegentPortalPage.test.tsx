@@ -16,6 +16,7 @@ beforeAll(() => {
 const choir: AdminChoir = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   name: "Coro Diocesano de Quixadá",
+  diocese: "Diocese de Quixadá",
   usesPromotionalPrice: true,
   isActive: true,
   createdAt: "2026-09-10T12:00:00.000Z",

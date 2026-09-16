@@ -18,7 +18,6 @@ import {
 
 import pixLogo from "@/assets/logo-pix.svg";
 import infinitePayLogo from "@/assets/logo-infinitepay.svg";
-import eventLogoOnLight from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,12 +45,14 @@ import {
 import {
   birthDateSchema,
   cpfSchema,
+  dioceseOptions,
   getFortalezaCalendarDate,
   registrationLookupSchema,
   registrationSchema,
   voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
+  type Diocese,
   type VoicePart,
 } from "./registration.domain";
 import type { RegistrationLookupResult } from "./registration.domain";
@@ -72,10 +73,24 @@ type RegistrationSectionProps = {
 
 type RegistrationForm = Omit<
   RegistrationInput,
-  "choirId" | "displayedQuote" | "photo" | "raffleChoice" | "voicePart"
-> & { choirId: string; raffleChoice: "" | RaffleChoice; voicePart: VoicePart | "" };
+  | "choirId"
+  | "otherChoirName"
+  | "diocese"
+  | "displayedQuote"
+  | "photo"
+  | "raffleChoice"
+  | "voicePart"
+> & {
+  choirId: string;
+  otherChoirName: string;
+  diocese: "" | Diocese;
+  raffleChoice: "" | RaffleChoice;
+  voicePart: VoicePart | "";
+};
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
+
+const OTHER_CHOIR_VALUE = "other";
 
 const formatCurrency = (valueInCents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valueInCents / 100);
@@ -103,7 +118,9 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   email: "",
   phone: "",
   birthDate: "",
+  diocese: "",
   choirId: "",
+  otherChoirName: "",
   raffleChoice: "",
   voicePart: "",
 };
@@ -115,7 +132,7 @@ const inputClassName =
 
 const stepFields: Record<1 | 2, RegistrationFormField[]> = {
   1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "photo"],
-  2: ["choirId", "raffleChoice", "voicePart"],
+  2: ["diocese", "choirId", "otherChoirName", "raffleChoice", "voicePart"],
 };
 
 function RegistrationPriceSummary({
@@ -194,7 +211,7 @@ function RegistrationPriceSummary({
           </>
         ) : (
           <div className="mt-5 rounded-xl border border-dashed border-background/25 p-4 text-center text-sm text-background/70">
-            Selecione seu coro/diocese para ver o valor da inscrição.
+            Selecione seu coro para ver o valor da inscrição.
           </div>
         )}
 
@@ -215,43 +232,6 @@ function RegistrationPriceSummary({
               Cartão em até 5x
             </li>
           </ul>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function RegistrationBadgeExample() {
-  return (
-    <aside
-      aria-label="Exemplo de crachá"
-      className="mx-auto w-full max-w-[15rem] lg:sticky lg:top-24"
-    >
-      <div className="relative mx-auto h-12 w-28" aria-hidden="true">
-        <span className="absolute left-4 top-0 h-12 w-1 origin-top rotate-12 rounded-full bg-amber" />
-        <span className="absolute right-4 top-0 h-12 w-1 origin-top -rotate-12 rounded-full bg-amber" />
-        <span className="absolute bottom-0 left-1/2 h-3 w-8 -translate-x-1/2 rounded-md border-2 border-amber bg-muted" />
-      </div>
-      <div className="flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg">
-        <div className="h-2 bg-amber" aria-hidden="true" />
-        <div className="flex flex-1 flex-col items-center px-4 py-5 text-center">
-          <img
-            src={eventLogoOnLight}
-            alt="II Encontro de Coros"
-            className="mx-auto h-14 w-auto object-contain"
-          />
-          <div className="mx-auto mt-5 grid size-24 place-items-center overflow-hidden rounded-full border-[3px] border-amber bg-muted font-display text-2xl font-extrabold text-foreground">
-            AL
-          </div>
-          <p className="mt-5 break-words font-display text-lg font-extrabold leading-tight text-foreground">
-            Antonio Lima
-          </p>
-          <p className="mt-1 text-[0.65rem] font-bold uppercase text-muted-foreground">
-            Participante
-          </p>
-        </div>
-        <div className="bg-foreground px-3 py-2 text-center text-[0.65rem] font-semibold text-background">
-          Quixadá • 20–22 nov. 2026
         </div>
       </div>
     </aside>
@@ -316,7 +296,9 @@ export function RegistrationSection({
         setForm((previous) => ({
           ...previous,
           choirId:
-            !clearSelection && next.choirs.some((choir) => choir.id === previous.choirId)
+            !clearSelection &&
+            (previous.choirId === OTHER_CHOIR_VALUE ||
+              next.choirs.some((choir) => choir.id === previous.choirId))
               ? previous.choirId
               : "",
         }));
@@ -356,29 +338,69 @@ export function RegistrationSection({
     () => configuration?.choirs.find((choir) => choir.id === form.choirId) ?? null,
     [configuration, form.choirId],
   );
+  const filteredChoirs = useMemo(
+    () => configuration?.choirs.filter((choir) => choir.diocese === form.diocese) ?? [],
+    [configuration, form.diocese],
+  );
+  const isOtherChoir = form.choirId === OTHER_CHOIR_VALUE;
+  const displayedChoir = useMemo<PublicChoirOption | null>(() => {
+    if (selectedChoir) return selectedChoir;
+    if (!isOtherChoir || configuration?.standardPriceCents === null || !configuration) return null;
+    return {
+      id: OTHER_CHOIR_VALUE,
+      name: form.otherChoirName.trim() || "Outros",
+      diocese: form.diocese || null,
+      pricingType: "standard",
+      standardPriceCents: configuration.standardPriceCents,
+      registrationPriceCents: configuration.standardPriceCents,
+    };
+  }, [configuration, form.diocese, form.otherChoirName, isOtherChoir, selectedChoir]);
   const displayedQuote = useMemo(() => {
-    if (!selectedChoir) return null;
+    if (!displayedChoir) return null;
     const availableQuote: DisplayedQuote = {
-      pricingType: selectedChoir.pricingType,
-      standardPriceCents: selectedChoir.standardPriceCents,
-      registrationPriceCents: selectedChoir.registrationPriceCents,
-      ...(selectedChoir.remainingPriceCents !== undefined
-        ? { remainingPriceCents: selectedChoir.remainingPriceCents }
+      pricingType: displayedChoir.pricingType,
+      standardPriceCents: displayedChoir.standardPriceCents,
+      registrationPriceCents: displayedChoir.registrationPriceCents,
+      ...(displayedChoir.remainingPriceCents !== undefined
+        ? { remainingPriceCents: displayedChoir.remainingPriceCents }
         : {}),
     };
     const raffleChoice =
-      selectedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
+      displayedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
     return raffleChoice ? applyRaffleChoice(availableQuote, raffleChoice) : null;
-  }, [form.raffleChoice, selectedChoir]);
+  }, [displayedChoir, form.raffleChoice]);
 
   useEffect(() => {
-    if (!configuration || currentStep !== 3 || selectedChoir) return;
+    if (!configuration || currentStep !== 3 || displayedChoir) return;
     setErrors((previous) => ({
       ...previous,
-      choirId: "Selecione um coro/diocese.",
+      choirId: "Selecione um coro.",
     }));
     setCurrentStep(2);
-  }, [configuration, currentStep, selectedChoir]);
+  }, [configuration, currentStep, displayedChoir]);
+
+  const handleDioceseChange = (diocese: "" | Diocese) => {
+    const firstChoir = configuration?.choirs.find((choir) => choir.diocese === diocese);
+    const choirId = diocese ? (firstChoir?.id ?? OTHER_CHOIR_VALUE) : "";
+    const raffleChoice =
+      choirId === OTHER_CHOIR_VALUE || firstChoir?.pricingType === "standard"
+        ? "full_price"
+        : "";
+    setForm((previous) => ({
+      ...previous,
+      diocese,
+      choirId,
+      otherChoirName: "",
+      raffleChoice,
+    }));
+    setErrors((previous) => ({
+      ...previous,
+      diocese: undefined,
+      choirId: undefined,
+      otherChoirName: undefined,
+      raffleChoice: undefined,
+    }));
+  };
 
   const handleChoirChange = (choirId: string) => {
     setForm((previous) => {
@@ -387,14 +409,24 @@ export function RegistrationSection({
       const keepsExplicitChoice =
         previousChoir?.pricingType === "promotional" && nextChoir?.pricingType === "promotional";
       const raffleChoice =
-        nextChoir?.pricingType === "standard"
+        choirId === OTHER_CHOIR_VALUE || nextChoir?.pricingType === "standard"
           ? "full_price"
           : keepsExplicitChoice
             ? previous.raffleChoice
             : "";
-      return { ...previous, choirId, raffleChoice };
+      return {
+        ...previous,
+        choirId,
+        otherChoirName: "",
+        raffleChoice,
+      };
     });
-    setErrors((previous) => ({ ...previous, choirId: undefined, raffleChoice: undefined }));
+    setErrors((previous) => ({
+      ...previous,
+      choirId: undefined,
+      otherChoirName: undefined,
+      raffleChoice: undefined,
+    }));
   };
 
   const handleChange = (field: keyof typeof form, value: string) => {
@@ -421,19 +453,29 @@ export function RegistrationSection({
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
         const savedChoirId =
-          result.choirId && configuration?.choirs.some((choir) => choir.id === result.choirId)
+          result.choirId &&
+          configuration?.choirs.some(
+            (choir) => choir.id === result.choirId && choir.diocese === result.diocese,
+          )
             ? result.choirId
-            : null;
+            : result.otherChoirName
+              ? OTHER_CHOIR_VALUE
+              : null;
         setForm((previous) => ({
           ...previous,
           name: result.name,
           badgeName: result.badgeName ?? previous.badgeName,
           email: result.email,
           phone: result.phone,
+          diocese: result.diocese ?? previous.diocese,
           choirId:
             previous.choirId === choirIdAtLookupStart
               ? (savedChoirId ?? previous.choirId)
               : previous.choirId,
+          otherChoirName:
+            previous.choirId === choirIdAtLookupStart
+              ? (result.otherChoirName ?? "")
+              : previous.otherChoirName,
           voicePart: result.voicePart ?? previous.voicePart,
         }));
         setLookupState("found");
@@ -486,7 +528,11 @@ export function RegistrationSection({
       if (!birthDateResult.success) nextErrors.birthDate = birthDateResult.error.issues[0]?.message;
       if (!photo) nextErrors.photo = "Envie uma foto do participante.";
     } else {
-      if (!selectedChoir) nextErrors.choirId = "Selecione um coro/diocese.";
+      if (!form.diocese) nextErrors.diocese = "Selecione sua diocese.";
+      if (!selectedChoir && !isOtherChoir) nextErrors.choirId = "Selecione um coro.";
+      if (isOtherChoir && form.otherChoirName.trim().length < 2) {
+        nextErrors.otherChoirName = "Informe o nome do coro.";
+      }
       if (!form.voicePart) nextErrors.voicePart = "Selecione seu perfil musical.";
       if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
         nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
@@ -529,8 +575,8 @@ export function RegistrationSection({
       void goToNextStep();
       return;
     }
-    if (!selectedChoir) {
-      setErrors((previous) => ({ ...previous, choirId: "Selecione um coro/diocese." }));
+    if (!selectedChoir && !isOtherChoir) {
+      setErrors((previous) => ({ ...previous, choirId: "Selecione um coro." }));
       setCurrentStep(2);
       return;
     }
@@ -547,6 +593,8 @@ export function RegistrationSection({
 
     const parsedForm = registrationSchema.safeParse({
       ...form,
+      choirId: isOtherChoir ? null : form.choirId,
+      otherChoirName: isOtherChoir ? form.otherChoirName : null,
       photo,
       displayedQuote,
     });
@@ -711,7 +759,7 @@ export function RegistrationSection({
 
                       <div className="order-3 space-y-1.5">
                         <Label htmlFor="name" className="font-semibold">
-                          Nome completo
+                          Nome completo para certificado
                         </Label>
                         <div className="relative">
                           <UserRound
@@ -836,7 +884,7 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      <div className="space-y-1.5 md:col-span-2">
+                      <div className="order-3 space-y-1.5 md:col-span-2">
                         <Label htmlFor="photo" className="font-semibold">
                           Foto do participante
                         </Label>
@@ -888,12 +936,6 @@ export function RegistrationSection({
                       Encontramos seus dados salvos e preenchemos o formulário.
                     </p>
                   )}
-                  <details className="registration-badge-preview rounded-xl border border-border p-3">
-                    <summary className="cursor-pointer py-2 text-sm font-semibold">
-                      Ver exemplo de crachá
-                    </summary>
-                    <RegistrationBadgeExample />
-                  </details>
                 </div>
               )}
 
@@ -913,14 +955,45 @@ export function RegistrationSection({
                           Sua participação
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
-                          Escolha seu coro e perfil musical.
+                          Escolha sua diocese, coro e perfil musical.
                         </span>
                       </span>
                     </legend>
                     <div className="grid gap-5">
                       <div className="space-y-1.5">
+                        <Label htmlFor="diocese" className="font-semibold">
+                          Diocese
+                        </Label>
+                        <div className="relative">
+                          <ShieldCheck
+                            className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                          <select
+                            id="diocese"
+                            required
+                            value={form.diocese}
+                            onChange={(event) =>
+                              handleDioceseChange(event.target.value as "" | Diocese)
+                            }
+                            className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
+                          >
+                            <option value="">Selecione sua diocese</option>
+                            {dioceseOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {errors.diocese && (
+                          <p className="text-sm text-destructive">{errors.diocese}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
                         <Label htmlFor="choirId" className="font-semibold">
-                          Coro/Diocese
+                          Coro
                         </Label>
                         <div className="relative">
                           <Music2
@@ -932,24 +1005,29 @@ export function RegistrationSection({
                             required
                             value={form.choirId}
                             onChange={(event) => handleChoirChange(event.target.value)}
-                            disabled={!configuration || configuration.choirs.length === 0}
+                            disabled={
+                              !configuration ||
+                              !form.diocese ||
+                              configuration.standardPriceCents === null
+                            }
                             className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <option value="">
                               {isLoadingConfiguration
                                 ? "Carregando coros…"
-                                : "Selecione o coro/diocese"}
+                                : "Selecione o coro"}
                             </option>
-                            {configuration?.choirs.map((choir) => (
+                            {filteredChoirs.map((choir) => (
                               <option key={choir.id} value={choir.id}>
                                 {choir.name}
                               </option>
                             ))}
+                            <option value={OTHER_CHOIR_VALUE}>Outros</option>
                           </select>
                         </div>
-                        {configuration?.choirs.length === 0 && (
+                        {configuration?.standardPriceCents === null && (
                           <p className="text-sm text-muted-foreground">
-                            As inscrições estarão disponíveis após o cadastro dos coros e valores.
+                            As inscrições estarão disponíveis após o cadastro do valor normal.
                           </p>
                         )}
                         {errors.choirId && (
@@ -957,7 +1035,37 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      {selectedChoir?.pricingType === "promotional" && (
+                      {isOtherChoir && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="otherChoirName" className="font-semibold">
+                            Informe o nome do coro
+                          </Label>
+                          <div className="relative">
+                            <Music2
+                              className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            <Input
+                              id="otherChoirName"
+                              required
+                              minLength={2}
+                              maxLength={120}
+                              value={form.otherChoirName}
+                              onChange={(event) =>
+                                handleChange("otherChoirName", event.target.value)
+                              }
+                              placeholder="Digite o nome do coro"
+                              className="min-h-14 rounded-xl pl-11 text-base"
+                            />
+                          </div>
+                          {errors.otherChoirName && (
+                            <p className="text-sm text-destructive">{errors.otherChoirName}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {(selectedChoir?.pricingType === "promotional" || isOtherChoir) &&
+                        displayedChoir && (
                         <fieldset
                           id="raffleChoice"
                           role="radiogroup"
@@ -969,10 +1077,14 @@ export function RegistrationSection({
                             Como deseja realizar sua inscrição?
                           </legend>
                           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                            Escolha a opção que funciona melhor para você. Confira abaixo quanto
-                            pagar agora e quando sua vaga será confirmada.
+                            {isOtherChoir
+                              ? "Para coros informados manualmente, a inscrição é realizada pelo valor integral."
+                              : "Escolha a opção que funciona melhor para você. Confira abaixo quanto pagar agora e quando sua vaga será confirmada."}
                           </p>
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div
+                            className={`mt-4 grid gap-3 ${isOtherChoir ? "max-w-md" : "sm:grid-cols-2"}`}
+                          >
+                            {selectedChoir?.pricingType === "promotional" && (
                             <label className="cursor-pointer">
                               <input
                                 type="radio"
@@ -1009,6 +1121,7 @@ export function RegistrationSection({
                                 </span>
                               </span>
                             </label>
+                            )}
                             <label className="cursor-pointer">
                               <input
                                 type="radio"
@@ -1031,7 +1144,7 @@ export function RegistrationSection({
                                   </span>
                                 </span>
                                 <strong className="mt-4 block font-display text-xl font-extrabold">
-                                  Pague {formatCurrency(selectedChoir.standardPriceCents)} agora
+                                  Pague {formatCurrency(displayedChoir.standardPriceCents)} agora
                                 </strong>
                                 <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
                                   Conclua sua inscrição em um único pagamento via Pix ou em até 5x
@@ -1103,7 +1216,7 @@ export function RegistrationSection({
                     </div>
                     <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
                       {[
-                        ["Nome completo (certificado)", form.name],
+                        ["Nome completo para certificado", form.name],
                         ["Nome para o crachá", form.badgeName],
                         ["CPF", form.cpf],
                         ["E-mail", form.email],
@@ -1114,7 +1227,8 @@ export function RegistrationSection({
                             ? new Date(`${form.birthDate}T12:00:00`).toLocaleDateString("pt-BR")
                             : "",
                         ],
-                        ["Coro/Diocese", selectedChoir?.name ?? ""],
+                        ["Diocese", form.diocese],
+                        ["Coro", displayedChoir?.name ?? ""],
                         [
                           "Perfil musical",
                           voicePartOptions.find((option) => option.value === form.voicePart)
@@ -1140,7 +1254,7 @@ export function RegistrationSection({
                     </dl>
                   </div>
                   <RegistrationPriceSummary
-                    selectedChoir={selectedChoir}
+                    selectedChoir={displayedChoir}
                     appliedQuote={displayedQuote}
                     raffleChoice={form.raffleChoice}
                   />
@@ -1184,8 +1298,8 @@ export function RegistrationSection({
                     disabled={
                       isSubmitting ||
                       !configuration ||
-                      configuration.choirs.length === 0 ||
-                      (currentStep === 3 && (!selectedChoir || !displayedQuote))
+                      configuration.standardPriceCents === null ||
+                      (currentStep === 3 && (!displayedChoir || !displayedQuote))
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >

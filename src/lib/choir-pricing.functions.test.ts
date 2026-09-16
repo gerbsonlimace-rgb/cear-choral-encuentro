@@ -19,7 +19,7 @@ const settings = {
 
 function service(): ChoirPricingServicePort {
   return {
-    getPublicConfiguration: vi.fn(async () => ({ choirs: [], shirtPriceCents: 5000 })),
+    getPublicConfiguration: vi.fn(async () => ({ choirs: [], standardPriceCents: 30000 })),
     getAdminData: vi.fn(async () => ({ settings, choirs: [] })),
     saveSettings: vi.fn(async (input) => input),
     createChoir: vi.fn(async (input) => ({
@@ -37,6 +37,7 @@ function service(): ChoirPricingServicePort {
     setChoirActive: vi.fn(async (id, isActive) => ({
       id,
       name: "Coro Litúrgico",
+      diocese: "Diocese de Quixadá" as const,
       usesPromotionalPrice: false,
       isActive,
       createdAt: "2026-09-09T12:00:00.000Z",
@@ -73,15 +74,31 @@ describe("choir pricing server functions", () => {
 
     await createChoirPricingFunctionHandlers(port).createChoir({
       name: "  Coro Litúrgico  ",
+      diocese: "Diocese de Sobral",
       usesPromotionalPrice: true,
       isActive: true,
     });
 
     expect(port.createChoir).toHaveBeenCalledWith({
       name: "Coro Litúrgico",
+      diocese: "Diocese de Sobral",
       usesPromotionalPrice: true,
       isActive: true,
     });
+  });
+
+  it("rejects a choir without a supported diocese before reaching the service", async () => {
+    const port = service();
+
+    await expect(
+      createChoirPricingFunctionHandlers(port).createChoir({
+        name: "Coro Litúrgico",
+        diocese: "Diocese de Canindé",
+        usesPromotionalPrice: false,
+        isActive: true,
+      }),
+    ).rejects.toMatchObject({ name: "ZodError" });
+    expect(port.createChoir).not.toHaveBeenCalled();
   });
 
   it("validates the choir identifier for updates and activation", async () => {
@@ -91,6 +108,7 @@ describe("choir pricing server functions", () => {
       handlers.updateChoir({
         id: "invalid",
         name: "Coro Litúrgico",
+        diocese: "Diocese de Quixadá",
         usesPromotionalPrice: false,
         isActive: true,
       }),

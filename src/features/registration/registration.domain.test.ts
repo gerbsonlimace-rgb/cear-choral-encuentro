@@ -4,6 +4,7 @@ import {
   buildCheckoutItems,
   calculateOrderAmountCents,
   cpfSchema,
+  dioceseOptions,
   paymentLookupSchema,
   registrationResumeSchema,
   registrationSchema,
@@ -22,7 +23,9 @@ const baseInput = {
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
+  diocese: "Diocese de Quixadá" as const,
   choirId: "11111111-1111-4111-8111-111111111111",
+  otherChoirName: null,
   voicePart: "soprano" as const,
   photo: { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" },
   raffleChoice: "full_price" as const,
@@ -80,6 +83,41 @@ describe("registration domain", () => {
         displayedQuote: { ...standardQuote, registrationPriceCents: 10000 },
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts exactly one configured or manually informed choir", () => {
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        choirId: null,
+        otherChoirName: "  Coral Santa Cecília  ",
+      }),
+    ).toMatchObject({ success: true, data: { otherChoirName: "Coral Santa Cecília" } });
+    expect(
+      registrationSchema.safeParse({ ...baseInput, otherChoirName: "Outro coro" }).success,
+    ).toBe(false);
+    expect(
+      registrationSchema.safeParse({ ...baseInput, choirId: null, otherChoirName: "" }).success,
+    ).toBe(false);
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        choirId: null,
+        otherChoirName: "A".repeat(121),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only the supported Ceará dioceses", () => {
+    expect(dioceseOptions).toHaveLength(10);
+    expect(dioceseOptions.every(({ label }) => !/[()]/.test(label))).toBe(true);
+    expect(
+      registrationSchema.safeParse({ ...baseInput, diocese: "Diocese de Baturité" }).success,
+    ).toBe(true);
+    expect(
+      registrationSchema.safeParse({ ...baseInput, diocese: "Diocese de Canindé" }).success,
+    ).toBe(false);
+    expect(registrationSchema.safeParse({ ...baseInput, diocese: "" }).success).toBe(false);
   });
 
   it("requires the displayed quote to match the raffle choice", () => {

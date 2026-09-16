@@ -136,6 +136,7 @@ export type Database = {
       choirs: {
         Row: {
           created_at: string
+          diocese: string | null
           id: string
           is_active: boolean
           name: string
@@ -144,6 +145,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          diocese?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -152,6 +154,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          diocese?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -601,10 +604,12 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null
+          badge_name: string | null
           birth_date: string
           checkout_url: string | null
           choir_id: string | null
           choir_name: string
+          other_choir_name: string | null
           city: string | null
           cpf: string | null
           created_at: string
@@ -643,10 +648,12 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
+          badge_name?: string | null
           birth_date: string
           checkout_url?: string | null
           choir_id?: string | null
           choir_name: string
+          other_choir_name?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string
@@ -685,10 +692,12 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
+          badge_name?: string | null
           birth_date?: string
           checkout_url?: string | null
           choir_id?: string | null
           choir_name?: string
+          other_choir_name?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string

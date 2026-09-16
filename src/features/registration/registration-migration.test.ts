@@ -8,6 +8,18 @@ const migration = readFileSync(
 )
   .toLowerCase()
   .replace(/\s+/g, " ");
+const separateDioceseMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260915200000_separate_registration_diocese.sql"),
+  "utf8",
+)
+  .toLowerCase()
+  .replace(/\s+/g, " ");
+const otherChoirMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260916050000_add_registration_other_choir.sql"),
+  "utf8",
+)
+  .toLowerCase()
+  .replace(/\s+/g, " ");
 
 describe("simplified registration migration", () => {
   it("deletes only registration rows before requiring the new profile fields", () => {
@@ -23,5 +35,27 @@ describe("simplified registration migration", () => {
   it("does not classify legacy rows by a timestamp or hidden flag", () => {
     expect(migration).not.toContain("legacy_profile_fields");
     expect(migration).not.toMatch(/created_at\s*[<>]/);
+  });
+
+  it("keeps the diocese independent from the configured choir", () => {
+    expect(separateDioceseMigration).toContain(
+      "drop constraint if exists registrations_choir_names_match_check",
+    );
+    expect(separateDioceseMigration).toContain(
+      "drop trigger if exists sync_registration_choir_names_before_write",
+    );
+    expect(separateDioceseMigration).toContain("add constraint registrations_diocese_check");
+    expect(separateDioceseMigration).toContain("not valid");
+    expect(separateDioceseMigration).toContain("diocese de baturité");
+    expect(separateDioceseMigration).toContain("diocese de tianguá");
+  });
+
+  it("stores a manual choir only on the registration and supports priced legacy-compatible rows", () => {
+    expect(otherChoirMigration).toContain("add column other_choir_name text");
+    expect(otherChoirMigration).toContain("registrations_other_choir_name_check");
+    expect(otherChoirMigration).toContain("registrations_choir_source_check");
+    expect(otherChoirMigration).toContain("drop constraint if exists registrations_pricing_snapshot_check");
+    expect(otherChoirMigration).toContain("pricing_type is null");
+    expect(otherChoirMigration).not.toContain("insert into public.choirs");
   });
 });

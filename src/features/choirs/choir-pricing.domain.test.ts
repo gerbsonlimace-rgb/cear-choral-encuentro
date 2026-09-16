@@ -13,6 +13,7 @@ import {
 const baseChoir: AdminChoir = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Coro Diocesano de Quixadá",
+  diocese: "Diocese de Quixadá",
   usesPromotionalPrice: false,
   isActive: true,
   createdAt: "2026-09-09T12:00:00.000Z",
@@ -85,14 +86,32 @@ describe("choir pricing domain", () => {
     expect(
       choirMutationSchema.parse({
         name: "  Coro Litúrgico  ",
+        diocese: "Diocese de Quixadá",
         usesPromotionalPrice: true,
         isActive: true,
       }),
     ).toEqual({
       name: "Coro Litúrgico",
+      diocese: "Diocese de Quixadá",
       usesPromotionalPrice: true,
       isActive: true,
     });
+  });
+
+  it("requires a supported diocese when saving a choir", () => {
+    const input = {
+      name: "Coro Litúrgico",
+      usesPromotionalPrice: false,
+      isActive: true,
+    };
+
+    expect(choirMutationSchema.safeParse(input).success).toBe(false);
+    expect(choirMutationSchema.safeParse({ ...input, diocese: "Diocese de Canindé" }).success).toBe(
+      false,
+    );
+    expect(choirMutationSchema.safeParse({ ...input, diocese: "Diocese de Sobral" }).success).toBe(
+      true,
+    );
   });
 
   it("resolves the standard price without requiring a promotional price", () => {

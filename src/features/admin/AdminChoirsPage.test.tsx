@@ -28,6 +28,7 @@ const emptyData: AdminChoirPricing = {
 const promotionalChoir = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Coro Diocesano de Quixadá",
+  diocese: "Diocese de Quixadá" as const,
   usesPromotionalPrice: true,
   isActive: true,
   createdAt: "2026-09-09T12:00:00.000Z",
@@ -94,7 +95,7 @@ describe("AdminChoirsPage", () => {
     expect(screen.getByRole("heading", { name: "Configurações" })).toBeInTheDocument();
     expect(await screen.findByLabelText("Valor normal")).toHaveValue("");
     expect(screen.getByLabelText("Valor promocional")).toHaveValue("");
-    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(2);
+    expect(screen.getAllByPlaceholderText("Não configurado")).toHaveLength(3);
     expect(screen.getByRole("heading", { name: "Eventos do CoroApp" })).toBeInTheDocument();
   });
 
@@ -130,6 +131,7 @@ describe("AdminChoirsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Cadastrar coro" }));
     await user.type(screen.getByLabelText("Nome do coro"), "Coro Litúrgico");
+    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
     await user.click(screen.getByRole("checkbox", { name: "Aplicar valor promocional" }));
     await user.click(screen.getByRole("button", { name: "Salvar coro" }));
 
@@ -137,6 +139,58 @@ describe("AdminChoirsPage", () => {
       expect(createChoir).toHaveBeenCalledWith({
         data: {
           name: "Coro Litúrgico",
+          diocese: "Diocese de Sobral",
+          usesPromotionalPrice: true,
+          isActive: true,
+        },
+      }),
+    );
+  });
+
+  it("requires a diocese from the official list and displays the saved affiliation", async () => {
+    const createChoir = vi.fn();
+    const { user } = setup({
+      createChoir,
+      loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })),
+    });
+
+    expect(await screen.findByText("Diocese de Quixadá")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cadastrar coro" }));
+
+    const diocese = screen.getByLabelText("Diocese");
+    expect(diocese).toBeRequired();
+    expect(within(diocese).getAllByRole("option")).toHaveLength(11);
+    expect(
+      within(diocese).queryByRole("option", { name: "Diocese de Canindé" }),
+    ).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Nome do coro"), "Coro Litúrgico");
+    await user.click(screen.getByRole("button", { name: "Salvar coro" }));
+    expect(createChoir).not.toHaveBeenCalled();
+  });
+
+  it("preselects and updates the diocese of an existing choir", async () => {
+    const updateChoir = vi.fn(async ({ data }) => ({
+      ...promotionalChoir,
+      ...data,
+    }));
+    const { user } = setup({
+      updateChoir,
+      loadData: vi.fn(async () => ({ ...emptyData, choirs: [promotionalChoir] })),
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+    expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
+
+    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
+    await user.click(screen.getByRole("button", { name: "Salvar coro" }));
+
+    await waitFor(() =>
+      expect(updateChoir).toHaveBeenCalledWith({
+        data: {
+          id: promotionalChoir.id,
+          name: promotionalChoir.name,
+          diocese: "Diocese de Sobral",
           usesPromotionalPrice: true,
           isActive: true,
         },
@@ -188,6 +242,7 @@ describe("AdminChoirsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Cadastrar coro" }));
     await user.type(screen.getByLabelText("Nome do coro"), "Coro Litúrgico");
+    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
     await user.click(screen.getByRole("button", { name: "Salvar coro" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível salvar o coro.");
@@ -203,6 +258,7 @@ describe("AdminChoirsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Cadastrar coro" }));
     await user.type(screen.getByLabelText("Nome do coro"), "Coro Litúrgico");
+    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
     await user.click(screen.getByRole("button", { name: "Salvar coro" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Já existe um coro com esse nome.");

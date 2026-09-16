@@ -4,6 +4,9 @@ import {
   raffleChoiceSchema,
   type DisplayedQuote,
 } from "@/features/choirs/choir-pricing.domain";
+import { dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain";
+
+export { dioceseOptions, dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain";
 
 function isValidCpf(value: string): boolean {
   if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
@@ -100,6 +103,8 @@ export type RegistrationLookupResult =
       email: string;
       phone: string;
       choirId: string | null;
+      otherChoirName?: string | null;
+      diocese?: Diocese | null;
       voicePart: VoicePart | null;
       hasPhoto: boolean;
       paymentStatus: "legacy" | "pending" | "paid";
@@ -130,7 +135,9 @@ export const registrationSchema = z
     email: z.string().trim().email("Informe um e-mail válido.").max(254),
     phone: z.string().trim().min(8).max(30),
     birthDate: birthDateSchema,
-    choirId: z.string().uuid("Selecione um coro válido."),
+    diocese: dioceseSchema,
+    choirId: z.string().uuid("Selecione um coro válido.").nullable(),
+    otherChoirName: z.string().trim().min(2, "Informe o nome do coro.").max(120).nullable(),
     voicePart: voicePartSchema,
     photo: registrationPhotoSchema,
     raffleChoice: raffleChoiceSchema,
@@ -138,6 +145,16 @@ export const registrationSchema = z
   })
   .strict()
   .superRefine((value, context) => {
+    const hasConfiguredChoir = value.choirId !== null;
+    const hasOtherChoir = value.otherChoirName !== null;
+    if (hasConfiguredChoir === hasOtherChoir) {
+      context.addIssue({
+        code: "custom",
+        path: [hasConfiguredChoir ? "otherChoirName" : "choirId"],
+        message: "Selecione um coro ou informe outro coro.",
+      });
+    }
+
     const coherentQuote =
       value.displayedQuote.pricingType === "standard"
         ? value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents

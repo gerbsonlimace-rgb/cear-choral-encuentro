@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain";
+
 const optionalPositiveCentsSchema = z.number().int().positive().nullable();
 const optionalNonNegativeCentsSchema = z.number().int().nonnegative().nullable();
 
@@ -29,6 +31,7 @@ export const pricingSettingsSchema = z
 export const choirMutationSchema = z
   .object({
     name: z.string().trim().min(2, "Informe o nome do coro.").max(120),
+    diocese: dioceseSchema,
     usesPromotionalPrice: z.boolean(),
     isActive: z.boolean(),
   })
@@ -62,8 +65,9 @@ export type DisplayedQuote = z.infer<typeof displayedQuoteSchema>;
 export type RaffleChoice = z.infer<typeof raffleChoiceSchema>;
 export type ResolvedChoirPrice = DisplayedQuote;
 
-export type AdminChoir = ChoirMutation & {
+export type AdminChoir = Omit<ChoirMutation, "diocese"> & {
   id: string;
+  diocese: Diocese | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -71,6 +75,7 @@ export type AdminChoir = ChoirMutation & {
 export type PublicChoirOption = {
   id: string;
   name: string;
+  diocese: Diocese | null;
   pricingType: DisplayedQuote["pricingType"];
   standardPriceCents: number;
   registrationPriceCents: number;
@@ -78,6 +83,7 @@ export type PublicChoirOption = {
 };
 
 export type PublicRegistrationConfiguration = {
+  standardPriceCents: number | null;
   choirs: PublicChoirOption[];
 };
 

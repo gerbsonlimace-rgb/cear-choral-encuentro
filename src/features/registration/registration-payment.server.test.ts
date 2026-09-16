@@ -66,6 +66,7 @@ const trustedSelection = {
   choir: {
     id: choirId,
     name: "Coro Diocesano de Quixadá",
+    diocese: "Diocese de Quixadá" as const,
     usesPromotionalPrice: true,
     isActive: true,
     createdAt: "2026-09-09T10:00:00.000Z",
@@ -85,7 +86,9 @@ const baseInput: RegistrationInput = {
   email: "maria@example.com",
   phone: "85999999999",
   birthDate: "1990-05-20",
+  diocese: "Diocese de Quixadá",
   choirId,
+  otherChoirName: null,
   voicePart: "soprano",
   photo: registrationPhoto,
   raffleChoice: "participate",
@@ -312,11 +315,20 @@ function createFixture() {
   const provisionParticipant = vi.fn(
     async (): Promise<{ status: "active" | "pending" | "conflict" }> => ({ status: "active" }),
   );
-  const getParticipantCredentials = vi.fn(async () => null as {
-    portalUrl: "/acessar";
-    initialPassword: string;
-  } | null);
+  const getParticipantCredentials = vi.fn(
+    async () =>
+      null as {
+        portalUrl: "/acessar";
+        initialPassword: string;
+      } | null,
+  );
   const findAuthUserByEmail = vi.fn(async () => null as { id: string } | null);
+  const resolveChoirSelection = vi.fn(async () => trustedSelection);
+  const resolveStandardRegistrationQuote = vi.fn(async () => ({
+    pricingType: "standard" as const,
+    standardPriceCents: 30000,
+    registrationPriceCents: 30000,
+  }));
 
   const service = createRegistrationPaymentService({
     repository,
@@ -324,7 +336,8 @@ function createFixture() {
     photoStorage,
     randomUUID: () => fixedOrderNsu,
     now: () => fixedPaidAt,
-    resolveChoirSelection: vi.fn(async () => trustedSelection),
+    resolveChoirSelection,
+    resolveStandardRegistrationQuote,
     provisionParticipant,
     getParticipantCredentials,
     findAuthUserByEmail,
@@ -337,6 +350,8 @@ function createFixture() {
     provisionParticipant,
     getParticipantCredentials,
     findAuthUserByEmail,
+    resolveChoirSelection,
+    resolveStandardRegistrationQuote,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
@@ -380,10 +395,7 @@ describe("registration payment service", () => {
     await expect(
       fixture.service.lookupRegistration({ cpf, birthDate: "1990-01-02" }),
     ).resolves.toEqual(expect.objectContaining({ status: "found", name: "Maria da Silva" }));
-    expect(fixture.repository.findRegistrationByIdentity).toHaveBeenCalledWith(
-      cpf,
-      "1990-01-02",
-    );
+    expect(fixture.repository.findRegistrationByIdentity).toHaveBeenCalledWith(cpf, "1990-01-02");
   });
 
   it("stores a pending registration before requesting checkout", async () => {
@@ -418,6 +430,36 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("uses the trusted standard price and persists an informed other choir", async () => {
+    const otherInput: RegistrationInput = {
+      ...baseInput,
+      choirId: null,
+      otherChoirName: "Coral Santa Cecília",
+      raffleChoice: "full_price",
+      displayedQuote: {
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+      },
+    };
+
+    await fixture.service.startCheckout(otherInput);
+
+    expect(fixture.resolveChoirSelection).not.toHaveBeenCalled();
+    expect(fixture.resolveStandardRegistrationQuote).toHaveBeenCalledOnce();
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        choirId: null,
+        otherChoirName: "Coral Santa Cecília",
+        choirName: "Coral Santa Cecília",
+        amountCents: 30000,
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+      }),
+    );
   });
 
   it("blocks checkout when the email already belongs to an Auth user", async () => {
@@ -1007,7 +1049,8 @@ describe("Supabase registration repository", () => {
           birth_date: "1990-05-20",
           choir_id: choirId,
           choir_name: "Coro Diocesano de Quixadá",
-          diocese: "Coro Diocesano de Quixadá",
+          other_choir_name: null,
+          diocese: "Diocese de Quixadá",
           email: "maria@example.com",
           city: null,
           institution: null,

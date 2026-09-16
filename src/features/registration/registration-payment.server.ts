@@ -4,6 +4,7 @@ import {
   type ResolvedChoirSelection,
 } from "@/features/choirs/choir-pricing.server";
 import { applyRaffleChoice } from "@/features/choirs/choir-pricing.domain";
+import type { DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
 import type { ParticipantAccessStatus } from "@/features/participant/participant.domain";
 import type { ParticipantInitialCredentials } from "@/features/participant/participant-provisioning.server";
 import {
@@ -15,6 +16,7 @@ import {
 import {
   buildCheckoutItems,
   calculateOrderAmountCents,
+  dioceseSchema,
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
   type RegistrationInput,
@@ -169,6 +171,7 @@ export function createRegistrationPaymentService(deps: {
   randomUUID: () => string;
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
+  resolveStandardRegistrationQuote: () => Promise<DisplayedQuote>;
   provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
   findAuthUserByEmail?: (email: string) => Promise<{ id: string } | null>;
   getParticipantPortalAccessLink?: (registrationId: string) => Promise<string | null>;
@@ -265,14 +268,17 @@ export function createRegistrationPaymentService(deps: {
         }
       }
 
-      const selection = await deps.resolveChoirSelection(input.choirId);
-      const appliedQuote = applyRaffleChoice(selection.quote, input.raffleChoice);
+      const selection = input.choirId ? await deps.resolveChoirSelection(input.choirId) : null;
+      const trustedQuote = selection
+        ? selection.quote
+        : await deps.resolveStandardRegistrationQuote();
+      const appliedQuote = applyRaffleChoice(trustedQuote, input.raffleChoice);
       const quoteChanged =
         input.displayedQuote.pricingType !== appliedQuote.pricingType ||
         input.displayedQuote.standardPriceCents !== appliedQuote.standardPriceCents ||
         input.displayedQuote.registrationPriceCents !== appliedQuote.registrationPriceCents ||
         (input.displayedQuote.remainingPriceCents ?? null) !==
-          (selection.quote.remainingPriceCents ?? null);
+          (trustedQuote.remainingPriceCents ?? null);
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
@@ -292,13 +298,13 @@ export function createRegistrationPaymentService(deps: {
         ...registrationData,
         orderNsu,
         amountCents,
-        choirName: selection.choir.name,
+        choirName: selection?.choir.name ?? input.otherChoirName!,
         photoPath,
         pricingType: appliedQuote.pricingType,
-        standardPriceCents: selection.quote.standardPriceCents,
+        standardPriceCents: trustedQuote.standardPriceCents,
         registrationPriceCents: appliedQuote.registrationPriceCents,
-        ...(selection.quote.remainingPriceCents !== undefined
-          ? { remainingPriceCents: selection.quote.remainingPriceCents }
+        ...(trustedQuote.remainingPriceCents !== undefined
+          ? { remainingPriceCents: trustedQuote.remainingPriceCents }
           : {}),
         checkoutClaim,
       };
@@ -710,7 +716,9 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
   const findRegistrationByIdentity = async (cpf: string, birthDate: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
-      .select("name,badge_name,email,phone,birth_date,choir_id,voice_part,photo_path,payment_status")
+      .select(
+        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,voice_part,photo_path,payment_status",
+      )
       .eq("cpf", cpf)
       .eq("birth_date", birthDate)
       .maybeSingle();
@@ -731,7 +739,12 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       badgeName: typeof data.badge_name === "string" ? data.badge_name : null,
       email: data.email,
       phone: data.phone,
+      ...(dioceseSchema.safeParse(data.diocese).success
+        ? { diocese: dioceseSchema.parse(data.diocese) }
+        : {}),
       choirId: typeof data.choir_id === "string" ? data.choir_id : null,
+      otherChoirName:
+        typeof data.other_choir_name === "string" ? data.other_choir_name : null,
       voicePart: (
         data.voice_part === "soprano" ||
         data.voice_part === "contralto" ||
@@ -764,7 +777,8 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         birth_date: input.birthDate,
         choir_id: input.choirId,
         choir_name: input.choirName,
-        diocese: input.choirName,
+        other_choir_name: input.otherChoirName,
+        diocese: input.diocese,
         email: input.email,
         city: null,
         institution: null,
@@ -825,7 +839,8 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
           birth_date: input.birthDate,
           choir_id: input.choirId,
           choir_name: input.choirName,
-          diocese: input.choirName,
+          other_choir_name: input.otherChoirName,
+          diocese: input.diocese,
           email: input.email,
           pricing_type: input.pricingType,
           standard_price_cents: input.standardPriceCents,
@@ -945,6 +960,8 @@ export function getRegistrationPaymentService() {
       randomUUID: () => crypto.randomUUID(),
       now: () => new Date().toISOString(),
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
+      resolveStandardRegistrationQuote: () =>
+        getChoirPricingService().resolveStandardRegistrationQuote(),
       findAuthUserByEmail: async (email) => {
         const { createSupabaseParticipantAuthAdmin } =
           await import("@/features/participant/participant-provisioning.server");

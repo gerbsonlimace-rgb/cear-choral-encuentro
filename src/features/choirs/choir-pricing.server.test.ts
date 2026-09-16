@@ -1,7 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { supabaseFromMock } = vi.hoisted(() => ({
+  supabaseFromMock: vi.fn(),
+}));
+
+vi.mock("@/integrations/supabase/client.server", () => ({
+  supabaseAdmin: { from: supabaseFromMock },
+}));
 
 import type { AdminChoir, ChoirMutation, PricingSettings } from "./choir-pricing.domain";
-import { createChoirPricingService, type ChoirPricingRepository } from "./choir-pricing.server";
+import {
+  createChoirPricingService,
+  createSupabaseChoirPricingRepository,
+  type ChoirPricingRepository,
+} from "./choir-pricing.server";
 
 const settings: PricingSettings = {
   standardPriceCents: 30000,
@@ -11,6 +23,7 @@ const settings: PricingSettings = {
 const normalChoir: AdminChoir = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Coro Diocesano de Sobral",
+  diocese: "Diocese de Sobral",
   usesPromotionalPrice: false,
   isActive: true,
   createdAt: "2026-09-09T12:00:00.000Z",
@@ -55,10 +68,12 @@ describe("choir pricing service", () => {
     );
 
     await expect(service.getPublicConfiguration()).resolves.toEqual({
+      standardPriceCents: 30000,
       choirs: [
         {
           id: promotionalChoir.id,
           name: promotionalChoir.name,
+          diocese: promotionalChoir.diocese,
           pricingType: "promotional",
           standardPriceCents: 30000,
           registrationPriceCents: 10000,
@@ -66,11 +81,22 @@ describe("choir pricing service", () => {
         {
           id: normalChoir.id,
           name: normalChoir.name,
+          diocese: normalChoir.diocese,
           pricingType: "standard",
           standardPriceCents: 30000,
           registrationPriceCents: 30000,
         },
       ],
+    });
+  });
+
+  it("resolves the standard registration quote without a configured choir", async () => {
+    const service = createChoirPricingService(repository());
+
+    await expect(service.resolveStandardRegistrationQuote()).resolves.toEqual({
+      pricingType: "standard",
+      standardPriceCents: 30000,
+      registrationPriceCents: 30000,
     });
   });
 
@@ -116,6 +142,69 @@ describe("choir pricing service", () => {
     await expect(service.getAdminData()).resolves.toEqual({
       settings,
       choirs: [promotionalChoir, normalChoir],
+    });
+  });
+});
+
+describe("Supabase choir pricing repository", () => {
+  beforeEach(() => {
+    supabaseFromMock.mockReset();
+  });
+
+  it("maps the saved diocese when listing choirs", async () => {
+    supabaseFromMock.mockReturnValue({
+      select: vi.fn(async () => ({
+        data: [
+          {
+            id: normalChoir.id,
+            name: normalChoir.name,
+            diocese: "Diocese de Sobral",
+            uses_promotional_price: false,
+            is_active: true,
+            created_at: normalChoir.createdAt,
+            updated_at: normalChoir.updatedAt,
+          },
+        ],
+        error: null,
+      })),
+    });
+
+    await expect(createSupabaseChoirPricingRepository().listChoirs()).resolves.toEqual([
+      normalChoir,
+    ]);
+  });
+
+  it("persists the selected diocese when creating a choir", async () => {
+    const insert = vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn(async () => ({
+          data: {
+            id: normalChoir.id,
+            name: normalChoir.name,
+            diocese: normalChoir.diocese,
+            uses_promotional_price: false,
+            is_active: true,
+            created_at: normalChoir.createdAt,
+            updated_at: normalChoir.updatedAt,
+          },
+          error: null,
+        })),
+      })),
+    }));
+    supabaseFromMock.mockReturnValue({ insert });
+
+    await createSupabaseChoirPricingRepository().createChoir({
+      name: normalChoir.name,
+      diocese: "Diocese de Sobral",
+      usesPromotionalPrice: false,
+      isActive: true,
+    });
+
+    expect(insert).toHaveBeenCalledWith({
+      name: normalChoir.name,
+      diocese: "Diocese de Sobral",
+      uses_promotional_price: false,
+      is_active: true,
     });
   });
 });
