@@ -192,7 +192,9 @@ describe("landing page access", () => {
       "/acessar",
     );
     expect(screen.getAllByRole("link", { name: "Acessar portal" })).toHaveLength(1);
-    const registrationLinks = screen.getAllByRole("link", { name: "Inscrever-se agora" });
+    const registrationLinks = screen.getAllByRole("link", {
+      name: /Inscrever-se agora|Fazer Inscrição/,
+    });
     expect(registrationLinks).toHaveLength(3);
     for (const link of registrationLinks) {
       expect(link).toHaveAttribute("href", "/inscricao");
@@ -206,7 +208,7 @@ describe("landing page access", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("promotes the two-book giveaway before the registration choices", () => {
+  it("presents the two-book giveaway after the registration choices", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -232,9 +234,11 @@ describe("landing page access", () => {
       }),
     ).toBeVisible();
 
-    const options = within(registration!).getByText("Inscrição integral");
+    const options = within(registration!).getByRole("article", {
+      name: "Inscrição Integral",
+    });
     expect(
-      giveaway.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING,
+      options.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -249,7 +253,7 @@ describe("landing page access", () => {
     ).toBeVisible();
     expect(
       within(registration!).getByText(
-        "Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento completo, partituras originais e certificado.",
+        "Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento completo, partituras originais e certificado oficial.",
       ),
     ).toBeVisible();
 
@@ -262,7 +266,7 @@ describe("landing page access", () => {
         name: "Inscreva-se até 30/09 e concorra aos dois livros exclusivos",
       }),
     ).toBeVisible();
-    expect(within(giveaway).getByText("Sorteio válido para todas as modalidades")).toBeVisible();
+    expect(within(giveaway).getByText("Válido para todas as modalidades")).toBeVisible();
     expect(within(giveaway).getByText("Entrega durante o evento")).toBeVisible();
   });
 
@@ -279,8 +283,10 @@ describe("landing page access", () => {
     expect(
       within(registration!).queryByRole("region", { name: "Resumo do plano selecionado" }),
     ).not.toBeInTheDocument();
-    expect(within(registration!).getByText("Inscrição integral")).toBeVisible();
-    expect(within(registration!).getByText("Programa de rifas")).toBeVisible();
+    expect(
+      within(registration!).getByRole("article", { name: "Inscrição Integral" }),
+    ).toBeVisible();
+    expect(within(registration!).getByRole("article", { name: "Programa de Rifas" })).toBeVisible();
   });
 
   it.skip("presents the included benefits before a full-width registration choice", async () => {
@@ -418,12 +424,15 @@ describe("landing page access", () => {
 
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
-    const integralCard = within(registration!).getByText("Inscrição integral").closest("article");
+    const integralCard = within(registration!).getByRole("article", {
+      name: "Inscrição Integral",
+    });
     expect(integralCard).not.toBeNull();
-    expect(integralCard).toHaveClass("p-4");
+    expect(integralCard).toHaveClass("p-5");
     expect(integralCard).not.toHaveTextContent("Acesso a todas as sessões formativas");
     expect(integralCard).not.toHaveTextContent("Caderno oficial de partituras");
-    expect(within(registration!).getByRole("region", { name: "Ação de inscrição" })).toBeVisible();
+    expect(within(registration!).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();
+    expect(within(registration!).getByRole("link", { name: "Fazer Inscrição" })).toBeVisible();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
