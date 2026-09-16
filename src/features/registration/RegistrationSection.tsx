@@ -1240,6 +1240,35 @@ export function RegistrationSection({
                         )}
                       </div>
 
+                      {currentStep === 2 && isOtherChoir && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="otherChoirName" className="font-semibold">
+                            Informe o nome do coro
+                          </Label>
+                          <div className="relative">
+                            <Music2
+                              className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            <Input
+                              id="otherChoirName"
+                              required
+                              minLength={2}
+                              maxLength={120}
+                              value={form.otherChoirName}
+                              onChange={(event) =>
+                                handleChange("otherChoirName", event.target.value)
+                              }
+                              placeholder="Digite o nome do coro"
+                              className="min-h-14 rounded-xl pl-11 text-base"
+                            />
+                          </div>
+                          {errors.otherChoirName && (
+                            <p className="text-sm text-destructive">{errors.otherChoirName}</p>
+                          )}
+                        </div>
+                      )}
+
                       <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
                         <div className="registration-voice-heading">
                           <Music2 className="size-4" aria-hidden="true" />
@@ -1317,35 +1346,6 @@ export function RegistrationSection({
                           </p>
                         )}
                       </div>
-
-                      {currentStep === 2 && isOtherChoir && (
-                        <div className="space-y-1.5">
-                          <Label htmlFor="otherChoirName" className="font-semibold">
-                            Informe o nome do coro
-                          </Label>
-                          <div className="relative">
-                            <Music2
-                              className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                              aria-hidden="true"
-                            />
-                            <Input
-                              id="otherChoirName"
-                              required
-                              minLength={2}
-                              maxLength={120}
-                              value={form.otherChoirName}
-                              onChange={(event) =>
-                                handleChange("otherChoirName", event.target.value)
-                              }
-                              placeholder="Digite o nome do coro"
-                              className="min-h-14 rounded-xl pl-11 text-base"
-                            />
-                          </div>
-                          {errors.otherChoirName && (
-                            <p className="text-sm text-destructive">{errors.otherChoirName}</p>
-                          )}
-                        </div>
-                      )}
 
                       {currentStep === 3 && displayedChoir && (
                         <div className="mx-auto max-w-2xl">

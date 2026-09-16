@@ -366,6 +366,15 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Outros" }));
     const otherChoir = screen.getByLabelText("Informe o nome do coro");
     expect(otherChoir).toBeRequired();
+    const otherChoirOption = screen.getByRole("radio", { name: "Outros" }).closest("label");
+    const profile = screen.getByRole("radiogroup", { name: "Perfil musical" });
+    expect(otherChoirOption).not.toBeNull();
+    expect(otherChoirOption!.compareDocumentPosition(otherChoir) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(otherChoir.compareDocumentPosition(profile) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     expect(
       screen.queryByLabelText("Quero participar do Programa de Venda de Rifas"),
     ).not.toBeInTheDocument();
