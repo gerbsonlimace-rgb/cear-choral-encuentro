@@ -58,7 +58,7 @@ export function deriveRegistrationFinancialState(
     (input.pricingType === "standard" && complementDueCents === 0) ||
     (input.pricingType === "promotional" &&
       complementDueCents > 0 &&
-      complementDueCents <= derivedComplementDueCents);
+      Number.isSafeInteger(complementDueCents));
   if (!coherentPriceSnapshots || input.confirmedComplementCents > complementDueCents) {
     return legacyState();
   }
