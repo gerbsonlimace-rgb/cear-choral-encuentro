@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -340,6 +341,347 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
   }
 }
 
+/* Public landing visual system — the Stitch reference is scoped here so
+ * participant and internal application surfaces keep their own contracts. */
+.public-event-page {
+  --background: #fbf9f5;
+  --foreground: #1b1c1a;
+  --card: #ffffff;
+  --card-foreground: #1b1c1a;
+  --popover: #ffffff;
+  --popover-foreground: #1b1c1a;
+  --primary: #11161f;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f3ef;
+  --secondary-foreground: #1b1c1a;
+  --muted: #f5f3ef;
+  --muted-foreground: #665f54;
+  --accent: #d49e35;
+  --accent-foreground: #11161f;
+  --border: #e7e2d8;
+  --input: #d3c4b0;
+  --ring: #d49e35;
+  --teal: #11161f;
+  --teal-foreground: #ffffff;
+  --emerald: #855300;
+  --emerald-foreground: #ffffff;
+  --amber: #d49e35;
+  --amber-foreground: #11161f;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.public-event-page :where(h1, h2, h3, h4, h5, h6, .font-display, .public-display-heading) {
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+.public-event-page :where(.font-body, .font-sans, body) {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.public-editorial-section {
+  scroll-margin-top: 4.5rem;
+}
+
+.public-event-header {
+  background: rgba(17, 22, 31, 0.96) !important;
+  border-color: rgba(231, 226, 216, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+}
+
+.public-event-header .public-event-brand {
+  transition: opacity 180ms ease;
+}
+
+.public-event-header .public-event-brand:hover {
+  opacity: 0.84;
+}
+
+.public-event-header nav a {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.public-event-header nav a:hover {
+  color: #f7bd51;
+}
+
+.public-event-header a[href="/acessar"] {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #ffffff !important;
+}
+
+.public-event-header a[href="/acessar"]:hover {
+  border-color: rgba(212, 158, 53, 0.72) !important;
+  background: rgba(212, 158, 53, 0.12) !important;
+}
+
+.public-event-header a[href="/inscricao"] {
+  background: #d49e35 !important;
+  color: #11161f !important;
+}
+
+.public-event-header button[aria-label="Abrir menu"] {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+}
+
+.public-event-header button[aria-label="Abrir menu"]:hover {
+  border-color: rgba(212, 158, 53, 0.72) !important;
+  background: rgba(212, 158, 53, 0.14) !important;
+}
+
+.public-event-hero {
+  background: #070a08 !important;
+}
+
+.public-event-hero .hero-backdrop {
+  opacity: 1;
+}
+
+.public-event-hero .hero-backdrop img {
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+.public-event-hero .hero-color-overlay {
+  background: rgba(3, 7, 6, 0.66) !important;
+}
+
+.public-event-hero .hero-gradient-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(3, 7, 6, 0.22) 0%,
+    rgba(3, 7, 6, 0.42) 54%,
+    rgba(3, 7, 6, 0.92) 100%
+  ) !important;
+}
+
+.public-event-hero [data-hero-frame] {
+  min-height: 28rem;
+}
+
+.public-event-hero [data-hero-copy] h1 {
+  max-width: 21ch;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.public-event-hero [aria-label="Informações principais do evento"] {
+  border-color: rgba(231, 226, 216, 0.22);
+}
+
+.public-event-hero [aria-label="Informações principais do evento"] > div + div {
+  border-color: rgba(231, 226, 216, 0.22);
+}
+
+.public-event-hero [data-hero-copy] blockquote {
+  border-color: rgba(212, 158, 53, 0.7);
+}
+
+.public-event-hero .public-hero-logo-mark {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.public-event-hero .public-hero-actions a:first-child {
+  background: #d49e35 !important;
+  color: #11161f !important;
+}
+
+.public-event-hero .public-hero-actions a:last-child {
+  border-color: transparent !important;
+  background: #ffffff !important;
+  color: #070a08 !important;
+}
+
+.public-event-page #sobre,
+.public-event-page #patrocinadores {
+  background-color: #fbf9f5;
+}
+
+.public-event-page #quixada,
+.public-event-page #programacao {
+  background-color: #f5f3ef;
+}
+
+.public-event-page .section-padding {
+  padding-top: 4.5rem;
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+.public-event-page #sobre .about-pillars > div,
+.public-event-page #quixada article,
+.public-event-page #patrocinadores article,
+.public-event-page .public-programme-card {
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #sobre .about-speaker {
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #sobre .about-pillars > div:hover,
+.public-event-page #quixada article:hover,
+.public-event-page #patrocinadores article:hover,
+.public-event-page .public-programme-card:hover {
+  border-color: rgba(212, 158, 53, 0.58);
+  box-shadow: 0 12px 28px rgba(27, 21, 12, 0.1);
+}
+
+.public-event-page #programacao .public-programme-card > div:first-child {
+  background: #11161f;
+}
+
+.public-event-page #programacao .public-programme-card time {
+  color: #7d5700;
+}
+
+.public-event-page #programacao .public-programme-card [role="img"] {
+  border-radius: 9999px;
+  background: #efe5d1;
+  color: #7d5700;
+}
+
+.public-event-page #patrocinadores > .container-event > div {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.public-event-page .public-registration-section {
+  background-image: linear-gradient(135deg, #d49e35 0%, #f7bd51 52%, #e99500 100%);
+}
+
+.public-event-footer {
+  background: #11161f !important;
+}
+
+@media (max-width: 767px) {
+  .public-event-header > div {
+    height: 3.5rem;
+    padding-inline: 1rem;
+  }
+
+  .public-event-header .public-event-brand img {
+    height: 2.25rem;
+    max-width: 9.5rem;
+  }
+
+  .public-event-hero [data-hero-frame] {
+    min-height: 0;
+    align-content: start;
+    gap: 1rem;
+    padding: 4.5rem 1rem 2.5rem;
+  }
+
+  .public-event-hero [data-hero-copy] {
+    justify-content: flex-start;
+  }
+
+  .public-event-hero [data-hero-copy] h1 {
+    max-width: 20ch;
+    margin-top: 1rem;
+    font-size: clamp(1.65rem, 7.6vw, 2.15rem);
+    line-height: 1.12;
+  }
+
+  .public-event-hero [data-hero-copy] blockquote {
+    margin-top: 1rem;
+  }
+
+  .public-event-hero .public-hero-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+    gap: 0.5rem;
+    margin-top: 0;
+  }
+
+  .public-event-hero .public-hero-actions a {
+    min-height: 2.75rem;
+    height: auto;
+    min-width: 0;
+    padding: 0.625rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .public-event-hero .public-hero-logo-mark {
+    max-width: 20rem;
+  }
+
+  .public-event-page .section-padding {
+    padding-top: 2.75rem;
+    padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page #sobre .about-pillars {
+    gap: 0.75rem;
+  }
+
+  .public-event-page #sobre .about-pillars > div {
+    border-width: 1px;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(27, 21, 12, 0.05);
+  }
+
+  .public-event-page #sobre .about-pillars .about-pillar-content {
+    display: block;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .public-event-page #sobre .about-pillars .about-pillar-content > div {
+    margin-inline: auto;
+  }
+
+  .public-event-page #sobre .about-pillars :is(h3, p) {
+    margin-inline: 0;
+  }
+
+  .public-event-page #sobre .about-speaker {
+    margin-top: 2rem;
+    padding: 1rem;
+  }
+
+  .public-event-page #quixada article > div {
+    padding: 1rem;
+  }
+
+  .public-event-page #programacao {
+    padding-top: 2.75rem;
+    padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page #inscricao {
+    padding-top: 2.75rem;
+    padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page #inscricao article {
+    min-height: 0;
+  }
+
+  .public-event-page #patrocinadores article {
+    border-radius: 0.875rem;
+  }
+}
+
 @utility container-event {
   width: 100%;
   max-width: 80rem;
@@ -642,5 +984,800 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
       font-size: 1rem;
       line-height: 1.5rem;
     }
+  }
+}
+
+/* Editorial section pass: align the non-hero surfaces with the Stitch reference. */
+.public-event-page #sobre,
+.public-event-page #quixada,
+.public-event-page #programacao,
+.public-event-page #inscricao,
+.public-event-page #patrocinadores {
+  position: relative;
+}
+
+.public-event-page #sobre .public-feature-grid {
+  margin-top: 2.75rem;
+  gap: 1rem;
+}
+
+.public-event-page #sobre .public-feature-grid > div {
+  min-height: 9.75rem;
+  display: flex;
+  align-items: stretch;
+  background: #ffffff;
+}
+
+.public-event-page #sobre .public-feature-grid .about-pillar-content {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.public-event-page #sobre .public-speaker-card {
+  max-width: 75rem;
+  margin-inline: auto;
+  margin-top: 4rem;
+  gap: 3rem;
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #sobre .public-speaker-card > img {
+  aspect-ratio: 4 / 3;
+  max-height: 23rem;
+}
+
+.public-event-page #quixada .public-city-grid {
+  margin-top: 2.75rem;
+}
+
+.public-event-page #quixada .public-city-grid article {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #quixada .public-city-grid article > img {
+  aspect-ratio: 4 / 3;
+}
+
+.public-event-page #quixada .public-city-grid article > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1.125rem 1rem 1.25rem;
+}
+
+.public-event-page #quixada .public-city-grid article h3 {
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+
+.public-event-page #quixada .public-city-grid article p:last-child {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  color: #827564;
+  font-size: 0.6875rem;
+}
+
+.public-event-page #programacao .public-programme-card {
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #programacao .public-programme-card > div:first-child {
+  padding: 1rem 1.25rem;
+  background: #11161f;
+}
+
+.public-event-page #programacao .public-programme-card > div:last-child {
+  padding: 1.125rem 1.25rem;
+}
+
+.public-event-page #programacao .public-programme-card article {
+  padding-block: 0.75rem;
+}
+
+.public-event-page #inscricao.public-registration-section {
+  padding-top: 4rem;
+  padding-bottom: 4.5rem;
+  background-image: linear-gradient(135deg, #d49e35 0%, #f7bd51 52%, #e99500 100%);
+}
+
+.public-event-page #inscricao > .relative.z-10 {
+  max-width: 75rem;
+}
+
+.public-event-page #inscricao .public-registration-title {
+  max-width: 48rem;
+  font-size: clamp(2.15rem, 4.2vw, 3.65rem);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.public-event-page #inscricao .public-registration-intro {
+  max-width: 42rem;
+  margin-top: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  letter-spacing: 0.005em;
+}
+
+.public-event-page #inscricao .public-registration-options,
+.public-event-page #inscricao .public-registration-benefits {
+  max-width: 62rem;
+  margin-inline: auto;
+}
+
+.public-event-page #inscricao .public-registration-options {
+  gap: 1rem;
+}
+
+.public-event-page #inscricao .public-registration-options > article {
+  min-height: 0;
+  border: 1px solid #e7e2d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(82, 56, 0, 0.12);
+}
+
+.public-event-page #inscricao .public-registration-option {
+  min-height: 18.5rem;
+  padding: 1.5rem;
+}
+
+.public-event-page #inscricao .public-registration-option .font-display {
+  font-size: clamp(2.35rem, 3.8vw, 3.15rem);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.public-event-page #inscricao .public-registration-price {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 700;
+}
+
+.public-event-page #inscricao .public-registration-option p,
+.public-event-page #inscricao .public-registration-option li {
+  line-height: 1.45;
+}
+
+.public-event-page #inscricao .public-registration-primary-action {
+  margin-top: 2rem;
+}
+
+.public-event-page #inscricao .public-registration-primary-action a {
+  min-width: 17rem;
+  min-height: 3.5rem;
+  border: 1px solid rgba(255, 224, 133, 0.25);
+  background: #2b2b24;
+  color: #fff3c4;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 20px rgba(74, 48, 0, 0.2);
+}
+
+.public-event-page #inscricao .public-registration-primary-action a:hover {
+  background: #171714;
+}
+
+.public-event-page #inscricao .public-registration-benefits {
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.public-event-page #inscricao .public-benefits-strip {
+  margin-top: 0.75rem;
+  gap: 0;
+  border: 1px solid rgba(231, 226, 216, 0.95);
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 0.55rem 0.75rem;
+  box-shadow: 0 8px 20px rgba(82, 56, 0, 0.13);
+}
+
+.public-event-page #inscricao .public-benefits-strip > li {
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0.65rem 0.75rem;
+  color: #443b2f;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.public-event-page #inscricao .public-giveaway {
+  margin-top: 1rem;
+  border-top: 0;
+  border-radius: 0.875rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 8px 20px rgba(82, 56, 0, 0.13);
+}
+
+.public-event-page #inscricao .public-giveaway h3 {
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.public-event-page #inscricao .public-giveaway-books img {
+  height: 9rem;
+  width: 6.75rem;
+}
+
+.public-event-page #inscricao .public-giveaway-action a {
+  min-height: 2.75rem;
+  border-radius: 999px;
+  background: #9a6b00;
+  color: #ffffff;
+  box-shadow: 0 6px 12px rgba(82, 56, 0, 0.18);
+}
+
+.public-event-page #inscricao .public-giveaway-action a:hover {
+  background: #755000;
+}
+
+.public-event-page #patrocinadores {
+  background: #fbf9f5;
+}
+
+.public-event-page #patrocinadores .public-sponsor-shell {
+  max-width: 75rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.public-event-page #patrocinadores .public-sponsor-shell > div:first-child {
+  max-width: 48rem;
+}
+
+.public-event-page #patrocinadores .public-sponsor-shell article {
+  border-color: #e7e2d8;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.06);
+}
+
+.public-event-page #patrocinadores [aria-label="Patrocinadores"] figure {
+  border-color: #e7e2d8;
+  border-radius: 0.875rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(27, 21, 12, 0.05);
+}
+
+@media (min-width: 1024px) {
+  .public-event-page #sobre .public-feature-grid > div {
+    min-height: 10.5rem;
+  }
+
+  .public-event-page #sobre .public-speaker-card {
+    grid-template-columns: minmax(17rem, 0.78fr) minmax(0, 1.22fr);
+    padding: 2rem 2.25rem;
+  }
+
+  .public-event-page #quixada .public-city-grid > div > div[role="group"] {
+    flex-basis: 25%;
+  }
+
+  .public-event-page #quixada .public-city-grid > button {
+    display: none;
+  }
+
+  .public-event-page #inscricao .public-registration-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-event-page #inscricao .public-giveaway-books img {
+    height: 8.5rem;
+    width: 6.25rem;
+  }
+
+  .public-event-page #inscricao .public-giveaway {
+    grid-template-columns: minmax(0, 1.65fr) minmax(12rem, 0.75fr) minmax(10rem, 0.55fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .public-event-page #sobre .public-feature-grid {
+    margin-top: 2rem;
+  }
+
+  .public-event-page #sobre .public-feature-grid > div {
+    min-height: 0;
+  }
+
+  .public-event-page #sobre .public-feature-grid .about-pillar-content {
+    padding: 1.125rem 1rem;
+  }
+
+  .public-event-page #sobre .public-speaker-card {
+    margin-top: 2.75rem;
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .public-event-page #quixada .public-city-grid {
+    margin-top: 2rem;
+  }
+
+  .public-event-page #quixada .public-city-grid article > div {
+    padding: 1rem;
+  }
+
+  .public-event-page #inscricao.public-registration-section {
+    padding-top: 2.75rem;
+    padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page #inscricao .public-registration-options {
+    gap: 0.75rem;
+  }
+
+  .public-event-page #inscricao .public-registration-primary-action {
+    margin-top: 1.5rem;
+  }
+
+  .public-event-page #inscricao .public-registration-primary-action a {
+    min-width: min(17rem, 100%);
+  }
+
+  .public-event-page #inscricao .public-registration-options > article {
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+  }
+
+  .public-event-page #inscricao .public-registration-option {
+    min-height: 0;
+  }
+
+  .public-event-page #inscricao .public-registration-benefits {
+    border-radius: 0.875rem;
+    padding: 0;
+  }
+
+  .public-event-page #inscricao .public-benefits-strip {
+    padding: 0.4rem;
+  }
+
+  .public-event-page #inscricao .public-benefits-strip > li {
+    justify-content: flex-start;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.6875rem;
+  }
+
+  .public-event-page #inscricao .public-giveaway {
+    gap: 1rem;
+    padding: 1rem;
+  }
+}
+
+/* Mobile editorial refinement: keep the reference hierarchy readable at
+ * narrow widths while preserving the existing public copy and assets. */
+@media (max-width: 767px) {
+  .public-event-page {
+    overflow-x: clip;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .public-event-page .section-padding {
+    padding-top: 3rem;
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page .section-padding > .container-event {
+    min-width: 0;
+    padding-inline: 1rem;
+  }
+
+  .public-event-page :is(#sobre, #quixada, #programacao, #inscricao, #patrocinadores) {
+    scroll-margin-top: 3.5rem;
+  }
+
+  .public-event-page :is(#sobre, #quixada, #programacao, #inscricao, #patrocinadores)
+    .public-display-heading {
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: clamp(1.8rem, 8.5vw, 2.3rem);
+    letter-spacing: -0.035em;
+    line-height: 1.06;
+  }
+
+  .public-event-page #sobre .container-event > div:first-child > div:last-child {
+    margin-top: 1rem;
+    gap: 0.875rem;
+    text-align: left;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+  }
+
+  .public-event-page #sobre .public-feature-grid {
+    margin-top: 1.75rem;
+    gap: 0.75rem;
+  }
+
+  .public-event-page #sobre .public-feature-grid > div {
+    min-height: 0;
+    border-radius: 0.875rem;
+  }
+
+  .public-event-page #sobre .public-feature-grid .about-pillar-content {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0.125rem 0.75rem;
+    padding: 0.875rem 1rem;
+    text-align: left;
+  }
+
+  .public-event-page #sobre .public-feature-grid .about-pillar-content > div {
+    grid-row: 1 / span 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: 0;
+    border-radius: 0.75rem;
+  }
+
+  .public-event-page #sobre .public-feature-grid :is(h3, p) {
+    margin: 0;
+  }
+
+  .public-event-page #sobre .public-feature-grid h3 {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .public-event-page #sobre .public-feature-grid p {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .public-event-page #sobre .public-speaker-card {
+    margin-top: 2.5rem;
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .public-event-page #sobre .public-speaker-card > img {
+    aspect-ratio: 4 / 5;
+    max-height: none;
+    max-width: 17rem;
+    margin-inline: auto;
+  }
+
+  .public-event-page #sobre .public-speaker-card > div {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .public-event-page #sobre .public-speaker-card > div > span {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.6875rem;
+  }
+
+  .public-event-page #sobre .public-speaker-card h3 {
+    margin-top: 0.9rem;
+    font-size: 1.75rem;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .public-event-page #sobre .public-speaker-card p {
+    margin-top: 0.9rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .public-event-page #sobre .public-speaker-card > div > .flex {
+    margin-top: 1rem;
+    gap: 0.375rem;
+    font-size: 0.6875rem;
+  }
+
+  .public-event-page #sobre .public-speaker-card > div > a {
+    width: 100%;
+    min-height: 2.75rem;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+  }
+
+  .public-event-page #quixada .container-event > .grid {
+    gap: 1rem;
+  }
+
+  .public-event-page #quixada .container-event > .grid > div:last-child {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .public-event-page #quixada .public-city-grid {
+    margin-top: 1.75rem;
+    overflow: visible;
+  }
+
+  .public-event-page #quixada .public-city-grid > div,
+  .public-event-page #quixada .public-city-grid > div > div {
+    overflow: visible;
+  }
+
+  .public-event-page #quixada .public-city-grid > div > div {
+    display: grid;
+    gap: 0.75rem;
+    transform: none !important;
+  }
+
+  .public-event-page #quixada .public-city-grid > div > div > [role="group"] {
+    flex-basis: 100%;
+    padding-left: 0;
+  }
+
+  .public-event-page #quixada .public-city-grid > button {
+    display: none;
+  }
+
+  .public-event-page #quixada .public-city-grid article {
+    border-radius: 0.875rem;
+  }
+
+  .public-event-page #quixada .public-city-grid article > img {
+    aspect-ratio: 16 / 9;
+  }
+
+  .public-event-page #quixada .public-city-grid article h3 {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .public-event-page #quixada .public-city-grid article p {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .public-event-page #quixada .public-city-grid article p:last-child {
+    padding-top: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .public-event-page #programacao .public-programme-card {
+    border-radius: 0.875rem;
+  }
+
+  .public-event-page #programacao .public-programme-card > div:first-child {
+    padding: 0.75rem 1rem;
+  }
+
+  .public-event-page #programacao .public-programme-card > div:last-child {
+    padding: 0.75rem 1rem;
+  }
+
+  .public-event-page #programacao .public-programme-card article {
+    grid-template-columns: 4.25rem 1.75rem minmax(0, 1fr);
+    gap: 0.5rem;
+    padding-block: 0.625rem;
+  }
+
+  .public-event-page #programacao .public-programme-card time {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+  }
+
+  .public-event-page #programacao .public-programme-card article h4 {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .public-event-page #programacao .public-programme-card article p {
+    font-size: 0.625rem;
+    line-height: 1.3;
+  }
+
+  .public-event-page #programacao [data-programme-grid]
+    [data-public-mobile-stack="true"] {
+    height: auto !important;
+    overflow: visible;
+  }
+
+  .public-event-page #programacao [data-programme-grid]
+    [data-public-mobile-stack="true"] > div,
+  .public-event-page #programacao [data-programme-grid]
+    [data-public-mobile-stack="true"] > div > div {
+    overflow: visible;
+  }
+
+  .public-event-page #programacao [data-programme-grid]
+    [data-public-mobile-stack="true"] > div > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    transform: none !important;
+  }
+
+  .public-event-page #programacao [data-programme-grid]
+    [data-public-mobile-stack="true"] > div > div > [role="group"] {
+    flex-basis: 100%;
+    padding-left: 0;
+  }
+
+  .public-event-page #inscricao.public-registration-section {
+    padding-top: 3rem;
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page #inscricao .public-registration-heading > p:first-child {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.625rem;
+  }
+
+  .public-event-page #inscricao .public-registration-title {
+    margin-top: 0.75rem;
+    font-size: clamp(1.9rem, 9vw, 2.4rem);
+    line-height: 1.02;
+  }
+
+  .public-event-page #inscricao .public-registration-intro {
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .public-event-page #inscricao .public-registration-options {
+    margin-top: 1.5rem;
+    gap: 0.75rem;
+  }
+
+  .public-event-page #inscricao .public-registration-option {
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+  }
+
+  .public-event-page #inscricao .public-registration-option > div:first-child {
+    font-size: 0.625rem;
+  }
+
+  .public-event-page #inscricao .public-registration-option .font-display {
+    font-size: 2.25rem;
+    line-height: 0.95;
+  }
+
+  .public-event-page #inscricao .public-registration-option p,
+  .public-event-page #inscricao .public-registration-option li {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .public-event-page #inscricao .public-registration-primary-action {
+    margin-top: 1.5rem;
+  }
+
+  .public-event-page #inscricao .public-registration-primary-action a {
+    width: 100%;
+    max-width: 20rem;
+    min-width: 0;
+    min-height: 3.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .public-event-page #inscricao .public-registration-benefits {
+    margin-top: 1.5rem;
+  }
+
+  .public-event-page #inscricao .public-benefits-strip {
+    margin-top: 0.65rem;
+    padding: 0.4rem;
+  }
+
+  .public-event-page #inscricao .public-benefits-strip > li {
+    justify-content: flex-start;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.6875rem;
+    line-height: 1.3;
+  }
+
+  .public-event-page #inscricao .public-giveaway {
+    margin-top: 0.75rem;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .public-event-page #inscricao .public-giveaway h3 {
+    font-size: 1.25rem;
+    line-height: 1.12;
+  }
+
+  .public-event-page #inscricao .public-giveaway p {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .public-event-page #inscricao .public-giveaway-books img {
+    height: 8rem;
+    width: 6rem;
+  }
+
+  .public-event-page #inscricao .public-giveaway-action {
+    width: 100%;
+  }
+
+  .public-event-page #inscricao .public-giveaway-action > div {
+    max-width: 20rem;
+  }
+
+  .public-event-page #inscricao .public-giveaway-action a {
+    min-height: 2.75rem;
+    font-size: 0.75rem;
+  }
+
+  .public-event-page #patrocinadores .public-sponsor-shell {
+    padding: 0;
+  }
+
+  .public-event-page #patrocinadores .public-sponsor-shell > div:first-child p {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .public-event-page #patrocinadores .public-sponsor-shell > div:nth-child(2) {
+    margin-top: 2rem;
+    row-gap: 2rem;
+  }
+
+  .public-event-page #patrocinadores article {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .public-event-page #patrocinadores article > div:first-child {
+    width: 4rem;
+    height: 4rem;
+    padding: 0.5rem;
+  }
+
+  .public-event-page #patrocinadores article h4 {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .public-event-page .public-event-footer {
+    padding-top: 2.75rem;
+    padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  }
+
+  .public-event-page .public-event-footer > .container-event {
+    padding-inline: 1rem;
+  }
+
+  .public-event-page .public-event-footer .grid {
+    gap: 2rem;
+  }
+
+  .public-event-page .public-event-footer h4 {
+    font-size: 0.9375rem;
+    line-height: 1.25;
+  }
+
+  .public-event-page .public-event-footer p,
+  .public-event-page .public-event-footer li,
+  .public-event-page .public-event-footer a {
+    font-size: 0.75rem;
+    line-height: 1.45;
   }
 }

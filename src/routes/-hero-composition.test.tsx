@@ -67,7 +67,7 @@ function expectSharedHeroContent(hero: HTMLElement) {
   ).toBeInTheDocument();
   expect(heroQueries.getByText("20 a 22 de novembro de 2026")).toBeInTheDocument();
   expect(heroQueries.getByText("Quixadá, CE")).toBeInTheDocument();
-  expect(heroQueries.getByText("Coralistas, Instrumentistas e Regentes")).toBeInTheDocument();
+  expect(heroQueries.getByText("Regentes coralistas e instrumentistas")).toBeInTheDocument();
   expect(heroQueries.getByRole("link", { name: /inscrever-se agora/i })).toBeInTheDocument();
   expect(heroQueries.getByRole("link", { name: "Programação" })).toBeInTheDocument();
   expect(
@@ -99,7 +99,7 @@ describe("landing page hero", () => {
     },
   );
 
-  it("keeps the copy and the logo actions in separate columns", async () => {
+  it("keeps the call to action with the copy and the logo in a separate visual column", async () => {
     const { container } = renderLandingPage("");
 
     const hero = await waitFor(() =>
@@ -110,9 +110,10 @@ describe("landing page hero", () => {
     const actions = hero!.querySelector<HTMLElement>("[data-hero-actions]");
 
     expect(copy).not.toContainElement(visuals);
-    expect(visuals).toContainElement(actions);
-    expect(within(visuals!).getByRole("link", { name: /inscrever-se agora/i })).toBeInTheDocument();
-    expect(within(visuals!).getByRole("link", { name: "Programação" })).toBeInTheDocument();
+    expect(copy).toContainElement(actions);
+    expect(visuals).not.toContainElement(actions);
+    expect(within(copy!).getByRole("link", { name: /inscrever-se agora/i })).toBeInTheDocument();
+    expect(within(copy!).getByRole("link", { name: "Programação" })).toBeInTheDocument();
     expect(visuals).not.toHaveClass("lg:border-l");
   });
 });

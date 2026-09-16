@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
@@ -110,9 +110,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 vi.mock("@/components/ui/carousel", () => ({
-  Carousel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  CarouselContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  CarouselItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Carousel: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+  CarouselContent: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+  CarouselItem: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   CarouselNext: () => null,
   CarouselPrevious: () => null,
 }));
@@ -195,7 +195,7 @@ describe("landing page access", () => {
     const registrationLinks = screen.getAllByRole("link", {
       name: /Inscrever-se agora|Fazer Inscrição/,
     });
-    expect(registrationLinks).toHaveLength(3);
+    expect(registrationLinks).toHaveLength(4);
     for (const link of registrationLinks) {
       expect(link).toHaveAttribute("href", "/inscricao");
     }
@@ -432,7 +432,10 @@ describe("landing page access", () => {
     expect(integralCard).not.toHaveTextContent("Acesso a todas as sessões formativas");
     expect(integralCard).not.toHaveTextContent("Caderno oficial de partituras");
     expect(within(registration!).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();
-    expect(within(registration!).getByRole("link", { name: "Fazer Inscrição" })).toBeVisible();
+    const primaryActionLink = registration!.querySelector<HTMLElement>(
+      ".public-registration-primary-action a",
+    );
+    expect(primaryActionLink).toBeVisible();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
@@ -572,6 +575,25 @@ describe("Quixadá city spots", () => {
   });
 });
 
+describe("Quixada city card count", () => {
+  it("shows all four current city spot cards", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const quixadaSection = document.querySelector<HTMLElement>("#quixada");
+    expect(quixadaSection).not.toBeNull();
+    expect(within(quixadaSection!).getAllByRole("article")).toHaveLength(4);
+  });
+
+  it("marks the city and programme carousels for a readable mobile stack", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    expect(document.querySelector('#quixada [data-public-mobile-stack="true"]')).not.toBeNull();
+    expect(document.querySelector('#programacao [data-public-mobile-stack="true"]')).not.toBeNull();
+  });
+});
+
 describe("landing page sponsors", () => {
   it("presents support, organisation and sponsors as a single area", () => {
     const IndexPage = Route.options.component!;
@@ -611,5 +633,64 @@ describe("landing page sponsors", () => {
       expect(card.className).toContain("items-center");
       expect(card.className).not.toContain("aspect-square");
     }
+  });
+});
+
+describe("landing page visual direction", () => {
+  it("uses the sacred editorial shell without changing the current event content", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const page = document.querySelector<HTMLElement>(".public-event-page");
+    expect(page).not.toBeNull();
+    expect(page).toHaveAttribute("data-design-system", "sacred-liturgical");
+
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-public-header", "true");
+    expect(header).toHaveClass("public-event-header");
+    expect(
+      within(header).getByRole("img", {
+        name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
+      }),
+    ).toBeVisible();
+
+    const hero = document.querySelector<HTMLElement>("[data-public-hero]");
+    expect(hero).not.toBeNull();
+    expect(hero).toHaveClass("public-event-hero");
+    const heroPhoto = hero?.querySelector("[data-hero-photo-position=full-background]");
+    expect(heroPhoto).not.toBeNull();
+    expect(heroPhoto).toHaveAttribute("data-hero-photo-visibility", "visible");
+    const heroLogoFrame = hero?.querySelector("[data-hero-logo-frame]");
+    expect(heroLogoFrame).toHaveAttribute("data-hero-logo-frame", "none");
+    expect(heroLogoFrame).not.toHaveClass("rounded-full");
+  });
+
+  it("applies the editorial section treatment to content and programme surfaces", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    for (const selector of ["#sobre", "#quixada", "#programacao", "#inscricao", "#patrocinadores"]) {
+      expect(document.querySelector<HTMLElement>(selector)).toHaveClass("public-editorial-section");
+    }
+
+    const programme = document.querySelector<HTMLElement>("#programacao");
+    expect(programme?.querySelector("[data-programme-grid]")).not.toBeNull();
+    const about = document.querySelector<HTMLElement>("#sobre");
+    expect(about?.querySelector(".about-pillars")).toHaveClass("public-feature-grid");
+    expect(about?.querySelector(".about-speaker")).toHaveClass("public-speaker-card");
+
+    const quixada = document.querySelector<HTMLElement>("#quixada");
+    expect(quixada?.querySelector(".public-city-grid")).toHaveClass("public-city-grid");
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration?.querySelector(".public-registration-options")).not.toBeNull();
+    expect(registration?.querySelector(".public-registration-benefits")).not.toBeNull();
+    expect(registration?.querySelector(".public-giveaway")).not.toBeNull();
+
+    const sponsors = document.querySelector<HTMLElement>("#patrocinadores");
+    expect(sponsors?.querySelector(".public-sponsor-shell")).not.toBeNull();
+    expect(within(programme!).getByRole("heading", { name: "Programação" })).toHaveClass(
+      "public-display-heading",
+    );
   });
 });

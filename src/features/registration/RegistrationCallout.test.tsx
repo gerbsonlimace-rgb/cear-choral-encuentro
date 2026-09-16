@@ -89,6 +89,59 @@ describe("RegistrationCallout", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("separates the primary action and lays out the giveaway as a horizontal card", () => {
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+    const options = registration.querySelector<HTMLElement>(".public-registration-options");
+    const primaryAction = registration.querySelector<HTMLElement>(
+      "[data-registration-primary-action]",
+    );
+    const benefits = registration.querySelector<HTMLElement>(".public-registration-benefits");
+    const giveaway = registration.querySelector<HTMLElement>(
+      '[aria-label^="Sorteio especial"]',
+    );
+
+    expect(options).not.toBeNull();
+    expect(registration.querySelector(".public-registration-title")).not.toBeNull();
+    expect(registration.querySelector(".public-registration-intro")).not.toBeNull();
+    expect(registration.querySelector(".public-registration-option")).not.toBeNull();
+    expect(primaryAction).not.toBeNull();
+    expect(benefits).not.toBeNull();
+    expect(
+      options!.compareDocumentPosition(primaryAction!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      primaryAction!.compareDocumentPosition(benefits!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(primaryAction!).getByRole("link", { name: "Fazer Inscrição" })).toHaveAttribute(
+      "href",
+      "/inscricao",
+    );
+    expect(giveaway).not.toBeNull();
+    expect(within(giveaway!).getByLabelText("Livros do sorteio")).toBeVisible();
+    expect(giveaway!.querySelector(".public-giveaway-books")).not.toBeNull();
+    expect(giveaway!.querySelector(".public-giveaway-action")).not.toBeNull();
+    expect(within(giveaway!).getByRole("link", { name: "Fazer Inscrição" })).toHaveAttribute(
+      "href",
+      "/inscricao",
+    );
+  });
+
+  it("marks the registration prices for the prototype numeric type treatment", () => {
+    render(<RegistrationCallout />);
+
+    const prices = Array.from(
+      getRegistrationSection().querySelectorAll<HTMLElement>(".public-registration-price"),
+    );
+
+    expect(prices).toHaveLength(2);
+    expect(prices.map((price) => price.textContent?.trim())).toEqual([
+      "R$ 300,00",
+      "R$ 100,00",
+    ]);
+  });
+
   it("uses the neutral registration CTA that points to the form", () => {
     render(<RegistrationCallout />);
 
