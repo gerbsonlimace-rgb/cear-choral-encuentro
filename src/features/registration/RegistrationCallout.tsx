@@ -6,6 +6,7 @@ import {
   BedDouble,
   Check,
   CreditCard,
+  Gift,
   Music2,
   ShoppingBag,
   Sparkles,
@@ -110,6 +111,48 @@ export function RegistrationCallout() {
             </div>
             <p className="text-sm text-white/60">Selecione uma opção para comparar.</p>
           </div>
+
+          <section
+            aria-label="Sorteio especial para inscrições até 30 de setembro"
+            className="mt-7 overflow-hidden rounded-2xl border border-[#ffc400]/40 bg-[linear-gradient(135deg,#fff8dc_0%,#ffffff_48%,#f5c94e_100%)] text-black shadow-[0_16px_36px_rgba(0,0,0,0.2)]"
+          >
+            <div className="grid items-center gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)] md:p-8">
+              <div className="text-center md:text-left">
+                <p className="inline-flex items-center gap-2 rounded-full bg-black px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-[#ffc400]">
+                  <Gift className="size-4" aria-hidden="true" />
+                  Sorteio especial
+                </p>
+                <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
+                  Inscreva-se até 30/09 e concorra aos dois livros
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-black/65 sm:text-base">
+                  Um ganhador levará os títulos{" "}
+                  <strong>Canto Gregoriano — Teoria e prática na Liturgia</strong> e{" "}
+                  <strong>Cristo, nossa esperança — Caderno de Partituras</strong>.
+                </p>
+              </div>
+
+              <div
+                className="grid grid-cols-2 items-end gap-3 sm:gap-5"
+                aria-label="Livros do sorteio"
+              >
+                <img
+                  src="/giveaway/canto-gregoriano.jpg"
+                  alt="Capa do livro Canto Gregoriano — Teoria e prática na Liturgia"
+                  loading="lazy"
+                  decoding="async"
+                  className="mx-auto max-h-56 w-full rounded-md object-contain shadow-[0_12px_24px_rgba(0,0,0,0.24)] md:max-h-64"
+                />
+                <img
+                  src="/giveaway/cristo-nossa-esperanca.jpg"
+                  alt="Capa do livro Cristo, nossa esperança — Caderno de Partituras"
+                  loading="lazy"
+                  decoding="async"
+                  className="mx-auto max-h-56 w-full rounded-md object-contain shadow-[0_12px_24px_rgba(0,0,0,0.24)] md:max-h-64"
+                />
+              </div>
+            </div>
+          </section>
 
           <div
             role="radiogroup"
