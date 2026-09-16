@@ -616,12 +616,18 @@ export type Database = {
           infinitepay_transaction_nsu: string | null
           installments: number | null
           institution: string | null
+          manual_paid_by: string | null
+          manual_receipt_file_name: string | null
+          manual_receipt_mime_type: string | null
+          manual_receipt_path: string | null
+          manual_receipt_size_bytes: number | null
           name: string
           observations: string | null
           order_nsu: string | null
           paid_amount_cents: number | null
           paid_at: string | null
           payment_method: string | null
+          payment_origin: string
           payment_status: string
           phone: string
           photo_path: string | null
@@ -652,12 +658,18 @@ export type Database = {
           infinitepay_transaction_nsu?: string | null
           installments?: number | null
           institution?: string | null
+          manual_paid_by?: string | null
+          manual_receipt_file_name?: string | null
+          manual_receipt_mime_type?: string | null
+          manual_receipt_path?: string | null
+          manual_receipt_size_bytes?: number | null
           name: string
           observations?: string | null
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
+          payment_origin?: string
           payment_status?: string
           phone: string
           photo_path?: string | null
@@ -688,12 +700,18 @@ export type Database = {
           infinitepay_transaction_nsu?: string | null
           installments?: number | null
           institution?: string | null
+          manual_paid_by?: string | null
+          manual_receipt_file_name?: string | null
+          manual_receipt_mime_type?: string | null
+          manual_receipt_path?: string | null
+          manual_receipt_size_bytes?: number | null
           name?: string
           observations?: string | null
           order_nsu?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
+          payment_origin?: string
           payment_status?: string
           phone?: string
           photo_path?: string | null
