@@ -1,215 +1,485 @@
-/* Compact the form without clipping expanded content or validation errors. */
+.registration-page {
+  --registration-surface: #fdfbf7;
+  --registration-white: #ffffff;
+  --registration-subtle: #f7f5f0;
+  --registration-line: #eae6de;
+  --registration-ink: #18181b;
+  --registration-muted: #635f57;
+  --registration-amber: #f4af13;
+  --registration-amber-dark: #a76500;
+  color-scheme: light;
+  background: var(--registration-surface);
+  font-family: var(--font-body);
+}
+
+.registration-shell {
+  min-height: calc(100dvh - 4rem);
+  background:
+    radial-gradient(circle at 100% 0, rgba(244, 175, 19, 0.08), transparent 26rem),
+    var(--registration-surface);
+}
+
+.registration-shell .shadow-registration-card {
+  box-shadow: 0 20px 60px rgb(44 36 20 / 9%), 0 3px 12px rgb(44 36 20 / 5%);
+}
+
+.registration-shell .registration-intro {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.registration-shell .registration-card {
+  border-color: var(--registration-line);
+  background: var(--registration-white);
+  box-shadow: 0 8px 24px -4px rgba(168, 107, 4, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+}
+
+.registration-shell .registration-card-content {
+  color: var(--registration-ink);
+}
+
+.registration-shell .text-registration-ink {
+  color: var(--registration-ink);
+}
+
+.registration-shell .text-registration-muted {
+  color: var(--registration-muted);
+}
+
+.registration-shell .bg-registration-surface {
+  background-color: var(--registration-surface);
+}
+
+.registration-shell .bg-registration-subtle {
+  background-color: var(--registration-subtle);
+}
+
+.registration-shell .border-registration-line {
+  border-color: var(--registration-line);
+}
+
+.registration-shell .font-display,
+.registration-shell :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-body);
+}
+
+.registration-shell .registration-progress-mobile {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 1rem;
+  padding: 0 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--registration-subtle);
+  color: var(--registration-amber-dark);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.registration-shell .registration-progress-desktop li[aria-current="step"] > span:last-child {
+  color: var(--registration-amber-dark);
+}
+
+.registration-shell .registration-step-legend {
+  margin-bottom: 1.25rem;
+}
+
+.registration-shell .registration-step-legend > span:first-child {
+  background: rgba(244, 175, 19, 0.14);
+  color: var(--registration-amber-dark);
+}
+
+.registration-shell .registration-subsection-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--registration-line);
+  color: var(--registration-ink);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.registration-shell .registration-subsection-heading svg {
+  color: var(--registration-amber-dark);
+}
+
+.registration-shell .registration-personal-fields {
+  row-gap: 1rem;
+}
+
+.registration-shell .registration-personal-fields input:not([type="file"]),
+.registration-shell .registration-personal-fields select,
+.registration-shell .registration-step-panel select,
+.registration-shell .registration-search-input {
+  min-height: 2.75rem;
+  border-color: var(--registration-line);
+  background: var(--registration-subtle);
+  color: var(--registration-ink);
+  box-shadow: none;
+}
+
+.registration-shell .registration-personal-fields input:not([type="file"]):focus,
+.registration-shell .registration-personal-fields select:focus,
+.registration-shell .registration-step-panel select:focus,
+.registration-shell .registration-search-input:focus {
+  border-color: var(--registration-amber);
+  background: var(--registration-white);
+  box-shadow: 0 0 0 3px rgba(244, 175, 19, 0.2);
+  outline: none;
+}
+
+.registration-shell .registration-personal-fields label[for="photo"] {
+  border-color: var(--registration-line);
+  background: var(--registration-subtle);
+}
+
+.registration-shell .registration-photo-preview {
+  border: 2px solid var(--registration-amber);
+  box-shadow: 0 0 0 2px var(--registration-white);
+}
+
+.registration-shell .registration-count-badge,
+.registration-shell .registration-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid rgba(244, 175, 19, 0.45);
+  border-radius: 9999px;
+  background: #fff8e5;
+  color: var(--registration-amber-dark);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.registration-shell .registration-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.registration-shell .registration-step-panel {
+  max-width: 48rem;
+}
+
+.registration-shell .registration-step-panel > .registration-step-fieldset {
+  border: 0;
+}
+
+.registration-shell .registration-step-panel .registration-step-legend {
+  margin-bottom: 1rem;
+}
+
+.registration-shell .registration-step-panel [role="radiogroup"] > label[data-surface="clear"],
+.registration-shell .registration-step-panel > div > label[data-surface="clear"] {
+  border-color: var(--registration-line);
+  background: var(--registration-white);
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
+}
+
+.registration-shell .registration-step-panel [role="radiogroup"] > label[data-surface="clear"]:hover,
+.registration-shell .registration-step-panel [role="radiogroup"] > label[data-surface="clear"]:focus-within {
+  border-color: rgba(244, 175, 19, 0.75);
+}
+
+.registration-shell .registration-voice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.registration-shell .registration-voice-card {
+  display: flex;
+  min-height: 6.25rem;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  border: 1px solid var(--registration-line);
+  border-radius: 0.875rem;
+  background: var(--registration-white);
+  padding: 0.875rem;
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.registration-shell .registration-voice-card:hover,
+.registration-shell .registration-voice-card:focus-within {
+  border-color: rgba(244, 175, 19, 0.75);
+}
+
+.registration-shell .registration-voice-card--selected {
+  border: 2px solid var(--registration-amber);
+  box-shadow: 0 8px 20px rgba(244, 175, 19, 0.16);
+}
+
+.registration-shell .registration-icon-box {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.625rem;
+  background: #fff5dc;
+  color: var(--registration-amber-dark);
+}
+
+.registration-shell .registration-voice-range {
+  border-radius: 0.25rem;
+  background: var(--registration-subtle);
+  padding: 0.125rem 0.375rem;
+  color: var(--registration-muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.registration-shell .registration-radio-indicator {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 2px solid #d8d4ca;
+  border-radius: 9999px;
+  color: var(--registration-white);
+}
+
+.registration-shell .registration-voice-card--selected .registration-radio-indicator {
+  border-color: var(--registration-amber);
+  background: var(--registration-amber);
+}
+
+.registration-shell .registration-choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.registration-shell .registration-payment-option {
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
+}
+
+.registration-shell .registration-payment-option strong {
+  color: var(--registration-ink);
+}
+
+.registration-shell .registration-investment-panel {
+  border: 1px solid var(--registration-line);
+  border-radius: 0.875rem;
+  background: var(--registration-subtle);
+  padding: 1rem;
+}
+
+.registration-shell .registration-payment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--registration-line);
+  border-radius: 0.625rem;
+  background: var(--registration-subtle);
+  padding: 0.375rem 0.625rem;
+  font-weight: 700;
+}
+
+.registration-shell .registration-review {
+  color: var(--registration-ink);
+}
+
+.registration-shell .registration-review-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--registration-line);
+  padding-bottom: 0.75rem;
+}
+
+.registration-shell .registration-edit-button {
+  min-height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--registration-subtle);
+  padding: 0.375rem 0.75rem;
+  color: var(--registration-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.registration-shell .registration-edit-button:hover,
+.registration-shell .registration-edit-button:focus-visible {
+  background: #eeeae2;
+  color: var(--registration-ink);
+  outline: 2px solid rgba(244, 175, 19, 0.65);
+  outline-offset: 2px;
+}
+
+.registration-shell .registration-actions {
+  border-color: var(--registration-line);
+}
+
+.registration-shell .registration-actions > div > button:last-child {
+  background: var(--registration-amber);
+  color: var(--registration-ink);
+  box-shadow: 0 4px 14px rgba(244, 175, 19, 0.3);
+}
+
+.registration-shell .registration-actions > div > button:last-child:hover {
+  background: #e5a40a;
+}
+
+.registration-shell .registration-actions > p {
+  color: var(--registration-muted);
+}
+
 @media (min-width: 768px) {
   .registration-page > header > div {
-    height: 3.5rem;
+    height: 4rem;
   }
-  .registration-page #inscricao {
-    min-height: 0;
-    padding: 0.75rem 1rem;
+
+  .registration-shell {
+    min-height: calc(100dvh - 4rem);
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
   }
-  .registration-page #inscricao .registration-intro > :not(h2) {
+
+  .registration-shell .registration-card {
+    margin-top: 0;
+  }
+
+  .registration-shell .registration-card-content {
+    padding: 1.5rem;
+  }
+
+  .registration-shell .registration-progress-mobile {
     display: none;
   }
-  .registration-page #inscricao .registration-intro h2 {
-    margin: 0;
-    font-size: 2rem;
-    line-height: 1.2;
+
+  .registration-shell .registration-progress-desktop {
+    display: grid;
   }
-  .registration-page .registration-card {
-    margin-top: 0.75rem;
-  }
-  .registration-page .registration-card-content {
-    padding: 1rem;
-  }
-  .registration-page .registration-card nav {
-    margin-bottom: 0.75rem;
-  }
-  .registration-page .registration-personal-fields {
-    row-gap: 0.5rem;
-  }
-  .registration-page .registration-card form {
-    padding-bottom: 0;
-  }
-  .registration-page .registration-actions {
+
+  .registration-shell .registration-actions {
     position: static;
-    margin-top: 0.75rem;
-    padding: 0.75rem 0 0;
-    max-height: none;
-    overflow: visible;
+    margin-top: 1.5rem;
+    padding: 1rem 0 0;
     box-shadow: none;
-  }
-  .registration-page .registration-actions--sticky {
-    position: static;
   }
 }
 
 @media (max-width: 767px) {
   .registration-page > header > div {
-    height: 3rem;
+    min-height: 4rem;
+    height: auto;
   }
+
   .registration-page > header img {
+    max-width: 42%;
     height: 2.5rem;
   }
-  .registration-page #inscricao {
-    padding: 0.25rem 0.75rem;
-  }
-  .registration-page #inscricao .registration-intro > :not(h2) {
-    display: none;
-  }
-  .registration-page #inscricao .registration-intro h2 {
-    margin: 0;
-    font-size: 1.375rem;
-    line-height: 1.25;
-  }
-  .registration-page .registration-progress-mobile {
-    display: flex;
-    min-height: 2.25rem;
-    align-items: center;
-    justify-content: center;
-    margin: 0 0 0.5rem;
-    border-radius: 0.5rem;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-  }
-  .registration-page .registration-progress-desktop {
-    display: none;
-  }
-  .registration-page .registration-card {
-    margin-top: 0.5rem;
-  }
-  .registration-page .registration-card > div:first-child {
-    height: 0.25rem;
-  }
-  .registration-page .registration-card-content {
-    padding: 0.625rem;
-  }
-  .registration-page .registration-card nav {
-    margin-bottom: 0.375rem;
-  }
-  .registration-page .registration-card nav li {
-    padding: 0.25rem 0.125rem;
-    border-radius: 0.375rem;
-    background: var(--muted);
-  }
-  .registration-page .registration-card nav li[aria-current="step"] {
-    background: var(--amber);
-    color: var(--amber-foreground);
-  }
-  .registration-page .registration-card form {
-    padding-bottom: max(0.5rem, var(--registration-actions-height, 0px));
-  }
-  .registration-page .registration-step-fieldset > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 0.75rem;
-  }
-  .registration-page .registration-step-panel .grid.gap-5 {
-    gap: 0.75rem;
-  }
-  .registration-page .registration-step-panel .registration-step-fieldset {
-    gap: 0.75rem;
-  }
-  .registration-page .registration-step-panel .registration-step-legend > span:first-child {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-  .registration-page .registration-choice-grid > label > span {
-    min-height: 10rem;
+
+  .registration-shell {
     padding: 0.75rem;
   }
-  .registration-page .registration-choice-grid > label > span strong {
-    margin-top: 0.75rem;
+
+  .registration-shell .registration-card {
+    margin-top: 0;
+    border-radius: 1rem;
   }
-  .registration-page .registration-choice-grid > label > span > span:last-child {
-    font-size: 0.8125rem;
-    line-height: 1.35;
+
+  .registration-shell .registration-card-content {
+    padding: 0.75rem;
   }
-  .registration-page #inscricao .registration-personal-layout {
-    gap: 0.375rem;
-  }
-  .registration-page .registration-personal-layout > fieldset > legend {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .registration-page .registration-personal-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.375rem 0.5rem;
-    margin: 0;
-  }
-  .registration-page .registration-personal-fields > div {
-    grid-column: 1 / -1;
-    min-width: 0;
-  }
-  .registration-page .registration-personal-fields > div:has(#cpf),
-  .registration-page .registration-personal-fields > div:has(#phone) {
-    grid-column: auto;
-  }
-  .registration-page .registration-personal-fields > div > :not(:last-child) {
-    margin-bottom: 0.125rem;
-  }
-  .registration-page .registration-personal-fields > div > label:first-child {
-    font-size: 0.75rem;
-    line-height: 1rem;
-  }
-  .registration-page .registration-personal-fields input:not([type="file"]) {
-    min-width: 0;
-    min-height: 2.75rem;
-    height: 2.75rem;
-    font-size: 1rem;
-  }
-  .registration-page :is(#cpf, #phone) {
-    padding-inline: 0.5rem;
-  }
-  .registration-page .registration-personal-fields .relative:has(:is(#cpf, #phone)) > svg {
+
+  .registration-shell .registration-progress-desktop {
     display: none;
   }
-  .registration-page label[for="photo"]:has(input) {
-    min-height: 2.75rem;
+
+  .registration-shell .registration-step-legend {
+    margin-bottom: 1rem;
   }
-  .registration-page .registration-badge-preview {
-    padding: 0 0.5rem;
+
+  .registration-shell .registration-personal-fields {
+    gap: 0.75rem 0.5rem;
   }
-  .registration-page .registration-badge-preview summary {
-    min-height: 2.75rem;
-    padding-block: 0.75rem;
-    font-size: 0.75rem;
+
+  .registration-shell .registration-personal-fields > div {
+    min-width: 0;
   }
-  .registration-page .registration-actions {
+
+  .registration-shell .registration-personal-fields > div:has(#cpf),
+  .registration-shell .registration-personal-fields > div:has(#birthDate) {
+    grid-column: auto;
+  }
+
+  .registration-shell .registration-personal-fields > div:has(#cpf),
+  .registration-shell .registration-personal-fields > div:has(#birthDate) {
+    width: 100%;
+  }
+
+  .registration-shell .registration-personal-fields input:not([type="file"]),
+  .registration-shell .registration-personal-fields select,
+  .registration-shell .registration-step-panel select,
+  .registration-shell .registration-search-input {
+    font-size: 1rem;
+  }
+
+  .registration-shell .registration-choice-grid,
+  .registration-shell .registration-voice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-shell .registration-voice-card.col-span-2 {
+    grid-column: auto;
+  }
+
+  .registration-shell .registration-payment-option {
+    min-height: 0;
+  }
+
+  .registration-shell .registration-review-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .registration-shell .registration-actions {
     position: fixed;
     right: 0;
-    left: 0;
     bottom: 0;
+    left: 0;
     z-index: 50;
-    margin-top: 0;
-    margin-inline: 0;
+    margin: 0;
     padding: 0.625rem 0.625rem max(0.625rem, env(safe-area-inset-bottom));
-    background: var(--card);
-    border-top: 1px solid var(--border);
-    border-radius: 0.75rem 0.75rem 0 0;
-    max-height: none;
-    overflow: visible;
-    box-shadow: 0 -8px 20px color-mix(in srgb, var(--foreground) 10%, transparent);
+    border-top: 1px solid var(--registration-line);
+    border-radius: 0.875rem 0.875rem 0 0;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 24px rgba(24, 24, 27, 0.08);
+    backdrop-filter: blur(12px);
   }
-  .registration-page .registration-actions--sticky > div:first-child {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  .registration-shell .registration-actions > div:first-child {
+    grid-template-columns: auto minmax(0, 1fr);
   }
-  .registration-page .registration-actions button {
-    min-height: 2.75rem;
-    padding-inline: 0.625rem;
+
+  .registration-shell .registration-actions button {
+    min-height: 3rem;
+    height: auto;
+    min-width: 0;
+    padding-inline: 0.75rem;
+    white-space: normal;
   }
-  .registration-page .registration-actions > p:last-child {
-    margin-top: 0.25rem;
-    font-size: 0.625rem;
-    line-height: 0.875rem;
+
+  .registration-shell form {
+    padding-bottom: calc(var(--registration-actions-height, 8rem) + 1rem);
   }
-  .registration-page .registration-card :is(input, summary, select) {
-    scroll-margin-block: 3.5rem 6.5rem;
+
+  .registration-shell :is(input, select, summary) {
+    scroll-margin-block: 5rem 8rem;
   }
 }

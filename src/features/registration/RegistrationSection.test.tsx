@@ -855,4 +855,68 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
   });
+
+  it("renders the personal step as a light profile surface with grouped sections", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+
+    expect(screen.getByTestId("registration-shell")).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("heading", { name: "Dados do participante" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Identificação civil" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Contato e diocese" })).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText("Foto do participante"),
+      new File(["photo"], "profile.jpg", { type: "image/jpeg" }),
+    );
+
+    expect(
+      await screen.findByRole("img", { name: "Prévia da foto de perfil" }),
+    ).toHaveAttribute("src", expect.stringContaining("data:image/jpeg;base64,"));
+  });
+
+  it("filters clear-surface choir cards and exposes vocal profile cards", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await goToParticipation(user);
+
+    const quixada = screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" });
+    expect(quixada.closest("label")).toHaveAttribute("data-surface", "clear");
+    expect(screen.getByRole("radiogroup", { name: "Naipe vocal" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Soprano" })).toBeInTheDocument();
+
+    const search = screen.getByRole("searchbox", { name: "Buscar coro ou diocese" });
+    await user.type(search, "Sobral");
+
+    expect(screen.queryByRole("radio", { name: "Coro Diocesano de Quixadá" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" })).toBeInTheDocument();
+  });
+
+  it("marks the selected payment card while keeping the price data dynamic", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await goToParticipation(user);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    const raffleOption = screen.getByTestId("payment-option-raffle");
+    const fullPriceOption = screen.getByTestId("payment-option-full-price");
+    expect(raffleOption).toHaveAttribute("data-surface", "clear");
+    expect(raffleOption).toHaveAttribute("data-selected", "false");
+    await user.click(screen.getByLabelText("Quero participar do Programa de Venda de Rifas"));
+    expect(raffleOption).toHaveAttribute("data-selected", "true");
+    expect(fullPriceOption).toHaveAttribute("data-selected", "false");
+  });
+
+  it("groups the review into credential and investment sections with direct edit actions", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection loadConfiguration={loadConfiguration} />);
+    await goToReview(user);
+
+    expect(screen.getByRole("heading", { name: "Credencial do coralista" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Investimento" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Editar dados pessoais" }));
+    expect(screen.getByRole("heading", { name: "Dados do participante" })).toBeInTheDocument();
+  });
 });

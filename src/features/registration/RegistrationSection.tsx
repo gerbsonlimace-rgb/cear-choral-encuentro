@@ -5,20 +5,25 @@ import {
   BadgeCheck,
   Camera,
   Check,
+  CircleHelp,
   CreditCard,
+  Fingerprint,
   LockKeyhole,
   Mail,
+  MapPin,
   Music2,
   Phone,
+  Search,
   ShieldCheck,
   Ticket,
   UserRound,
+  WalletCards,
+  X,
 } from "lucide-react";
 
 import pixLogo from "@/assets/logo-pix.svg";
 import infinitePayLogo from "@/assets/logo-infinitepay.svg";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -157,6 +162,17 @@ const registrationSteps = [
   { number: 4, label: "Revisão" },
 ] as const;
 
+const voicePartDetails: Record<VoicePart, { range: string; description: string }> = {
+  soprano: { range: "C4 – C6", description: "Agudo feminino" },
+  contralto: { range: "F3 – E5", description: "Grave feminino" },
+  tenor: { range: "C3 – A4", description: "Agudo masculino" },
+  baixo: { range: "E2 – E4", description: "Grave profundo" },
+  nao_sei_informar: { range: "A definir", description: "Definir no acolhimento" },
+};
+
+const photoDataUrl = (photo: RegistrationPhotoInput | null) =>
+  photo ? `data:${photo.contentType};base64,${photo.dataBase64}` : null;
+
 function RegistrationPriceSummary({
   selectedChoir,
   appliedQuote,
@@ -175,38 +191,34 @@ function RegistrationPriceSummary({
   return (
     <aside
       aria-label="Resumo do valor da inscrição"
-      className="relative overflow-hidden rounded-2xl bg-foreground p-5 text-background shadow-lg shadow-foreground/20 lg:sticky lg:top-24"
+      className="registration-surface relative overflow-hidden p-5 lg:sticky lg:top-24"
     >
-      <div
-        className="absolute -right-10 -top-12 size-36 rounded-full bg-amber/20 blur-2xl"
-        aria-hidden="true"
-      />
       <div className="relative">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber">
+        <div className="flex items-center justify-between gap-3 border-b border-registration-line pb-3">
+          <h3 role="heading" aria-level={3} aria-label="Investimento" className="text-xs font-bold uppercase tracking-[0.12em] text-registration-ink">
             Resumo do investimento
-          </p>
-          <ShieldCheck className="size-5 text-amber" aria-hidden="true" />
+          </h3>
+          <ShieldCheck className="size-5 text-amber-600" aria-hidden="true" />
         </div>
 
         {selectedChoir && appliedQuote ? (
           <>
-            <p className="mt-3 text-sm text-background/70">{selectedChoir.name}</p>
+            <p className="mt-3 text-sm text-registration-muted">{selectedChoir.name}</p>
             {raffleChoice === "participate" && remainingCents !== null ? (
-              <div className="mt-4 space-y-4 border-t border-background/15 pt-4">
+              <div className="registration-investment-panel mt-4 space-y-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <span className="font-bold">Pré-inscrição agora:</span>
-                    <span className="font-display text-2xl font-extrabold">
+                    <span className="text-3xl font-extrabold text-registration-ink">
                       {formatCurrency(appliedQuote.registrationPriceCents)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-4 text-background/75">
+                  <div className="flex items-center justify-between gap-4 border-t border-registration-line pt-3">
                     <span className="font-semibold">Valor restante:</span>
-                    <span className="font-bold">{formatCurrency(remainingCents)}</span>
+                    <span className="font-bold text-registration-ink">{formatCurrency(remainingCents)}</span>
                   </div>
                 </div>
-                <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-background/90">
+                <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-registration-ink">
                   Você está aderindo ao Programa de Venda de Rifas do seu coro, participando da
                   venda de
                   <strong> 25 rifas</strong> e realizando sua pré-inscrição no valor de{" "}
@@ -217,14 +229,14 @@ function RegistrationPriceSummary({
                 </p>
               </div>
             ) : (
-              <div className="mt-4 space-y-3 border-t border-background/15 pt-4">
+              <div className="registration-investment-panel mt-4 space-y-3">
                 <div className="flex items-end justify-between gap-4">
                   <span className="font-bold">Valor da inscrição</span>
-                  <span className="font-display text-3xl font-extrabold">
+                  <span className="text-3xl font-extrabold text-registration-ink">
                     {formatCurrency(appliedQuote.registrationPriceCents)}
                   </span>
                 </div>
-                <p className="text-xs leading-relaxed text-background/75">
+                <p className="text-xs leading-relaxed text-registration-muted">
                   O pagamento integral será realizado agora e sua vaga será confirmada após a
                   confirmação desse pagamento.
                 </p>
@@ -232,28 +244,36 @@ function RegistrationPriceSummary({
             )}
           </>
         ) : (
-          <div className="mt-5 rounded-xl border border-dashed border-background/25 p-4 text-center text-sm text-background/70">
+          <div className="mt-5 rounded-xl border border-dashed border-registration-line p-4 text-center text-sm text-registration-muted">
             Selecione seu coro para ver o valor da inscrição.
           </div>
         )}
 
-        <div className="mt-5 border-t border-background/15 pt-4 text-xs text-background/65">
-          <p className="mb-2 font-semibold text-amber">Formas de pagamento</p>
-          <ul className="space-y-1.5">
-            <li className="flex items-center gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-registration-muted">
+          <ul className="contents">
+            <li className="registration-payment-chip">
               <img
                 src={pixLogo}
                 alt=""
-                className="h-4 w-auto brightness-0 invert"
+                className="h-4 w-auto"
                 aria-hidden="true"
               />
               Pix sem taxa • cobrança imediata
             </li>
-            <li className="flex items-center gap-2">
+            <li className="registration-payment-chip">
               <CreditCard className="size-4" aria-hidden="true" />
               Cartão em até 5x
             </li>
           </ul>
+          <div className="mt-2 flex w-full items-center gap-3 rounded-xl border border-amber/40 bg-amber-50/70 p-3">
+            <span className="registration-icon-box size-9 bg-white">
+              <ShieldCheck className="size-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-registration-ink">InfinitePay · ambiente oficial</p>
+              <p className="text-[11px] text-registration-muted">Checkout seguro para concluir o pagamento.</p>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
@@ -277,6 +297,7 @@ export function RegistrationSection({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
+  const [choirQuery, setChoirQuery] = useState("");
   const [draftReady, setDraftReady] = useState(false);
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found">(
     "idle",
@@ -389,6 +410,14 @@ export function RegistrationSection({
       displayedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
     return raffleChoice ? applyRaffleChoice(availableQuote, raffleChoice) : null;
   }, [displayedChoir, form.raffleChoice]);
+
+  const filteredChoirs = useMemo(() => {
+    const query = choirQuery.trim().toLocaleLowerCase("pt-BR");
+    if (!configuration || !query) return configuration?.choirs ?? [];
+    return configuration.choirs.filter((choir) =>
+      `${choir.name} ${choir.diocese ?? ""}`.toLocaleLowerCase("pt-BR").includes(query),
+    );
+  }, [choirQuery, configuration]);
 
   useEffect(() => {
     if (!configuration || currentStep !== 4 || displayedChoir) return;
@@ -668,18 +697,20 @@ export function RegistrationSection({
   return (
     <section
       id="inscricao"
-      className="relative isolate overflow-x-clip bg-foreground px-4 py-6 text-background sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
+      data-testid="registration-shell"
+      data-theme="light"
+      className="registration-shell relative isolate overflow-x-clip bg-registration-surface px-4 py-6 text-registration-ink sm:px-6 lg:min-h-[calc(100dvh-4.5rem)] lg:py-7"
     >
       <div className="container-event">
         <div className="registration-intro mx-auto max-w-4xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-amber px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground shadow-lg shadow-amber/20">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-700 shadow-sm">
             <BadgeCheck className="size-4" aria-hidden="true" />
             Inscrição
           </span>
-          <h2 className="mt-2 font-display text-[clamp(2rem,5vw,2.6rem)] font-bold leading-tight text-background">
+          <h2 className="mt-2 font-display text-[clamp(2rem,5vw,2.6rem)] font-bold leading-tight text-registration-ink">
             Realize sua inscrição
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
+          <p className="mt-2 text-sm leading-relaxed text-registration-muted sm:text-base">
             São apenas quatro etapas. Você poderá conferir tudo antes de pagar.
           </p>
         </div>
@@ -700,9 +731,9 @@ export function RegistrationSection({
           </div>
         )}
 
-        <Card className="registration-card relative mx-auto mt-5 max-w-5xl overflow-visible rounded-2xl border-background/15 bg-card shadow-2xl shadow-foreground/30">
+        <div className="registration-card relative mx-auto mt-5 max-w-5xl overflow-visible rounded-2xl border border-registration-line bg-white shadow-registration-card">
           <div className="h-1.5 rounded-t-2xl bg-amber" aria-hidden="true" />
-          <CardContent className="registration-card-content p-4 sm:p-6 lg:p-7">
+          <div className="registration-card-content p-4 sm:p-6 lg:p-7">
             <p className="registration-progress-mobile md:hidden" aria-live="polite">
               Etapa {currentStep} de {registrationSteps.length} ·{" "}
               {registrationSteps[currentStep - 1].label}
@@ -759,7 +790,14 @@ export function RegistrationSection({
                         <span
                           role="heading"
                           aria-level={3}
-                          className="block font-display text-lg font-extrabold text-foreground sm:text-xl"
+                          className="block font-display text-xl font-extrabold text-registration-ink sm:text-2xl"
+                        >
+                          Dados do participante
+                        </span>
+                        <span
+                          role="heading"
+                          aria-level={3}
+                          className="sr-only"
                         >
                           Conte-nos quem é você
                         </span>
@@ -770,6 +808,12 @@ export function RegistrationSection({
                     </legend>
 
                     <div className="registration-personal-fields grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+                      <div className="registration-subsection-heading order-0 md:col-span-2">
+                        <Fingerprint className="size-4" aria-hidden="true" />
+                        <span role="heading" aria-level={4}>
+                          Identificação civil
+                        </span>
+                      </div>
                       <div className="order-1 space-y-1.5">
                         <Label htmlFor="cpf" className="font-semibold">
                           CPF
@@ -839,7 +883,14 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      <div className="order-4 space-y-1.5">
+                      <div className="registration-subsection-heading order-5 md:col-span-2">
+                        <MapPin className="size-4" aria-hidden="true" />
+                        <span role="heading" aria-level={4}>
+                          Contato e diocese
+                        </span>
+                      </div>
+
+                      <div className="order-6 space-y-1.5">
                         <Label htmlFor="email" className="font-semibold">
                           E-mail
                         </Label>
@@ -862,7 +913,7 @@ export function RegistrationSection({
                         {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                       </div>
 
-                      <div className="order-5 space-y-1.5">
+                      <div className="order-6 space-y-1.5">
                         <Label htmlFor="phone" className="font-semibold">
                           WhatsApp
                         </Label>
@@ -911,7 +962,7 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      <div className="order-5 space-y-1.5">
+                      <div className="order-6 space-y-1.5">
                         <Label htmlFor="diocese" className="font-semibold">
                           Diocese
                         </Label>
@@ -942,7 +993,7 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      <div className="order-3 space-y-1.5 md:col-span-2">
+                      <div className="order-8 space-y-1.5 md:col-span-2">
                         <Label htmlFor="photo" className="font-semibold">
                           Foto do participante
                         </Label>
@@ -950,6 +1001,13 @@ export function RegistrationSection({
                           htmlFor="photo"
                           className="flex min-h-12 min-w-0 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 text-sm transition-colors hover:border-amber focus-within:ring-2 focus-within:ring-amber/30"
                         >
+                          {photo && (
+                            <img
+                              src={photoDataUrl(photo) ?? undefined}
+                              alt="Prévia da foto de perfil"
+                              className="registration-photo-preview size-14 shrink-0 rounded-full object-cover"
+                            />
+                          )}
                           <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
                             <Camera
                               className="size-5 shrink-0 text-foreground"
@@ -1021,9 +1079,42 @@ export function RegistrationSection({
                     </legend>
                     <div className="grid gap-5">
                       <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
-                        <p id="choir-label" className="font-semibold">
-                          Coro
-                        </p>
+                        <div className="flex items-center justify-between gap-3">
+                          <p id="choir-label" className="font-semibold">
+                            <span aria-hidden="true">Selecione o seu Coro</span>
+                            <span className="sr-only">Coro</span>
+                          </p>
+                          {configuration && (
+                            <span className="registration-count-badge">
+                              {configuration?.choirs.length ?? 0} coros
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative mt-3">
+                          <Search
+                            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-registration-muted"
+                            aria-hidden="true"
+                          />
+                          <Input
+                            id="choir-search"
+                            type="search"
+                            aria-label="Buscar coro ou diocese"
+                            value={choirQuery}
+                            onChange={(event) => setChoirQuery(event.target.value)}
+                            placeholder="Buscar paróquia ou diocese..."
+                            className="registration-search-input min-h-11 rounded-xl pl-10 pr-10 text-base"
+                          />
+                          {choirQuery && (
+                            <button
+                              type="button"
+                              aria-label="Limpar busca"
+                              onClick={() => setChoirQuery("")}
+                              className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-registration-muted hover:bg-registration-subtle hover:text-registration-ink"
+                            >
+                              <X className="size-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                         {isLoadingConfiguration ? (
                           <p className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                             Carregando coros…
@@ -1039,15 +1130,16 @@ export function RegistrationSection({
                             tabIndex={-1}
                             className="grid gap-3 sm:grid-cols-2"
                           >
-                            {configuration?.choirs.map((choir) => {
+                            {filteredChoirs.map((choir) => {
                               const selected = form.choirId === choir.id;
                               return (
                                 <label
                                   key={choir.id}
+                                  data-surface="clear"
                                   className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                     selected
                                       ? "border-amber bg-amber/10 shadow-sm"
-                                      : "border-border bg-background hover:border-amber/60"
+                                      : "border-registration-line bg-white hover:border-amber/60"
                                   }`}
                                 >
                                   <input
@@ -1055,7 +1147,7 @@ export function RegistrationSection({
                                     name="choirId"
                                     value={choir.id}
                                     checked={selected}
-                                    disabled={configuration.standardPriceCents === null}
+                                    disabled={configuration?.standardPriceCents === null}
                                     onChange={() => handleChoirChange(choir.id)}
                                     className="sr-only"
                                   />
@@ -1075,11 +1167,17 @@ export function RegistrationSection({
                                 </label>
                               );
                             })}
+                            {filteredChoirs.length === 0 && (
+                              <p className="rounded-xl border border-dashed border-registration-line bg-registration-subtle p-4 text-sm text-registration-muted sm:col-span-2">
+                                Nenhum coro encontrado. Você pode selecionar “Outros” e informar o nome manualmente.
+                              </p>
+                            )}
                             <label
+                              data-surface="clear"
                               className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                 isOtherChoir
                                   ? "border-amber bg-amber/10 shadow-sm"
-                                  : "border-border bg-background hover:border-amber/60"
+                                  : "border-registration-line bg-white hover:border-amber/60"
                               }`}
                             >
                               <input
@@ -1171,7 +1269,12 @@ export function RegistrationSection({
                               className={`registration-choice-grid mt-4 grid gap-3 ${isOtherChoir ? "max-w-md" : "sm:grid-cols-2"}`}
                             >
                               {selectedChoir?.pricingType === "promotional" && (
-                                <label className="cursor-pointer">
+                                <label
+                                  data-testid="payment-option-raffle"
+                                  data-surface="clear"
+                                  data-selected={form.raffleChoice === "participate"}
+                                  className="cursor-pointer"
+                                >
                                   <input
                                     type="radio"
                                     name="raffleChoice"
@@ -1183,7 +1286,9 @@ export function RegistrationSection({
                                     }
                                     className="peer sr-only"
                                   />
-                                  <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                                  <span
+                                    className={`registration-payment-option flex min-h-48 flex-col rounded-xl border p-4 transition-colors hover:border-amber peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60 ${form.raffleChoice === "participate" ? "border-amber bg-amber-50 text-registration-ink shadow-sm" : "border-registration-line bg-white text-registration-ink"}`}
+                                  >
                                     <span className="flex items-start gap-3">
                                       <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
                                         <Ticket className="size-5" aria-hidden="true" />
@@ -1210,7 +1315,12 @@ export function RegistrationSection({
                                   </span>
                                 </label>
                               )}
-                              <label className="cursor-pointer">
+                              <label
+                                data-testid="payment-option-full-price"
+                                data-surface="clear"
+                                data-selected={form.raffleChoice === "full_price"}
+                                className="cursor-pointer"
+                              >
                                 <input
                                   type="radio"
                                   name="raffleChoice"
@@ -1222,7 +1332,9 @@ export function RegistrationSection({
                                   }
                                   className="peer sr-only"
                                 />
-                                <span className="flex min-h-48 flex-col rounded-xl border border-border bg-background p-4 text-foreground transition-colors hover:border-amber peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60">
+                                <span
+                                  className={`registration-payment-option flex min-h-48 flex-col rounded-xl border p-4 transition-colors hover:border-amber peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60 ${form.raffleChoice === "full_price" ? "border-amber bg-amber-50 text-registration-ink shadow-sm" : "border-registration-line bg-white text-registration-ink"}`}
+                                >
                                   <span className="flex items-start gap-3">
                                     <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
                                       <CreditCard className="size-5" aria-hidden="true" />
@@ -1269,7 +1381,7 @@ export function RegistrationSection({
                             required
                             value={form.voicePart}
                             onChange={(event) => handleChange("voicePart", event.target.value)}
-                            className="min-h-14 w-full rounded-xl border border-border bg-background pl-11 pr-10 text-base shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30"
+                            className="registration-voice-select sr-only"
                           >
                             <option value="">Selecione seu perfil</option>
                             {voicePartOptions.map((option) => (
@@ -1279,8 +1391,62 @@ export function RegistrationSection({
                             ))}
                           </select>
                         </div>
+                        <div
+                          role="radiogroup"
+                          aria-label="Naipe vocal"
+                          aria-required="true"
+                          aria-describedby={errors.voicePart ? "voicePart-error" : undefined}
+                          className="registration-voice-grid mt-3 grid grid-cols-2 gap-3"
+                        >
+                          {voicePartOptions.map((option) => {
+                            const selected = form.voicePart === option.value;
+                            const details = voicePartDetails[option.value];
+                            return (
+                              <label
+                                key={option.value}
+                                data-surface="clear"
+                                className={`registration-voice-card ${option.value === "nao_sei_informar" ? "col-span-2" : ""} ${selected ? "registration-voice-card--selected" : ""}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="voicePartCard"
+                                  value={option.value}
+                                  aria-label={option.label}
+                                  checked={selected}
+                                  onChange={(event) => handleChange("voicePart", event.target.value)}
+                                  className="sr-only"
+                                />
+                                <span className="flex items-center justify-between gap-2">
+                                  <span className="registration-icon-box size-8">
+                                    {option.value === "nao_sei_informar" ? (
+                                      <CircleHelp className="size-4" aria-hidden="true" />
+                                    ) : (
+                                      <Music2 className="size-4" aria-hidden="true" />
+                                    )}
+                                  </span>
+                                  <span className="registration-voice-range">{details.range}</span>
+                                </span>
+                                <span className="mt-3 flex items-end justify-between gap-2">
+                                  <span>
+                                    <span className="block text-sm font-bold text-registration-ink">
+                                      {option.label}
+                                    </span>
+                                    <span className="mt-0.5 block text-[11px] text-registration-muted">
+                                      {details.description}
+                                    </span>
+                                  </span>
+                                  <span className="registration-radio-indicator" aria-hidden="true">
+                                    {selected && <Check className="size-3.5" />}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
                         {errors.voicePart && (
-                          <p className="text-sm text-destructive">{errors.voicePart}</p>
+                          <p id="voicePart-error" className="text-sm text-destructive">
+                            {errors.voicePart}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1304,7 +1470,24 @@ export function RegistrationSection({
                         </p>
                       </div>
                     </div>
-                    <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
+                    <div className="registration-review-section-heading">
+                      <div className="flex items-center gap-2">
+                        <span className="registration-icon-box size-8">
+                          <BadgeCheck className="size-4" aria-hidden="true" />
+                        </span>
+                        <span role="heading" aria-level={4} className="text-xs font-extrabold uppercase tracking-[0.12em] text-registration-ink">
+                          Credencial do coralista
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(1)}
+                        className="registration-edit-button"
+                      >
+                        Editar dados pessoais
+                      </button>
+                    </div>
+                    <dl className="registration-review-list grid gap-2 sm:grid-cols-2">
                       {[
                         ["Nome completo para certificado", form.name],
                         ["Nome para o crachá", form.badgeName],
@@ -1332,11 +1515,11 @@ export function RegistrationSection({
                         ],
                         ["Foto", photoFileName],
                       ].map(([label, value]) => (
-                        <div key={label} className="min-w-0 bg-card p-4">
-                          <dt className="text-xs font-bold uppercase text-muted-foreground">
+                        <div key={label} className="min-w-0 rounded-xl border border-registration-line bg-white p-3">
+                          <dt className="text-xs font-bold uppercase text-registration-muted">
                             {label}
                           </dt>
-                          <dd className="mt-1 break-words text-sm font-semibold text-foreground">
+                          <dd className="mt-1 break-words text-sm font-semibold text-registration-ink">
                             {value}
                           </dd>
                         </div>
@@ -1416,8 +1599,8 @@ export function RegistrationSection({
                 </p>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </section>
   );
