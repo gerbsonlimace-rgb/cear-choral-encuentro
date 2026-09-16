@@ -447,15 +447,15 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-hero .hero-color-overlay {
-  background: rgba(3, 7, 6, 0.42) !important;
+  background: rgba(3, 7, 6, 0.48) !important;
 }
 
 .public-event-hero .hero-gradient-overlay {
   background: linear-gradient(
     180deg,
-    rgba(3, 7, 6, 0.1) 0%,
-    rgba(3, 7, 6, 0.26) 54%,
-    rgba(3, 7, 6, 0.74) 100%
+    rgba(3, 7, 6, 0.13) 0%,
+    rgba(3, 7, 6, 0.32) 54%,
+    rgba(3, 7, 6, 0.82) 100%
   ) !important;
 }
 
