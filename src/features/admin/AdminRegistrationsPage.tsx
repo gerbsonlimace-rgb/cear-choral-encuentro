@@ -397,7 +397,7 @@ function RegistrationActions({
     setReceiptError("");
     setConfirmMarkPaid(true);
   };
-  const hasActions = row.hasManualReceipt || (openUrl && isSafeCheckoutUrl(openUrl)) ||
+  const hasActions = row.hasManualReceipt || (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
     state.status === "pending" || (state.status === "partially_paid" && state.pendingCents > 0) ||
     access?.canReprocess || access?.canReset;
   return (
