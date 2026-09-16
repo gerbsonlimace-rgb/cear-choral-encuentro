@@ -109,7 +109,6 @@ export function calculateComplementState(
       (!Number.isSafeInteger(input.remainingPriceCents) || input.remainingPriceCents < 0)) ||
     (input.pricingType === "standard" && totalCents !== 0) ||
     (input.pricingType === "promotional" && totalCents <= 0) ||
-    (input.pricingType === "promotional" && totalCents > derivedTotalCents) ||
     input.confirmedComplementCents > totalCents
   ) {
     return { eligible: false, reason: "missing_snapshot" };

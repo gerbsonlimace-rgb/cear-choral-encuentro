@@ -113,6 +113,25 @@ describe("regent complement checkout service", () => {
     );
   });
 
+  it("charges the configured promotional balance instead of deriving a discount difference", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.findRegistration).mockResolvedValue({
+      ...registration,
+      standardPriceCents: 30_000,
+      registrationPriceCents: 10_000,
+      remainingPriceCents: 25_000,
+    });
+
+    await service.startCheckout({ registrationId }, regent);
+
+    expect(repository.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 25_000 }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [expect.objectContaining({ price: 25_000, quantity: 1 })] }),
+    );
+  });
+
   it("denies another registration even when it belongs to the same choir", async () => {
     const { service, repository, infinitePay } = setup();
     await expect(
