@@ -649,6 +649,7 @@ describe("landing page visual direction", () => {
     expect(header).toHaveAttribute("data-public-header", "true");
     expect(header).toHaveAttribute("data-public-header-tone", "light");
     expect(header).toHaveClass("public-event-header");
+    expect(document.querySelectorAll('[data-public-gold-action="true"]')).toHaveLength(2);
     expect(
       within(header).getByRole("img", {
         name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",

@@ -118,7 +118,7 @@
   --teal-foreground: oklch(0.985 0.004 95);
   --emerald: oklch(0.65 0.12 88);
   --emerald-foreground: oklch(0.15 0.01 90);
-  --amber: oklch(0.82 0.15 88);
+  --amber: oklch(0.86 0.16 88);
   --amber-foreground: oklch(0.15 0.01 90);
 }
 
@@ -356,16 +356,16 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
   --secondary-foreground: #1b1c1a;
   --muted: #f5f3ef;
   --muted-foreground: #665f54;
-  --accent: #d49e35;
+  --accent: #e8b43c;
   --accent-foreground: #11161f;
   --border: #e7e2d8;
   --input: #d3c4b0;
-  --ring: #d49e35;
+  --ring: #e8b43c;
   --teal: #11161f;
   --teal-foreground: #ffffff;
   --emerald: #855300;
   --emerald-foreground: #ffffff;
-  --amber: #d49e35;
+  --amber: #e8b43c;
   --amber-foreground: #11161f;
   background: var(--background);
   color: var(--foreground);
@@ -418,8 +418,8 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-header a[href="/inscricao"] {
-  background: #d49e35 !important;
-  color: #11161f !important;
+  background: var(--amber) !important;
+  color: var(--amber-foreground) !important;
 }
 
 .public-event-header button[aria-label="Abrir menu"] {
@@ -493,8 +493,8 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-hero .public-hero-actions a:first-child {
-  background: #d49e35 !important;
-  color: #11161f !important;
+  background: var(--amber) !important;
+  color: var(--amber-foreground) !important;
 }
 
 .public-event-hero .public-hero-actions a:last-child {
