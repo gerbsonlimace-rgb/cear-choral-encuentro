@@ -1,10 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 import {
   ArrowRight,
   Award,
   BedDouble,
-  Check,
   Clock3,
   CreditCard,
   Gift,
@@ -42,9 +40,6 @@ const raffleSummary = [
 ];
 
 export function RegistrationCallout() {
-  const [selectedOption, setSelectedOption] = useState<"integral" | "raffles">("integral");
-  const isRaffles = selectedOption === "raffles";
-
   return (
     <section
       id="inscricao"
@@ -163,188 +158,108 @@ export function RegistrationCallout() {
           </div>
         </section>
 
-        <div
-          role="radiogroup"
-          aria-label="Opções de inscrição"
-          className="mt-8 grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:gap-8"
-        >
-          <label
-            htmlFor="registration-option-integral"
-            className={`group flex w-full cursor-pointer ${selectedOption === "integral" ? "" : "opacity-90"}`}
-          >
-            <input
-              id="registration-option-integral"
-              type="radio"
-              name="registrationOption"
-              value="integral"
-              aria-label="Inscrição integral"
-              aria-describedby="integral-option-details"
-              checked={selectedOption === "integral"}
-              onChange={() => setSelectedOption("integral")}
-              className="peer sr-only"
-            />
-            <span
-              className={`relative flex min-h-[470px] w-full flex-col justify-between rounded-2xl border-2 bg-[#fffdf9] p-6 shadow-xl shadow-amber-950/10 transition-all focus-within:ring-2 focus-within:ring-stone-950 focus-within:ring-offset-2 sm:p-8 ${selectedOption === "integral" ? "border-amber-500 bg-white shadow-2xl" : "border-amber-200/90 hover:border-amber-400"}`}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
-                  <CreditCard className="size-4 text-amber-600" aria-hidden="true" />
-                  Inscrição integral
-                </span>
-                <span
-                  className="inline-flex size-6 items-center justify-center rounded-full border-2 border-amber-500 bg-amber-400 text-stone-950"
-                  aria-hidden="true"
-                >
-                  <Check className="size-4" strokeWidth={3} />
-                </span>
-              </span>
-              <span id="integral-option-details" className="mt-5 block">
-                <span className="block font-display text-4xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
-                  R$ 300,00
-                </span>
-                <span className="mt-1 block text-sm font-medium text-stone-500">
-                  Pague à vista no Pix ou parcele em até{" "}
-                  <strong className="text-stone-900">5x no cartão</strong>
-                </span>
-                <span className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50 p-3.5">
-                  <Zap className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" />
-                  <span>
-                    <span className="block text-xs font-bold uppercase tracking-wider text-amber-800">
-                      Simples e Imediato
-                    </span>
-                    <span className="mt-0.5 block text-xs text-stone-600">
-                      Faça o pagamento online e confirme sua vaga de forma automática, sem tarefas
-                      adicionais.
-                    </span>
-                  </span>
-                </span>
-                <span className="my-6 block border-t border-amber-100" />
-                <span className="block space-y-3 text-xs text-stone-700 sm:text-sm">
-                  {[
-                    "Inscrição confirmada na hora via confirmação instantânea",
-                    "Acesso a todas as sessões formativas e ensaios gerais",
-                    "Caderno oficial de partituras e materiais em PDF",
-                    "Certificado digital com carga horária reconhecida",
-                  ].map((benefit) => (
-                    <span key={benefit} className="flex items-start gap-2.5">
-                      <Check
-                        className="mt-0.5 size-4 shrink-0 text-amber-700"
-                        strokeWidth={3}
-                        aria-hidden="true"
-                      />
-                      <span>{benefit}</span>
-                    </span>
-                  ))}
-                </span>
-              </span>
-              <span className="mt-6 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
-                <Check className="size-4 text-emerald-600" aria-hidden="true" />
-                Inscrição confirmada na hora
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:gap-6">
+          <article className="flex w-full flex-col rounded-2xl border-2 border-amber-300/90 bg-[#fffdf9] p-4 shadow-lg shadow-amber-950/10 sm:p-6">
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
+                <CreditCard className="size-4 text-amber-600" aria-hidden="true" />
+                Inscrição integral
               </span>
             </span>
-          </label>
+            <span className="mt-4 block">
+              <span className="block font-display text-4xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
+                R$ 300,00
+              </span>
+              <span className="mt-1 block text-sm font-medium text-stone-500">
+                Pague à vista no Pix ou parcele em até{" "}
+                <strong className="text-stone-900">5x no cartão</strong>
+              </span>
+              <span className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50 p-3.5">
+                <Zap className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" />
+                <span>
+                  <span className="block text-xs font-bold uppercase tracking-wider text-amber-800">
+                    Simples e Imediato
+                  </span>
+                  <span className="mt-0.5 block text-xs text-stone-600">
+                    Faça o pagamento online e confirme sua vaga de forma automática, sem tarefas
+                    adicionais.
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span className="mt-4 flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
+              Inscrição confirmada na hora
+            </span>
+          </article>
 
-          <label
-            htmlFor="registration-option-raffles"
-            className={`group flex w-full cursor-pointer ${selectedOption === "raffles" ? "" : "opacity-90"}`}
-          >
-            <input
-              id="registration-option-raffles"
-              type="radio"
-              name="registrationOption"
-              value="raffles"
-              aria-label="Programa de rifas"
-              aria-describedby="raffle-option-summary"
-              checked={selectedOption === "raffles"}
-              onChange={() => setSelectedOption("raffles")}
-              className="peer sr-only"
-            />
-            <span
-              className={`relative flex min-h-[470px] w-full flex-col justify-between rounded-2xl border-2 bg-[#fffdf9] p-6 shadow-xl shadow-amber-950/10 transition-all focus-within:ring-2 focus-within:ring-stone-950 focus-within:ring-offset-2 sm:p-8 ${selectedOption === "raffles" ? "border-amber-500 bg-white shadow-2xl" : "border-amber-200/90 hover:border-amber-400"}`}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
-                  <Ticket className="size-4 text-amber-600" aria-hidden="true" />
-                  Programa de rifas
-                </span>
-                <span
-                  className={`inline-flex size-6 items-center justify-center rounded-full border-2 transition-colors ${selectedOption === "raffles" ? "border-amber-500 bg-amber-400 text-stone-950" : "border-stone-300 text-transparent"}`}
-                  aria-hidden="true"
-                >
-                  <Check className="size-4" strokeWidth={3} />
-                </span>
+          <article className="flex w-full flex-col rounded-2xl border-2 border-amber-300/90 bg-[#fffdf9] p-4 shadow-lg shadow-amber-950/10 sm:p-6">
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
+                <Ticket className="size-4 text-amber-600" aria-hidden="true" />
+                Programa de rifas
               </span>
-              <span className="mt-5 block">
-                <span
-                  id="raffle-option-summary"
-                  className="block font-display text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
-                >
-                  R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10
+            </span>
+            <span className="mt-4 block">
+              <span className="block font-display text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10
+              </span>
+              <span className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                <span className="size-1.5 rounded-full bg-amber-500" /> Exclusivo para membros de
+                coros participantes
+              </span>
+              <span className="my-4 block border-t border-amber-100" />
+              <ol
+                aria-label="Resumo do programa de rifas"
+                className="space-y-2.5 text-xs text-stone-700"
+              >
+                {raffleSummary.map(({ label, description }, index) => (
+                  <li
+                    key={label}
+                    className="flex items-start gap-2.5 rounded-lg border border-amber-200/60 bg-amber-50/70 p-2.5"
+                  >
+                    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-[11px] font-bold text-amber-800">
+                      {index + 1}
+                    </span>
+                    <span>
+                      <strong className="text-stone-900">{label}:</strong> {description}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <span className="mt-5 block border-t border-amber-100 pt-3 text-[11px] leading-tight text-stone-500">
+                * A vaga só será homologada definitivamente mediante entrega dos comprovantes ao
+                regente até 30/10.
+              </span>
+              <span className="mt-3 block space-y-1 text-[11px] leading-tight text-stone-500">
+                <span className="block">
+                  <strong className="text-stone-800">Condições:</strong> venda mínima de 25 rifas de
+                  R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua
+                  inscrição.
                 </span>
-                <span className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <span className="size-1.5 rounded-full bg-amber-500" /> Exclusivo para membros de
-                  coros participantes
-                </span>
-                <span className="my-4 block border-t border-amber-100" />
-                <ol
-                  aria-label="Resumo do programa de rifas"
-                  className="space-y-2.5 text-xs text-stone-700"
-                >
-                  {raffleSummary.map(({ label, description }, index) => (
-                    <li
-                      key={label}
-                      className="flex items-start gap-2.5 rounded-lg border border-amber-200/60 bg-amber-50/70 p-2.5"
-                    >
-                      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-[11px] font-bold text-amber-800">
-                        {index + 1}
-                      </span>
-                      <span>
-                        <strong className="text-stone-900">{label}:</strong> {description}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-                <span className="mt-5 block border-t border-amber-100 pt-3 text-[11px] leading-tight text-stone-500">
-                  * A vaga só será homologada definitivamente mediante entrega dos comprovantes ao
-                  regente até 30/10.
-                </span>
-                <span className="mt-3 block space-y-1 text-[11px] leading-tight text-stone-500">
-                  <span className="block">
-                    <strong className="text-stone-800">Condições:</strong> venda mínima de 25 rifas
-                    de R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua
-                    inscrição.
-                  </span>
-                  <span className="block">
-                    <strong className="text-stone-800">Venda extra:</strong> solicite blocos
-                    adicionais ao regente. Quem vender mais ganha um Pix de R$ 500.
-                  </span>
+                <span className="block">
+                  <strong className="text-stone-800">Venda extra:</strong> solicite blocos
+                  adicionais ao regente. Quem vender mais ganha um Pix de R$ 500.
                 </span>
               </span>
             </span>
-          </label>
+          </article>
         </div>
 
         <section
-          aria-label="Resumo do plano selecionado"
-          className="relative mt-8 overflow-hidden rounded-2xl border border-[#d4af37]/40 bg-[#fffdf9]/95 p-6 shadow-2xl shadow-amber-950/15 backdrop-blur-md sm:p-8"
+          aria-label="Ação de inscrição"
+          className="relative mt-6 overflow-hidden rounded-2xl border border-[#d4af37]/40 bg-[#fffdf9]/95 p-4 shadow-xl shadow-amber-950/15 backdrop-blur-md sm:p-5"
         >
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="text-center md:text-left">
               <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
-                Resumo do plano selecionado
+                Inscrições abertas
               </span>
-              <div className="mt-1 flex items-center justify-center gap-2 md:justify-start">
-                <h3 className="text-lg font-bold text-stone-900 sm:text-xl">
-                  {isRaffles ? "Programa de rifas" : "Inscrição integral"}
-                </h3>
-                <span className="rounded-md border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
-                  {isRaffles ? "Pré-reserva" : "Vaga garantida"}
-                </span>
-              </div>
+              <h3 className="mt-1 text-lg font-bold text-stone-900 sm:text-xl">
+                Escolha sua modalidade no formulário
+              </h3>
               <p className="mt-1 text-xs text-stone-600 sm:text-sm">
-                {isRaffles
-                  ? "R$ 100,00 de entrada agora e o saldo de R$ 250,00 através da venda de rifas até 30/10."
-                  : "Acesso irrestrito com pagamento único de R$ 300,00 ou até 5x no cartão de crédito."}
+                Confira as condições da inscrição integral ou do programa de rifas e finalize sua
+                vaga.
               </p>
             </div>
             <Button
