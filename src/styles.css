@@ -385,9 +385,9 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-header {
-  background: rgba(17, 22, 31, 0.96) !important;
-  border-color: rgba(231, 226, 216, 0.14) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  background: rgba(251, 249, 245, 0.96) !important;
+  border-color: rgba(17, 22, 31, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(82, 56, 0, 0.1);
 }
 
 .public-event-header .public-event-brand {
@@ -399,22 +399,22 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-header nav a {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(17, 22, 31, 0.72);
 }
 
 .public-event-header nav a:hover {
-  color: #f7bd51;
+  color: #9a6500;
 }
 
 .public-event-header a[href="/acessar"] {
-  border-color: rgba(255, 255, 255, 0.24) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: #ffffff !important;
+  border-color: rgba(17, 22, 31, 0.18) !important;
+  background: rgba(17, 22, 31, 0.04) !important;
+  color: #11161f !important;
 }
 
 .public-event-header a[href="/acessar"]:hover {
   border-color: rgba(212, 158, 53, 0.72) !important;
-  background: rgba(212, 158, 53, 0.12) !important;
+  background: rgba(212, 158, 53, 0.14) !important;
 }
 
 .public-event-header a[href="/inscricao"] {
@@ -423,9 +423,9 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-header button[aria-label="Abrir menu"] {
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
+  border-color: rgba(17, 22, 31, 0.18) !important;
+  background: rgba(17, 22, 31, 0.04) !important;
+  color: #11161f !important;
 }
 
 .public-event-header button[aria-label="Abrir menu"]:hover {
@@ -447,15 +447,15 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-hero .hero-color-overlay {
-  background: rgba(3, 7, 6, 0.66) !important;
+  background: rgba(3, 7, 6, 0.42) !important;
 }
 
 .public-event-hero .hero-gradient-overlay {
   background: linear-gradient(
     180deg,
-    rgba(3, 7, 6, 0.22) 0%,
-    rgba(3, 7, 6, 0.42) 54%,
-    rgba(3, 7, 6, 0.92) 100%
+    rgba(3, 7, 6, 0.1) 0%,
+    rgba(3, 7, 6, 0.26) 54%,
+    rgba(3, 7, 6, 0.74) 100%
   ) !important;
 }
 
