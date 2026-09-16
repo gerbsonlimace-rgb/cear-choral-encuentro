@@ -51,6 +51,32 @@ describe("registration draft", () => {
     expect(loadRegistrationDraft(savedAt + 1)).toEqual(otherDraft);
   });
 
+  it("preserves a partially typed birth date even when it is the only entered field", () => {
+    const partialBirthDateDraft: RegistrationDraft = {
+      form: {
+        name: "",
+        badgeName: "",
+        cpf: "",
+        email: "",
+        phone: "",
+        birthDate: "",
+        diocese: "",
+        choirId: "",
+        otherChoirName: "",
+        raffleChoice: "",
+        voicePart: "",
+      },
+      photo: null,
+      photoFileName: "",
+      birthDateInput: "20/05",
+      currentStep: 1,
+    };
+
+    saveRegistrationDraft(partialBirthDateDraft, savedAt);
+
+    expect(loadRegistrationDraft(savedAt + 1)).toEqual(partialBirthDateDraft);
+  });
+
   it("discards a draft after 24 hours", () => {
     saveRegistrationDraft(draft, savedAt);
 
