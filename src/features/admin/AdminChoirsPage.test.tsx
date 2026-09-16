@@ -104,7 +104,7 @@ describe("AdminChoirsPage", () => {
 
     await user.type(await screen.findByLabelText("Valor normal"), "300,00");
     await user.type(screen.getByLabelText("Valor promocional"), "100,00");
-    await user.type(screen.getByLabelText("Valor restante promocional"), "150,00");
+    await user.type(screen.getByLabelText("Valor restante promocional"), "250,00");
     await user.click(screen.getByRole("button", { name: "Salvar valores" }));
 
     await waitFor(() =>
@@ -112,7 +112,7 @@ describe("AdminChoirsPage", () => {
         data: {
           standardPriceCents: 30000,
           promotionalPriceCents: 10000,
-          promotionalRemainingPriceCents: 15000,
+          promotionalRemainingPriceCents: 25000,
         },
       }),
     );

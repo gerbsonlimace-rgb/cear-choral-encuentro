@@ -59,6 +59,16 @@ describe("deriveRegistrationFinancialState", () => {
     });
   });
 
+  it("uses a configured promotional balance even when it exceeds the price difference", () => {
+    expect(
+      deriveRegistrationFinancialState({
+        ...promotionalRegistration,
+        remainingPriceCents: 25_000,
+        confirmedComplementCents: 0,
+      }),
+    ).toEqual({ status: "partially_paid", pendingCents: 25_000, confirmedPrincipalCents: 10_000 });
+  });
+
   it("marks a standard registration paid when its confirmed initial principal matches its snapshot", () => {
     expect(
       deriveRegistrationFinancialState({

@@ -36,6 +36,18 @@ describe("complement balance", () => {
     ).toMatchObject({ totalCents: 15_000, balanceCents: 13_000 });
   });
 
+  it("allows a configured promotional balance above the registration discount", () => {
+    expect(
+      calculateComplementState({
+        ...paidPromotionalRegistration,
+        standardPriceCents: 30_000,
+        registrationPriceCents: 10_000,
+        remainingPriceCents: 25_000,
+        confirmedComplementCents: 0,
+      }),
+    ).toMatchObject({ eligible: true, totalCents: 25_000, balanceCents: 25_000 });
+  });
+
   it("requires a paid promotional registration", () => {
     expect(
       calculateComplementState({

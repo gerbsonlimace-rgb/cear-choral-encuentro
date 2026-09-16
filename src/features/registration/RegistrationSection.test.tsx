@@ -20,6 +20,7 @@ const configuration: PublicRegistrationConfiguration = {
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
+      remainingPriceCents: 25000,
     },
     {
       id: sobralId,
@@ -286,7 +287,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     });
     expect(choices).toHaveTextContent(/Pague R\$ 100,00 agora/);
     expect(choices).toHaveTextContent(/25 rifas/);
-    expect(choices).toHaveTextContent(/restante de R\$ 200,00 até 30 de outubro/);
+    expect(choices).toHaveTextContent(/restante de R\$ 250,00 até 30 de outubro/);
     expect(choices).toHaveTextContent(/vaga será confirmada após esse pagamento/);
     expect(choices).toHaveTextContent(/Pague R\$ 300,00 agora/);
     expect(choices).toHaveTextContent(/Pix ou em até 5x no cartão/);
@@ -324,7 +325,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
 
     const summary = screen.getByLabelText("Resumo do valor da inscrição");
     expect(summary).toHaveTextContent(/Pré-inscrição agora:\s*R\$ 100,00/);
-    expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 200,00/);
+    expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 250,00/);
     expect(summary).toHaveTextContent(/25 rifas/);
     expect(summary).toHaveTextContent(
       /Sua vaga será confirmada após o pagamento do valor restante/,

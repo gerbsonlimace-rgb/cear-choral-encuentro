@@ -129,7 +129,8 @@ function RegistrationPriceSummary({
 }) {
   const remainingCents =
     appliedQuote && raffleChoice === "participate"
-      ? appliedQuote.standardPriceCents - appliedQuote.registrationPriceCents
+      ? appliedQuote.remainingPriceCents ??
+        (appliedQuote.standardPriceCents - appliedQuote.registrationPriceCents)
       : null;
 
   return (
@@ -1000,8 +1001,9 @@ export function RegistrationSection({
                                   Você faz sua pré-inscrição, participa da venda de 25 rifas e envia
                                   o restante de{" "}
                                   {formatCurrency(
-                                    selectedChoir.standardPriceCents -
-                                      selectedChoir.registrationPriceCents,
+                                    selectedChoir.remainingPriceCents ??
+                                      (selectedChoir.standardPriceCents -
+                                        selectedChoir.registrationPriceCents),
                                   )}{" "}
                                   até 30 de outubro. Sua vaga será confirmada após esse pagamento.
                                 </span>
