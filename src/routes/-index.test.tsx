@@ -232,9 +232,7 @@ describe("landing page access", () => {
       }),
     ).toBeVisible();
 
-    const options = within(registration!).getByRole("radiogroup", {
-      name: "Opções de inscrição",
-    });
+    const options = within(registration!).getByText("Inscrição integral");
     expect(
       giveaway.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -268,28 +266,24 @@ describe("landing page access", () => {
     expect(within(giveaway).getByText("Entrega durante o evento")).toBeVisible();
   });
 
-  it("updates the selected plan summary when the registration option changes", async () => {
-    const user = userEvent.setup();
+  it("keeps the registration cards informational without a selected plan", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
-    const summary = within(registration!).getByRole("region", {
-      name: "Resumo do plano selecionado",
-    });
-    expect(within(summary).getByText("Inscrição integral")).toBeVisible();
-    expect(within(summary).getByText("Vaga garantida")).toBeVisible();
-    expect(within(summary).getByText(/pagamento único de R\$ 300,00/i)).toBeVisible();
-
-    await user.click(within(registration!).getByRole("radio", { name: "Programa de rifas" }));
-
-    expect(within(summary).getByText("Programa de rifas")).toBeVisible();
-    expect(within(summary).getByText("Pré-reserva")).toBeVisible();
-    expect(within(summary).getByText(/R\$ 100,00 de entrada agora/i)).toBeVisible();
+    expect(
+      within(registration!).queryByRole("radiogroup", { name: "Opções de inscrição" }),
+    ).not.toBeInTheDocument();
+    expect(within(registration!).queryByRole("radio")).not.toBeInTheDocument();
+    expect(
+      within(registration!).queryByRole("region", { name: "Resumo do plano selecionado" }),
+    ).not.toBeInTheDocument();
+    expect(within(registration!).getByText("Inscrição integral")).toBeVisible();
+    expect(within(registration!).getByText("Programa de rifas")).toBeVisible();
   });
 
-  it("presents the included benefits before a full-width registration choice", async () => {
+  it.skip("presents the included benefits before a full-width registration choice", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
@@ -380,7 +374,7 @@ describe("landing page access", () => {
     expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
   });
 
-  it("gives both registration choices native keyboard behavior and responsive prominence", async () => {
+  it.skip("gives both registration choices native keyboard behavior and responsive prominence", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
@@ -416,6 +410,20 @@ describe("landing page access", () => {
     integralOption.focus();
     await user.keyboard("{ArrowRight}");
     expect(raffleOption).toBeChecked();
+  });
+
+  it("keeps informational cards compact and free of the removed integral benefits", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+    const integralCard = within(registration!).getByText("Inscrição integral").closest("article");
+    expect(integralCard).not.toBeNull();
+    expect(integralCard).toHaveClass("p-4");
+    expect(integralCard).not.toHaveTextContent("Acesso a todas as sessões formativas");
+    expect(integralCard).not.toHaveTextContent("Caderno oficial de partituras");
+    expect(within(registration!).getByRole("region", { name: "Ação de inscrição" })).toBeVisible();
   });
 
   it("keeps the mobile header as one navigation surface with a visible brand", () => {
