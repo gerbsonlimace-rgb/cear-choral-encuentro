@@ -1,6 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
-
 import logo from "@/assets/logo-coros-preto.png";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
 import "@/features/registration/registration-page.css";
@@ -26,10 +24,9 @@ function RegistrationPage() {
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-[4.5rem]">
           <Link
             to="/"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 text-sm font-bold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <ArrowLeft className="size-5" aria-hidden="true" />
-            Voltar ao evento
+            Página inicial
           </Link>
           <img
             src={logo}
