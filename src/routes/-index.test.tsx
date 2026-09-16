@@ -217,7 +217,9 @@ describe("landing page access", () => {
       name: "Sorteio especial para inscrições até 30 de setembro",
     });
     expect(
-      within(giveaway).getByText("Inscreva-se até 30/09 e concorra aos dois livros"),
+      within(giveaway).getByRole("heading", {
+        name: "Inscreva-se até 30/09 e concorra aos dois livros exclusivos",
+      }),
     ).toBeVisible();
     expect(
       within(giveaway).getByRole("img", {
@@ -238,6 +240,55 @@ describe("landing page access", () => {
     ).toBeTruthy();
   });
 
+  it("matches the reference registration header and giveaway details", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+    expect(
+      within(registration!).getByRole("heading", { name: "Como você deseja participar?" }),
+    ).toBeVisible();
+    expect(
+      within(registration!).getByText(
+        "Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento completo, partituras originais e certificado.",
+      ),
+    ).toBeVisible();
+
+    const giveaway = within(registration!).getByRole("region", {
+      name: "Sorteio especial para inscrições até 30 de setembro",
+    });
+    expect(within(giveaway).getByText("Sorteio especial")).toBeVisible();
+    expect(
+      within(giveaway).getByRole("heading", {
+        name: "Inscreva-se até 30/09 e concorra aos dois livros exclusivos",
+      }),
+    ).toBeVisible();
+    expect(within(giveaway).getByText("Sorteio válido para todas as modalidades")).toBeVisible();
+    expect(within(giveaway).getByText("Entrega durante o evento")).toBeVisible();
+  });
+
+  it("updates the selected plan summary when the registration option changes", async () => {
+    const user = userEvent.setup();
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const registration = document.querySelector<HTMLElement>("#inscricao");
+    expect(registration).not.toBeNull();
+    const summary = within(registration!).getByRole("region", {
+      name: "Resumo do plano selecionado",
+    });
+    expect(within(summary).getByText("Inscrição integral")).toBeVisible();
+    expect(within(summary).getByText("Vaga garantida")).toBeVisible();
+    expect(within(summary).getByText(/pagamento único de R\$ 300,00/i)).toBeVisible();
+
+    await user.click(within(registration!).getByRole("radio", { name: "Programa de rifas" }));
+
+    expect(within(summary).getByText("Programa de rifas")).toBeVisible();
+    expect(within(summary).getByText("Pré-reserva")).toBeVisible();
+    expect(within(summary).getByText(/R\$ 100,00 de entrada agora/i)).toBeVisible();
+  });
+
   it("presents the included benefits before a full-width registration choice", async () => {
     const user = userEvent.setup();
     const IndexPage = Route.options.component!;
@@ -246,7 +297,7 @@ describe("landing page access", () => {
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
     expect(
-      within(registration!).getByRole("heading", { name: "Faça agora sua inscrição" }),
+      within(registration!).getByRole("heading", { name: "Como você deseja participar?" }),
     ).toBeVisible();
     const benefits = within(registration!).getByRole("list", {
       name: "Benefícios inclusos na inscrição",
@@ -291,7 +342,7 @@ describe("landing page access", () => {
     ).toBeVisible();
     expect(integralCard).toHaveTextContent("Pix");
     expect(integralCard).toHaveTextContent("5x no cartão");
-    expect(within(integralCard).getByText("Simples e rápido")).toBeVisible();
+    expect(within(integralCard).getByText("Simples e Imediato")).toBeVisible();
     expect(within(integralCard).getByText("Inscrição confirmada na hora")).toBeVisible();
     expect(within(raffleCard).queryByText("Concorra a R$ 1.000")).not.toBeInTheDocument();
     const raffleSummary = within(raffleCard).getByRole("list", {
@@ -320,7 +371,11 @@ describe("landing page access", () => {
     expect(raffleCard).toHaveTextContent(
       "Venda extra: solicite blocos adicionais ao regente. Quem vender mais ganha um Pix de R$ 500.",
     );
-    expect(within(registration!).getByText("Selecione uma opção para comparar.")).toBeVisible();
+    expect(
+      within(registration!).getByText("Selecione a modalidade ideal para sua vaga.", {
+        exact: false,
+      }),
+    ).toBeVisible();
     expect(within(options).queryByText("Opção A")).not.toBeInTheDocument();
     expect(within(options).queryByText("Opção B")).not.toBeInTheDocument();
   });

@@ -5,13 +5,17 @@ import {
   Award,
   BedDouble,
   Check,
+  Clock3,
   CreditCard,
   Gift,
+  MessageCircle,
   Music2,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Ticket,
   Utensils,
+  Zap,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,47 +28,59 @@ const benefits = [
 ];
 
 const raffleSummary = [
-  {
-    label: "Pagamento inicial",
-    description: "Pague R$ 100 agora no Pix ou cartão.",
-  },
+  { label: "Pagamento inicial", description: "Pague R$ 100 agora no Pix ou cartão." },
   {
     label: "Blocos de rifas",
     description: "Agende com seu regente um momento para receber os blocos.",
   },
-  {
-    label: "Venda mínima",
-    description: "Venda pelo menos 25 rifas de R$ 10 cada.",
-  },
+  { label: "Venda mínima", description: "Venda pelo menos 25 rifas de R$ 10 cada." },
   {
     label: "Entrega dos valores",
     description: "Envie todo o valor arrecadado ao seu regente até 30/10.",
   },
-  {
-    label: "Sorteio",
-    description: "Sorteio online do prêmio de R$ 1.000 em 08/11.",
-  },
+  { label: "Sorteio", description: "Sorteio online do prêmio de R$ 1.000 em 08/11." },
 ];
 
 export function RegistrationCallout() {
   const [selectedOption, setSelectedOption] = useState<"integral" | "raffles">("integral");
+  const isRaffles = selectedOption === "raffles";
 
   return (
     <section
       id="inscricao"
       aria-labelledby="registration-callout-title"
-      className="relative isolate scroll-mt-20 overflow-hidden bg-[#f7c948] px-4 py-10 text-black sm:px-6 lg:py-14"
+      className="relative isolate scroll-mt-20 overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,#ffd95a_0%,#f6b61f_45%,#cf8205_100%)] px-4 py-12 text-stone-950 sm:px-6 lg:py-16"
     >
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-24 size-72 rounded-full border-[42px] border-white/25" />
-        <div className="absolute -bottom-36 -right-28 size-96 rounded-full border-[56px] border-black/10" />
-        <Music2 className="absolute left-[5%] top-1/2 size-20 -rotate-12 text-black/10" />
-        <Sparkles className="absolute right-[6%] top-12 size-16 rotate-12 text-white/50" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden opacity-40"
+      >
+        <div className="absolute -left-24 top-24 size-64 rotate-[-12deg] border-[42px] border-amber-700/25" />
+        <div className="absolute -right-28 bottom-10 size-80 rotate-[18deg] border-[48px] border-amber-900/20" />
+        <Music2 className="absolute left-[4%] top-[36%] size-24 -rotate-12 text-amber-900/20" />
+        <Sparkles className="absolute right-[7%] top-12 size-16 rotate-12 text-amber-50/80" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="rounded-2xl border border-black/10 bg-white/85 px-4 py-4 shadow-sm backdrop-blur-sm sm:px-6">
-          <p className="text-center text-xs font-extrabold uppercase tracking-[0.16em] text-black/60">
+      <div className="relative z-10 mx-auto w-full max-w-6xl">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-400/50 bg-stone-950/85 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-amber-300 shadow-lg backdrop-blur-md">
+            <span className="size-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+            Formas de inscrição
+          </p>
+          <h2
+            id="registration-callout-title"
+            className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-stone-950 drop-shadow-sm sm:text-4xl md:text-5xl"
+          >
+            Como você deseja participar?
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm font-medium leading-relaxed text-stone-900/85 sm:text-base">
+            Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento
+            completo, partituras originais e certificado.
+          </p>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-stone-950/10 bg-[#fffdf9]/85 px-4 py-4 shadow-lg backdrop-blur-md sm:px-6">
+          <p className="text-center text-xs font-extrabold uppercase tracking-[0.16em] text-stone-700/70">
             Sua inscrição inclui
           </p>
           <ul
@@ -73,7 +89,7 @@ export function RegistrationCallout() {
           >
             {benefits.map(({ icon: Icon, label }) => (
               <li key={label} className="flex min-w-0 items-center gap-2.5 text-sm font-bold">
-                <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-black text-[#ffc400]">
+                <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-stone-950 text-amber-300">
                   <Icon className="size-4" strokeWidth={2.25} aria-hidden="true" />
                 </span>
                 <span className="leading-snug">{label}</span>
@@ -82,226 +98,283 @@ export function RegistrationCallout() {
           </ul>
         </div>
 
-        <div className="mx-auto mt-9 max-w-3xl text-center">
-          <p className="inline-flex items-center gap-2 rounded-full bg-black/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#ffc400]">
-            <Sparkles className="size-4" aria-hidden="true" />
-            Inscrição
-          </p>
-          <h2
-            id="registration-callout-title"
-            className="mt-4 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl"
-          >
-            Faça agora sua inscrição
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-black/70">
-            Escolha a opção que combina com você. No formulário, seu coro indicará quais modalidades
-            estão disponíveis.
-          </p>
-        </div>
-
-        <div className="mt-8 w-full rounded-3xl border border-black/90 bg-[#11100e] p-5 text-white shadow-[0_18px_40px_rgba(0,0,0,0.16)] sm:p-8 lg:p-10">
-          <div className="flex flex-col gap-2 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#ffc400]">
-                Formas de inscrição
-              </p>
-              <h3 className="mt-2 font-display text-2xl font-bold sm:text-3xl">
-                Como você deseja participar?
-              </h3>
-            </div>
-            <p className="text-sm text-white/60">Selecione uma opção para comparar.</p>
-          </div>
-
-          <section
-            aria-label="Sorteio especial para inscrições até 30 de setembro"
-            className="mt-7 overflow-hidden rounded-2xl border border-[#ffc400]/40 bg-[linear-gradient(135deg,#fff8dc_0%,#ffffff_48%,#f5c94e_100%)] text-black shadow-[0_16px_36px_rgba(0,0,0,0.2)]"
-          >
-            <div className="grid items-center gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)] md:p-8">
-              <div className="text-center md:text-left">
-                <p className="inline-flex items-center gap-2 rounded-full bg-black px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-[#ffc400]">
-                  <Gift className="size-4" aria-hidden="true" />
-                  Sorteio especial
-                </p>
-                <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
-                  Inscreva-se até 30/09 e concorra aos dois livros
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-black/65 sm:text-base">
-                  Um ganhador levará os títulos{" "}
-                  <strong>Canto Gregoriano — Teoria e prática na Liturgia</strong> e{" "}
-                  <strong>Cristo, nossa esperança — Caderno de Partituras</strong>.
-                </p>
-              </div>
-
-              <div
-                className="grid grid-cols-2 items-end gap-3 sm:gap-5"
-                aria-label="Livros do sorteio"
-              >
-                <img
-                  src="/giveaway/canto-gregoriano.jpg"
-                  alt="Capa do livro Canto Gregoriano — Teoria e prática na Liturgia"
-                  loading="lazy"
-                  decoding="async"
-                  className="mx-auto max-h-56 w-full rounded-md object-contain shadow-[0_12px_24px_rgba(0,0,0,0.24)] md:max-h-64"
-                />
-                <img
-                  src="/giveaway/cristo-nossa-esperanca.jpg"
-                  alt="Capa do livro Cristo, nossa esperança — Caderno de Partituras"
-                  loading="lazy"
-                  decoding="async"
-                  className="mx-auto max-h-56 w-full rounded-md object-contain shadow-[0_12px_24px_rgba(0,0,0,0.24)] md:max-h-64"
-                />
-              </div>
-            </div>
-          </section>
-
+        <section
+          aria-label="Sorteio especial para inscrições até 30 de setembro"
+          className="relative mt-8 overflow-hidden rounded-2xl border border-[#d4af37]/40 bg-[#fffdf9]/95 p-5 shadow-xl shadow-amber-950/10 backdrop-blur-md sm:p-7"
+        >
           <div
-            role="radiogroup"
-            aria-label="Opções de inscrição"
-            className="mt-7 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2"
+            aria-hidden="true"
+            className="absolute -bottom-20 -right-20 size-56 rounded-full bg-amber-400/15 blur-3xl"
+          />
+          <div className="relative z-10 flex flex-col items-center justify-between gap-6 lg:flex-row">
+            <div className="flex-1 text-center lg:text-left">
+              <p className="inline-flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">
+                <Gift className="size-3.5" aria-hidden="true" />
+                Sorteio especial
+              </p>
+              <h3 className="mt-3 font-display text-xl font-bold tracking-normal text-stone-900 sm:text-2xl">
+                Inscreva-se até{" "}
+                <span className="text-amber-700 underline decoration-amber-700/40 underline-offset-4">
+                  30/09
+                </span>{" "}
+                e concorra aos dois livros exclusivos
+              </h3>
+              <p className="mt-2 max-w-xl text-xs leading-relaxed text-stone-600 sm:text-sm">
+                Um participante contemplado levará para casa as edições comemorativas:{" "}
+                <strong className="font-semibold text-amber-800">
+                  Canto Gregoriano — Teoria e Prática na Liturgia
+                </strong>{" "}
+                e{" "}
+                <strong className="font-semibold text-amber-800">
+                  Cristo, nossa esperança — Caderno de Partituras
+                </strong>
+                .
+              </p>
+              <div className="mt-3 flex items-center justify-center gap-4 text-xs text-stone-500 lg:justify-start">
+                <span className="inline-flex items-center gap-1.5 font-medium text-amber-800">
+                  <Clock3 className="size-4" aria-hidden="true" />
+                  Sorteio válido para todas as modalidades
+                </span>
+                <span className="hidden text-stone-400 sm:inline-block" aria-hidden="true">
+                  •
+                </span>
+                <span className="hidden sm:inline-block">Entrega durante o evento</span>
+              </div>
+            </div>
+            <div
+              className="flex shrink-0 items-end justify-center gap-3 py-1 sm:gap-4"
+              aria-label="Livros do sorteio"
+            >
+              <img
+                src="/giveaway/canto-gregoriano.jpg"
+                alt="Capa do livro Canto Gregoriano — Teoria e prática na Liturgia"
+                loading="lazy"
+                decoding="async"
+                className="h-36 w-24 rounded-lg border border-[#d4af37]/50 bg-white object-contain p-1 shadow-md transition-transform duration-300 hover:-translate-y-1 sm:h-40 sm:w-28"
+              />
+              <img
+                src="/giveaway/cristo-nossa-esperanca.jpg"
+                alt="Capa do livro Cristo, nossa esperança — Caderno de Partituras"
+                loading="lazy"
+                decoding="async"
+                className="h-36 w-24 rounded-lg border border-[#d4af37]/50 bg-white object-contain p-1 shadow-md transition-transform duration-300 hover:-translate-y-1 sm:h-40 sm:w-28"
+              />
+            </div>
+          </div>
+        </section>
+
+        <div
+          role="radiogroup"
+          aria-label="Opções de inscrição"
+          className="mt-8 grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:gap-8"
+        >
+          <label
+            htmlFor="registration-option-integral"
+            className={`group flex w-full cursor-pointer ${selectedOption === "integral" ? "" : "opacity-90"}`}
           >
-            <label
-              htmlFor="registration-option-integral"
-              className={`relative flex min-h-[280px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
-                selectedOption === "integral"
-                  ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.16),rgba(255,196,0,0.05))] shadow-[0_0_0_1px_rgba(255,196,0,0.28),0_16px_30px_rgba(0,0,0,0.22)]"
-                  : "border-white/15 bg-white/[0.05] hover:border-[#ffc400]/55 hover:bg-white/[0.07]"
-              }`}
+            <input
+              id="registration-option-integral"
+              type="radio"
+              name="registrationOption"
+              value="integral"
+              aria-label="Inscrição integral"
+              aria-describedby="integral-option-details"
+              checked={selectedOption === "integral"}
+              onChange={() => setSelectedOption("integral")}
+              className="peer sr-only"
+            />
+            <span
+              className={`relative flex min-h-[470px] w-full flex-col justify-between rounded-2xl border-2 bg-[#fffdf9] p-6 shadow-xl shadow-amber-950/10 transition-all focus-within:ring-2 focus-within:ring-stone-950 focus-within:ring-offset-2 sm:p-8 ${selectedOption === "integral" ? "border-amber-500 bg-white shadow-2xl" : "border-amber-200/90 hover:border-amber-400"}`}
             >
-              <input
-                id="registration-option-integral"
-                type="radio"
-                name="registrationOption"
-                value="integral"
-                aria-label="Inscrição integral"
-                aria-describedby="integral-option-details"
-                checked={selectedOption === "integral"}
-                onChange={() => setSelectedOption("integral")}
-                className="peer sr-only"
-              />
-              <span
-                aria-hidden="true"
-                className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
-                  selectedOption === "integral"
-                    ? "border-[#ffc400] bg-[#ffc400] text-black"
-                    : "border-white/30 text-transparent"
-                }`}
-              >
-                <Check className="size-4" strokeWidth={3} />
-              </span>
-              <div className="flex items-center gap-3 pr-8">
-                <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
-                  <CreditCard className="size-5" strokeWidth={2.25} aria-hidden="true" />
+              <span className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
+                  <CreditCard className="size-4 text-amber-600" aria-hidden="true" />
+                  Inscrição integral
                 </span>
-                <p className="text-base font-bold">Inscrição integral</p>
-              </div>
-              <div id="integral-option-details" className="contents">
-                <p className="mt-7 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
+                <span
+                  className="inline-flex size-6 items-center justify-center rounded-full border-2 border-amber-500 bg-amber-400 text-stone-950"
+                  aria-hidden="true"
+                >
+                  <Check className="size-4" strokeWidth={3} />
+                </span>
+              </span>
+              <span id="integral-option-details" className="mt-5 block">
+                <span className="block font-display text-4xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
                   R$ 300,00
-                </p>
-                <p className="mt-4 text-sm leading-relaxed text-white/70">
-                  Pague à vista no Pix ou em até{" "}
-                  <strong className="text-white">5x no cartão</strong>.
-                </p>
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                  <p className="flex items-center gap-2 font-display text-xl font-bold text-white">
-                    <Sparkles className="size-5 text-[#ffc400]" aria-hidden="true" />
-                    Simples e rápido
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-white/65">
-                    Faça o pagamento e confirme sua vaga sem etapas adicionais.
-                  </p>
-                </div>
-                <p className="mt-auto flex items-center gap-2 rounded-xl bg-[#ffc400] px-4 py-3 text-sm font-extrabold text-black">
-                  <Check className="size-5" strokeWidth={3} aria-hidden="true" />
-                  Inscrição confirmada na hora
-                </p>
-              </div>
-            </label>
-
-            <label
-              htmlFor="registration-option-raffles"
-              className={`relative flex min-h-[320px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-[#ffc400] focus-within:ring-offset-2 focus-within:ring-offset-[#11100e] sm:p-6 ${
-                selectedOption === "raffles"
-                  ? "border-[#ffc400] bg-[linear-gradient(145deg,rgba(255,196,0,0.2),rgba(255,196,0,0.07))] shadow-[0_0_0_1px_rgba(255,196,0,0.32),0_16px_30px_rgba(0,0,0,0.22)]"
-                  : "border-[#ffc400]/60 bg-[linear-gradient(145deg,rgba(255,196,0,0.1),rgba(255,255,255,0.04))] hover:border-[#ffc400]"
-              }`}
-            >
-              <input
-                id="registration-option-raffles"
-                type="radio"
-                name="registrationOption"
-                value="raffles"
-                aria-label="Programa de rifas"
-                aria-describedby="raffle-option-summary"
-                checked={selectedOption === "raffles"}
-                onChange={() => setSelectedOption("raffles")}
-                className="peer sr-only"
-              />
-              <span
-                aria-hidden="true"
-                className={`absolute right-5 top-5 inline-flex size-6 items-center justify-center rounded-full border transition-colors ${
-                  selectedOption === "raffles"
-                    ? "border-[#ffc400] bg-[#ffc400] text-black"
-                    : "border-[#ffc400]/60 text-transparent"
-                }`}
-              >
-                <Check className="size-4" strokeWidth={3} />
-              </span>
-              <div className="flex items-center gap-3 pr-8">
-                <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ffc400] text-black">
-                  <Ticket className="size-5" strokeWidth={2.25} aria-hidden="true" />
                 </span>
-                <p className="text-base font-bold">Programa de rifas</p>
-              </div>
+                <span className="mt-1 block text-sm font-medium text-stone-500">
+                  Pague à vista no Pix ou parcele em até{" "}
+                  <strong className="text-stone-900">5x no cartão</strong>
+                </span>
+                <span className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50 p-3.5">
+                  <Zap className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" />
+                  <span>
+                    <span className="block text-xs font-bold uppercase tracking-wider text-amber-800">
+                      Simples e Imediato
+                    </span>
+                    <span className="mt-0.5 block text-xs text-stone-600">
+                      Faça o pagamento online e confirme sua vaga de forma automática, sem tarefas
+                      adicionais.
+                    </span>
+                  </span>
+                </span>
+                <span className="my-6 block border-t border-amber-100" />
+                <span className="block space-y-3 text-xs text-stone-700 sm:text-sm">
+                  {[
+                    "Inscrição confirmada na hora via confirmação instantânea",
+                    "Acesso a todas as sessões formativas e ensaios gerais",
+                    "Caderno oficial de partituras e materiais em PDF",
+                    "Certificado digital com carga horária reconhecida",
+                  ].map((benefit) => (
+                    <span key={benefit} className="flex items-start gap-2.5">
+                      <Check
+                        className="mt-0.5 size-4 shrink-0 text-amber-700"
+                        strokeWidth={3}
+                        aria-hidden="true"
+                      />
+                      <span>{benefit}</span>
+                    </span>
+                  ))}
+                </span>
+              </span>
+              <span className="mt-6 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
+                <Check className="size-4 text-emerald-600" aria-hidden="true" />
+                Inscrição confirmada na hora
+              </span>
+            </span>
+          </label>
 
-              <div className="contents">
-                <p
+          <label
+            htmlFor="registration-option-raffles"
+            className={`group flex w-full cursor-pointer ${selectedOption === "raffles" ? "" : "opacity-90"}`}
+          >
+            <input
+              id="registration-option-raffles"
+              type="radio"
+              name="registrationOption"
+              value="raffles"
+              aria-label="Programa de rifas"
+              aria-describedby="raffle-option-summary"
+              checked={selectedOption === "raffles"}
+              onChange={() => setSelectedOption("raffles")}
+              className="peer sr-only"
+            />
+            <span
+              className={`relative flex min-h-[470px] w-full flex-col justify-between rounded-2xl border-2 bg-[#fffdf9] p-6 shadow-xl shadow-amber-950/10 transition-all focus-within:ring-2 focus-within:ring-stone-950 focus-within:ring-offset-2 sm:p-8 ${selectedOption === "raffles" ? "border-amber-500 bg-white shadow-2xl" : "border-amber-200/90 hover:border-amber-400"}`}
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-bold tracking-wider text-amber-800">
+                  <Ticket className="size-4 text-amber-600" aria-hidden="true" />
+                  Programa de rifas
+                </span>
+                <span
+                  className={`inline-flex size-6 items-center justify-center rounded-full border-2 transition-colors ${selectedOption === "raffles" ? "border-amber-500 bg-amber-400 text-stone-950" : "border-stone-300 text-transparent"}`}
+                  aria-hidden="true"
+                >
+                  <Check className="size-4" strokeWidth={3} />
+                </span>
+              </span>
+              <span className="mt-5 block">
+                <span
                   id="raffle-option-summary"
-                  className="mt-7 max-w-4xl font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl"
+                  className="block font-display text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl"
                 >
                   R$ 100,00 (Agora) + R$ 250,00 até o dia 30/10
-                </p>
-                <p className="mt-3 text-xs font-semibold text-white/65">
-                  Disponível para coros participantes.
-                </p>
-
+                </span>
+                <span className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <span className="size-1.5 rounded-full bg-amber-500" /> Exclusivo para membros de
+                  coros participantes
+                </span>
+                <span className="my-4 block border-t border-amber-100" />
                 <ol
                   aria-label="Resumo do programa de rifas"
-                  className="mt-5 space-y-2 border-t border-white/10 pt-4"
+                  className="space-y-2.5 text-xs text-stone-700"
                 >
-                  {raffleSummary.map(({ label, description }) => (
-                    <li key={label} className="text-xs leading-relaxed text-white/70">
-                      <strong className="text-white">{label}:</strong> {description}
+                  {raffleSummary.map(({ label, description }, index) => (
+                    <li
+                      key={label}
+                      className="flex items-start gap-2.5 rounded-lg border border-amber-200/60 bg-amber-50/70 p-2.5"
+                    >
+                      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-[11px] font-bold text-amber-800">
+                        {index + 1}
+                      </span>
+                      <span>
+                        <strong className="text-stone-900">{label}:</strong> {description}
+                      </span>
                     </li>
                   ))}
                 </ol>
-
-                <div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/65">
-                  <p>
-                    <strong className="text-white">Condições:</strong> venda mínima de 25 rifas de
-                    R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua
+                <span className="mt-5 block border-t border-amber-100 pt-3 text-[11px] leading-tight text-stone-500">
+                  * A vaga só será homologada definitivamente mediante entrega dos comprovantes ao
+                  regente até 30/10.
+                </span>
+                <span className="mt-3 block space-y-1 text-[11px] leading-tight text-stone-500">
+                  <span className="block">
+                    <strong className="text-stone-800">Condições:</strong> venda mínima de 25 rifas
+                    de R$ 10 e envio dos valores ao regente até 30/10 para subsidiar e confirmar sua
                     inscrição.
-                  </p>
-                  <p>
-                    <strong className="text-white">Venda extra:</strong> solicite blocos adicionais
-                    ao regente. Quem vender mais ganha um Pix de R$ 500.
-                  </p>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          <Button
-            asChild
-            size="lg"
-            className="mt-7 min-h-14 w-full rounded-xl bg-[#ffc400] text-lg font-bold text-black hover:bg-[#ffd336] focus-visible:ring-white"
-          >
-            <Link to="/inscricao">
-              Inscrever-se agora
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </Link>
-          </Button>
+                  </span>
+                  <span className="block">
+                    <strong className="text-stone-800">Venda extra:</strong> solicite blocos
+                    adicionais ao regente. Quem vender mais ganha um Pix de R$ 500.
+                  </span>
+                </span>
+              </span>
+            </span>
+          </label>
         </div>
+
+        <section
+          aria-label="Resumo do plano selecionado"
+          className="relative mt-8 overflow-hidden rounded-2xl border border-[#d4af37]/40 bg-[#fffdf9]/95 p-6 shadow-2xl shadow-amber-950/15 backdrop-blur-md sm:p-8"
+        >
+          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+            <div className="text-center md:text-left">
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
+                Resumo do plano selecionado
+              </span>
+              <div className="mt-1 flex items-center justify-center gap-2 md:justify-start">
+                <h3 className="text-lg font-bold text-stone-900 sm:text-xl">
+                  {isRaffles ? "Programa de rifas" : "Inscrição integral"}
+                </h3>
+                <span className="rounded-md border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+                  {isRaffles ? "Pré-reserva" : "Vaga garantida"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-stone-600 sm:text-sm">
+                {isRaffles
+                  ? "R$ 100,00 de entrada agora e o saldo de R$ 250,00 através da venda de rifas até 30/10."
+                  : "Acesso irrestrito com pagamento único de R$ 300,00 ou até 5x no cartão de crédito."}
+              </p>
+            </div>
+            <Button
+              asChild
+              size="lg"
+              className="min-h-14 w-full rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 px-8 text-base font-extrabold tracking-wide text-stone-950 shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-500 sm:w-auto sm:min-w-[260px] sm:text-lg"
+            >
+              <Link to="/inscricao">
+                Inscrever-se agora
+                <ArrowRight className="size-5" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 border-t border-amber-200/80 pt-5 text-xs text-stone-600 md:justify-between">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-emerald-600" aria-hidden="true" />
+              <span className="font-medium text-stone-800">Ambiente de pagamento 100% seguro</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <Zap className="size-4 text-amber-700" aria-hidden="true" />
+              <span className="font-medium text-stone-800">Pix com aprovação imediata</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <MessageCircle className="size-4 text-amber-800" aria-hidden="true" />
+              <span className="font-medium text-stone-800">
+                Dúvidas? Suporte no WhatsApp da coordenação
+              </span>
+            </span>
+          </div>
+        </section>
       </div>
     </section>
   );
