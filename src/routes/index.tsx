@@ -400,44 +400,21 @@ function AboutSection() {
           </h2>
           <div className="mx-auto mt-5 max-w-3xl space-y-4 text-left text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             <p>
-              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará nasceu do desejo de
-              fortalecer a música litúrgica e promover a comunhão entre os músicos que, nas
-              diversas dioceses do Ceará, colocam seus dons a serviço da liturgia.
+              O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará foi idealizado por Dom
+              Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da Comissão
+              Episcopal para a Liturgia, com o propósito de fortalecer a música litúrgica e promover
+              a comunhão entre os músicos das dioceses cearenses.
             </p>
             <p>
-              A iniciativa partiu de Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e
-              Bispo Referencial da Comissão Episcopal para a Liturgia do Regional Nordeste 1, que
-              incentivou a criação de um espaço dedicado ao encontro, à formação e à integração
-              dos coros diocesanos. A proposta foi idealizada e organizada pelo Pe. Michael Johnny
-              da Silva Souza, que colaborou decisivamente para que esse projeto se tornasse
-              realidade.
+              A primeira edição aconteceu em 2025, em Viçosa do Ceará, e foi organizada pelo Pe.
+              Michael Johnny da Silva Souza. O encontro reuniu regentes, coralistas e instrumentistas
+              em momentos de formação, partilha, fraternidade e integração.
             </p>
             <p>
-              A primeira edição aconteceu em 2025, na cidade de Viçosa do Ceará, reunindo
-              regentes, coralistas e instrumentistas das dioceses do Ceará. O encontro foi
-              promovido pela Comissão Episcopal para a Liturgia do Regional Nordeste 1 e
-              proporcionou aos participantes uma rica experiência de formação, partilha,
-              fraternidade e convivência.
-            </p>
-            <p>
-              Mais do que um encontro de músicos, a iniciativa tornou-se um espaço de
-              aprofundamento eclesial e formativo, favorecendo o conhecimento e a reflexão sobre
-              aspectos da música sacra e da música litúrgica, bem como sobre a missão daqueles que
-              exercem o ministério do canto e da música nas celebrações. Foi também uma
-              oportunidade para estreitar laços, compartilhar experiências e reconhecer a riqueza
-              dos diferentes coros que servem à Igreja no Ceará.
-            </p>
-            <p>
-              Em 2026, essa caminhada de comunhão e formação tem continuidade com a realização do
-              II Encontro de Coros Diocesanos do Regional Nordeste 1, que tem como sede a Diocese
-              de Quixadá. A segunda edição reafirma o compromisso de promover a formação dos
-              músicos, fortalecer a integração entre os coros das dioceses e valorizar a música
-              como parte essencial da ação litúrgica e como instrumento de evangelização.
-            </p>
-            <p>
-              De Viçosa do Ceará a Quixadá, o Encontro de Coros segue construindo uma história de
-              fé, música, formação, fraternidade e comunhão, fazendo ressoar, através da
-              diversidade de vozes, a unidade da Igreja presente nas dioceses do Ceará.
+              Em 2026, a caminhada continua com o II Encontro de Coros Diocesanos, sediado pela
+              Diocese de Quixadá. A nova edição reafirma o compromisso com a formação dos músicos,
+              a união dos coros e a valorização da música como parte essencial da liturgia e
+              instrumento de evangelização.
             </p>
           </div>
         </div>

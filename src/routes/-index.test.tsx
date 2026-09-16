@@ -519,6 +519,29 @@ describe("landing page hero", () => {
     expect(quotation).toHaveClass("w-fit");
     expect(quotation).not.toHaveClass("w-full");
   });
+
+  it("presents the approved history of the gathering", () => {
+    const IndexPage = Route.options.component!;
+    render(<IndexPage />);
+
+    const about = document.querySelector<HTMLElement>("#sobre");
+    expect(about).not.toBeNull();
+    expect(
+      within(about!).getByText(
+        "O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará foi idealizado por Dom Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da Comissão Episcopal para a Liturgia, com o propósito de fortalecer a música litúrgica e promover a comunhão entre os músicos das dioceses cearenses.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(about!).getByText(
+        "A primeira edição aconteceu em 2025, em Viçosa do Ceará, e foi organizada pelo Pe. Michael Johnny da Silva Souza. O encontro reuniu regentes, coralistas e instrumentistas em momentos de formação, partilha, fraternidade e integração.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(about!).getByText(
+        "Em 2026, a caminhada continua com o II Encontro de Coros Diocesanos, sediado pela Diocese de Quixadá. A nova edição reafirma o compromisso com a formação dos músicos, a união dos coros e a valorização da música como parte essencial da liturgia e instrumento de evangelização.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("Quixadá city spots", () => {
