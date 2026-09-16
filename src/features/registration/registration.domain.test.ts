@@ -26,6 +26,7 @@ const baseInput = {
   diocese: "Diocese de Quixadá" as const,
   choirId: "11111111-1111-4111-8111-111111111111",
   otherChoirName: null,
+  musicalProfile: "coralista" as const,
   voicePart: "soprano" as const,
   photo: { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" },
   raffleChoice: "full_price" as const,
@@ -157,6 +158,33 @@ describe("registration domain", () => {
     expect(registrationSchema.safeParse({ ...baseInput, voicePart: "baritono" }).success).toBe(
       false,
     );
+  });
+
+  it("requires a voice part only for coralistas", () => {
+    for (const musicalProfile of ["regente", "instrumentista"] as const) {
+      expect(
+        registrationSchema.safeParse({
+          ...baseInput,
+          musicalProfile,
+          voicePart: null,
+        }).success,
+      ).toBe(true);
+    }
+
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        musicalProfile: "coralista",
+        voicePart: null,
+      }),
+    ).toMatchObject({ success: false, error: { issues: [{ path: ["voicePart"] }] } });
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        musicalProfile: "regente",
+        voicePart: "soprano",
+      }),
+    ).toMatchObject({ success: false, error: { issues: [{ path: ["voicePart"] }] } });
   });
 
   it("requires a supported participant photo", () => {

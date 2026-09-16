@@ -49,12 +49,14 @@ import {
   birthDateSchema,
   cpfSchema,
   dioceseOptions,
+  musicalProfileOptions,
   registrationLookupSchema,
   registrationSchema,
   voicePartOptions,
   type RegistrationInput,
   type RegistrationPhotoInput,
   type Diocese,
+  type MusicalProfile,
   type VoicePart,
 } from "./registration.domain";
 import type { RegistrationLookupResult } from "./registration.domain";
@@ -81,12 +83,14 @@ type RegistrationForm = Omit<
   | "displayedQuote"
   | "photo"
   | "raffleChoice"
+  | "musicalProfile"
   | "voicePart"
 > & {
   choirId: string;
   otherChoirName: string;
   diocese: "" | Diocese;
   raffleChoice: "" | RaffleChoice;
+  musicalProfile: MusicalProfile | "";
   voicePart: VoicePart | "";
 };
 
@@ -140,6 +144,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   choirId: "",
   otherChoirName: "",
   raffleChoice: "",
+  musicalProfile: "",
   voicePart: "",
 };
 
@@ -150,7 +155,7 @@ const inputClassName =
 
 const stepFields: Record<1 | 2 | 3, RegistrationFormField[]> = {
   1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "diocese", "photo"],
-  2: ["choirId", "otherChoirName", "voicePart"],
+  2: ["choirId", "otherChoirName", "musicalProfile", "voicePart"],
   3: ["raffleChoice"],
 };
 
@@ -465,6 +470,19 @@ export function RegistrationSection({
     }));
   };
 
+  const handleMusicalProfileChange = (musicalProfile: MusicalProfile) => {
+    setForm((previous) => ({
+      ...previous,
+      musicalProfile,
+      voicePart: musicalProfile === "coralista" ? previous.voicePart : "",
+    }));
+    setErrors((previous) => ({
+      ...previous,
+      musicalProfile: undefined,
+      voicePart: undefined,
+    }));
+  };
+
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }));
     if (field === "cpf") {
@@ -502,6 +520,8 @@ export function RegistrationSection({
     try {
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
+        const savedMusicalProfile =
+          result.musicalProfile ?? (result.voicePart ? ("coralista" as const) : null);
         const savedChoirId =
           result.choirId && configuration?.choirs.some((choir) => choir.id === result.choirId)
             ? result.choirId
@@ -523,7 +543,11 @@ export function RegistrationSection({
             previous.choirId === choirIdAtLookupStart
               ? (result.otherChoirName ?? "")
               : previous.otherChoirName,
-          voicePart: result.voicePart ?? previous.voicePart,
+          musicalProfile: savedMusicalProfile ?? previous.musicalProfile,
+          voicePart:
+            savedMusicalProfile === "regente" || savedMusicalProfile === "instrumentista"
+              ? ""
+              : (result.voicePart ?? previous.voicePart),
         }));
         setLookupState("found");
       } else {
@@ -580,7 +604,10 @@ export function RegistrationSection({
       if (isOtherChoir && form.otherChoirName.trim().length < 2) {
         nextErrors.otherChoirName = "Informe o nome do coro.";
       }
-      if (!form.voicePart) nextErrors.voicePart = "Selecione seu perfil musical.";
+      if (!form.musicalProfile) nextErrors.musicalProfile = "Selecione seu perfil musical.";
+      if (form.musicalProfile === "coralista" && !form.voicePart) {
+        nextErrors.voicePart = "Selecione seu naipe vocal.";
+      }
       if (step === 3 && selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
         nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
       }
@@ -648,6 +675,7 @@ export function RegistrationSection({
       ...form,
       choirId: isOtherChoir ? null : form.choirId,
       otherChoirName: isOtherChoir ? form.otherChoirName : null,
+      voicePart: form.musicalProfile === "coralista" ? form.voicePart || null : null,
       photo,
       displayedQuote,
     });
@@ -1078,6 +1106,68 @@ export function RegistrationSection({
                     </legend>
                     <div className="grid gap-5">
                       <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
+                        <div className="registration-voice-heading">
+                          <Music2 className="size-4" aria-hidden="true" />
+                          <span id="musicalProfile-label" className="font-semibold">
+                            Perfil musical
+                          </span>
+                        </div>
+                        <div
+                          id="musicalProfile"
+                          role="radiogroup"
+                          aria-labelledby="musicalProfile-label"
+                          aria-required="true"
+                          aria-invalid={Boolean(errors.musicalProfile)}
+                          aria-describedby={
+                            errors.musicalProfile ? "musicalProfile-error" : undefined
+                          }
+                          tabIndex={-1}
+                          className="registration-profile-list mt-3"
+                        >
+                          {musicalProfileOptions.map((option) => {
+                            const selected = form.musicalProfile === option.value;
+                            return (
+                              <label
+                                key={option.value}
+                                data-surface="clear"
+                                className={`registration-profile-option ${
+                                  selected ? "registration-profile-option--selected" : ""
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="musicalProfile"
+                                  value={option.value}
+                                  aria-label={option.label}
+                                  checked={selected}
+                                  onChange={() => handleMusicalProfileChange(option.value)}
+                                  className="sr-only"
+                                />
+                                <span>
+                                  <span className="block text-sm font-bold text-registration-ink">
+                                    {option.label}
+                                  </span>
+                                  <span className="mt-0.5 block text-xs text-registration-muted">
+                                    {option.value === "coralista"
+                                      ? "Escolha seu naipe vocal em seguida."
+                                      : "ParticipaÃ§Ã£o sem seleÃ§Ã£o de naipe vocal."}
+                                  </span>
+                                </span>
+                                <span className="registration-radio-indicator" aria-hidden="true">
+                                  {selected && <Check className="size-3.5" />}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {errors.musicalProfile && (
+                          <p id="musicalProfile-error" className="text-sm text-destructive">
+                            {errors.musicalProfile}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
                         <div className="flex items-center justify-between gap-3">
                           <p id="choir-label" className="font-semibold">
                             <span aria-hidden="true">Selecione o seu Coro</span>
@@ -1127,7 +1217,8 @@ export function RegistrationSection({
                             aria-invalid={Boolean(errors.choirId)}
                             aria-describedby={errors.choirId ? "choirId-error" : undefined}
                             tabIndex={-1}
-                            className="grid gap-3 sm:grid-cols-2"
+                            data-selection-layout="list"
+                            className="registration-choir-list"
                           >
                             {filteredChoirs.map((choir) => {
                               const selected = form.choirId === choir.id;
@@ -1135,7 +1226,7 @@ export function RegistrationSection({
                                 <label
                                   key={choir.id}
                                   data-surface="clear"
-                                  className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                  className={`registration-choir-option flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                     selected
                                       ? "border-amber bg-amber/10 shadow-sm"
                                       : "border-registration-line bg-white hover:border-amber/60"
@@ -1167,13 +1258,13 @@ export function RegistrationSection({
                               );
                             })}
                             {filteredChoirs.length === 0 && (
-                              <p className="rounded-xl border border-dashed border-registration-line bg-registration-subtle p-4 text-sm text-registration-muted sm:col-span-2">
+                              <p className="rounded-xl border border-dashed border-registration-line bg-registration-subtle p-4 text-sm text-registration-muted">
                                 Nenhum coro encontrado. Você pode selecionar “Outros” e informar o nome manualmente.
                               </p>
                             )}
                             <label
                               data-surface="clear"
-                              className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                              className={`registration-choir-option flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                 isOtherChoir
                                   ? "border-amber bg-amber/10 shadow-sm"
                                   : "border-registration-line bg-white hover:border-amber/60"
@@ -1366,7 +1457,8 @@ export function RegistrationSection({
                         </div>
                       )}
 
-                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
+                      {currentStep === 2 && form.musicalProfile === "coralista" && (
+                        <div className="space-y-1.5">
                         <div className="registration-voice-heading">
                           <Music2 className="size-4" aria-hidden="true" />
                           <span id="voicePart-label" className="font-semibold">
@@ -1431,6 +1523,7 @@ export function RegistrationSection({
                           </p>
                         )}
                       </div>
+                      )}
                     </div>
                   </fieldset>
                 </div>
@@ -1486,9 +1579,18 @@ export function RegistrationSection({
                         ["Coro", displayedChoir?.name ?? ""],
                         [
                           "Perfil musical",
-                          voicePartOptions.find((option) => option.value === form.voicePart)
+                          musicalProfileOptions.find((option) => option.value === form.musicalProfile)
                             ?.label ?? "",
                         ],
+                        ...(form.musicalProfile === "coralista"
+                          ? [
+                              [
+                                "Naipe vocal",
+                                voicePartOptions.find((option) => option.value === form.voicePart)
+                                  ?.label ?? "",
+                              ],
+                            ]
+                          : []),
                         [
                           "Programa de rifas",
                           form.raffleChoice === "participate"

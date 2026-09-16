@@ -610,6 +610,7 @@ export type Database = {
           choir_id: string | null
           choir_name: string
           other_choir_name: string | null
+          musical_profile: string | null
           city: string | null
           cpf: string | null
           created_at: string
@@ -654,6 +655,7 @@ export type Database = {
           choir_id?: string | null
           choir_name: string
           other_choir_name?: string | null
+          musical_profile?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string
@@ -698,6 +700,7 @@ export type Database = {
           choir_id?: string | null
           choir_name?: string
           other_choir_name?: string | null
+          musical_profile?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string

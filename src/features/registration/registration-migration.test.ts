@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -20,6 +20,14 @@ const otherChoirMigration = readFileSync(
 )
   .toLowerCase()
   .replace(/\s+/g, " ");
+const musicalProfileMigrationFile = readdirSync(resolve(process.cwd(), "supabase/migrations")).find(
+  (file) => file.endsWith("_add_registration_musical_profile.sql"),
+);
+const musicalProfileMigration = musicalProfileMigrationFile
+  ? readFileSync(resolve(process.cwd(), "supabase/migrations", musicalProfileMigrationFile), "utf8")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+  : "";
 
 describe("simplified registration migration", () => {
   it("deletes only registration rows before requiring the new profile fields", () => {
@@ -57,5 +65,14 @@ describe("simplified registration migration", () => {
     expect(otherChoirMigration).toContain("drop constraint if exists registrations_pricing_snapshot_check");
     expect(otherChoirMigration).toContain("pricing_type is null");
     expect(otherChoirMigration).not.toContain("insert into public.choirs");
+  });
+
+  it("stores the new participant musical profile without invalidating legacy rows", () => {
+    expect(musicalProfileMigration).toContain("add column if not exists musical_profile text");
+    expect(musicalProfileMigration).toContain("registrations_musical_profile_check");
+    expect(musicalProfileMigration).toContain("'regente'");
+    expect(musicalProfileMigration).toContain("'instrumentista'");
+    expect(musicalProfileMigration).toContain("'coralista'");
+    expect(musicalProfileMigration).toContain("musical_profile is null");
   });
 });

@@ -58,6 +58,7 @@ const legacyRow: RegistrationDatabaseRow = {
   observations: null,
   order_nsu: null,
   receipt_url: null,
+  musical_profile: null,
   voice_part: null,
 };
 

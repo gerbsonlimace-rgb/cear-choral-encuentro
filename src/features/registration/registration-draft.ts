@@ -4,9 +4,11 @@ import { raffleChoiceSchema, type RaffleChoice } from "@/features/choirs/choir-p
 import {
   MAX_REGISTRATION_PHOTO_BYTES,
   dioceseSchema,
+  musicalProfileSchema,
   voicePartSchema,
   type RegistrationPhotoInput,
   type Diocese,
+  type MusicalProfile,
   type VoicePart,
 } from "./registration.domain";
 
@@ -24,6 +26,7 @@ export type RegistrationDraftForm = {
   diocese: "" | Diocese;
   choirId: string;
   otherChoirName: string;
+  musicalProfile: "" | MusicalProfile;
   raffleChoice: "" | RaffleChoice;
   voicePart: "" | VoicePart;
 };
@@ -51,6 +54,7 @@ const draftSchema = z
         diocese: z.union([z.literal(""), dioceseSchema]).default(""),
         choirId: z.string().max(100),
         otherChoirName: z.string().max(120).default(""),
+        musicalProfile: z.union([z.literal(""), musicalProfileSchema]).default(""),
         raffleChoice: z.union([z.literal(""), raffleChoiceSchema]),
         voicePart: z.union([z.literal(""), voicePartSchema]),
       })
@@ -91,8 +95,10 @@ export function loadRegistrationDraft(now = Date.now()): RegistrationDraft | nul
     }
 
     const { form, photo, photoFileName, birthDateInput } = parsed.data;
+    const musicalProfile =
+      form.musicalProfile || (form.voicePart ? ("coralista" as const) : "");
     return {
-      form,
+      form: { ...form, musicalProfile },
       photo,
       photoFileName,
       birthDateInput,

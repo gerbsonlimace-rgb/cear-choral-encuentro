@@ -20,6 +20,7 @@ const draft: RegistrationDraft = {
     diocese: "Diocese de Quixadá",
     choirId: "11111111-1111-4111-8111-111111111111",
     otherChoirName: "",
+    musicalProfile: "coralista",
     raffleChoice: "participate",
     voicePart: "soprano",
   },
@@ -51,6 +52,16 @@ describe("registration draft", () => {
     expect(loadRegistrationDraft(savedAt + 1)).toEqual(otherDraft);
   });
 
+  it("migrates an older draft with a voice part to the coralista profile", () => {
+    const { musicalProfile: _musicalProfile, ...legacyForm } = draft.form;
+    window.localStorage.setItem(
+      REGISTRATION_DRAFT_STORAGE_KEY,
+      JSON.stringify({ version: 1, savedAt, ...draft, form: legacyForm }),
+    );
+
+    expect(loadRegistrationDraft(savedAt + 1)?.form.musicalProfile).toBe("coralista");
+  });
+
   it("preserves a partially typed birth date even when it is the only entered field", () => {
     const partialBirthDateDraft: RegistrationDraft = {
       form: {
@@ -63,6 +74,7 @@ describe("registration draft", () => {
         diocese: "",
         choirId: "",
         otherChoirName: "",
+        musicalProfile: "",
         raffleChoice: "",
         voicePart: "",
       },

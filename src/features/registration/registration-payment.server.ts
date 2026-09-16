@@ -18,11 +18,13 @@ import {
   calculateOrderAmountCents,
   dioceseSchema,
   MAX_REGISTRATION_PHOTO_BYTES,
+  musicalProfileSchema,
   type PaymentLookup,
   type RegistrationInput,
   type RegistrationLookupResult,
   type RegistrationPhotoInput,
   type RegistrationResumeInput,
+  voicePartSchema,
 } from "./registration.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
@@ -717,7 +719,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     const { data, error } = await supabaseAdmin
       .from("registrations")
       .select(
-        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,voice_part,photo_path,payment_status",
+        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,musical_profile,voice_part,photo_path,payment_status",
       )
       .eq("cpf", cpf)
       .eq("birth_date", birthDate)
@@ -745,16 +747,12 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       choirId: typeof data.choir_id === "string" ? data.choir_id : null,
       otherChoirName:
         typeof data.other_choir_name === "string" ? data.other_choir_name : null,
-      voicePart: (
-        data.voice_part === "soprano" ||
-        data.voice_part === "contralto" ||
-        data.voice_part === "tenor" ||
-        data.voice_part === "baixo" ||
-        data.voice_part === "nao_sei_informar"
-          ? data.voice_part
-          : null) as RegistrationLookupResult extends { status: "found"; voicePart: infer T }
-          ? T
-          : never,
+      musicalProfile: musicalProfileSchema.safeParse(data.musical_profile).success
+        ? musicalProfileSchema.parse(data.musical_profile)
+        : null,
+      voicePart: voicePartSchema.safeParse(data.voice_part).success
+        ? voicePartSchema.parse(data.voice_part)
+        : null,
       hasPhoto: typeof data.photo_path === "string" && data.photo_path.length > 0,
       paymentStatus: data.payment_status as "legacy" | "pending" | "paid",
     };
@@ -772,6 +770,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         badge_name: input.badgeName,
         cpf: input.cpf,
         photo_path: input.photoPath,
+        musical_profile: input.musicalProfile,
         voice_part: input.voicePart,
         phone: input.phone,
         birth_date: input.birthDate,
@@ -834,6 +833,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
           badge_name: input.badgeName,
           cpf: input.cpf,
           photo_path: input.photoPath,
+          musical_profile: input.musicalProfile,
           voice_part: input.voicePart,
           phone: input.phone,
           birth_date: input.birthDate,

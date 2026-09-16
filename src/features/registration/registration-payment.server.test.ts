@@ -89,6 +89,7 @@ const baseInput: RegistrationInput = {
   diocese: "Diocese de Quixadá",
   choirId,
   otherChoirName: null,
+  musicalProfile: "coralista",
   voicePart: "soprano",
   photo: registrationPhoto,
   raffleChoice: "participate",
@@ -387,6 +388,7 @@ describe("registration payment service", () => {
       email: "maria@example.com",
       phone: "88999999999",
       choirId,
+      musicalProfile: "coralista",
       voicePart: "soprano",
       hasPhoto: true,
       paymentStatus: "pending",
@@ -1044,6 +1046,7 @@ describe("Supabase registration repository", () => {
           badge_name: "Maria Silva",
           cpf: "52998224725",
           photo_path: registrationPhotoPath,
+          musical_profile: "coralista",
           voice_part: "soprano",
           phone: "85999999999",
           birth_date: "1990-05-20",
@@ -1068,6 +1071,37 @@ describe("Supabase registration repository", () => {
         },
       ],
     ]);
+  });
+
+  it("reads the persisted musical profile and voice part for registration resume", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: {
+            name: "Maria da Silva",
+            badge_name: "Maria Silva",
+            email: "maria@example.com",
+            phone: "85999999999",
+            birth_date: "1990-05-20",
+            diocese: "Diocese de QuixadÃ¡",
+            choir_id: choirId,
+            other_choir_name: null,
+            musical_profile: "coralista",
+            voice_part: "soprano",
+            photo_path: registrationPhotoPath,
+            payment_status: "pending",
+          },
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findRegistrationByIdentity(cpf, "1990-05-20")).resolves.toMatchObject({
+      status: "found",
+      musicalProfile: "coralista",
+      voicePart: "soprano",
+    });
   });
 
   it("carries the persisted public-registration CPF through paid provisioning without returning it", async () => {

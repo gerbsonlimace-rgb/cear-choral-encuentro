@@ -40,6 +40,15 @@ export const voicePartOptions: ReadonlyArray<{ value: VoicePart; label: string }
   { value: "nao_sei_informar", label: "Não sei informar" },
 ];
 
+const musicalProfileValues = ["regente", "instrumentista", "coralista"] as const;
+export const musicalProfileSchema = z.enum(musicalProfileValues);
+export type MusicalProfile = z.infer<typeof musicalProfileSchema>;
+export const musicalProfileOptions: ReadonlyArray<{ value: MusicalProfile; label: string }> = [
+  { value: "regente", label: "Regente" },
+  { value: "instrumentista", label: "Instrumentista" },
+  { value: "coralista", label: "Coralista" },
+];
+
 const fortalezaDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Fortaleza",
   year: "numeric",
@@ -105,6 +114,7 @@ export type RegistrationLookupResult =
       choirId: string | null;
       otherChoirName?: string | null;
       diocese?: Diocese | null;
+      musicalProfile: MusicalProfile | null;
       voicePart: VoicePart | null;
       hasPhoto: boolean;
       paymentStatus: "legacy" | "pending" | "paid";
@@ -138,7 +148,8 @@ export const registrationSchema = z
     diocese: dioceseSchema,
     choirId: z.string().uuid("Selecione um coro válido.").nullable(),
     otherChoirName: z.string().trim().min(2, "Informe o nome do coro.").max(120).nullable(),
-    voicePart: voicePartSchema,
+    musicalProfile: musicalProfileSchema,
+    voicePart: voicePartSchema.nullable(),
     photo: registrationPhotoSchema,
     raffleChoice: raffleChoiceSchema,
     displayedQuote: displayedQuoteSchema,
@@ -152,6 +163,21 @@ export const registrationSchema = z
         code: "custom",
         path: [hasConfiguredChoir ? "otherChoirName" : "choirId"],
         message: "Selecione um coro ou informe outro coro.",
+      });
+    }
+
+    if (value.musicalProfile === "coralista" && value.voicePart === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["voicePart"],
+        message: "Selecione seu naipe vocal.",
+      });
+    }
+    if (value.musicalProfile !== "coralista" && value.voicePart !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["voicePart"],
+        message: "O naipe vocal deve ser informado apenas para Coralista.",
       });
     }
 

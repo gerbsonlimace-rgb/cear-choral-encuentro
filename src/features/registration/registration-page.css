@@ -206,6 +206,48 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.registration-shell .registration-choir-list,
+.registration-shell .registration-profile-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.registration-shell .registration-choir-option,
+.registration-shell .registration-profile-option {
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04);
+}
+
+.registration-shell .registration-profile-option {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  border: 1px solid var(--registration-line);
+  border-radius: 0.875rem;
+  background: var(--registration-white);
+  padding: 0.875rem 1rem;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.registration-shell .registration-profile-option:hover,
+.registration-shell .registration-profile-option:focus-within {
+  border-color: rgba(244, 175, 19, 0.75);
+}
+
+.registration-shell .registration-profile-option--selected {
+  border: 2px solid var(--registration-amber);
+  background: rgba(244, 175, 19, 0.08);
+  box-shadow: 0 8px 20px rgba(244, 175, 19, 0.16);
+}
+
+.registration-shell .registration-profile-option--selected .registration-radio-indicator {
+  border-color: var(--registration-amber);
+  background: var(--registration-amber);
+}
+
 .registration-shell .registration-voice-heading {
   display: flex;
   align-items: center;
