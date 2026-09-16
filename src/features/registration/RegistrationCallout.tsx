@@ -71,7 +71,7 @@ export function RegistrationCallout() {
     <section
       id="inscricao"
       aria-labelledby="registration-callout-title"
-      className="relative isolate scroll-mt-20 overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,#ffd95a_0%,#f6b61f_45%,#cf8205_100%)] px-4 py-8 text-stone-950 sm:px-6 sm:py-10 lg:py-12"
+      className="public-editorial-section public-registration-section relative isolate scroll-mt-20 overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,#ffd95a_0%,#f6b61f_45%,#cf8205_100%)] px-4 py-8 text-stone-950 sm:px-6 sm:py-10 lg:py-12"
     >
       <div
         aria-hidden="true"
@@ -84,27 +84,27 @@ export function RegistrationCallout() {
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-5xl">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+        <div className="public-registration-heading mx-auto flex max-w-3xl flex-col items-center text-center">
           <p className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/90 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.18em] text-amber-900 shadow-sm">
             <span className="size-1.5 rounded-full bg-amber-600" aria-hidden="true" />
             Formas de inscrição
           </p>
           <h2
             id="registration-callout-title"
-            className="mt-3 font-display text-3xl font-extrabold uppercase leading-tight tracking-tight text-stone-950 sm:text-4xl md:text-5xl"
+            className="public-registration-title mt-3 font-display text-3xl font-extrabold uppercase leading-tight tracking-tight text-stone-950 sm:text-4xl md:text-5xl"
           >
             Como você deseja participar?
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-800 sm:text-base">
+          <p className="public-registration-intro mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-800 sm:text-base">
             Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento
             completo, partituras originais e certificado oficial.
           </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
+        <div className="public-registration-options mt-6 grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
           <article
             aria-label="Inscrição Integral"
-            className="relative flex min-h-[21rem] w-full flex-col justify-between overflow-hidden rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-lg shadow-amber-950/10 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-6"
+            className="public-registration-option relative flex min-h-[21rem] w-full flex-col justify-between overflow-hidden rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-lg shadow-amber-950/10 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-6"
           >
             <div className="absolute right-0 top-0 rounded-bl-xl bg-stone-900 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-300">
               <span className="inline-flex items-center gap-1.5">
@@ -120,7 +120,7 @@ export function RegistrationCallout() {
               <div className="mt-4">
                 <div className="flex flex-wrap items-baseline gap-1.5">
                   <span className="text-sm font-semibold text-stone-500">Valor único:</span>
-                  <span className="font-display text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">
+                  <span className="public-registration-price font-display text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">
                     R$ 300,00
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export function RegistrationCallout() {
 
           <article
             aria-label="Programa de Rifas"
-            className="relative flex min-h-[21rem] w-full flex-col justify-between overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-lg shadow-amber-950/10 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-6"
+            className="public-registration-option relative flex min-h-[21rem] w-full flex-col justify-between overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-lg shadow-amber-950/10 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-6"
           >
             <div className="absolute right-0 top-0 rounded-bl-xl bg-amber-100/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-900">
               Apoio comunitário
@@ -167,7 +167,7 @@ export function RegistrationCallout() {
               </span>
               <div className="mt-4">
                 <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                  <span className="font-display text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+                  <span className="public-registration-price font-display text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
                     R$ 100,00
                   </span>
                   <span className="text-xs font-bold uppercase text-stone-500">(Agora)</span>
@@ -245,9 +245,26 @@ export function RegistrationCallout() {
           </article>
         </div>
 
+        <div
+          data-registration-primary-action
+          className="public-registration-primary-action mt-7 flex flex-col items-center gap-2 text-center sm:mt-8"
+        >
+          <Button
+            asChild
+            size="lg"
+            className="min-h-12 rounded-full bg-stone-900 px-8 font-display text-base font-bold text-amber-100 shadow-lg shadow-amber-950/25 hover:bg-stone-800"
+          >
+            <Link to="/inscricao">
+              <Sparkles className="size-4" aria-hidden="true" />
+              Fazer Inscrição
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+
         <section
           aria-label="Benefícios gerais e sorteio especial"
-          className="relative mt-6 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50/95 p-4 shadow-lg shadow-amber-950/10 sm:p-5"
+          className="public-registration-benefits relative mt-7 sm:mt-8"
         >
           <div
             className="absolute -bottom-10 -right-10 size-48 rounded-full bg-amber-300/30 blur-2xl"
@@ -265,7 +282,7 @@ export function RegistrationCallout() {
             </div>
             <ul
               aria-label="Benefícios gerais da inscrição"
-              className="mt-3 grid grid-cols-2 gap-2 text-stone-800 sm:grid-cols-4"
+              className="public-benefits-strip mt-3 grid grid-cols-2 gap-2 text-stone-800 sm:grid-cols-4"
             >
               {benefits.map(({ icon: Icon, label }) => (
                 <li
@@ -283,9 +300,9 @@ export function RegistrationCallout() {
 
           <section
             aria-label="Sorteio especial para inscrições até 30 de setembro"
-            className="relative z-10 mt-5 grid grid-cols-1 items-center gap-4 border-t border-amber-200/80 pt-4 md:grid-cols-12"
+            className="public-giveaway relative z-10 mt-5 grid grid-cols-1 items-center gap-4 border-t border-amber-200/80 pt-4 md:grid-cols-12"
           >
-            <div className="space-y-2 md:col-span-8">
+            <div className="space-y-2 md:col-span-7">
               <p className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-200/80 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-900">
                 <Gift className="size-3" aria-hidden="true" />
                 Sorteio especial
@@ -319,7 +336,7 @@ export function RegistrationCallout() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-col items-center gap-3 pt-1 md:col-span-4 md:pt-0">
+            <div className="public-giveaway-books flex items-center justify-center pt-1 md:col-span-3 md:pt-0">
               <div
                 className="flex items-center justify-center gap-2.5"
                 aria-label="Livros do sorteio"
@@ -339,7 +356,9 @@ export function RegistrationCallout() {
                   className="h-32 w-24 rounded-lg border border-amber-500/50 bg-white object-contain p-1 shadow-md transition-transform duration-300 hover:-translate-y-1 sm:h-36 sm:w-28"
                 />
               </div>
-              <div className="w-full max-w-[15rem] space-y-2 text-center">
+            </div>
+            <div className="public-giveaway-action flex flex-col items-center gap-3 text-center md:col-span-2">
+              <div className="w-full max-w-[15rem] space-y-2">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
                   Inscreva-se agora
                 </p>

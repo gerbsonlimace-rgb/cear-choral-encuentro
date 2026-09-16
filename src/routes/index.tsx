@@ -123,7 +123,10 @@ export const Route = createFileRoute("/")({
 function Index() {
   const programme = Route.useLoaderData();
   return (
-    <div className="public-event-page min-h-screen bg-background">
+    <div
+      className="public-event-page min-h-screen bg-background"
+      data-design-system="sacred-liturgical"
+    >
       <Header />
       <main>
         <HeroSection />
@@ -139,8 +142,24 @@ function Index() {
 }
 function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
-      <div className="container-event flex h-14 items-center justify-end gap-3 px-4 lg:h-[4.5rem] lg:px-0">
+    <header
+      data-public-header="true"
+      className="public-event-header sticky top-0 z-50 w-full border-b border-teal/10 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85"
+    >
+      <div className="container-event flex h-14 items-center justify-between gap-3 px-4 lg:h-[4.5rem] lg:px-0">
+        <a
+          href="#sobre"
+          aria-label="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
+          className="public-event-brand flex min-w-0 shrink items-center"
+        >
+          <img
+            src={logoImage}
+            alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
+            width={605}
+            height={342}
+            className="h-9 w-auto max-w-[11rem] object-contain"
+          />
+        </a>
         <nav
           aria-label="Navegação principal"
           className="hidden items-center gap-6 text-sm font-semibold lg:flex"
@@ -192,13 +211,15 @@ function Header() {
             <SheetContent
               side="right"
               aria-label="Menu principal"
-              className="w-[min(88vw,22rem)] border-teal/10 bg-background px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6"
+              className="w-[min(88vw,22rem)] border-white/10 bg-[#11161f] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 text-white"
             >
               <SheetHeader className="pr-8 text-left">
-                <SheetTitle className="font-display text-xl font-extrabold">
+                <SheetTitle className="font-display text-xl font-extrabold text-white">
                   Menu principal
                 </SheetTitle>
-                <SheetDescription>Explore o encontro ou acesse sua inscrição.</SheetDescription>
+                <SheetDescription className="text-white/65">
+                  Explore o encontro ou acesse sua inscrição.
+                </SheetDescription>
               </SheetHeader>
               <nav aria-label="Navegação mobile" className="mt-6 grid gap-2">
                 {[
@@ -210,18 +231,18 @@ function Header() {
                   <SheetClose key={href} asChild>
                     <a
                       href={href}
-                      className="flex min-h-12 items-center rounded-xl border border-border px-4 text-base font-bold text-foreground transition-colors hover:border-teal hover:bg-teal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                      className="flex min-h-12 items-center rounded-xl border border-white/10 px-4 text-base font-bold text-white transition-colors hover:border-amber hover:bg-amber/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
                     >
                       {label}
                     </a>
                   </SheetClose>
                 ))}
               </nav>
-              <div className="mt-6 border-t border-border pt-5">
+              <div className="mt-6 border-t border-white/10 pt-5">
                 <SheetClose asChild>
                   <Link
                     to="/acessar"
-                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-teal px-4 text-base font-bold text-teal transition-colors hover:bg-teal hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+                    className="flex min-h-12 items-center justify-center rounded-xl border-2 border-amber px-4 text-base font-bold text-amber transition-colors hover:bg-amber hover:text-amber-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
                   >
                     Acessar portal
                   </Link>
@@ -239,7 +260,7 @@ function HeroSection() {
   const heroActions = (
     <div
       data-hero-actions
-      className="order-3 mt-6 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:order-none lg:mt-8"
+      className="public-hero-actions mt-6 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:mt-8 lg:items-start lg:justify-start"
     >
       <Button
         asChild
@@ -266,11 +287,16 @@ function HeroSection() {
 
   return (
     <section
+      data-public-hero
       data-hero-prototype="colunas"
       data-hero-layout="two-columns"
-      className="relative isolate overflow-hidden bg-[#070a08] text-white"
+      className="public-event-hero relative isolate overflow-hidden bg-[#070a08] text-white"
     >
-      <div data-hero-photo-position="full-background" className="absolute inset-0">
+      <div
+        data-hero-photo-position="full-background"
+        data-hero-photo-visibility="visible"
+        className="hero-backdrop absolute inset-0"
+      >
         <img
           src={heroChoirFocusImage}
           alt="Participantes do Encontro de Coros reunidos diante da igreja"
@@ -281,16 +307,16 @@ function HeroSection() {
         />
       </div>
 
-      <div className="absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
+      <div className="hero-color-overlay absolute inset-0 bg-[rgba(3,7,6,0.66)]" />
+      <div className="hero-gradient-overlay absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,6,0.22)_0%,rgba(3,7,6,0.42)_54%,rgba(3,7,6,0.92)_100%)]" />
 
       <div
         data-hero-frame
-        className="relative z-10 mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-[90rem] gap-7 px-5 py-10 sm:min-h-[calc(100svh-3.5rem)] sm:px-8 sm:py-14 lg:min-h-[46rem] lg:grid-cols-[minmax(0,1.12fr)_minmax(22rem,0.88fr)] lg:items-stretch lg:gap-10 lg:px-12 lg:py-16"
+        className="relative z-10 mx-auto grid min-h-0 w-full max-w-[75rem] gap-7 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.12fr)_minmax(18rem,0.88fr)] lg:grid-rows-[1fr_auto] lg:items-center lg:gap-x-12 lg:gap-y-4 lg:px-12 lg:py-16"
       >
         <div
           data-hero-copy
-          className="order-2 flex min-w-0 flex-col justify-center lg:order-1 lg:max-w-[48rem] lg:items-start lg:text-left"
+          className="order-1 flex min-w-0 flex-col justify-center lg:col-start-1 lg:row-start-1 lg:max-w-[48rem] lg:items-start lg:text-left"
         >
           <div>
             <div
@@ -359,46 +385,51 @@ function HeroSection() {
 </span>
             </div>
           </div>
+          {heroActions}
         </div>
 
         <div
           data-hero-visuals
-          className="contents min-w-0 lg:order-2 lg:flex lg:min-h-full lg:flex-col lg:items-center lg:justify-center lg:pl-10"
+          className="order-3 min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:min-h-full lg:items-center lg:justify-center lg:pl-10"
         >
           <div
             data-hero-logo-position="column-right"
-            className="order-1 flex min-h-0 items-center justify-center lg:order-none"
+            className="public-hero-logo flex min-h-0 items-center justify-center"
           >
-            <img
-              src={logoImage}
-              alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-              width={605}
-              height={342}
-              className="h-auto w-full max-w-[18rem] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:max-w-[22rem] lg:max-w-[31rem]"
-              fetchPriority="high"
-            />
+            <div
+              data-hero-logo-frame="none"
+              className="public-hero-logo-mark flex w-full max-w-[32rem] items-center justify-center"
+            >
+              <img
+                src={logoImage}
+                alt="Identidade visual do II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
+                width={605}
+                height={342}
+                className="h-auto w-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+                fetchPriority="high"
+              />
+            </div>
           </div>
-          {heroActions}
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-[linear-gradient(0deg,rgba(247,249,255,0.98),rgba(247,249,255,0))]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-10 bg-[linear-gradient(0deg,rgba(251,249,245,0.92),rgba(251,249,245,0))]" />
     </section>
   );
 }
 
 function AboutSection() {
   return (
-    <section id="sobre" className="section-padding bg-background">
+    <section id="sobre" className="public-editorial-section section-padding bg-background">
       <div className="container-event px-4 lg:px-0">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
             Sobre o encontro
           </span>
-          <h2 className="mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
+          <h2 className="public-display-heading mt-4 font-display text-[clamp(2rem,8vw,3rem)] font-bold leading-tight text-foreground md:text-5xl">
             Fé, música e comunhão
           </h2>
-          <div className="mx-auto mt-5 max-w-3xl space-y-4 text-left text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+          <div className="mx-auto mt-5 max-w-3xl space-y-4 text-center text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             <p>
               O Encontro de Coros do Regional Nordeste 1 da CNBB – Ceará foi idealizado por Dom
               Francisco Edimilson Neves Ferreira, Bispo de Tianguá e Bispo Referencial da Comissão
@@ -419,7 +450,7 @@ function AboutSection() {
           </div>
         </div>
 
-        <div className="about-pillars mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+        <div className="about-pillars public-feature-grid mt-9 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           <Card className="border-border bg-card text-center transition-transform hover:-translate-y-1">
             <CardContent className="about-pillar-content p-4 sm:p-6">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 sm:h-14 sm:w-14">
@@ -459,7 +490,7 @@ function AboutSection() {
           </Card>
         </div>
 
-        <div className="about-speaker mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
+        <div className="about-speaker public-speaker-card mt-12 grid items-center gap-8 rounded-xl border border-border bg-card p-5 shadow-sm shadow-teal/10 md:grid-cols-[0.8fr_1.2fr] md:p-7">
           <img
             src={claytonImage}
             alt="Clayton Dias em interior de igreja"
@@ -472,7 +503,7 @@ function AboutSection() {
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/10 px-4 py-1.5 text-sm font-bold text-amber">
               Palestrante Principal
             </span>
-            <h3 className="mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
+            <h3 className="public-display-heading mt-4 font-display text-3xl font-extrabold leading-tight text-card-foreground">
               Clayton Dias
             </h3>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
@@ -540,14 +571,14 @@ const institutionalPartners = [
 
 function QuixadaSection() {
   return (
-    <section id="quixada" className="section-padding bg-muted/50">
+    <section id="quixada" className="public-editorial-section section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
         <div className="grid gap-6 sm:gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-1.5 text-sm font-bold text-teal">
               Quixadá, Ceará
             </span>
-            <h2 className="mt-5 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-tight text-foreground md:text-5xl">
+            <h2 className="public-display-heading mt-5 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-tight text-foreground md:text-5xl">
               Conheça Quixadá
             </h2>
           </div>
@@ -559,10 +590,15 @@ function QuixadaSection() {
           </div>
         </div>
 
-        <Carousel opts={{ align: "start", loop: true }} className="mx-auto mt-9 w-full sm:mt-12">
+        <Carousel
+          data-quixada-grid
+          data-public-mobile-stack="true"
+          opts={{ align: "start", loop: true }}
+          className="public-city-grid mx-auto mt-9 w-full sm:mt-12"
+        >
           <CarouselContent>
             {quixadaSpots.map((spot) => (
-              <CarouselItem key={spot.name} className="basis-[86%] sm:basis-[58%] lg:basis-1/3">
+              <CarouselItem key={spot.name} className="basis-[86%] sm:basis-[58%] lg:basis-1/4">
                 <article className="h-full overflow-hidden rounded-xl border border-border bg-card">
                   <img
                     src={spot.image}
@@ -595,14 +631,14 @@ function QuixadaSection() {
 
 function SponsorsSection() {
   return (
-    <section id="patrocinadores" className="section-padding bg-muted/50">
+    <section id="patrocinadores" className="public-editorial-section section-padding bg-muted/50">
       <div className="container-event px-4 lg:px-0">
-        <div className="rounded-xl border border-border bg-card p-5 sm:p-7 lg:p-10">
+        <div className="public-sponsor-shell rounded-xl border border-border bg-card p-5 sm:p-7 lg:p-10">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full bg-amber/15 px-4 py-1.5 text-sm font-bold text-amber">
               Apoio, organização e patrocínio
             </span>
-            <h2 className="mt-4 font-display text-[clamp(2rem,8vw,2.75rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
+            <h2 className="public-display-heading mt-4 font-display text-[clamp(2rem,8vw,2.75rem)] font-extrabold leading-tight text-foreground sm:text-4xl">
               Quem realiza o encontro
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -656,7 +692,7 @@ function SponsorsSection() {
 
 function Footer() {
   return (
-    <footer className="bg-foreground py-12 text-white sm:py-16">
+    <footer className="public-event-footer bg-foreground py-12 text-white sm:py-16">
       <div className="container-event px-4 lg:px-0">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
           <div>

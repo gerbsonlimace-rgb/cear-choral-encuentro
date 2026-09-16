@@ -94,8 +94,8 @@ function activityTime(activity: PublicEventActivity) {
 
 function ProgrammeDayCard({ day }: { day: ProgrammeDay }) {
   return (
-    <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
-      <div className="bg-teal px-5 py-3.5"><p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p><h3 className="mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">{day.dateLabel}</h3></div>
+    <Card data-programme-card className="public-programme-card overflow-hidden border-border/80 bg-card shadow-sm">
+      <div className="bg-teal px-5 py-3.5"><p className="font-body text-xs font-semibold tracking-wide text-white/75">{day.weekday}</p><h3 className="public-display-heading mt-0.5 font-body text-lg font-extrabold tracking-tight text-white">{day.dateLabel}</h3></div>
       <CardContent className="programme-day-content p-4 sm:p-5"><div className="divide-y divide-border/70">{day.items.map((activity) => {
         const category = presentation[activity.category];
         const Icon = category.icon;
@@ -117,9 +117,9 @@ export function PublicProgramme({ result }: { result: PublicProgrammeResult }) {
     return () => { carouselApi.off("select", update); carouselApi.off("reInit", update); };
   }, [carouselApi]);
 
-  return <section id="programacao" className="bg-muted/50 py-12 sm:py-14 lg:py-16"><div className="container-event px-4 lg:px-0"><div className="mx-auto max-w-3xl text-center"><span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald"><Calendar aria-hidden="true" className="size-4" />{datePresentation.badge}</span><h2 className="mt-3 font-body text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">Programação</h2><p className="mt-2 text-base text-muted-foreground sm:text-lg">{datePresentation.description}</p></div>
+  return <section id="programacao" className="public-editorial-section bg-muted/50 py-12 sm:py-14 lg:py-16"><div className="container-event px-4 lg:px-0"><div className="mx-auto max-w-3xl text-center"><span className="inline-flex items-center gap-2 rounded-full bg-emerald/10 px-4 py-1.5 text-sm font-bold text-emerald"><Calendar aria-hidden="true" className="size-4" />{datePresentation.badge}</span><h2 className="public-display-heading mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">Programação</h2><p className="mt-2 text-base text-muted-foreground sm:text-lg">{datePresentation.description}</p></div>
     {result.status === "unavailable" && <p role="alert" className="mx-auto mt-8 max-w-2xl rounded-xl bg-card px-5 py-4 text-center text-sm text-muted-foreground">Não foi possível carregar a programação agora. Tente novamente em alguns instantes.</p>}
     {result.status === "ready" && days.length === 0 && <p className="mt-8 text-center text-sm text-muted-foreground">A programação será publicada em breve.</p>}
-    {days.length > 0 && <><Carousel opts={{ align: "start", loop: false }} setApi={setCarouselApi} style={{ height: carouselHeight }} className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"><CarouselContent className="items-start">{days.map((day) => <CarouselItem key={day.date} className="basis-[92%] sm:basis-[88%]"><ProgrammeDayCard day={day} /></CarouselItem>)}</CarouselContent></Carousel><div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">{days.map((day) => <ProgrammeDayCard key={day.date} day={day} />)}</div></>}
+    {days.length > 0 && <div data-programme-grid><Carousel data-public-mobile-stack="true" opts={{ align: "start", loop: false }} setApi={setCarouselApi} style={{ height: carouselHeight }} className="mx-auto mt-6 w-full overflow-hidden transition-[height] duration-300 lg:hidden"><CarouselContent className="items-start">{days.map((day) => <CarouselItem key={day.date} className="basis-[92%] sm:basis-[88%]"><ProgrammeDayCard day={day} /></CarouselItem>)}</CarouselContent></Carousel><div className="mt-8 hidden items-start gap-6 lg:grid lg:grid-cols-3">{days.map((day) => <ProgrammeDayCard key={day.date} day={day} />)}</div></div>}
   </div></section>;
 }
