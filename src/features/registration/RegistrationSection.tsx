@@ -87,6 +87,7 @@ type RegistrationForm = Omit<
 };
 
 type RegistrationFormField = keyof RegistrationForm | "photo";
+type RegistrationStep = 1 | 2 | 3 | 4;
 
 const OTHER_CHOIR_VALUE = "other";
 
@@ -143,9 +144,10 @@ const defaultLoadConfiguration = () => getPublicRegistrationConfiguration();
 const inputClassName =
   "min-h-11 rounded-lg border-border bg-background pl-10 text-base shadow-sm transition-shadow focus-visible:ring-2 focus-visible:ring-amber/30";
 
-const stepFields: Record<1 | 2, RegistrationFormField[]> = {
+const stepFields: Record<1 | 2 | 3, RegistrationFormField[]> = {
   1: ["cpf", "name", "badgeName", "email", "phone", "birthDate", "diocese", "photo"],
-  2: ["choirId", "otherChoirName", "raffleChoice", "voicePart"],
+  2: ["choirId", "otherChoirName", "voicePart"],
+  3: ["raffleChoice"],
 };
 
 function RegistrationPriceSummary({
@@ -267,7 +269,7 @@ export function RegistrationSection({
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [draftReady, setDraftReady] = useState(false);
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found">(
     "idle",
@@ -382,7 +384,7 @@ export function RegistrationSection({
   }, [displayedChoir, form.raffleChoice]);
 
   useEffect(() => {
-    if (!configuration || currentStep !== 3 || displayedChoir) return;
+    if (!configuration || currentStep !== 4 || displayedChoir) return;
     setErrors((previous) => ({
       ...previous,
       choirId: "Selecione um coro.",
@@ -522,7 +524,7 @@ export function RegistrationSection({
     window.requestAnimationFrame(() => document.getElementById(firstField)?.focus());
   };
 
-  const validateStep = (step: 1 | 2) => {
+  const validateStep = (step: 1 | 2 | 3) => {
     const nextErrors: Partial<Record<RegistrationFormField, string>> = {};
 
     if (step === 1) {
@@ -538,15 +540,17 @@ export function RegistrationSection({
       if (!birthDateResult.success) nextErrors.birthDate = birthDateResult.error.issues[0]?.message;
       if (!form.diocese) nextErrors.diocese = "Selecione sua diocese.";
       if (!photo) nextErrors.photo = "Envie uma foto do participante.";
-    } else {
+    } else if (step === 2) {
       if (!selectedChoir && !isOtherChoir) nextErrors.choirId = "Selecione um coro.";
       if (isOtherChoir && form.otherChoirName.trim().length < 2) {
         nextErrors.otherChoirName = "Informe o nome do coro.";
       }
       if (!form.voicePart) nextErrors.voicePart = "Selecione seu perfil musical.";
-      if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
+      if (step === 3 && selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
         nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
       }
+    } else if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
+      nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
     }
 
     setErrors((previous) => {
@@ -565,23 +569,27 @@ export function RegistrationSection({
       setCurrentStep(2);
       return;
     }
-    if (currentStep === 2 && validateStep(2)) setCurrentStep(3);
+    if (currentStep === 2 && validateStep(2)) {
+      setCurrentStep(3);
+      return;
+    }
+    if (currentStep === 3 && validateStep(3)) setCurrentStep(4);
   };
 
   const goToPreviousStep = () => {
     setCheckoutError("");
-    setCurrentStep((step) => (step === 3 ? 2 : 1));
+    setCurrentStep((step) => (step === 4 ? 3 : step === 3 ? 2 : 1));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
-    if (currentStep === 3) {
+    if (currentStep === 4) {
       const wasPaymentButtonClicked = paymentButtonClick.current;
       paymentButtonClick.current = false;
       if (!wasPaymentButtonClicked) return;
     }
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       void goToNextStep();
       return;
     }
@@ -664,8 +672,8 @@ export function RegistrationSection({
           <h2 className="mt-2 font-display text-[clamp(2rem,5vw,2.6rem)] font-bold leading-tight text-background">
             Realize sua inscrição
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
-            São apenas três etapas. Você poderá conferir tudo antes de pagar.
+              <p className="mt-2 text-sm leading-relaxed text-background/75 sm:text-base">
+                São apenas quatro etapas. Você poderá conferir tudo antes de pagar.
           </p>
         </div>
 
@@ -689,11 +697,12 @@ export function RegistrationSection({
           <div className="h-1.5 bg-amber" aria-hidden="true" />
           <CardContent className="registration-card-content p-4 sm:p-6 lg:p-7">
             <nav aria-label="Etapas da inscrição" className="mb-5">
-              <ol className="grid grid-cols-3 gap-2 sm:gap-4">
+              <ol className="grid grid-cols-4 gap-2 sm:gap-4">
                 {[
                   { number: 1, label: "Meus dados" },
-                  { number: 2, label: "Participação" },
-                  { number: 3, label: "Revisão" },
+                  { number: 2, label: "Coro e perfil" },
+                  { number: 3, label: "Pagamento" },
+                  { number: 4, label: "Revisão" },
                 ].map((step) => {
                   const active = currentStep === step.number;
                   const complete = currentStep > step.number;
@@ -713,7 +722,7 @@ export function RegistrationSection({
                           {complete ? <Check className="size-5" /> : step.number}
                         </span>
                         <span
-                          className={`h-0.5 flex-1 ${step.number === 3 ? "bg-transparent" : complete ? "bg-amber" : "bg-border"}`}
+                          className={`h-0.5 flex-1 ${step.number === 4 ? "bg-transparent" : complete ? "bg-amber" : "bg-border"}`}
                         />
                       </div>
                       <span
@@ -977,7 +986,7 @@ export function RegistrationSection({
                 </div>
               )}
 
-              {currentStep === 2 && (
+              {(currentStep === 2 || currentStep === 3) && (
                 <div className="mx-auto max-w-2xl">
                   <fieldset className="space-y-6">
                     <legend className="flex items-center gap-3">
@@ -990,15 +999,17 @@ export function RegistrationSection({
                           aria-level={3}
                           className="block font-display text-xl font-extrabold text-foreground sm:text-2xl"
                         >
-                          Sua participação
+                          {currentStep === 3 ? "Pagamento" : "Sua participação"}
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
-                          Escolha seu coro e perfil musical.
+                          {currentStep === 3
+                            ? "Escolha entre pagamento integral ou a opção promocional."
+                            : "Escolha seu coro e perfil musical."}
                         </span>
                       </span>
                     </legend>
                     <div className="grid gap-5">
-                      <div className="space-y-1.5">
+                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
                         <p id="choir-label" className="font-semibold">
                           Coro
                         </p>
@@ -1097,7 +1108,7 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      {isOtherChoir && (
+                      {currentStep === 2 && isOtherChoir && (
                         <div className="space-y-1.5">
                           <Label htmlFor="otherChoirName" className="font-semibold">
                             Informe o nome do coro
@@ -1126,8 +1137,8 @@ export function RegistrationSection({
                         </div>
                       )}
 
-                      {(selectedChoir?.pricingType === "promotional" || isOtherChoir) &&
-                        displayedChoir && (
+                      {currentStep === 3 && displayedChoir && (
+                        <div className="mx-auto max-w-2xl">
                         <fieldset
                           id="raffleChoice"
                           role="radiogroup"
@@ -1225,9 +1236,10 @@ export function RegistrationSection({
                             </p>
                           )}
                         </fieldset>
+                        </div>
                       )}
 
-                      <div className="space-y-1.5">
+                      <div className={currentStep === 3 ? "hidden" : "space-y-1.5"}>
                         <Label htmlFor="voicePart" className="font-semibold">
                           Perfil musical
                         </Label>
@@ -1260,7 +1272,7 @@ export function RegistrationSection({
                 </div>
               )}
 
-              {currentStep === 3 && (
+              {currentStep === 4 && (
                 <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
                   <div className="space-y-6">
                     <div className="flex items-center gap-3">
@@ -1349,9 +1361,9 @@ export function RegistrationSection({
                     </Button>
                   )}
                   <Button
-                    type={currentStep === 3 ? "submit" : "button"}
+                    type={currentStep === 4 ? "submit" : "button"}
                     onClick={
-                      currentStep === 3
+                      currentStep === 4
                         ? () => {
                             paymentButtonClick.current = true;
                           }
@@ -1361,14 +1373,14 @@ export function RegistrationSection({
                       isSubmitting ||
                       !configuration ||
                       configuration.standardPriceCents === null ||
-                      (currentStep === 3 && (!displayedChoir || !displayedQuote))
+                      (currentStep === 4 && (!displayedChoir || !displayedQuote))
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
                     <span className="min-w-0 break-words">
                       {isSubmitting
                         ? "Preparando seu pagamento…"
-                        : currentStep === 3
+                        : currentStep === 4
                           ? "Pagar com segurança na InfinitePay"
                           : "Continuar"}
                     </span>
@@ -1377,7 +1389,7 @@ export function RegistrationSection({
                     )}
                   </Button>
                 </div>
-                {currentStep === 3 && (
+                {currentStep === 4 && (
                   <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs leading-relaxed text-muted-foreground">
                     <img src={infinitePayLogo} alt="InfinitePay" className="h-4 w-auto" />
                     <span>Você será direcionado ao ambiente seguro da InfinitePay.</span>

@@ -80,6 +80,8 @@ async function goToReview(
 ) {
   await goToParticipation(user);
   await fillParticipation(user, choirId);
+  await user.click(screen.getByRole("button", { name: "Continuar" }));
+  await screen.findByRole("heading", { name: "Pagamento" });
   if (raffleChoice) {
     await user.click(
       screen.getByLabelText(
@@ -104,7 +106,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     window.localStorage.clear();
   });
 
-  it("starts with a compact three-step form and participant badge header", async () => {
+  it("starts with a compact four-step form and participant badge header", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
@@ -134,7 +136,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
         .map((input) => input.id),
     ).toEqual(["cpf", "name", "badgeName"]);
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Meus dados");
-    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Participação");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Coro e perfil");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Pagamento");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
     expect(screen.getByLabelText("Diocese")).toBeRequired();
@@ -241,6 +244,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await waitFor(() => expect(choir).toBeChecked());
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Pagamento" });
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
     expect(screen.getAllByText("Coro Diocesano de Sobral").length).toBeGreaterThan(0);
   });
@@ -262,7 +267,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       },
       photo: { contentType: "image/jpeg", dataBase64: "dGVzdA==" },
       photoFileName: "maria.jpg",
-      currentStep: 3,
+      currentStep: 4,
     });
 
     render(
@@ -347,9 +352,12 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(
       screen.queryByLabelText("Quero participar do Programa de Venda de Rifas"),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    expect(screen.queryByLabelText("Prefiro pagar a inscrição integral")).not.toBeInTheDocument();
     await user.type(otherChoir, "Coral Santa Cecília");
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Pagamento" });
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
@@ -390,6 +398,15 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToParticipation(user);
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+
+    expect(
+      screen.queryByRole("radiogroup", {
+        name: "Como deseja realizar sua inscrição?",
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("heading", { name: "Pagamento" })).toBeVisible();
 
     const choices = screen.getByRole("radiogroup", {
       name: "Como deseja realizar sua inscrição?",
@@ -411,6 +428,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     const raffleChoice = screen.getByRole("radiogroup", {
       name: "Como deseja realizar sua inscrição?",
     });
@@ -422,7 +440,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       await screen.findByText("Escolha como deseja realizar sua inscrição."),
     ).toBeInTheDocument();
     await waitFor(() => expect(raffleChoice).toHaveFocus());
-    expect(screen.getByRole("heading", { name: "Sua participação" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pagamento" })).toBeInTheDocument();
   });
 
   it("shows the raffle pre-registration and remaining balance after the participant opts in", async () => {
@@ -468,13 +486,17 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
     await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Pagamento" });
+    expect(screen.getByText(/Pague R\$.*300,00 agora/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent(
       "Valor da inscriçãoR$ 300,00",
     );
-    expect(
-      screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
   });
 
   it("preserves an explicit choice between raffle-enabled choirs and resets it after a standard choir", async () => {
@@ -485,15 +507,24 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await goToParticipation(user);
 
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.selectOptions(screen.getByLabelText("Perfil musical"), "soprano");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByLabelText("Prefiro pagar a inscrição integral"));
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Canindé" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
 
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(
       screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(
       screen.getByLabelText("Quero participar do Programa de Venda de Rifas"),
     ).not.toBeChecked();
@@ -510,6 +541,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getAllByText("Coro Diocesano de Quixadá").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
     expect(screen.getByLabelText("Nome completo para certificado")).toHaveValue("Maria da Silva");
