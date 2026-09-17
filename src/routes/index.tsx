@@ -451,9 +451,10 @@ function AboutSection() {
             </p>
             <p>
               Em 2026, a caminhada continua com o II Encontro de Coros Diocesanos, sediado pela
-               Diocese de Quixadá. A nova edição reafirma o compromisso com a formação dos músicos,
-               a união dos coros e a valorização da música como parte integrante e necessária da liturgia e
-              instrumento de evangelização.
+              Diocese de Quixadá, com a participação também de outros coros litúrgicos. Esta nova
+              edição reafirma o compromisso com a formação dos músicos, a união dos coros e a
+              valorização da música como parte integrante e necessária da liturgia e como instrumento
+              de evangelização.
             </p>
           </div>
         </div>
