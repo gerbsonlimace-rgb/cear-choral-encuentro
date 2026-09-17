@@ -84,6 +84,7 @@ export type RegistrationIdentityRecord = {
   birthDate: string;
   orderNsu: string | null;
   checkoutUrl: string | null;
+  photoPath: string | null;
 };
 
 export type RegistrationResumeRecord = {
@@ -145,7 +146,6 @@ export type RegistrationRepository = {
       checkoutClaim?: string;
     },
   ): Promise<void>;
-  clearPendingPhoto(orderNsu: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
     orderNsu: string,
@@ -343,6 +343,9 @@ export function createRegistrationPaymentService(deps: {
             }
             throw caught;
           }
+          if (existing.photoPath && existing.photoPath !== photoPath) {
+            await deps.photoStorage.remove(existing.photoPath).catch(() => undefined);
+          }
         } else {
           await deps.repository.createPending(pendingInput);
         }
@@ -363,10 +366,8 @@ export function createRegistrationPaymentService(deps: {
           throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
         }
       } catch (caught) {
-        await Promise.allSettled([
-          deps.repository.clearPendingPhoto(orderNsu),
-          deps.photoStorage.remove(photoPath),
-        ]);
+        // Keep the pending registration complete so the participant photo remains
+        // available in the admin area while checkout can be retried later.
         throw caught;
       }
 
@@ -540,7 +541,8 @@ async function waitForCheckoutUrl(
 
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
-const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url" as const;
+const identityColumns =
+  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
 const checkoutLinkColumns =
   "id,order_nsu,amount_cents,payment_status,checkout_url,name,email,phone" as const;
@@ -631,6 +633,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       birthDate: data.birth_date,
       orderNsu: typeof data.order_nsu === "string" ? data.order_nsu : null,
       checkoutUrl: typeof data.checkout_url === "string" ? data.checkout_url : null,
+      photoPath: typeof data.photo_path === "string" ? data.photo_path : null,
     };
   };
 
@@ -861,16 +864,6 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
       if (error) throw new Error("Não foi possível atualizar a inscrição.");
       if (!data) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
-    },
-
-    clearPendingPhoto: async (orderNsu) => {
-      const { error } = await supabaseAdmin
-        .from("registrations")
-        .update({ photo_path: null })
-        .eq("order_nsu", orderNsu)
-        .eq("payment_status", "pending");
-
-      if (error) throw new Error("Não foi possível limpar a foto da inscrição.");
     },
 
     findPayment,

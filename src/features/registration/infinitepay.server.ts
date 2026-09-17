@@ -95,6 +95,14 @@ function withSitePath(siteUrl: string, path: string) {
   return `${siteUrl.replace(/\/+$/, "")}${path}`;
 }
 
+function normalizeInfinitePayPhoneNumber(value: string | undefined) {
+  if (!value) return undefined;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 11) return `+55${digits}`;
+  if (digits.length === 13 && digits.startsWith("55")) return `+${digits}`;
+  return undefined;
+}
+
 async function postJson(fetcher: typeof fetch, path: string, body: unknown) {
   let response: Response;
 
@@ -146,6 +154,7 @@ export function createInfinitePayClient(
 ): InfinitePayClient {
   return {
     async createCheckout(input) {
+      const phoneNumber = normalizeInfinitePayPhoneNumber(input.customer?.phoneNumber);
       let response: z.infer<typeof checkoutResponseSchema>;
       try {
         response = checkoutResponseSchema.parse(
@@ -160,9 +169,7 @@ export function createInfinitePayClient(
                   customer: {
                     name: input.customer.name,
                     email: input.customer.email,
-                    ...(input.customer.phoneNumber
-                      ? { phone_number: input.customer.phoneNumber }
-                      : {}),
+                    ...(phoneNumber ? { phone_number: phoneNumber } : {}),
                   },
                 }
               : {}),

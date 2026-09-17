@@ -146,7 +146,7 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
-const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url";
+const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url,photo_path";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -232,6 +232,7 @@ function createFixture() {
     birthDate: string;
     orderNsu: string | null;
     checkoutUrl: string | null;
+    photoPath: string | null;
   } | null = null;
   let lookupResult = null as RegistrationLookupResult | null;
   let resumeIdentityRecord: {
@@ -267,9 +268,6 @@ function createFixture() {
     }),
     updatePending: vi.fn(async () => {
       calls.push("updatePending");
-    }),
-    clearPendingPhoto: vi.fn(async () => {
-      calls.push("clearPendingPhoto");
     }),
     findPayment: vi.fn(async () => record),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
@@ -700,15 +698,39 @@ describe("registration payment service", () => {
     expect(pendingInput).not.toHaveProperty("photo");
   });
 
-  it("removes the private photo reference when checkout creation fails", async () => {
+  it("keeps the private photo when checkout creation fails", async () => {
     vi.mocked(fixture.infinitePay.createCheckout).mockRejectedValueOnce(
       new Error("checkout unavailable"),
     );
 
     await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow("checkout unavailable");
 
-    expect(fixture.repository.clearPendingPhoto).toHaveBeenCalledWith(fixedOrderNsu);
-    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
+    expect(fixture.photoStorage.remove).not.toHaveBeenCalled();
+  });
+
+  it("replaces the previous photo only after a stale pending registration is updated", async () => {
+    const previousOrderNsu = "33333333-3333-4333-8333-333333333333";
+    const previousPhotoPath = `${previousOrderNsu}/participant.jpg`;
+    fixture.setIdentityRecord({
+      id: "registration-1",
+      paymentStatus: "pending",
+      birthDate: baseInput.birthDate,
+      orderNsu: previousOrderNsu,
+      checkoutUrl: `https://pending.invalid/creating/${previousOrderNsu}/0`,
+      photoPath: previousPhotoPath,
+    });
+
+    await fixture.service.startCheckout(baseInput);
+
+    expect(fixture.repository.updatePending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        registrationId: "registration-1",
+        expectedOrderNsu: previousOrderNsu,
+        orderNsu: fixedOrderNsu,
+        photoPath: registrationPhotoPath,
+      }),
+    );
+    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(previousPhotoPath);
   });
 
   it("leaves the registration pending when checkout creation fails", async () => {
@@ -722,8 +744,7 @@ describe("registration payment service", () => {
       paymentStatus: "pending",
     });
     expect(fixture.repository.saveCheckoutUrl).not.toHaveBeenCalled();
-    expect(fixture.repository.clearPendingPhoto).toHaveBeenCalledWith(fixedOrderNsu);
-    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
+    expect(fixture.photoStorage.remove).not.toHaveBeenCalled();
   });
 
   it("rejects a stale displayed price before saving or opening checkout", async () => {
@@ -1247,21 +1268,6 @@ describe("Supabase registration repository", () => {
     ).rejects.toThrow("Não foi possível salvar a inscrição");
   });
 
-  it("clears a photo reference only while the registration is pending", async () => {
-    const database = createSupabaseHarness();
-    const repository = createSupabaseRegistrationRepository();
-
-    await repository.clearPendingPhoto(fixedOrderNsu);
-
-    expect(database.trace).toEqual([
-      ["from", "registrations"],
-      ["update", { photo_path: null }],
-      ["eq", "order_nsu", fixedOrderNsu],
-      ["eq", "payment_status", "pending"],
-      ["execute"],
-    ]);
-  });
-
   it("looks up and maps only payment columns", async () => {
     const database = createSupabaseHarness({
       maybeSingleResults: [
@@ -1319,6 +1325,7 @@ describe("Supabase registration repository", () => {
             birth_date: "1990-05-20",
             order_nsu: fixedOrderNsu,
             checkout_url: null,
+            photo_path: registrationPhotoPath,
           },
           error: null,
         },
@@ -1332,6 +1339,7 @@ describe("Supabase registration repository", () => {
       birthDate: "1990-05-20",
       orderNsu: fixedOrderNsu,
       checkoutUrl: null,
+      photoPath: registrationPhotoPath,
     });
     expect(database.trace).toEqual([
       ["from", "registrations"],

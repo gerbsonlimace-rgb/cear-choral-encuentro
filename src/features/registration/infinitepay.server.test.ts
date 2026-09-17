@@ -90,9 +90,28 @@ describe("InfinitePay client", () => {
       customer: {
         name: "Maria",
         email: "legacy@example.com",
-        phone_number: "85999999999",
+        phone_number: "+5585999999999",
       },
     });
+  });
+
+  it("normalizes a formatted Brazilian phone before creating the checkout", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ url: "https://checkout.infinitepay.com.br/antonio-gerbson/abc" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const client = createInfinitePayClient(fetcher, config);
+
+    await client.createCheckout({
+      ...checkoutInput,
+      customer: { ...checkoutInput.customer, phoneNumber: "(55) 85991-7823" },
+    });
+
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).customer.phone_number).toBe(
+      "+5555859917823",
+    );
   });
 
   it("rejects a checkout URL outside InfinitePay", async () => {
