@@ -11,6 +11,7 @@ export const adminPaymentStatusSchema = z.enum([
   "pending",
   "partially_paid",
   "paid",
+  "exempt",
   "legacy",
 ]);
 
@@ -61,6 +62,12 @@ export const adminMarkPaidSchema = z
   })
   .strict();
 
+export const adminMarkExemptSchema = z
+  .object({
+    registrationId: z.string().uuid(),
+  })
+  .strict();
+
 export type ManualPaymentReceipt = z.infer<typeof manualPaymentReceiptSchema>;
 
 export type AdminRegistrationQuery = z.infer<typeof adminRegistrationQuerySchema>;
@@ -94,7 +101,7 @@ export type AdminRegistrationRow = {
   paymentMethod: "pix" | "credit_card" | null;
   installments: number | null;
   paidAt: string | null;
-  paymentOrigin?: "infinitepay" | "manual" | null;
+  paymentOrigin?: "infinitepay" | "manual" | "exemption" | null;
   hasManualReceipt?: boolean;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -150,6 +157,7 @@ export type AdminRegistrationSummary = {
   paid: number;
   pending: number;
   partiallyPaid?: number;
+  exempt?: number;
   legacy: number;
   receivedCents: number;
   pendingCents: number;
@@ -196,7 +204,9 @@ export function mapAdminRegistrationRow(
     installments: row.installments,
     paidAt: row.paid_at,
     paymentOrigin:
-      row.payment_origin === "manual" || row.payment_origin === "infinitepay"
+      row.payment_origin === "manual" ||
+      row.payment_origin === "infinitepay" ||
+      row.payment_origin === "exemption"
         ? row.payment_origin
         : null,
     hasManualReceipt: Boolean(row.manual_receipt_path),
@@ -231,6 +241,7 @@ export function enrichAdminRegistrationRow(
   );
   const financialState = deriveRegistrationFinancialState({
     paymentStatus: candidate.row.payment_status as "legacy" | "pending" | "paid",
+    isExempt: candidate.row.payment_origin === "exemption",
     initialAmountCents: candidate.row.amount_cents,
     pricingType: candidate.row.pricing_type as "standard" | "promotional" | null,
     standardPriceCents: candidate.row.standard_price_cents,
@@ -263,6 +274,7 @@ export function getAdminFinancialState(row: AdminRegistrationRow): RegistrationF
   if (row.financialState) return row.financialState;
   const derived = deriveRegistrationFinancialState({
     paymentStatus: row.paymentStatus,
+    isExempt: row.paymentOrigin === "exemption",
     initialAmountCents: row.amountCents,
     pricingType: row.pricingType,
     standardPriceCents: row.standardPriceCents,
@@ -321,6 +333,8 @@ export function summarizeAdminRegistrations(
     const financialState = getAdminFinancialState(row as AdminRegistrationRow);
     if (financialState.status === "partially_paid") {
       summary.partiallyPaid = (summary.partiallyPaid ?? 0) + 1;
+    } else if (financialState.status === "exempt") {
+      summary.exempt = (summary.exempt ?? 0) + 1;
     } else summary[financialState.status] += 1;
     const choir = choirs.get(row.choirName) ?? {
       total: 0,
@@ -419,6 +433,7 @@ function displayStatus(value: RegistrationFinancialState["status"]): string {
     pending: "Pendente",
     partially_paid: "Parcialmente pago",
     paid: "Pago",
+    exempt: "Isento",
     legacy: "Histórico",
   }[value];
 }

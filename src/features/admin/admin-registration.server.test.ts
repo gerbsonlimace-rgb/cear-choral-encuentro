@@ -366,6 +366,40 @@ describe("manual payment confirmation", () => {
   });
 });
 
+describe("registration exemption", () => {
+  it("zeros a pending registration, records the administrator and provisions access", async () => {
+    const { trace } = databaseHarness([singleSuccess({ id: "registration-1" })]);
+    const provisionParticipant = vi.fn(async () => ({ status: "active" as const }));
+    const service = createAdminRegistrationService(
+      createSupabaseAdminRegistrationRepository(),
+      () => new Date(),
+      provisionParticipant,
+    );
+
+    await expect(service.markExempt("registration-1", "admin-1")).resolves.toEqual({
+      status: "exempt",
+      registrationId: "registration-1",
+    });
+    expect(trace).toContainEqual([
+      "update",
+      expect.objectContaining({
+        payment_status: "paid",
+        payment_origin: "exemption",
+        exempted_by: "admin-1",
+        amount_cents: 0,
+        paid_amount_cents: 0,
+        standard_price_cents: 0,
+        registration_price_cents: 0,
+        remaining_price_cents: 0,
+        shirt_price_cents: 0,
+        checkout_url: null,
+      }),
+    ]);
+    expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
+    expect(provisionParticipant).toHaveBeenCalledWith("registration-1");
+  });
+});
+
 describe("registration summary", () => {
   // Detects a production mutation that applies the table's active filters to the top-level totals.
   it("summarizes the complete unfiltered registration collection", async () => {

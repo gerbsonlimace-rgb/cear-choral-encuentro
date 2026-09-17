@@ -1,4 +1,5 @@
-export type RegistrationFinancialStatus = "legacy" | "pending" | "partially_paid" | "paid";
+export type RegistrationFinancialStatus =
+  "legacy" | "pending" | "partially_paid" | "paid" | "exempt";
 
 export type RegistrationFinancialState =
   | { status: "legacy"; pendingCents: null; confirmedPrincipalCents: null }
@@ -10,6 +11,7 @@ export type RegistrationFinancialState =
 
 export interface RegistrationFinancialStateInput {
   paymentStatus: "legacy" | "pending" | "paid";
+  isExempt?: boolean;
   initialAmountCents: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -35,6 +37,9 @@ function isNonNegativeSafeInteger(value: number): boolean {
 export function deriveRegistrationFinancialState(
   input: RegistrationFinancialStateInput,
 ): RegistrationFinancialState {
+  if (input.isExempt) {
+    return { status: "exempt", pendingCents: 0, confirmedPrincipalCents: 0 };
+  }
   if (
     !isPositiveSafeInteger(input.initialAmountCents) ||
     !isNonNegativeSafeInteger(input.confirmedComplementCents)

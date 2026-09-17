@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   adminRegistrationExportSchema,
+  adminMarkExemptSchema,
   adminMarkPaidSchema,
   adminRegistrationQuerySchema,
   type AdminExportFile,
@@ -14,8 +15,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
 
 export type AdminAccessState =
-  | { status: "authorized"; userId: string; email: string | null }
-  | { status: "forbidden" };
+  { status: "authorized"; userId: string; email: string | null } | { status: "forbidden" };
 
 export type AdminPageBootstrap<T> = {
   access: AdminAccessState;
@@ -213,6 +213,15 @@ export const markAdminRegistrationPaid = createServerFn({ method: "POST" })
       context.adminUserId,
       data.receipt,
     );
+  });
+
+export const markAdminRegistrationExempt = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminMarkExemptSchema)
+  .handler(async ({ data, context }) => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().markExempt(data.registrationId, context.adminUserId);
   });
 
 export const getAdminRegistrationReceipt = createServerFn({ method: "POST" })

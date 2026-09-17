@@ -614,6 +614,8 @@ export type Database = {
           created_at: string
           diocese: string
           email: string | null
+          exempted_at: string | null
+          exempted_by: string | null
           id: string
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
@@ -659,6 +661,8 @@ export type Database = {
           created_at?: string
           diocese: string
           email?: string | null
+          exempted_at?: string | null
+          exempted_by?: string | null
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
@@ -704,6 +708,8 @@ export type Database = {
           created_at?: string
           diocese?: string
           email?: string | null
+          exempted_at?: string | null
+          exempted_by?: string | null
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null

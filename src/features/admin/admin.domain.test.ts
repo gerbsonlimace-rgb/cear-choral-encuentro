@@ -36,6 +36,8 @@ const legacyRow: RegistrationDatabaseRow = {
   other_choir_name: null,
   diocese: "Diocese de Sobral",
   email: "ana@example.com",
+  exempted_at: null,
+  exempted_by: null,
   phone: "85988887777",
   city: "Sobral",
   institution: null,
@@ -191,6 +193,36 @@ describe("admin registration filters", () => {
 });
 
 describe("admin registration history and CSV", () => {
+  it("maps an exempt registration to zero received and pending values", () => {
+    const exempt = mapAdminRegistrationRow({
+      ...paidRow,
+      payment_origin: "exemption",
+      exempted_at: "2026-09-17T16:00:00.000Z",
+      exempted_by: "11111111-1111-4111-8111-111111111111",
+      amount_cents: 0,
+      paid_amount_cents: 0,
+      standard_price_cents: 0,
+      registration_price_cents: 0,
+      remaining_price_cents: 0,
+      shirt_price_cents: 0,
+      payment_method: null,
+      installments: null,
+      paid_at: null,
+    });
+
+    expect(exempt).toMatchObject({
+      paymentOrigin: "exemption",
+    });
+    expect(summarizeAdminRegistrations([exempt])).toMatchObject({
+      total: 1,
+      exempt: 1,
+      paid: 0,
+      receivedCents: 0,
+      pendingCents: 0,
+      expectedCents: 0,
+    });
+  });
+
   // Detects a production mutation that fabricates shirt, value, or payment details for legacy registrations.
   it("preserves unknown historical registration details", () => {
     expect(mapAdminRegistrationRow(legacyRow)).toMatchObject({

@@ -11,6 +11,7 @@ vi.mock("@/lib/admin.functions", () => ({
   exportAdminRegistrations: vi.fn(),
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
+  markAdminRegistrationExempt: vi.fn(),
   getAdminRegistrationReceipt: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
@@ -230,6 +231,36 @@ describe("AdminRegistrationsPage read-only views", () => {
     );
     expect(await screen.findByText("Inscrição marcada como paga.")).toBeInTheDocument();
     expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
+  });
+
+  it("lets an administrator exempt a pending participant and confirms all values will be zero", async () => {
+    const markExempt = vi.fn().mockResolvedValue({
+      status: "exempt",
+      registrationId: "pending",
+    });
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      markExempt,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como isento" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Todos os valores ficarão em R$ 0,00");
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar isenção" }));
+
+    await waitFor(() =>
+      expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+    );
+    expect(
+      await screen.findByText("Participante marcado como isento. Valores zerados."),
+    ).toBeInTheDocument();
   });
 
   it("requires a receipt and submits its contents with immediate manual payment", async () => {
