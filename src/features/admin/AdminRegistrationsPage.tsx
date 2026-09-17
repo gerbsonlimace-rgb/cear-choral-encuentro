@@ -137,12 +137,38 @@ const initialQuery: AdminRegistrationQuery = {
   pageSize: 25,
 };
 
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Fortaleza" });
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Fortaleza",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 const moneyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const date = (value: string | null) =>
-  value ? dateFormatter.format(new Date(value)) : "Não informado";
+const dateTime = (value: string | null) =>
+  value ? dateTimeFormatter.format(new Date(value)).replace(", ", " ") : "Não informado";
 const money = (value: number | null) =>
   value === null ? "Não informado" : moneyFormatter.format(value / 100);
+
+const musicalProfileLabels: Record<string, string> = {
+  coralista: "Coralista",
+  corista: "Coralista",
+  singer: "Coralista",
+  regente: "Regente",
+  conductor: "Regente",
+  regent: "Regente",
+  instrumentista: "Instrumentista",
+  instrumentalist: "Instrumentista",
+};
+
+function musicalProfileLabel(row: AdminRegistrationRow): string {
+  const profile = row.musicalProfile?.trim().toLowerCase();
+  if (profile && musicalProfileLabels[profile]) return musicalProfileLabels[profile];
+  const legacyRole = row.role.trim().toLowerCase();
+  return musicalProfileLabels[legacyRole] ?? "Não informado";
+}
 
 function nameInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -249,7 +275,9 @@ function RegistrationViews({
           <TableHeader>
             <TableRow>
               {[
+                "Data e hora",
                 "Coralista",
+                "Função",
                 "E-mail",
                 "Pagamento",
                 "WhatsApp",
@@ -265,6 +293,9 @@ function RegistrationViews({
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
+                <TableCell className="whitespace-nowrap align-top">
+                  <time dateTime={row.createdAt}>{dateTime(row.createdAt)}</time>
+                </TableCell>
                 <TableCell className="max-w-56 align-top">
                   <div className="flex items-center gap-3">
                     <ParticipantAvatar row={row} />
@@ -274,6 +305,7 @@ function RegistrationViews({
                     </div>
                   </div>
                 </TableCell>
+                <TableCell className="align-top">{musicalProfileLabel(row)}</TableCell>
                 <TableCell className="max-w-52 break-all align-top">{row.email}</TableCell>
                 <TableCell className="min-w-36 align-top"><PaymentSummary row={row} /></TableCell>
                 <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
@@ -307,7 +339,7 @@ function RegistrationViews({
                   <div className="min-w-0">
                     <h2 className="break-words text-sm font-semibold">{row.name}</h2>
                     <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{date(row.createdAt)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{dateTime(row.createdAt)}</p>
                   </div>
                 </div>
                 <RegistrationActions
@@ -325,6 +357,10 @@ function RegistrationViews({
                 <div className="col-span-2">
                   <dt className="text-muted-foreground">E-mail</dt>
                   <dd className="break-all">{row.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Função</dt>
+                  <dd>{musicalProfileLabel(row)}</dd>
                 </div>
                 <div className="col-span-2">
                   <dt className="mb-1 text-muted-foreground">Pagamento</dt>

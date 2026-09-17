@@ -452,4 +452,33 @@ describe("admin derived financial state", () => {
     expect(row.openComplementPayment?.id).toBe("open-new");
     expect(row.participantAccess?.label).toBe("Ativo");
   });
+
+  it("uses the configured remaining price and maps the musical profile", () => {
+    const candidate = {
+      row: {
+        ...paidRow,
+        amount_cents: 10000,
+        paid_amount_cents: 10000,
+        pricing_type: "promotional",
+        standard_price_cents: 30000,
+        registration_price_cents: 10000,
+        remaining_price_cents: 25000,
+        musical_profile: "instrumentista",
+      },
+      accountStatus: "active" as const,
+      regentName: "Regente",
+    };
+
+    const row = enrichAdminRegistrationRow(candidate, []);
+
+    expect(row).toMatchObject({
+      remainingPriceCents: 25000,
+      musicalProfile: "instrumentista",
+      financialState: {
+        status: "partially_paid",
+        pendingCents: 25000,
+        confirmedPrincipalCents: 10000,
+      },
+    });
+  });
 });

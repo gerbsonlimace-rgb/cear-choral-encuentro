@@ -18,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,pricing_type,standard_price_cents,registration_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,cpf,choir_name,choir_id,email,phone,city,institution,role,musical_profile,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -30,9 +30,11 @@ const selectedRow = {
   city: "Fortaleza",
   institution: null,
   role: "Corista",
+  musical_profile: "coralista",
   pricing_type: "standard",
   standard_price_cents: 3000,
   registration_price_cents: 3000,
+  remaining_price_cents: null,
   amount_cents: 3000,
   paid_amount_cents: 3000,
   payment_status: "paid",
@@ -726,6 +728,7 @@ describe("registration repository list", () => {
           city: "Fortaleza",
           institution: null,
           role: "Corista",
+          musicalProfile: "coralista",
           paymentStatus: "paid",
           amountCents: 3000,
           paidAmountCents: 3000,
@@ -742,6 +745,7 @@ describe("registration repository list", () => {
           pricingType: "standard",
           standardPriceCents: 3000,
           registrationPriceCents: 3000,
+          remainingPriceCents: null,
           photoUrl: null,
           regentName: null,
         },

@@ -35,7 +35,7 @@ const legacy: AdminRegistrationRow = {
   phone: "85999990000",
   city: "Quixadá",
   institution: null,
-  role: "Coralista",
+  role: "singer",
   paymentStatus: "legacy",
   amountCents: null,
   paidAmountCents: null,
@@ -47,6 +47,7 @@ const legacy: AdminRegistrationRow = {
   registrationPriceCents: null,
   photoUrl: null,
   regentName: null,
+  musicalProfile: null,
 };
 const pending: AdminRegistrationRow = {
   ...legacy,
@@ -54,6 +55,7 @@ const pending: AdminRegistrationRow = {
   name: "Bruno Pendente",
   paymentStatus: "pending",
   amountCents: 10000,
+  musicalProfile: "regente",
 };
 const paid: AdminRegistrationRow = {
   ...legacy,
@@ -66,6 +68,7 @@ const paid: AdminRegistrationRow = {
   installments: 2,
   paidAt: "2026-09-02T12:00:00Z",
   photoUrl: "https://example.com/foto-clara.jpg",
+  musicalProfile: "instrumentista",
   participantAccess: { label: "Ativo", canReprocess: false, canReset: true },
 };
 const partial: AdminRegistrationRow = {
@@ -417,12 +420,27 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
       expect(scope.getByText("AH")).toBeInTheDocument();
       expect(scope.getByText("CP")).toBeInTheDocument();
+      expect(scope.getAllByText("Coralista").length).toBeGreaterThan(0);
+      expect(scope.getByText("Regente")).toBeInTheDocument();
+      expect(scope.getByText("Instrumentista")).toBeInTheDocument();
       expect(scope.getAllByText("R$ 139,90").length).toBe(1);
       expect(scope.getAllByText("R$ 100,00").length).toBe(1);
       expect(scope.getAllByText("85999990000").length).toBe(3);
-      expect(scope.queryByText("Regente")).not.toBeInTheDocument();
       expect(scope.getAllByText("ana@example.com").length).toBe(3);
     }
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "Data e hora",
+      "Coralista",
+      "Função",
+      "E-mail",
+      "Pagamento",
+      "WhatsApp",
+      "Coro",
+      "Mais",
+    ]);
+    expect(within(table).getByRole("row", { name: /Ana Histórica/ })).toHaveTextContent(
+      "01/09/2026 09:00",
+    );
     expect(table.parentElement?.parentElement).toHaveClass("hidden", "md:block");
     expect(cards).toHaveClass("md:hidden");
     const historical = within(table).getByRole("row", { name: /Ana Histórica/ });

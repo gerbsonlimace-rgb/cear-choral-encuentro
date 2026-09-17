@@ -78,6 +78,7 @@ export type AdminRegistrationRow = {
   city: string;
   institution: string | null;
   role: string;
+  musicalProfile?: string | null;
   paymentStatus: "legacy" | "pending" | "paid";
   amountCents: number | null;
   paidAmountCents: number | null;
@@ -89,6 +90,7 @@ export type AdminRegistrationRow = {
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
+  remainingPriceCents?: number | null;
   photoUrl: string | null;
   regentName: string | null;
   /** Present on rows returned by the enriched admin service. */
@@ -168,6 +170,7 @@ export function mapAdminRegistrationRow(
     city: displayText(row.city),
     institution: row.institution,
     role: displayText(row.role),
+    musicalProfile: row.musical_profile,
     paymentStatus: status,
     amountCents: row.amount_cents,
     paidAmountCents: row.paid_amount_cents,
@@ -182,6 +185,7 @@ export function mapAdminRegistrationRow(
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
+    remainingPriceCents: row.remaining_price_cents,
     photoUrl,
     regentName,
     ...(accountStatus === undefined
@@ -213,6 +217,7 @@ export function enrichAdminRegistrationRow(
     pricingType: candidate.row.pricing_type as "standard" | "promotional" | null,
     standardPriceCents: candidate.row.standard_price_cents,
     registrationPriceCents: candidate.row.registration_price_cents,
+    remainingPriceCents: candidate.row.remaining_price_cents,
     confirmedComplementCents,
   });
   const openComplementPayment =
@@ -244,6 +249,7 @@ export function getAdminFinancialState(row: AdminRegistrationRow): RegistrationF
     pricingType: row.pricingType,
     standardPriceCents: row.standardPriceCents,
     registrationPriceCents: row.registrationPriceCents,
+    remainingPriceCents: row.remainingPriceCents,
     confirmedComplementCents: 0,
   });
   if (derived.status !== "legacy") return derived;
