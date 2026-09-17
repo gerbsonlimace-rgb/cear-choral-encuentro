@@ -136,6 +136,10 @@ export type AdminRegistrationRepository = {
     adminUserId: string,
     receipt: ManualPaymentReceipt,
   ) => Promise<{ status: "paid"; registrationId: string }>;
+  markExempt?: (
+    registrationId: string,
+    adminUserId: string,
+  ) => Promise<{ status: "exempt"; registrationId: string }>;
   getReceiptUrl?(registrationId: string): Promise<{ signedUrl: string; expiresIn: number }>;
 };
 
@@ -352,6 +356,43 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         throw error;
       }
     },
+    async markExempt(registrationId, adminUserId) {
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({
+          payment_status: "paid",
+          payment_origin: "exemption",
+          exempted_by: adminUserId,
+          exempted_at: new Date().toISOString(),
+          amount_cents: 0,
+          paid_amount_cents: 0,
+          standard_price_cents: 0,
+          registration_price_cents: 0,
+          remaining_price_cents: 0,
+          shirt_price_cents: 0,
+          order_nsu: null,
+          checkout_url: null,
+          infinitepay_invoice_slug: null,
+          infinitepay_transaction_nsu: null,
+          payment_method: null,
+          installments: null,
+          receipt_url: null,
+          paid_at: null,
+          manual_paid_by: null,
+          manual_receipt_path: null,
+          manual_receipt_file_name: null,
+          manual_receipt_mime_type: null,
+          manual_receipt_size_bytes: null,
+        })
+        .eq("id", registrationId)
+        .eq("payment_status", "pending")
+        .select("id")
+        .maybeSingle();
+      if (error || !data) {
+        throw new Error("Não foi possível marcar a inscrição como isenta.");
+      }
+      return { status: "exempt", registrationId: data.id };
+    },
     async getReceiptUrl(registrationId) {
       const { data, error } = await supabaseAdmin
         .from("registrations")
@@ -450,7 +491,7 @@ export function createAdminRegistrationService(
         paymentStatusFilter:
           query.paymentStatus === "all"
             ? null
-            : query.paymentStatus === "partially_paid"
+            : query.paymentStatus === "partially_paid" || query.paymentStatus === "exempt"
               ? "paid"
               : query.paymentStatus,
         searchUsed: query.search.length > 0,
@@ -463,6 +504,12 @@ export function createAdminRegistrationService(
       const result = await repository.markPaid(registrationId, adminUserId, receipt);
       // Payment truth is durable even if access provisioning is temporarily
       // unavailable; the admin can retry from the existing recovery action.
+      await provisionParticipant?.(registrationId).catch(() => undefined);
+      return result;
+    },
+    async markExempt(registrationId: string, adminUserId: string) {
+      if (!repository.markExempt) throw new Error("Ação administrativa indisponível.");
+      const result = await repository.markExempt(registrationId, adminUserId);
       await provisionParticipant?.(registrationId).catch(() => undefined);
       return result;
     },

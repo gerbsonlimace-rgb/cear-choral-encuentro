@@ -98,6 +98,7 @@ const financialLabels = {
   pending: "Pendente",
   partially_paid: "Parcialmente pago",
   paid: "Pago",
+  exempt: "Isento",
 } as const;
 
 function RegistrationBadge({ participant }: { participant: PortalParticipant }) {

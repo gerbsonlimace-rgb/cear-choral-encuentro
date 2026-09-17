@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   KeyRound,
+  CircleOff,
 } from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ import {
   getAdminRegistrationSummary,
   listAdminRegistrations,
   markAdminRegistrationPaid,
+  markAdminRegistrationExempt,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   type AdminAccessState,
@@ -103,6 +105,10 @@ type Props = {
     data: { registrationId: string; receipt: ManualPaymentReceipt };
   }) => Promise<{
     status: "paid";
+    registrationId: string;
+  }>;
+  markExempt?: (input: { data: { registrationId: string } }) => Promise<{
+    status: "exempt";
     registrationId: string;
   }>;
   getReceiptUrl?: (input: { data: { registrationId: string } }) => Promise<{
@@ -198,6 +204,7 @@ function Status({ row }: { row: AdminRegistrationRow }) {
           pending: "Pendente",
           partially_paid: "Parcialmente pago",
           paid: "Pago",
+          exempt: "Isento",
         }[status]
       }
     </Badge>
@@ -235,15 +242,33 @@ function readReceipt(file: File): Promise<ManualPaymentReceipt> {
 }
 
 function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
+  const state = getAdminFinancialState(row);
   const received = receivedAmountCents(row);
   const pending = pendingAmountCents(row);
   return (
     <div className="space-y-1.5">
       <Status row={row} />
       <div className="space-y-0.5 text-xs text-muted-foreground">
-        {received !== null && <p>Recebido: <span className="font-medium text-foreground">{money(received)}</span></p>}
-        {pending !== null && <p>Pendente: <span className="font-medium text-foreground">{money(pending)}</span></p>}
-        {received === null && pending === null && <p>Valores não informados</p>}
+        {state.status === "exempt" && (
+          <p>
+            Valor: <span className="font-medium text-foreground">{money(0)}</span>
+          </p>
+        )}
+        {state.status !== "exempt" && (
+          <>
+            {received !== null && (
+              <p>
+                Recebido: <span className="font-medium text-foreground">{money(received)}</span>
+              </p>
+            )}
+            {pending !== null && (
+              <p>
+                Pendente: <span className="font-medium text-foreground">{money(pending)}</span>
+              </p>
+            )}
+            {received === null && pending === null && <p>Valores não informados</p>}
+          </>
+        )}
       </div>
     </div>
   );
@@ -257,6 +282,7 @@ function RegistrationViews({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
+  onMarkExempt,
   onViewReceipt,
 }: {
   rows: AdminRegistrationRow[];
@@ -266,6 +292,7 @@ function RegistrationViews({
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
 }) {
   return (
@@ -307,7 +334,9 @@ function RegistrationViews({
                 </TableCell>
                 <TableCell className="align-top">{musicalProfileLabel(row)}</TableCell>
                 <TableCell className="max-w-52 break-all align-top">{row.email}</TableCell>
-                <TableCell className="min-w-36 align-top"><PaymentSummary row={row} /></TableCell>
+                <TableCell className="min-w-36 align-top">
+                  <PaymentSummary row={row} />
+                </TableCell>
                 <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
@@ -320,6 +349,7 @@ function RegistrationViews({
                     onBalancePayment={onBalancePayment}
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
+                    onMarkExempt={onMarkExempt}
                     onViewReceipt={onViewReceipt}
                     busy={participantActionBusy}
                   />
@@ -349,6 +379,7 @@ function RegistrationViews({
                   onBalancePayment={onBalancePayment}
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
+                  onMarkExempt={onMarkExempt}
                   onViewReceipt={onViewReceipt}
                   busy={participantActionBusy}
                 />
@@ -364,7 +395,9 @@ function RegistrationViews({
                 </div>
                 <div className="col-span-2">
                   <dt className="mb-1 text-muted-foreground">Pagamento</dt>
-                  <dd><PaymentSummary row={row} /></dd>
+                  <dd>
+                    <PaymentSummary row={row} />
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">WhatsApp</dt>
@@ -390,6 +423,7 @@ function RegistrationActions({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
+  onMarkExempt,
   onViewReceipt,
   busy,
 }: {
@@ -399,10 +433,12 @@ function RegistrationActions({
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
+  const [confirmExempt, setConfirmExempt] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
@@ -433,9 +469,13 @@ function RegistrationActions({
     setReceiptError("");
     setConfirmMarkPaid(true);
   };
-  const hasActions = row.hasManualReceipt || (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
-    state.status === "pending" || (state.status === "partially_paid" && state.pendingCents > 0) ||
-    access?.canReprocess || access?.canReset;
+  const hasActions =
+    row.hasManualReceipt ||
+    (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
+    state.status === "pending" ||
+    (state.status === "partially_paid" && state.pendingCents > 0) ||
+    access?.canReprocess ||
+    access?.canReset;
   return (
     <>
       <DropdownMenu>
@@ -457,7 +497,9 @@ function RegistrationActions({
             </DropdownMenuItem>
           )}
           {openUrl && isSafeCheckoutUrl(openUrl) && (
-            <DropdownMenuItem asChild><a href={openUrl}>Continuar pagamento</a></DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={openUrl}>Continuar pagamento</a>
+            </DropdownMenuItem>
           )}
           {state.status === "pending" && (
             <>
@@ -467,13 +509,18 @@ function RegistrationActions({
               <DropdownMenuItem onSelect={openMarkPaid}>
                 <BadgeCheck aria-hidden="true" /> Marcar como pago
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
+                <CircleOff aria-hidden="true" /> Marcar como isento
+              </DropdownMenuItem>
             </>
           )}
-          {state.status === "partially_paid" && state.pendingCents > 0 && !row.openComplementPayment && (
-            <DropdownMenuItem onSelect={() => onBalancePayment(row)}>
-              <Banknote aria-hidden="true" /> Pagar saldo de {money(state.pendingCents)}
-            </DropdownMenuItem>
-          )}
+          {state.status === "partially_paid" &&
+            state.pendingCents > 0 &&
+            !row.openComplementPayment && (
+              <DropdownMenuItem onSelect={() => onBalancePayment(row)}>
+                <Banknote aria-hidden="true" /> Pagar saldo de {money(state.pendingCents)}
+              </DropdownMenuItem>
+            )}
           {(access?.canReprocess || access?.canReset) && <DropdownMenuSeparator />}
           {access?.canReprocess && (
             <DropdownMenuItem onSelect={() => onReprocess(row)}>
@@ -487,65 +534,91 @@ function RegistrationActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {row.openComplementPayment && !(typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) && (
-        <span className="sr-only">Pagamento em processamento</span>
-      )}
-        <AlertDialog
-          open={confirmMarkPaid}
-          onOpenChange={(open) => {
-            setConfirmMarkPaid(open);
-            if (!open) {
-              setReceipt(null);
-              setReceiptError("");
-            }
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
-                comprovante antes de concluir esta ação.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
-              <Input
-                id={`payment-receipt-${row.id}`}
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-                aria-required="true"
-                disabled={busy}
-                onChange={(event) => void selectReceipt(event)}
-              />
-              {receipt && (
-                <p className="text-xs text-muted-foreground">
-                  Arquivo selecionado: {receipt.fileName}
-                </p>
-              )}
-              {receiptError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {receiptError}
-                </p>
-              )}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={busy || !receipt}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (!receipt) return;
-                  void onMarkPaid(row, receipt).then((success) => {
-                    if (success) setConfirmMarkPaid(false);
-                  });
-                }}
-              >
-                Confirmar pagamento
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {row.openComplementPayment &&
+        !(typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) && (
+          <span className="sr-only">Pagamento em processamento</span>
+        )}
+      <AlertDialog
+        open={confirmMarkPaid}
+        onOpenChange={(open) => {
+          setConfirmMarkPaid(open);
+          if (!open) {
+            setReceipt(null);
+            setReceiptError("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
+              comprovante antes de concluir esta ação.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
+            <Input
+              id={`payment-receipt-${row.id}`}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+              aria-required="true"
+              disabled={busy}
+              onChange={(event) => void selectReceipt(event)}
+            />
+            {receipt && (
+              <p className="text-xs text-muted-foreground">
+                Arquivo selecionado: {receipt.fileName}
+              </p>
+            )}
+            {receiptError && (
+              <p role="alert" className="text-sm text-destructive">
+                {receiptError}
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy || !receipt}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!receipt) return;
+                void onMarkPaid(row, receipt).then((success) => {
+                  if (success) setConfirmMarkPaid(false);
+                });
+              }}
+            >
+              Confirmar pagamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={confirmExempt} onOpenChange={setConfirmExempt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar participante como isento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A inscrição de {row.name} será confirmada sem cobrança. Todos os valores ficarão em{" "}
+              {money(0)} e o link de pagamento será cancelado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                void onMarkExempt(row).then((success) => {
+                  if (success) setConfirmExempt(false);
+                });
+              }}
+            >
+              Confirmar isenção
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -556,7 +629,10 @@ function RegistrationActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => void onReset(row).then(() => setConfirmReset(false))}>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={() => void onReset(row).then(() => setConfirmReset(false))}
+            >
               Confirmar redefinição
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -612,6 +688,7 @@ export function AdminRegistrationsPage({
   exportRegistrations = exportAdminRegistrations,
   createPaymentLink = createAdminRegistrationCheckoutLink,
   markPaid = markAdminRegistrationPaid,
+  markExempt = markAdminRegistrationExempt,
   getReceiptUrl = getAdminRegistrationReceipt,
   openReceiptUrl = defaultOpenReceiptUrl,
   copyToClipboard = defaultCopyToClipboard,
@@ -912,6 +989,28 @@ export function AdminRegistrationsPage({
     }
   }
 
+  async function runMarkExemptAction(row: AdminRegistrationRow): Promise<boolean> {
+    if (actionBusy.current || gate !== "authorized") return false;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await markExempt({ data: { registrationId: row.id } });
+      if (result.status !== "exempt") throw new Error("Unexpected exemption result");
+      setAnnouncement("Participante marcado como isento. Valores zerados.");
+      setRetry((value) => value + 1);
+      setSummaryRetry((value) => value + 1);
+      return true;
+    } catch {
+      setActionError("Não foi possível marcar o participante como isento. Tente novamente.");
+      return false;
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
   async function runReceiptAction(row: AdminRegistrationRow): Promise<void> {
     if (actionBusy.current || gate !== "authorized") return;
     actionBusy.current = true;
@@ -1091,6 +1190,7 @@ export function AdminRegistrationsPage({
                     <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="pending">Pendentes</SelectItem>
                     <SelectItem value="paid">Pagas</SelectItem>
+                    <SelectItem value="exempt">Isentas</SelectItem>
                     <SelectItem value="partially_paid">Parcialmente pagas</SelectItem>
                     <SelectItem value="legacy">Históricas</SelectItem>
                   </SelectContent>
@@ -1121,6 +1221,7 @@ export function AdminRegistrationsPage({
                   onBalancePayment={setBalanceTarget}
                   onPaymentLink={(row) => void runPaymentLinkAction(row)}
                   onMarkPaid={runMarkPaidAction}
+                  onMarkExempt={runMarkExemptAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                 />
               ) : (

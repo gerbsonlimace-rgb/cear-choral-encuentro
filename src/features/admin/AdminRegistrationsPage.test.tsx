@@ -11,6 +11,7 @@ vi.mock("@/lib/admin.functions", () => ({
   exportAdminRegistrations: vi.fn(),
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
+  markAdminRegistrationExempt: vi.fn(),
   getAdminRegistrationReceipt: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
@@ -223,6 +224,36 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
   });
 
+  it("lets an administrator exempt a pending participant and confirms all values will be zero", async () => {
+    const markExempt = vi.fn().mockResolvedValue({
+      status: "exempt",
+      registrationId: "pending",
+    });
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      markExempt,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como isento" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Todos os valores ficarão em R$ 0,00");
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar isenção" }));
+
+    await waitFor(() =>
+      expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+    );
+    expect(
+      await screen.findByText("Participante marcado como isento. Valores zerados."),
+    ).toBeInTheDocument();
+  });
+
   it("requires a receipt and submits its contents with immediate manual payment", async () => {
     const markPaid = vi.fn().mockResolvedValue({
       status: "paid",
@@ -428,7 +459,11 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getAllByText("85999990000").length).toBe(3);
       expect(scope.getAllByText("ana@example.com").length).toBe(3);
     }
-    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual([
       "Data e hora",
       "Coralista",
       "Função",
@@ -476,7 +511,9 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await screen.findByRole("table");
     expect(screen.queryByText("Aguardando criação")).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Mais ações para Clara Paga" })[0]);
-    expect(screen.queryByRole("menuitem", { name: "Redefinir senha inicial" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Redefinir senha inicial" }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("menuitem", { name: "Reprocessar acesso" }));
     await waitFor(() =>
       expect(reprocessAccess).toHaveBeenCalledWith({
