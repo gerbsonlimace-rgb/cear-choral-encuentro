@@ -287,7 +287,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
 
     expect(await screen.findByRole("heading", { name: "Sua participação" })).toBeVisible();
     expect(screen.queryByLabelText("Diocese")).not.toBeInTheDocument();
-    for (const choice of screen.getAllByRole("radio", { name: /Coro|Outros/ })) {
+    for (const choice of screen.getAllByRole("radio", { name: /Coro|Outro/ })) {
       expect(choice).not.toBeChecked();
     }
     expect(screen.getByText("Selecione um coro.")).toBeVisible();
@@ -321,7 +321,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       "Coro Diocesano de Quixadá",
       "Coro Diocesano de Sobral",
       "Coro Diocesano de Canindé",
-      "Outros",
+      "Outro",
     ]) {
       expect(within(choirChoices).getByRole("radio", { name: label })).toBeInTheDocument();
     }
@@ -363,10 +363,10 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(choirChoices).toHaveAccessibleDescription("Selecione um coro.");
     expect(screen.getByRole("alert")).toHaveTextContent("Selecione um coro.");
 
-    await user.click(screen.getByRole("radio", { name: "Outros" }));
+    await user.click(screen.getByRole("radio", { name: "Outro" }));
     const otherChoir = screen.getByLabelText("Informe o nome do coro");
     expect(otherChoir).toBeRequired();
-    const otherChoirOption = screen.getByRole("radio", { name: "Outros" }).closest("label");
+    const otherChoirOption = screen.getByRole("radio", { name: "Outro" }).closest("label");
     const profile = screen.getByRole("radiogroup", { name: "Perfil musical" });
     expect(otherChoirOption).not.toBeNull();
     expect(otherChoirOption!.compareDocumentPosition(otherChoir) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
@@ -414,7 +414,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByRole("heading", { name: "Sua participação" });
 
-    expect(screen.getByRole("radio", { name: "Outros" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Outro" })).not.toBeChecked();
     expect(screen.queryByLabelText("Informe o nome do coro")).not.toBeInTheDocument();
   });
 
@@ -443,6 +443,9 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(choices).toHaveTextContent(/25 rifas/);
     expect(choices).toHaveTextContent(/restante de R\$ 250,00 até 30 de outubro/);
     expect(choices).toHaveTextContent(/vaga será confirmada após esse pagamento/);
+    expect(choices).toHaveTextContent(
+      /Os blocos de rifas serão entregues ao regente ou responsável, que fará a distribuição aos coralistas e a prestação de contas\./,
+    );
     expect(choices).toHaveTextContent(/Pague R\$ 300,00 agora/);
     expect(choices).toHaveTextContent(/Pix ou em até 5x no cartão/);
   });
@@ -483,8 +486,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(summary).toHaveTextContent(/Pré-inscrição agora:\s*R\$ 100,00/);
     expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 250,00/);
     expect(summary).toHaveTextContent(/25 rifas/);
-    expect(summary).toHaveTextContent(
-      /Sua vaga será confirmada após o pagamento do valor restante/,
+    expect(summary).not.toHaveTextContent(
+      /Sua vaga será confirmada após o pagamento do valor restante, que pode ser feito via Pix ou em até 5x no cartão\./,
     );
     expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent("Participarei");
   });

@@ -52,7 +52,7 @@ describe("RegistrationCallout", () => {
     ).toBeTruthy();
     expect(within(benefits).getByText("Formações & Certificado")).toBeVisible();
     expect(within(benefits).getByText("Alimentação Completa")).toBeVisible();
-    expect(within(benefits).getByText("Hospedagem Confortável")).toBeVisible();
+    expect(within(benefits).queryByText("Hospedagem Confortável")).not.toBeInTheDocument();
     expect(within(benefits).getByText("Kit com Partituras")).toBeVisible();
   });
 

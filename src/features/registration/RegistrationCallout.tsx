@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   Award,
-  BedDouble,
   Check,
   ClipboardList,
   Clock3,
@@ -32,7 +31,6 @@ import {
 const benefits = [
   { icon: Award, label: "Formações & Certificado" },
   { icon: Utensils, label: "Alimentação Completa" },
-  { icon: BedDouble, label: "Hospedagem Confortável" },
   { icon: ShoppingBag, label: "Kit com Partituras" },
 ];
 

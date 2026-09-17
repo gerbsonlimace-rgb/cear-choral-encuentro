@@ -223,8 +223,7 @@ function RegistrationPriceSummary({
                   <strong> 25 rifas</strong> e realizando sua pré-inscrição no valor de{" "}
                   <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong>. O valor
                   restante de <strong>{formatCurrency(remainingCents)}</strong> deve ser enviado até
-                  30 de outubro. Sua vaga será confirmada após o pagamento do valor restante, que
-                  pode ser feito via Pix ou em até <strong>5x no cartão</strong>.
+                  30 de outubro.
                 </p>
               </div>
             ) : (
@@ -388,7 +387,7 @@ export function RegistrationSection({
     if (!isOtherChoir || configuration?.standardPriceCents === null || !configuration) return null;
     return {
       id: OTHER_CHOIR_VALUE,
-      name: form.otherChoirName.trim() || "Outros",
+      name: form.otherChoirName.trim() || "Outro",
       diocese: form.diocese || null,
       pricingType: "standard",
       standardPriceCents: configuration.standardPriceCents,
@@ -1189,7 +1188,7 @@ export function RegistrationSection({
                             })}
                             {filteredChoirs.length === 0 && (
                               <p className="rounded-xl border border-dashed border-registration-line bg-registration-subtle p-4 text-sm text-registration-muted">
-                                Nenhum coro encontrado. Você pode selecionar “Outros” e informar o nome manualmente.
+                                Nenhum coro encontrado. Você pode selecionar “Outro” e informar o nome manualmente.
                               </p>
                             )}
                             <label
@@ -1221,7 +1220,7 @@ export function RegistrationSection({
                               >
                                 {isOtherChoir && <Check className="size-4" />}
                               </span>
-                              <span className="font-semibold text-foreground">Outros</span>
+                              <span className="font-semibold text-foreground">Outro</span>
                             </label>
                           </div>
                         )}
@@ -1407,8 +1406,10 @@ export function RegistrationSection({
                                           selectedChoir.standardPriceCents -
                                             selectedChoir.registrationPriceCents,
                                       )}{" "}
-                                      até 30 de outubro. Sua vaga será confirmada após esse
-                                      pagamento.
+                                      até 30 de outubro. Os blocos de rifas serão entregues ao
+                                      regente ou responsável, que fará a distribuição aos
+                                      coralistas e a prestação de contas. Sua vaga será confirmada
+                                      após esse pagamento.
                                     </span>
                                   </span>
                                 </label>
