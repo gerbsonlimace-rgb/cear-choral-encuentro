@@ -413,7 +413,7 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Histórico")).toBeInTheDocument();
       expect(scope.getByText("Pendente")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
-      expect(scope.getAllByText("Não informado").length).toBeGreaterThan(0);
+      expect(scope.getByText("Valores não informados")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
       expect(scope.getByText("AH")).toBeInTheDocument();
       expect(scope.getByText("CP")).toBeInTheDocument();
