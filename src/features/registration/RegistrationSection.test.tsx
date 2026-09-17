@@ -180,6 +180,24 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
   });
 
+  it("prevents advancing with an invalid Brazilian mobile number", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await fillPersonalData(user);
+    const phone = screen.getByLabelText("WhatsApp");
+    await user.clear(phone);
+    await user.type(phone, "55859917823");
+    expect(phone).toHaveValue("(55) 85991-7823");
+
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("Informe um WhatsApp brasileiro válido.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeVisible();
+  });
+
   it("allows saved registrations to continue without blocking the wizard", async () => {
     const user = userEvent.setup();
     const lookup = vi.fn(async () => ({

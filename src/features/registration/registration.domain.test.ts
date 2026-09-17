@@ -5,6 +5,7 @@ import {
   calculateOrderAmountCents,
   cpfSchema,
   dioceseOptions,
+  isValidBrazilianMobilePhone,
   paymentLookupSchema,
   registrationResumeSchema,
   registrationSchema,
@@ -53,6 +54,17 @@ describe("registration domain", () => {
     );
     expect(registrationSchema.safeParse({ ...baseInput, badgeName: "" }).success).toBe(false);
     expect(registrationSchema.safeParse({ ...baseInput, badgeName: "A" }).success).toBe(false);
+  });
+
+  it("accepts only Brazilian mobile WhatsApp numbers with a valid area code", () => {
+    expect(isValidBrazilianMobilePhone("(85) 99999-9999")).toBe(true);
+    expect(isValidBrazilianMobilePhone("+55 (85) 99999-9999")).toBe(true);
+    expect(isValidBrazilianMobilePhone("(55) 99999-9999")).toBe(true);
+    expect(isValidBrazilianMobilePhone("(55) 85991-7823")).toBe(false);
+    expect(isValidBrazilianMobilePhone("(20) 99999-9999")).toBe(false);
+    expect(registrationSchema.safeParse({ ...baseInput, phone: "(55) 85991-7823" }).success).toBe(
+      false,
+    );
   });
 
   it("normalizes the CPF and validates the birth date used to resume a registration", () => {

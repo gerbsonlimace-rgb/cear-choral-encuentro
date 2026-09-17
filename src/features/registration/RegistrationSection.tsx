@@ -52,6 +52,7 @@ import {
   birthDateSchema,
   cpfSchema,
   dioceseOptions,
+  isValidBrazilianMobilePhone,
   musicalProfileOptions,
   registrationLookupSchema,
   registrationSchema,
@@ -588,7 +589,9 @@ export function RegistrationSection({
       const cpfResult = cpfSchema.safeParse(form.cpf);
       if (!cpfResult.success) nextErrors.cpf = cpfResult.error.issues[0]?.message;
       if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) nextErrors.email = "Informe um e-mail válido.";
-      if (form.phone.trim().length < 8) nextErrors.phone = "Informe um WhatsApp válido.";
+      if (!isValidBrazilianMobilePhone(form.phone)) {
+        nextErrors.phone = "Informe um WhatsApp brasileiro válido.";
+      }
       const birthDateResult = birthDateSchema.safeParse(form.birthDate);
       if (!birthDateResult.success) nextErrors.birthDate = birthDateResult.error.issues[0]?.message;
       if (!form.diocese) nextErrors.diocese = "Selecione sua diocese.";

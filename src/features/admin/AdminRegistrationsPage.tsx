@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   BadgeCheck,
   Banknote,
@@ -35,6 +44,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,6 +167,11 @@ const dateTime = (value: string | null) =>
   value ? dateTimeFormatter.format(new Date(value)).replace(", ", " ") : "Não informado";
 const money = (value: number | null) =>
   value === null ? "Não informado" : moneyFormatter.format(value / 100);
+const dateOnly = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "Não informado";
+};
+const optionalText = (value: string | null | undefined) => value?.trim() || "Não informado";
 
 const musicalProfileLabels: Record<string, string> = {
   coralista: "Coralista",
@@ -177,11 +198,13 @@ function nameInitials(name: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-function ParticipantAvatar({ row }: { row: AdminRegistrationRow }) {
+function ParticipantAvatar({ row, large = false }: { row: AdminRegistrationRow; large?: boolean }) {
   return (
-    <Avatar className="h-10 w-10 shrink-0 border border-border">
+    <Avatar className={`${large ? "h-20 w-20" : "h-10 w-10"} shrink-0 border border-border`}>
       {row.photoUrl && <AvatarImage src={row.photoUrl} alt={`Foto de ${row.name}`} />}
-      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+      <AvatarFallback
+        className={`bg-primary/10 font-semibold text-primary ${large ? "text-xl" : "text-xs"}`}
+      >
         {nameInitials(row.name)}
       </AvatarFallback>
     </Avatar>
@@ -241,11 +264,169 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
     <div className="space-y-1.5">
       <Status row={row} />
       <div className="space-y-0.5 text-xs text-muted-foreground">
-        {received !== null && <p>Recebido: <span className="font-medium text-foreground">{money(received)}</span></p>}
-        {pending !== null && <p>Pendente: <span className="font-medium text-foreground">{money(pending)}</span></p>}
+        {received !== null && (
+          <p>
+            Recebido: <span className="font-medium text-foreground">{money(received)}</span>
+          </p>
+        )}
+        {pending !== null && (
+          <p>
+            Pendente: <span className="font-medium text-foreground">{money(pending)}</span>
+          </p>
+        )}
         {received === null && pending === null && <p>Valores não informados</p>}
       </div>
     </div>
+  );
+}
+
+const voicePartLabels: Record<string, string> = {
+  soprano: "Soprano",
+  contralto: "Contralto",
+  tenor: "Tenor",
+  baixo: "Baixo",
+  other: "Outro",
+};
+
+function DetailItem({
+  label,
+  children,
+  wide = false,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-xl border bg-muted/20 p-4">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
+      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">{children}</dl>
+    </section>
+  );
+}
+
+function RegistrationDetailsDialog({
+  row,
+  onOpenChange,
+}: {
+  row: AdminRegistrationRow | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!row) return null;
+  const financial = getAdminFinancialState(row);
+  const paymentMethod =
+    row.paymentMethod === "pix"
+      ? "Pix"
+      : row.paymentMethod === "credit_card"
+        ? "Cartão de crédito"
+        : "Não informado";
+  const paymentOrigin =
+    row.paymentOrigin === "manual"
+      ? "Confirmação manual"
+      : row.paymentOrigin === "infinitepay"
+        ? "InfinitePay"
+        : "Não informado";
+  const pricingType =
+    row.pricingType === "promotional"
+      ? "Programa de rifas"
+      : row.pricingType === "standard"
+        ? "Inscrição integral"
+        : "Não informado";
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <div className="flex items-start gap-4 pr-8">
+            <ParticipantAvatar row={row} large />
+            <div className="min-w-0 space-y-2">
+              <DialogTitle className="break-words text-left text-xl">{row.name}</DialogTitle>
+              <DialogDescription className="text-left">
+                Dados completos da inscrição realizada em {dateTime(row.createdAt)}.
+              </DialogDescription>
+              <Status row={row} />
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DetailSection title="Dados pessoais">
+            <DetailItem label="Nome completo">{row.name}</DetailItem>
+            <DetailItem label="Nome no crachá">{optionalText(row.badgeName)}</DetailItem>
+            <DetailItem label="CPF">{row.cpf}</DetailItem>
+            <DetailItem label="Data de nascimento">{dateOnly(row.birthDate)}</DetailItem>
+            <DetailItem label="E-mail" wide>
+              {row.email}
+            </DetailItem>
+            <DetailItem label="WhatsApp">{row.phone}</DetailItem>
+            <DetailItem label="Cidade">{row.city}</DetailItem>
+            <DetailItem label="Instituição" wide>
+              {optionalText(row.institution)}
+            </DetailItem>
+          </DetailSection>
+
+          <DetailSection title="Participação e coro">
+            <DetailItem label="Diocese">{row.diocese}</DetailItem>
+            <DetailItem label="Coro">{row.choirName}</DetailItem>
+            <DetailItem label="Outro coro">{optionalText(row.otherChoirName)}</DetailItem>
+            <DetailItem label="Perfil musical">{musicalProfileLabel(row)}</DetailItem>
+            <DetailItem label="Naipe / voz">
+              {row.voicePart ? (voicePartLabels[row.voicePart] ?? row.voicePart) : "Não informado"}
+            </DetailItem>
+            <DetailItem label="Função anterior">{optionalText(row.role)}</DetailItem>
+            <DetailItem label="Regente responsável">{optionalText(row.regentName)}</DetailItem>
+            <DetailItem label="Camiseta">
+              {row.includeShirt
+                ? `${optionalText(row.shirtSize)}${row.shirtPriceCents ? ` · ${money(row.shirtPriceCents)}` : ""}`
+                : "Não solicitada"}
+            </DetailItem>
+            <DetailItem label="Observações" wide>
+              {optionalText(row.observations)}
+            </DetailItem>
+          </DetailSection>
+
+          <DetailSection title="Financeiro">
+            <DetailItem label="Modalidade">{pricingType}</DetailItem>
+            <DetailItem label="Valor padrão">{money(row.standardPriceCents)}</DetailItem>
+            <DetailItem label="Valor da inscrição">{money(row.registrationPriceCents)}</DetailItem>
+            <DetailItem label="Valor do pedido">{money(row.amountCents)}</DetailItem>
+            <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
+            <DetailItem label="Pendente">{money(financial.pendingCents)}</DetailItem>
+            <DetailItem label="Forma de pagamento">{paymentMethod}</DetailItem>
+            <DetailItem label="Parcelas">{row.installments ?? "Não informado"}</DetailItem>
+            <DetailItem label="Origem do pagamento">{paymentOrigin}</DetailItem>
+            <DetailItem label="Pago em">{dateTime(row.paidAt)}</DetailItem>
+            <DetailItem label="Comprovante">
+              {row.hasManualReceipt ? "Disponível no menu Mais" : "Não disponível"}
+            </DetailItem>
+            <DetailItem label="Acesso do participante">
+              {row.participantAccess?.label ?? "Não disponível"}
+            </DetailItem>
+          </DetailSection>
+
+          <DetailSection title="Dados da inscrição">
+            <DetailItem label="Data e hora">{dateTime(row.createdAt)}</DetailItem>
+            <DetailItem label="Código da inscrição">{row.id}</DetailItem>
+          </DetailSection>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function isInteractiveTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("button,a,input,select,textarea,[role='menuitem']"))
   );
 }
 
@@ -268,6 +449,13 @@ function RegistrationViews({
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
 }) {
+  const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
+  const openWithKeyboard = (event: KeyboardEvent<HTMLElement>, row: AdminRegistrationRow) => {
+    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " "))
+      return;
+    event.preventDefault();
+    setSelectedRow(row);
+  };
   return (
     <>
       <div className="hidden rounded-xl border bg-card md:block">
@@ -292,7 +480,16 @@ function RegistrationViews({
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                tabIndex={0}
+                aria-label={`Ver todos os dados de ${row.name}`}
+                className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                onClick={(event) => {
+                  if (!isInteractiveTarget(event.target)) setSelectedRow(row);
+                }}
+                onKeyDown={(event) => openWithKeyboard(event, row)}
+              >
                 <TableCell className="whitespace-nowrap align-top">
                   <time dateTime={row.createdAt}>{dateTime(row.createdAt)}</time>
                 </TableCell>
@@ -307,7 +504,9 @@ function RegistrationViews({
                 </TableCell>
                 <TableCell className="align-top">{musicalProfileLabel(row)}</TableCell>
                 <TableCell className="max-w-52 break-all align-top">{row.email}</TableCell>
-                <TableCell className="min-w-36 align-top"><PaymentSummary row={row} /></TableCell>
+                <TableCell className="min-w-36 align-top">
+                  <PaymentSummary row={row} />
+                </TableCell>
                 <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
@@ -331,7 +530,16 @@ function RegistrationViews({
       </div>
       <section aria-label="Cartões de inscrições" className="space-y-3 md:hidden">
         {rows.map((row) => (
-          <Card key={row.id} className="shadow-none">
+          <Card
+            key={row.id}
+            tabIndex={0}
+            aria-label={`Ver todos os dados de ${row.name}`}
+            className="cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={(event) => {
+              if (!isInteractiveTarget(event.target)) setSelectedRow(row);
+            }}
+            onKeyDown={(event) => openWithKeyboard(event, row)}
+          >
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -364,7 +572,9 @@ function RegistrationViews({
                 </div>
                 <div className="col-span-2">
                   <dt className="mb-1 text-muted-foreground">Pagamento</dt>
-                  <dd><PaymentSummary row={row} /></dd>
+                  <dd>
+                    <PaymentSummary row={row} />
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">WhatsApp</dt>
@@ -379,6 +589,10 @@ function RegistrationViews({
           </Card>
         ))}
       </section>
+      <RegistrationDetailsDialog
+        row={selectedRow}
+        onOpenChange={(open) => !open && setSelectedRow(null)}
+      />
     </>
   );
 }
@@ -433,9 +647,13 @@ function RegistrationActions({
     setReceiptError("");
     setConfirmMarkPaid(true);
   };
-  const hasActions = row.hasManualReceipt || (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
-    state.status === "pending" || (state.status === "partially_paid" && state.pendingCents > 0) ||
-    access?.canReprocess || access?.canReset;
+  const hasActions =
+    row.hasManualReceipt ||
+    (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
+    state.status === "pending" ||
+    (state.status === "partially_paid" && state.pendingCents > 0) ||
+    access?.canReprocess ||
+    access?.canReset;
   return (
     <>
       <DropdownMenu>
@@ -457,7 +675,9 @@ function RegistrationActions({
             </DropdownMenuItem>
           )}
           {openUrl && isSafeCheckoutUrl(openUrl) && (
-            <DropdownMenuItem asChild><a href={openUrl}>Continuar pagamento</a></DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={openUrl}>Continuar pagamento</a>
+            </DropdownMenuItem>
           )}
           {state.status === "pending" && (
             <>
@@ -469,11 +689,13 @@ function RegistrationActions({
               </DropdownMenuItem>
             </>
           )}
-          {state.status === "partially_paid" && state.pendingCents > 0 && !row.openComplementPayment && (
-            <DropdownMenuItem onSelect={() => onBalancePayment(row)}>
-              <Banknote aria-hidden="true" /> Pagar saldo de {money(state.pendingCents)}
-            </DropdownMenuItem>
-          )}
+          {state.status === "partially_paid" &&
+            state.pendingCents > 0 &&
+            !row.openComplementPayment && (
+              <DropdownMenuItem onSelect={() => onBalancePayment(row)}>
+                <Banknote aria-hidden="true" /> Pagar saldo de {money(state.pendingCents)}
+              </DropdownMenuItem>
+            )}
           {(access?.canReprocess || access?.canReset) && <DropdownMenuSeparator />}
           {access?.canReprocess && (
             <DropdownMenuItem onSelect={() => onReprocess(row)}>
@@ -487,65 +709,66 @@ function RegistrationActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {row.openComplementPayment && !(typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) && (
-        <span className="sr-only">Pagamento em processamento</span>
-      )}
-        <AlertDialog
-          open={confirmMarkPaid}
-          onOpenChange={(open) => {
-            setConfirmMarkPaid(open);
-            if (!open) {
-              setReceipt(null);
-              setReceiptError("");
-            }
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
-                comprovante antes de concluir esta ação.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
-              <Input
-                id={`payment-receipt-${row.id}`}
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-                aria-required="true"
-                disabled={busy}
-                onChange={(event) => void selectReceipt(event)}
-              />
-              {receipt && (
-                <p className="text-xs text-muted-foreground">
-                  Arquivo selecionado: {receipt.fileName}
-                </p>
-              )}
-              {receiptError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {receiptError}
-                </p>
-              )}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={busy || !receipt}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (!receipt) return;
-                  void onMarkPaid(row, receipt).then((success) => {
-                    if (success) setConfirmMarkPaid(false);
-                  });
-                }}
-              >
-                Confirmar pagamento
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {row.openComplementPayment &&
+        !(typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) && (
+          <span className="sr-only">Pagamento em processamento</span>
+        )}
+      <AlertDialog
+        open={confirmMarkPaid}
+        onOpenChange={(open) => {
+          setConfirmMarkPaid(open);
+          if (!open) {
+            setReceipt(null);
+            setReceiptError("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
+              comprovante antes de concluir esta ação.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
+            <Input
+              id={`payment-receipt-${row.id}`}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+              aria-required="true"
+              disabled={busy}
+              onChange={(event) => void selectReceipt(event)}
+            />
+            {receipt && (
+              <p className="text-xs text-muted-foreground">
+                Arquivo selecionado: {receipt.fileName}
+              </p>
+            )}
+            {receiptError && (
+              <p role="alert" className="text-sm text-destructive">
+                {receiptError}
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy || !receipt}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!receipt) return;
+                void onMarkPaid(row, receipt).then((success) => {
+                  if (success) setConfirmMarkPaid(false);
+                });
+              }}
+            >
+              Confirmar pagamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -556,7 +779,10 @@ function RegistrationActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => void onReset(row).then(() => setConfirmReset(false))}>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={() => void onReset(row).then(() => setConfirmReset(false))}
+            >
               Confirmar redefinição
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -29,6 +29,37 @@ export const cpfSchema = z
   .transform((value) => value.replace(/\D/g, ""))
   .refine(isValidCpf, "Informe um CPF válido.");
 
+const brazilianAreaCodes = new Set([
+  "11", "12", "13", "14", "15", "16", "17", "18", "19",
+  "21", "22", "24", "27", "28",
+  "31", "32", "33", "34", "35", "37", "38",
+  "41", "42", "43", "44", "45", "46", "47", "48", "49",
+  "51", "53", "54", "55",
+  "61", "62", "63", "64", "65", "66", "67", "68", "69",
+  "71", "73", "74", "75", "77", "79",
+  "81", "82", "83", "84", "85", "86", "87", "88", "89",
+  "91", "92", "93", "94", "95", "96", "97", "98", "99",
+]);
+
+export function isValidBrazilianMobilePhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  const nationalNumber = digits.length === 13 && digits.startsWith("55")
+    ? digits.slice(2)
+    : digits;
+
+  return (
+    nationalNumber.length === 11 &&
+    brazilianAreaCodes.has(nationalNumber.slice(0, 2)) &&
+    nationalNumber[2] === "9"
+  );
+}
+
+export const brazilianMobilePhoneSchema = z
+  .string()
+  .trim()
+  .max(30)
+  .refine(isValidBrazilianMobilePhone, "Informe um WhatsApp brasileiro válido.");
+
 const voicePartValues = ["soprano", "contralto", "tenor", "baixo", "nao_sei_informar"] as const;
 export const voicePartSchema = z.enum(voicePartValues);
 export type VoicePart = z.infer<typeof voicePartSchema>;
@@ -143,7 +174,7 @@ export const registrationSchema = z
     badgeName: z.string().trim().min(2, "Informe o nome para o crachá.").max(60),
     cpf: cpfSchema,
     email: z.string().trim().email("Informe um e-mail válido.").max(254),
-    phone: z.string().trim().min(8).max(30),
+    phone: brazilianMobilePhoneSchema,
     birthDate: birthDateSchema,
     diocese: dioceseSchema,
     choirId: z.string().uuid("Selecione um coro válido.").nullable(),

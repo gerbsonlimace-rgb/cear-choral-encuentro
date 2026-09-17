@@ -29,13 +29,22 @@ const legacy: AdminRegistrationRow = {
   id: "legacy",
   createdAt: "2026-09-01T12:00:00Z",
   name: "Ana Histórica",
+  badgeName: "Ana",
   cpf: "529.982.247-25",
+  birthDate: "1990-01-02",
+  diocese: "Diocese de Quixadá",
   choirName: "Diocese de Quixadá",
+  otherChoirName: null,
   email: "ana@example.com",
   phone: "85999990000",
   city: "Quixadá",
   institution: null,
   role: "singer",
+  voicePart: "soprano",
+  observations: "Participante da edição anterior.",
+  includeShirt: false,
+  shirtSize: null,
+  shirtPriceCents: null,
   paymentStatus: "legacy",
   amountCents: null,
   paidAmountCents: null,
@@ -428,7 +437,11 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getAllByText("85999990000").length).toBe(3);
       expect(scope.getAllByText("ana@example.com").length).toBe(3);
     }
-    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual([
       "Data e hora",
       "Coralista",
       "Função",
@@ -448,6 +461,42 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(
       screen.getByText("3 inscrições encontradas").closest('[aria-live="polite"]'),
     ).toBeInTheDocument();
+  });
+
+  it("opens a read-only modal with all participant data from row click and keyboard", async () => {
+    const { user } = setup();
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    const row = within(table).getByRole("row", { name: "Ver todos os dados de Ana Histórica" });
+
+    await user.click(row);
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Ana Histórica" })).toBeInTheDocument();
+    expect(within(dialog).getByText("Dados pessoais")).toBeInTheDocument();
+    expect(within(dialog).getByText("Participação e coro")).toBeInTheDocument();
+    expect(within(dialog).getByText("Financeiro")).toBeInTheDocument();
+    expect(within(dialog).getByText("Dados da inscrição")).toBeInTheDocument();
+    expect(within(dialog).getByText("Ana")).toBeInTheDocument();
+    expect(within(dialog).getByText("02/01/1990")).toBeInTheDocument();
+    expect(within(dialog).getByText("Soprano")).toBeInTheDocument();
+    expect(within(dialog).getByText("Participante da edição anterior.")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    row.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("keeps the row details modal separate from the More actions menu", async () => {
+    const { user } = setup();
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Ana Histórica" }));
+
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows a useful empty state", async () => {
@@ -476,7 +525,9 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await screen.findByRole("table");
     expect(screen.queryByText("Aguardando criação")).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Mais ações para Clara Paga" })[0]);
-    expect(screen.queryByRole("menuitem", { name: "Redefinir senha inicial" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Redefinir senha inicial" }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("menuitem", { name: "Reprocessar acesso" }));
     await waitFor(() =>
       expect(reprocessAccess).toHaveBeenCalledWith({

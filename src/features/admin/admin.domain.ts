@@ -71,14 +71,23 @@ export type AdminRegistrationRow = {
   id: string;
   createdAt: string;
   name: string;
+  badgeName: string | null;
   cpf: string;
+  birthDate: string;
+  diocese: string;
   choirName: string;
+  otherChoirName: string | null;
   email: string;
   phone: string;
   city: string;
   institution: string | null;
   role: string;
   musicalProfile?: string | null;
+  voicePart: string | null;
+  observations: string | null;
+  includeShirt: boolean;
+  shirtSize: string | null;
+  shirtPriceCents: number | null;
   paymentStatus: "legacy" | "pending" | "paid";
   amountCents: number | null;
   paidAmountCents: number | null;
@@ -163,14 +172,23 @@ export function mapAdminRegistrationRow(
     id: row.id,
     createdAt: row.created_at,
     name: row.name,
+    badgeName: row.badge_name,
     cpf: formatCpf(row.cpf),
+    birthDate: row.birth_date ?? "",
+    diocese: displayText(row.diocese),
     choirName: row.choir_name,
+    otherChoirName: row.other_choir_name,
     email: displayText(row.email),
     phone: row.phone,
     city: displayText(row.city),
     institution: row.institution,
     role: displayText(row.role),
     musicalProfile: row.musical_profile,
+    voicePart: row.voice_part,
+    observations: row.observations,
+    includeShirt: Boolean(row.include_shirt),
+    shirtSize: row.shirt_size,
+    shirtPriceCents: row.shirt_price_cents,
     paymentStatus: status,
     amountCents: row.amount_cents,
     paidAmountCents: row.paid_amount_cents,
