@@ -299,11 +299,6 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       if (current.payment_status !== "pending") {
         throw new Error("A inscrição não está pendente.");
       }
-      if (current.checkout_url) {
-        throw new Error(
-          "Esta inscrição já possui um link de pagamento ativo. Aguarde a confirmação automática.",
-        );
-      }
       const amountCents = current.amount_cents;
       if (
         typeof amountCents !== "number" ||
@@ -335,6 +330,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
             manual_receipt_file_name: parsed.fileName,
             manual_receipt_mime_type: parsed.mimeType,
             manual_receipt_size_bytes: bytes.byteLength,
+            checkout_url: null,
             infinitepay_invoice_slug: null,
             infinitepay_transaction_nsu: null,
             payment_method: null,
@@ -345,7 +341,6 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
           })
           .eq("id", registrationId)
           .eq("payment_status", "pending")
-          .is("checkout_url", null)
           .select("id")
           .maybeSingle();
         if (error || !data) {

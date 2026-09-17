@@ -303,23 +303,39 @@ describe("manual payment confirmation", () => {
       }),
     ]);
     expect(trace).toContainEqual(["eq", "payment_status", "pending"]);
-    expect(trace).toContainEqual(["is", "checkout_url", null]);
   });
 
-  it("does not manually confirm a registration with an active checkout", async () => {
+  it("manually confirms a pending registration with an active checkout", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    supabaseAdminMock.storage = {
+      from: vi.fn().mockReturnValue({ upload, remove }),
+    };
     const pendingRow = {
       ...selectedRow,
       payment_status: "pending",
       amount_cents: 10000,
       checkout_url: "https://checkout.infinitepay.com.br/active",
     };
-    databaseHarness([singleSuccess(pendingRow)]);
+    const { trace } = databaseHarness([
+      singleSuccess(pendingRow),
+      singleSuccess({ id: pendingRow.id }),
+    ]);
     await expect(
       createAdminRegistrationService(
         createSupabaseAdminRegistrationRepository(),
         () => new Date(),
       ).markPaid("registration-1", "admin-1", receipt),
-    ).rejects.toThrow("link de pagamento ativo");
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+    expect(trace).toContainEqual([
+      "update",
+      expect.objectContaining({
+        payment_status: "paid",
+        payment_origin: "manual",
+        manual_paid_by: "admin-1",
+        checkout_url: null,
+      }),
+    ]);
   });
 
   it("retries participant provisioning after a durable manual confirmation", async () => {
