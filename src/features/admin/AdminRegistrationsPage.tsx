@@ -487,7 +487,7 @@ function RegistrationActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {row.openComplementPayment && !isSafeCheckoutUrl(openUrl ?? null) && (
+      {row.openComplementPayment && !(typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) && (
         <span className="sr-only">Pagamento em processamento</span>
       )}
         <AlertDialog

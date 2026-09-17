@@ -603,9 +603,6 @@ export function RegistrationSection({
       if (form.musicalProfile === "coralista" && !form.voicePart) {
         nextErrors.voicePart = "Selecione seu naipe vocal.";
       }
-      if (step === 3 && selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
-        nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
-      }
     } else if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
       nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
     }

@@ -609,8 +609,6 @@ export type Database = {
           checkout_url: string | null
           choir_id: string | null
           choir_name: string
-          other_choir_name: string | null
-          musical_profile: string | null
           city: string | null
           cpf: string | null
           created_at: string
@@ -627,9 +625,11 @@ export type Database = {
           manual_receipt_mime_type: string | null
           manual_receipt_path: string | null
           manual_receipt_size_bytes: number | null
+          musical_profile: string | null
           name: string
           observations: string | null
           order_nsu: string | null
+          other_choir_name: string | null
           paid_amount_cents: number | null
           paid_at: string | null
           payment_method: string | null
@@ -654,8 +654,6 @@ export type Database = {
           checkout_url?: string | null
           choir_id?: string | null
           choir_name: string
-          other_choir_name?: string | null
-          musical_profile?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string
@@ -672,9 +670,11 @@ export type Database = {
           manual_receipt_mime_type?: string | null
           manual_receipt_path?: string | null
           manual_receipt_size_bytes?: number | null
+          musical_profile?: string | null
           name: string
           observations?: string | null
           order_nsu?: string | null
+          other_choir_name?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
@@ -699,8 +699,6 @@ export type Database = {
           checkout_url?: string | null
           choir_id?: string | null
           choir_name?: string
-          other_choir_name?: string | null
-          musical_profile?: string | null
           city?: string | null
           cpf?: string | null
           created_at?: string
@@ -717,9 +715,11 @@ export type Database = {
           manual_receipt_mime_type?: string | null
           manual_receipt_path?: string | null
           manual_receipt_size_bytes?: number | null
+          musical_profile?: string | null
           name?: string
           observations?: string | null
           order_nsu?: string | null
+          other_choir_name?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
