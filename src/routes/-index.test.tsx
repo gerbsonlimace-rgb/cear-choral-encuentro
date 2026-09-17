@@ -655,6 +655,12 @@ describe("landing page visual direction", () => {
         name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
       }),
     ).toBeVisible();
+    const headerLogo = within(header).getByRole("img", {
+      name: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB",
+    });
+    const heroLogo = document.querySelector<HTMLElement>("[data-public-hero] .public-hero-logo-mark img");
+    expect(headerLogo).not.toHaveAttribute("src", heroLogo?.getAttribute("src"));
+    expect(headerLogo).toHaveAttribute("data-logo-variant", "regional");
 
     const hero = document.querySelector<HTMLElement>("[data-public-hero]");
     expect(hero).not.toBeNull();

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import claytonImage from "../assets/clayton-dias.jpg";
 import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
+import headerLogoImage from "../assets/logo-coros-diocesanos-regional.png";
 import logoImage from "../assets/logo-coros-preto.png";
 
 import dioceseLogo from "../assets/apoio-diocese-quixada.png";
@@ -154,10 +155,11 @@ function Header() {
           className="public-event-brand flex min-w-0 shrink items-center"
         >
           <img
-            src={logoImage}
+            src={headerLogoImage}
             alt="II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB"
-            width={605}
-            height={342}
+            width={1331}
+            height={729}
+            data-logo-variant="regional"
             className="h-9 w-auto max-w-[11rem] object-contain"
           />
         </a>
