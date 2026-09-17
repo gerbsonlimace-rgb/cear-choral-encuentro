@@ -490,4 +490,24 @@ describe("admin derived financial state", () => {
       },
     });
   });
+
+  it("shows the configured initial payment plus remaining balance for an unpaid registration", () => {
+    const row = enrichAdminRegistrationRow(
+      {
+        row: {
+          ...pendingRow,
+          remaining_price_cents: 25000,
+        },
+        accountStatus: null,
+        regentName: null,
+      },
+      [],
+    );
+
+    expect(row.financialState).toEqual({
+      status: "pending",
+      pendingCents: 35000,
+      confirmedPrincipalCents: 0,
+    });
+  });
 });

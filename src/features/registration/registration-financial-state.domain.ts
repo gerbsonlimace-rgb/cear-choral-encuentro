@@ -64,10 +64,14 @@ export function deriveRegistrationFinancialState(
   }
 
   if (input.paymentStatus === "pending") {
-    // An unconfirmed checkout has not paid any principal yet, so the full
-    // trusted registration price remains outstanding in administrative totals.
+    // An unconfirmed checkout has not paid any principal yet, so the configured
+    // initial payment and remaining balance both remain outstanding.
     return input.confirmedComplementCents === 0
-      ? { status: "pending", pendingCents: input.standardPriceCents, confirmedPrincipalCents: 0 }
+      ? {
+          status: "pending",
+          pendingCents: input.registrationPriceCents + complementDueCents,
+          confirmedPrincipalCents: 0,
+        }
       : legacyState();
   }
 

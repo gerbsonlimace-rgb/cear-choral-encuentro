@@ -24,6 +24,20 @@ describe("deriveRegistrationFinancialState", () => {
     ).toEqual({ status: "pending", pendingCents: 300, confirmedPrincipalCents: 0 });
   });
 
+  it("uses the configured initial payment plus remaining balance for an unpaid promotion", () => {
+    expect(
+      deriveRegistrationFinancialState({
+        paymentStatus: "pending",
+        initialAmountCents: 10_000,
+        pricingType: "promotional",
+        standardPriceCents: 30_000,
+        registrationPriceCents: 10_000,
+        remainingPriceCents: 25_000,
+        confirmedComplementCents: 0,
+      }),
+    ).toEqual({ status: "pending", pendingCents: 35_000, confirmedPrincipalCents: 0 });
+  });
+
   it("returns legacy for a pending checkout with missing or contradictory price snapshots", () => {
     for (const input of [
       {

@@ -648,6 +648,32 @@ describe("registration payment service", () => {
     );
   });
 
+  it("persists the configured initial and remaining prices when creating a promotion", async () => {
+    const configuredQuote = {
+      ...trustedSelection,
+      quote: {
+        ...trustedSelection.quote,
+        standardPriceCents: 30_000,
+        remainingPriceCents: 25_000,
+      },
+    };
+    vi.mocked(fixture.resolveChoirSelection).mockResolvedValueOnce(configuredQuote);
+
+    await fixture.service.startCheckout({
+      ...baseInput,
+      displayedQuote: configuredQuote.quote,
+    });
+
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 10_000,
+        standardPriceCents: 30_000,
+        registrationPriceCents: 10_000,
+        remainingPriceCents: 25_000,
+      }),
+    );
+  });
+
   it("rejects an incoherent displayed quote before uploading or persisting", async () => {
     await expect(
       fixture.service.startCheckout({
