@@ -415,6 +415,13 @@ describe("registration summary", () => {
           {
             ...selectedRow,
             createdAt: selectedRow.created_at,
+            badgeName: selectedRow.badge_name,
+            birthDate: selectedRow.birth_date,
+            otherChoirName: selectedRow.other_choir_name,
+            voicePart: selectedRow.voice_part,
+            includeShirt: selectedRow.include_shirt,
+            shirtSize: selectedRow.shirt_size,
+            shirtPriceCents: selectedRow.shirt_price_cents,
             email: selectedRow.email,
             city: selectedRow.city,
             paymentStatus: "paid" as const,
