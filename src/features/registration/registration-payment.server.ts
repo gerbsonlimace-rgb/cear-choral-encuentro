@@ -10,9 +10,11 @@ import type { ParticipantInitialCredentials } from "@/features/participant/parti
 import {
   createInfinitePayClient,
   isSafeInfinitePayCheckoutUrl,
+  normalizeInfinitePayPhoneNumber,
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
 } from "./infinitepay.server";
+import type { RegistrationCheckoutContract } from "./registration-checkout-contract";
 import {
   buildCheckoutItems,
   calculateOrderAmountCents,
@@ -85,6 +87,7 @@ export type RegistrationIdentityRecord = {
   orderNsu: string | null;
   checkoutUrl: string | null;
   photoPath: string | null;
+  checkoutContract: RegistrationCheckoutContract | null;
 };
 
 export type RegistrationResumeRecord = {
@@ -146,6 +149,31 @@ export type RegistrationRepository = {
       checkoutClaim?: string;
     },
   ): Promise<void>;
+  updatePendingDetails(
+    input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
+      registrationId: string;
+      expectedOrderNsu: string;
+      expectedCheckoutUrl: string;
+      choirName: string;
+      photoPath: string;
+    },
+  ): Promise<boolean>;
+  replacePendingCheckout(
+    input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
+      registrationId: string;
+      expectedOrderNsu: string;
+      expectedCheckoutUrl: string;
+      orderNsu: string;
+      checkoutClaim: string;
+      choirName: string;
+      photoPath: string;
+      amountCents: number;
+      pricingType: "standard" | "promotional";
+      standardPriceCents: number;
+      registrationPriceCents: number;
+      remainingPriceCents: number | null;
+    },
+  ): Promise<boolean>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   markPaid(
     orderNsu: string,
@@ -542,7 +570,7 @@ async function waitForCheckoutUrl(
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const identityColumns =
-  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path" as const;
+  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
 const checkoutLinkColumns =
   "id,order_nsu,amount_cents,payment_status,checkout_url,name,email,phone" as const;
@@ -627,6 +655,58 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       throw new Error("Registro de inscrição inválido.");
     }
     const paymentStatus: RegistrationIdentityRecord["paymentStatus"] = data.payment_status;
+    const {
+      name,
+      email,
+      phone,
+      amount_cents: amountCents,
+      pricing_type: pricingType,
+      standard_price_cents: standardPriceCents,
+      registration_price_cents: registrationPriceCents,
+      remaining_price_cents: remainingPriceCents,
+    } = data;
+    let checkoutContract: RegistrationCheckoutContract | null = null;
+    if (
+      paymentStatus === "pending" &&
+      typeof name === "string" &&
+      typeof email === "string" &&
+      typeof phone === "string" &&
+      typeof amountCents === "number" &&
+      Number.isSafeInteger(amountCents) &&
+      amountCents > 0 &&
+      (pricingType === "standard" || pricingType === "promotional") &&
+      typeof standardPriceCents === "number" &&
+      Number.isSafeInteger(standardPriceCents) &&
+      standardPriceCents > 0 &&
+      typeof registrationPriceCents === "number" &&
+      Number.isSafeInteger(registrationPriceCents) &&
+      registrationPriceCents > 0 &&
+      (remainingPriceCents === null ||
+        (typeof remainingPriceCents === "number" &&
+          Number.isSafeInteger(remainingPriceCents) &&
+          remainingPriceCents >= 0))
+    ) {
+      const phoneNumber = normalizeInfinitePayPhoneNumber(phone);
+      checkoutContract = {
+        customer: {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          ...(phoneNumber ? { phoneNumber } : {}),
+        },
+        items: [
+          {
+            quantity: 1,
+            price: amountCents,
+            description: "Inscrição — II Encontro de Coros",
+          },
+        ],
+        amountCents,
+        pricingType,
+        standardPriceCents,
+        registrationPriceCents,
+        remainingPriceCents,
+      };
+    }
     return {
       id: data.id,
       paymentStatus,
@@ -634,6 +714,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       orderNsu: typeof data.order_nsu === "string" ? data.order_nsu : null,
       checkoutUrl: typeof data.checkout_url === "string" ? data.checkout_url : null,
       photoPath: typeof data.photo_path === "string" ? data.photo_path : null,
+      checkoutContract,
     };
   };
 
@@ -864,6 +945,66 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
       if (error) throw new Error("Não foi possível atualizar a inscrição.");
       if (!data) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+    },
+
+    updatePendingDetails: async (input) => {
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({
+          name: input.name,
+          badge_name: input.badgeName,
+          cpf: input.cpf,
+          photo_path: input.photoPath,
+          musical_profile: input.musicalProfile,
+          voice_part: input.voicePart,
+          phone: input.phone,
+          birth_date: input.birthDate,
+          choir_id: input.choirId,
+          choir_name: input.choirName,
+          other_choir_name: input.otherChoirName,
+          diocese: input.diocese,
+          email: input.email,
+        })
+        .eq("id", input.registrationId)
+        .eq("payment_status", "pending")
+        .eq("order_nsu", input.expectedOrderNsu)
+        .eq("checkout_url", input.expectedCheckoutUrl)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw new Error("Não foi possível atualizar a inscrição.");
+      return data !== null;
+    },
+
+    replacePendingCheckout: async (input) => {
+      const { data, error } = await supabaseAdmin.rpc("replace_pending_registration_checkout", {
+        p_amount_cents: input.amountCents,
+        p_badge_name: input.badgeName,
+        p_birth_date: input.birthDate,
+        p_checkout_claim: input.checkoutClaim,
+        p_choir_id: input.choirId,
+        p_choir_name: input.choirName,
+        p_cpf: input.cpf,
+        p_diocese: input.diocese,
+        p_email: input.email,
+        p_expected_checkout_url: input.expectedCheckoutUrl,
+        p_expected_order_nsu: input.expectedOrderNsu,
+        p_musical_profile: input.musicalProfile,
+        p_name: input.name,
+        p_new_order_nsu: input.orderNsu,
+        p_other_choir_name: input.otherChoirName,
+        p_phone: input.phone,
+        p_photo_path: input.photoPath,
+        p_pricing_type: input.pricingType,
+        p_registration_id: input.registrationId,
+        p_registration_price_cents: input.registrationPriceCents,
+        p_remaining_price_cents: input.remainingPriceCents,
+        p_standard_price_cents: input.standardPriceCents,
+        p_voice_part: input.voicePart,
+      });
+
+      if (error) throw new Error("Não foi possível atualizar a inscrição.");
+      return data === true;
     },
 
     findPayment,

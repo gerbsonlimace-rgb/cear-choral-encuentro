@@ -34,6 +34,7 @@ import {
   createRegistrationPaymentService,
   createSupabaseRegistrationPhotoStorage,
   createSupabaseRegistrationRepository,
+  type RegistrationIdentityRecord,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
@@ -54,6 +55,7 @@ describe("InfinitePay configuration", () => {
 });
 
 const fixedOrderNsu = "11111111-1111-4111-8111-111111111111";
+const previousOrderNsu = "33333333-3333-4333-8333-333333333333";
 const fixedPaidAt = "2026-09-07T15:30:00.000Z";
 const cpf = "52998224725";
 const checkoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/abc";
@@ -146,7 +148,8 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
-const identityColumns = "id,payment_status,birth_date,order_nsu,checkout_url,photo_path";
+const identityColumns =
+  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -226,14 +229,7 @@ function createSupabaseHarness(
 function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
-  let identityRecord: {
-    id: string;
-    paymentStatus: "pending" | "paid" | "legacy";
-    birthDate: string;
-    orderNsu: string | null;
-    checkoutUrl: string | null;
-    photoPath: string | null;
-  } | null = null;
+  let identityRecord: RegistrationIdentityRecord | null = null;
   let lookupResult = null as RegistrationLookupResult | null;
   let resumeIdentityRecord: {
     birthDate: string;
@@ -269,6 +265,8 @@ function createFixture() {
     updatePending: vi.fn(async () => {
       calls.push("updatePending");
     }),
+    updatePendingDetails: vi.fn(async () => true),
+    replacePendingCheckout: vi.fn(async () => true),
     findPayment: vi.fn(async () => record),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
       calls.push("markPaid");
@@ -709,7 +707,6 @@ describe("registration payment service", () => {
   });
 
   it("replaces the previous photo only after a stale pending registration is updated", async () => {
-    const previousOrderNsu = "33333333-3333-4333-8333-333333333333";
     const previousPhotoPath = `${previousOrderNsu}/participant.jpg`;
     fixture.setIdentityRecord({
       id: "registration-1",
@@ -718,6 +715,7 @@ describe("registration payment service", () => {
       orderNsu: previousOrderNsu,
       checkoutUrl: `https://pending.invalid/creating/${previousOrderNsu}/0`,
       photoPath: previousPhotoPath,
+      checkoutContract: null,
     });
 
     await fixture.service.startCheckout(baseInput);
@@ -1066,6 +1064,7 @@ describe("Supabase registration photo storage", () => {
 describe("Supabase registration repository", () => {
   beforeEach(() => {
     supabaseAdminMock.from.mockReset();
+    supabaseAdminMock.rpc.mockReset();
   });
 
   it("inserts the checkout contact data and clears unused historical fields", async () => {
@@ -1315,7 +1314,7 @@ describe("Supabase registration repository", () => {
     ]);
   });
 
-  it("checks an existing CPF without selecting participant data", async () => {
+  it("maps the complete active checkout contract for an existing CPF", async () => {
     const database = createSupabaseHarness({
       maybeSingleResults: [
         {
@@ -1326,6 +1325,14 @@ describe("Supabase registration repository", () => {
             order_nsu: fixedOrderNsu,
             checkout_url: null,
             photo_path: registrationPhotoPath,
+            name: "Maria",
+            email: "maria@example.com",
+            phone: "+55 85 99999-9999",
+            amount_cents: 10000,
+            pricing_type: "promotional",
+            standard_price_cents: 30000,
+            registration_price_cents: 10000,
+            remaining_price_cents: 25000,
           },
           error: null,
         },
@@ -1340,6 +1347,21 @@ describe("Supabase registration repository", () => {
       orderNsu: fixedOrderNsu,
       checkoutUrl: null,
       photoPath: registrationPhotoPath,
+      checkoutContract: {
+        customer: {
+          name: "Maria",
+          email: "maria@example.com",
+          phoneNumber: "+5585999999999",
+        },
+        items: [
+          { quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" },
+        ],
+        amountCents: 10000,
+        pricingType: "promotional",
+        standardPriceCents: 30000,
+        registrationPriceCents: 10000,
+        remainingPriceCents: 25000,
+      },
     });
     expect(database.trace).toEqual([
       ["from", "registrations"],
@@ -1347,6 +1369,124 @@ describe("Supabase registration repository", () => {
       ["eq", "cpf", cpf],
       ["maybeSingle"],
     ]);
+  });
+
+  it("returns a null checkout contract for incomplete historical snapshots", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: {
+            id: "registration-1",
+            payment_status: "pending",
+            birth_date: "1990-05-20",
+            order_nsu: previousOrderNsu,
+            checkout_url: existingCheckoutUrl,
+            photo_path: registrationPhotoPath,
+            name: "Maria",
+            email: "maria@example.com",
+            phone: "85999999999",
+            amount_cents: 10000,
+            pricing_type: null,
+            standard_price_cents: null,
+            registration_price_cents: null,
+            remaining_price_cents: null,
+          },
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findByCpf(cpf)).resolves.toMatchObject({ checkoutContract: null });
+  });
+
+  it("updates pending participant details without changing checkout identity", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [{ data: { id: "registration-1" }, error: null }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.updatePendingDetails({
+        ...baseRegistrationInput,
+        registrationId: "registration-1",
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+        choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
+      }),
+    ).resolves.toBe(true);
+
+    expect(database.trace).toContainEqual(["eq", "order_nsu", previousOrderNsu]);
+    expect(database.trace).toContainEqual(["eq", "checkout_url", existingCheckoutUrl]);
+    const update = database.trace.find(([operation]) => operation === "update")?.[1];
+    expect(update).not.toHaveProperty("order_nsu");
+    expect(update).not.toHaveProperty("checkout_url");
+    expect(update).not.toHaveProperty("amount_cents");
+    expect(update).not.toHaveProperty("pricing_type");
+  });
+
+  it("replaces a pending checkout through the typed atomic RPC", async () => {
+    supabaseAdminMock.rpc.mockResolvedValueOnce({ data: true, error: null });
+    const repository = createSupabaseRegistrationRepository();
+    const checkoutClaim = `https://pending.invalid/creating/${fixedOrderNsu}`;
+
+    await expect(
+      repository.replacePendingCheckout({
+        ...baseRegistrationInput,
+        registrationId: "registration-1",
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+        orderNsu: fixedOrderNsu,
+        checkoutClaim,
+        choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
+        amountCents: 30000,
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+        remainingPriceCents: null,
+      }),
+    ).resolves.toBe(true);
+
+    expect(supabaseAdminMock.rpc).toHaveBeenCalledWith(
+      "replace_pending_registration_checkout",
+      expect.objectContaining({
+        p_registration_id: "registration-1",
+        p_expected_order_nsu: previousOrderNsu,
+        p_expected_checkout_url: existingCheckoutUrl,
+        p_new_order_nsu: fixedOrderNsu,
+        p_checkout_claim: checkoutClaim,
+        p_amount_cents: 30000,
+        p_remaining_price_cents: null,
+      }),
+    );
+  });
+
+  it("translates an atomic replacement database error without logging participant data", async () => {
+    supabaseAdminMock.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: "database details" },
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.replacePendingCheckout({
+        ...baseRegistrationInput,
+        registrationId: "registration-1",
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+        orderNsu: fixedOrderNsu,
+        checkoutClaim: `https://pending.invalid/creating/${fixedOrderNsu}`,
+        choirName: "Coro Diocesano de Quixadá",
+        photoPath: registrationPhotoPath,
+        amountCents: 30000,
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+        remainingPriceCents: null,
+      }),
+    ).rejects.toThrow("Não foi possível atualizar a inscrição.");
   });
 
   it("preserves legacy payment status instead of guessing it is unpaid", async () => {
