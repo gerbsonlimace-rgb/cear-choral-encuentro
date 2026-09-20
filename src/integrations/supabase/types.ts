@@ -1025,34 +1025,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      replace_pending_registration_checkout: {
-        Args: {
-          p_amount_cents: number
-          p_badge_name: string
-          p_birth_date: string
-          p_checkout_claim: string
-          p_choir_id: string | null
-          p_choir_name: string
-          p_cpf: string
-          p_diocese: string
-          p_email: string
-          p_expected_checkout_url: string
-          p_expected_order_nsu: string
-          p_musical_profile: string
-          p_name: string
-          p_new_order_nsu: string
-          p_other_choir_name: string | null
-          p_phone: string
-          p_photo_path: string
-          p_pricing_type: string
-          p_registration_id: string
-          p_registration_price_cents: number
-          p_remaining_price_cents: number | null
-          p_standard_price_cents: number
-          p_voice_part: string | null
-        }
-        Returns: boolean
-      }
       replace_coroapp_event_sources: {
         Args: { p_admin_user_id: string; p_sources: Json }
         Returns: {
@@ -1069,6 +1041,34 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      replace_pending_registration_checkout: {
+        Args: {
+          p_amount_cents: number
+          p_badge_name: string
+          p_birth_date: string
+          p_checkout_claim: string
+          p_choir_id: string
+          p_choir_name: string
+          p_cpf: string
+          p_diocese: string
+          p_email: string
+          p_expected_checkout_url: string
+          p_expected_order_nsu: string
+          p_musical_profile: string
+          p_name: string
+          p_new_order_nsu: string
+          p_other_choir_name: string
+          p_phone: string
+          p_photo_path: string
+          p_pricing_type: string
+          p_registration_id: string
+          p_registration_price_cents: number
+          p_remaining_price_cents: number
+          p_standard_price_cents: number
+          p_voice_part: string
+        }
+        Returns: boolean
       }
       verify_choir_regent_password_operation_candidate: {
         Args: {
