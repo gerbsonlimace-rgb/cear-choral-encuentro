@@ -29,6 +29,7 @@ type ResolvedPaymentConfirmationPageProps = {
 type ConfirmationState =
   | { kind: "processing" }
   | { kind: "paid"; payment: Extract<PublicPaymentStatus, { status: "paid" }> }
+  | { kind: "review" }
   | { kind: "pending" }
   | { kind: "error" };
 
@@ -100,6 +101,11 @@ function PaymentConfirmationCycle({
           return;
         }
 
+        if (payment.status === "paid_requires_review") {
+          setState({ kind: "review" });
+          return;
+        }
+
         if (attempt >= MAX_VERIFICATION_ATTEMPTS) {
           setState({ kind: "pending" });
           return;
@@ -141,6 +147,8 @@ function PaymentConfirmationCycle({
             payment={state.payment}
             downloadReceipt={downloadReceipt}
           />
+        ) : state.kind === "review" ? (
+          <PaymentMessage title="Pagamento recebido e em análise. Não realize outro pagamento." />
         ) : state.kind === "pending" ? (
           <PaymentMessage title="Pagamento ainda não confirmado">
             <DuplicatePaymentWarning />

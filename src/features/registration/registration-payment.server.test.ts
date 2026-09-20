@@ -38,6 +38,7 @@ import {
   type RegistrationIdentityRecord,
   type RegistrationPaymentRecord,
   type RegistrationRepository,
+  type SupersededCheckoutPaymentRecord,
 } from "./registration-payment.server";
 import {
   buildRegistrationCheckoutContract,
@@ -166,6 +167,39 @@ function pendingRecord(): RegistrationPaymentRecord {
   };
 }
 
+function supersededRecord(
+  overrides: Partial<SupersededCheckoutPaymentRecord> = {},
+): SupersededCheckoutPaymentRecord {
+  return {
+    id: "superseded-1",
+    registrationId: "registration-1",
+    orderNsu: previousOrderNsu,
+    amountCents: 10000,
+    status: "superseded",
+    transactionNsu: null,
+    paymentMethod: null,
+    installments: null,
+    paidAmountCents: null,
+    receiptUrl: null,
+    paidAt: null,
+    ...overrides,
+  };
+}
+
+function paidReviewRecord(
+  overrides: Partial<SupersededCheckoutPaymentRecord> = {},
+): SupersededCheckoutPaymentRecord {
+  return supersededRecord({
+    status: "paid_requires_review",
+    transactionNsu: "transaction-1",
+    paymentMethod: "pix",
+    installments: 1,
+    paidAmountCents: 10000,
+    paidAt: fixedPaidAt,
+    ...overrides,
+  });
+}
+
 type DatabaseResult = {
   data: unknown;
   error: { code?: string; message: string } | null;
@@ -187,6 +221,8 @@ type SupabaseQueryBuilder = {
 const successfulDatabaseResult: DatabaseResult = { data: null, error: null };
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
+const supersededPaymentColumns =
+  "id,registration_id,order_nsu,amount_cents,status,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at";
 const identityColumns =
   "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
@@ -268,6 +304,7 @@ function createSupabaseHarness(
 function createFixture() {
   const calls: string[] = [];
   let record: RegistrationPaymentRecord | null = null;
+  let archivedRecord: SupersededCheckoutPaymentRecord | null = null;
   let identityRecord: RegistrationIdentityRecord | null = null;
   let lookupResult = null as RegistrationLookupResult | null;
   let resumeIdentityRecord: {
@@ -304,6 +341,19 @@ function createFixture() {
     updatePendingDetails: vi.fn(async () => true),
     replacePendingCheckout: vi.fn(async () => true),
     findPayment: vi.fn(async () => record),
+    findSupersededPayment: vi.fn(async () => archivedRecord),
+    markSupersededPaid: vi.fn(async (_orderNsu, confirmation) => {
+      calls.push("markSupersededPaid");
+      archivedRecord = paidReviewRecord({
+        transactionNsu: confirmation.transactionNsu,
+        paymentMethod: confirmation.paymentMethod,
+        installments: confirmation.installments,
+        paidAmountCents: confirmation.paidAmountCents,
+        receiptUrl: confirmation.receiptUrl ?? null,
+        paidAt: confirmation.paidAt,
+      });
+      return archivedRecord;
+    }),
     markPaid: vi.fn(async (orderNsu, confirmation) => {
       calls.push("markPaid");
       record = {
@@ -402,6 +452,26 @@ function createFixture() {
     setRecord(next: RegistrationPaymentRecord | null) {
       record = next;
     },
+    setSupersededRecord(next: SupersededCheckoutPaymentRecord | null) {
+      archivedRecord = next;
+    },
+  };
+}
+
+function supersededPaymentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "superseded-1",
+    registration_id: "registration-1",
+    order_nsu: previousOrderNsu,
+    amount_cents: 10000,
+    status: "superseded",
+    infinitepay_transaction_nsu: null,
+    payment_method: null,
+    installments: null,
+    paid_amount_cents: null,
+    receipt_url: null,
+    paid_at: null,
+    ...overrides,
   };
 }
 
@@ -956,6 +1026,61 @@ describe("registration payment service", () => {
     expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
     expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("records a verified superseded payment without marking the registration paid", async () => {
+    fixture.setRecord(null);
+    fixture.setSupersededRecord(supersededRecord({ amountCents: 10000 }));
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toEqual({
+      status: "paid_requires_review",
+    });
+
+    expect(fixture.infinitePay.checkPayment).toHaveBeenCalledWith(lookup);
+    expect(fixture.repository.markSupersededPaid).toHaveBeenCalledOnce();
+    expect(fixture.repository.markPaid).not.toHaveBeenCalled();
+    expect(fixture.provisionParticipant).not.toHaveBeenCalled();
+  });
+
+  it("rejects a superseded payment whose checked amount differs from the archive", async () => {
+    fixture.setRecord(null);
+    fixture.setSupersededRecord(supersededRecord({ amountCents: 10000 }));
+    vi.mocked(fixture.infinitePay.checkPayment).mockResolvedValueOnce({
+      paid: true,
+      amountCents: 9999,
+      paidAmountCents: 10000,
+      installments: 1,
+      paymentMethod: "pix",
+    });
+
+    await expect(fixture.service.reconcilePayment(lookup)).rejects.toThrow(
+      "Valor do pagamento divergente.",
+    );
+
+    expect(fixture.repository.markSupersededPaid).not.toHaveBeenCalled();
+  });
+
+  it("returns an idempotent review state for the same late transaction", async () => {
+    fixture.setRecord(null);
+    fixture.setSupersededRecord(paidReviewRecord({ transactionNsu: lookup.transactionNsu }));
+
+    await expect(fixture.service.reconcilePayment(lookup)).resolves.toEqual({
+      status: "paid_requires_review",
+    });
+
+    expect(fixture.infinitePay.checkPayment).not.toHaveBeenCalled();
+    expect(fixture.repository.markSupersededPaid).not.toHaveBeenCalled();
+  });
+
+  it("rejects a conflicting transaction after an idempotent late-payment replay", async () => {
+    fixture.setRecord(null);
+    fixture.setSupersededRecord(paidReviewRecord({ transactionNsu: "original" }));
+
+    await expect(
+      fixture.service.reconcilePayment({ ...lookup, transactionNsu: "different" }),
+    ).rejects.toThrow("Transação divergente");
+
+    expect(fixture.infinitePay.checkPayment).not.toHaveBeenCalled();
   });
 
   it("rejects an original amount different from the local order", async () => {
@@ -1513,6 +1638,125 @@ describe("Supabase registration repository", () => {
       ["eq", "order_nsu", fixedOrderNsu],
       ["maybeSingle"],
     ]);
+  });
+
+  it("looks up a superseded checkout by order without joining participant data", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [{ data: supersededPaymentRow(), error: null }],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(repository.findSupersededPayment(previousOrderNsu)).resolves.toEqual(
+      supersededRecord(),
+    );
+    expect(database.trace).toEqual([
+      ["from", "registration_superseded_checkouts"],
+      ["select", supersededPaymentColumns],
+      ["eq", "order_nsu", previousOrderNsu],
+      ["maybeSingle"],
+    ]);
+  });
+
+  it("marks only a superseded checkout as paid for review", async () => {
+    const database = createSupabaseHarness({
+      maybeSingleResults: [
+        {
+          data: supersededPaymentRow({
+            status: "paid_requires_review",
+            infinitepay_transaction_nsu: "transaction-1",
+            payment_method: "pix",
+            installments: 1,
+            paid_amount_cents: 10000,
+            receipt_url: "https://receipt.infinitepay.io/late",
+            paid_at: fixedPaidAt,
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markSupersededPaid(previousOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        receiptUrl: "https://receipt.infinitepay.io/late",
+        paidAt: fixedPaidAt,
+      }),
+    ).resolves.toMatchObject({
+      status: "paid_requires_review",
+      transactionNsu: "transaction-1",
+    });
+
+    expect(database.trace).toContainEqual(["from", "registration_superseded_checkouts"]);
+    expect(database.trace).toContainEqual(["eq", "order_nsu", previousOrderNsu]);
+    expect(database.trace).toContainEqual(["eq", "status", "superseded"]);
+    expect(database.trace).toContainEqual(["select", supersededPaymentColumns]);
+  });
+
+  it("accepts the same superseded transaction after a conditional-update race", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        { data: null, error: null },
+        {
+          data: supersededPaymentRow({
+            status: "paid_requires_review",
+            infinitepay_transaction_nsu: "transaction-1",
+            payment_method: "pix",
+            installments: 1,
+            paid_amount_cents: 10000,
+            paid_at: fixedPaidAt,
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markSupersededPaid(previousOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        paidAt: fixedPaidAt,
+      }),
+    ).resolves.toMatchObject({ transactionNsu: "transaction-1" });
+  });
+
+  it("rejects a different superseded transaction after a conditional-update race", async () => {
+    createSupabaseHarness({
+      maybeSingleResults: [
+        { data: null, error: null },
+        {
+          data: supersededPaymentRow({
+            status: "paid_requires_review",
+            infinitepay_transaction_nsu: "transaction-other",
+            payment_method: "pix",
+            installments: 1,
+            paid_amount_cents: 10000,
+            paid_at: fixedPaidAt,
+          }),
+          error: null,
+        },
+      ],
+    });
+    const repository = createSupabaseRegistrationRepository();
+
+    await expect(
+      repository.markSupersededPaid(previousOrderNsu, {
+        transactionNsu: "transaction-1",
+        invoiceSlug: "invoice-1",
+        paymentMethod: "pix",
+        installments: 1,
+        paidAmountCents: 10000,
+        paidAt: fixedPaidAt,
+      }),
+    ).rejects.toThrow("Transação divergente");
   });
 
   it("maps the complete active checkout contract for an existing CPF", async () => {

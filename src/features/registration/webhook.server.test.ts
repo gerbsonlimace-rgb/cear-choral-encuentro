@@ -92,6 +92,18 @@ describe("InfinitePay webhook", () => {
     });
   });
 
+  it("acknowledges and logs a superseded checkout payment for review", async () => {
+    const reconcile = vi.fn().mockResolvedValue({ status: "paid_requires_review" });
+
+    const response = await handleInfinitePayWebhook(jsonRequest(validBody), reconcile);
+
+    expect(response.status).toBe(200);
+    expect(consoleError).toHaveBeenCalledWith(
+      "[InfinitePay webhook] superseded checkout paid",
+      { orderNsu: validBody.order_nsu },
+    );
+  });
+
   it("rejects an otherwise valid payload with an unexpected property", async () => {
     const reconcile = vi.fn();
 

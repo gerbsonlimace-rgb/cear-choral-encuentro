@@ -23,7 +23,9 @@ const failedResponse = () =>
 
 export async function handleInfinitePayWebhook(
   request: Request,
-  reconcile: (lookup: PaymentLookup) => Promise<{ status: "pending" | "paid" }>,
+  reconcile: (
+    lookup: PaymentLookup,
+  ) => Promise<{ status: "pending" | "paid" | "paid_requires_review" }>,
 ): Promise<Response> {
   let raw: unknown;
   try {
@@ -46,6 +48,12 @@ export async function handleInfinitePayWebhook(
       slug: parsed.data.invoice_slug,
       receiptUrl: parsed.data.receipt_url,
     });
+    if (result.status === "paid_requires_review") {
+      console.error("[InfinitePay webhook] superseded checkout paid", {
+        orderNsu: parsed.data.order_nsu,
+      });
+      return Response.json({ success: true, message: null }, { status: 200 });
+    }
     if (result.status !== "paid") {
       console.error("[InfinitePay webhook] reconciliation failed", {
         orderNsu: parsed.data.order_nsu,

@@ -59,8 +59,23 @@ export type RegistrationPaymentRecord = {
   remainingPriceCents?: number | null;
 };
 
+export type SupersededCheckoutPaymentRecord = {
+  id: string;
+  registrationId: string;
+  orderNsu: string;
+  amountCents: number;
+  status: "superseded" | "paid_requires_review";
+  transactionNsu: string | null;
+  paymentMethod: "pix" | "credit_card" | null;
+  installments: number | null;
+  paidAmountCents: number | null;
+  receiptUrl: string | null;
+  paidAt: string | null;
+};
+
 export type PublicPaymentStatus =
   | { status: "pending" }
+  | { status: "paid_requires_review" }
   | {
       status: "paid";
       paymentMethod: "pix" | "credit_card";
@@ -163,6 +178,19 @@ export type RegistrationRepository = {
     },
   ): Promise<boolean>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
+  findSupersededPayment(orderNsu: string): Promise<SupersededCheckoutPaymentRecord | null>;
+  markSupersededPaid(
+    orderNsu: string,
+    confirmation: {
+      transactionNsu: string;
+      invoiceSlug: string;
+      paymentMethod: "pix" | "credit_card";
+      installments: number;
+      paidAmountCents: number;
+      receiptUrl?: string;
+      paidAt: string;
+    },
+  ): Promise<SupersededCheckoutPaymentRecord>;
   markPaid(
     orderNsu: string,
     confirmation: {
@@ -223,7 +251,37 @@ export function createRegistrationPaymentService(deps: {
 
   const reconcilePayment = async (lookup: PaymentLookup): Promise<PublicPaymentStatus> => {
     const registration = await deps.repository.findPayment(lookup.orderNsu);
-    if (!registration) throw new Error("Pedido não encontrado.");
+    if (!registration) {
+      const superseded = await deps.repository.findSupersededPayment(lookup.orderNsu);
+      if (!superseded) throw new Error("Pedido não encontrado.");
+
+      if (superseded.status === "paid_requires_review") {
+        if (superseded.transactionNsu !== lookup.transactionNsu) {
+          throw new Error("Transação divergente para checkout substituído já confirmado.");
+        }
+        return { status: "paid_requires_review" };
+      }
+
+      const checked = await deps.infinitePay.checkPayment(lookup);
+      if (!checked.paid) return { status: "pending" };
+      if (checked.amountCents !== superseded.amountCents) {
+        throw new Error("Valor do pagamento divergente.");
+      }
+      if (checked.paidAmountCents < superseded.amountCents) {
+        throw new Error("Valor pago é inferior ao valor do pedido.");
+      }
+
+      await deps.repository.markSupersededPaid(lookup.orderNsu, {
+        transactionNsu: lookup.transactionNsu,
+        invoiceSlug: lookup.slug,
+        paymentMethod: checked.paymentMethod,
+        installments: checked.installments,
+        paidAmountCents: checked.paidAmountCents,
+        receiptUrl: sanitizeInfinitePayReceiptUrl(lookup.receiptUrl),
+        paidAt: deps.now(),
+      });
+      return { status: "paid_requires_review" };
+    }
 
     if (registration.paymentStatus === "paid") {
       if (registration.transactionNsu !== lookup.transactionNsu) {
@@ -629,6 +687,8 @@ async function waitForCheckoutUrl(
 
 const paymentColumns =
   "id,order_nsu,amount_cents,payment_status,infinitepay_transaction_nsu,payment_method,installments,receipt_url,name,email,choir_name,paid_amount_cents,paid_at,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
+const supersededPaymentColumns =
+  "id,registration_id,order_nsu,amount_cents,status,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at" as const;
 const identityColumns =
   "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
@@ -681,6 +741,57 @@ function mapPaymentRow(row: {
     ...(typeof row.remaining_price_cents === "number"
       ? { remainingPriceCents: row.remaining_price_cents }
       : {}),
+  };
+}
+
+function mapSupersededPaymentRow(row: {
+  id: string;
+  registration_id: string;
+  order_nsu: string;
+  amount_cents: number;
+  status: string;
+  infinitepay_transaction_nsu: string | null;
+  payment_method: string | null;
+  installments: number | null;
+  paid_amount_cents: number | null;
+  receipt_url: string | null;
+  paid_at: string | null;
+}): SupersededCheckoutPaymentRecord {
+  if (
+    typeof row.id !== "string" ||
+    typeof row.registration_id !== "string" ||
+    typeof row.order_nsu !== "string" ||
+    !Number.isSafeInteger(row.amount_cents) ||
+    row.amount_cents <= 0 ||
+    (row.status !== "superseded" && row.status !== "paid_requires_review")
+  ) {
+    throw new Error("Registro de pagamento substituído inválido.");
+  }
+  if (
+    row.status === "paid_requires_review" &&
+    (typeof row.infinitepay_transaction_nsu !== "string" ||
+      (row.payment_method !== "pix" && row.payment_method !== "credit_card") ||
+      !Number.isSafeInteger(row.installments) ||
+      !row.installments ||
+      !Number.isSafeInteger(row.paid_amount_cents) ||
+      !row.paid_amount_cents ||
+      typeof row.paid_at !== "string")
+  ) {
+    throw new Error("Registro de pagamento substituído inválido.");
+  }
+
+  return {
+    id: row.id,
+    registrationId: row.registration_id,
+    orderNsu: row.order_nsu,
+    amountCents: row.amount_cents,
+    status: row.status,
+    transactionNsu: row.infinitepay_transaction_nsu,
+    paymentMethod: row.payment_method as "pix" | "credit_card" | null,
+    installments: row.installments,
+    paidAmountCents: row.paid_amount_cents,
+    receiptUrl: row.receipt_url,
+    paidAt: row.paid_at,
   };
 }
 
@@ -859,6 +970,17 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     return data ? mapPaymentRow(data) : null;
   };
 
+  const findSupersededPayment = async (orderNsu: string) => {
+    const { data, error } = await supabaseAdmin
+      .from("registration_superseded_checkouts")
+      .select(supersededPaymentColumns)
+      .eq("order_nsu", orderNsu)
+      .maybeSingle();
+
+    if (error) throw new Error("Não foi possível consultar o pagamento substituído.");
+    return data ? mapSupersededPaymentRow(data) : null;
+  };
+
   const findRegistrationByIdentity = async (cpf: string, birthDate: string) => {
     const { data, error } = await supabaseAdmin
       .from("registrations")
@@ -908,6 +1030,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     findForCheckoutLink,
     findForResume,
     findRegistrationByIdentity,
+    findSupersededPayment,
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,
@@ -1030,6 +1153,37 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     },
 
     findPayment,
+
+    markSupersededPaid: async (orderNsu, confirmation) => {
+      const { data, error } = await supabaseAdmin
+        .from("registration_superseded_checkouts")
+        .update({
+          status: "paid_requires_review",
+          infinitepay_invoice_slug: confirmation.invoiceSlug,
+          infinitepay_transaction_nsu: confirmation.transactionNsu,
+          payment_method: confirmation.paymentMethod,
+          installments: confirmation.installments,
+          paid_amount_cents: confirmation.paidAmountCents,
+          receipt_url: confirmation.receiptUrl ?? null,
+          paid_at: confirmation.paidAt,
+        })
+        .eq("order_nsu", orderNsu)
+        .eq("status", "superseded")
+        .select(supersededPaymentColumns)
+        .maybeSingle();
+
+      if (error) throw new Error("Não foi possível registrar o pagamento para revisão.");
+      if (data) return mapSupersededPaymentRow(data);
+
+      const existing = await findSupersededPayment(orderNsu);
+      if (
+        existing?.status === "paid_requires_review" &&
+        existing.transactionNsu === confirmation.transactionNsu
+      ) {
+        return existing;
+      }
+      throw new Error("Transação divergente para checkout substituído.");
+    },
 
     markPaid: async (orderNsu, confirmation) => {
       const { data, error } = await supabaseAdmin

@@ -25,6 +25,22 @@ describe("PaymentConfirmationPage", () => {
     window.localStorage.clear();
   });
 
+  it("shows a terminal review message for a paid superseded checkout", async () => {
+    const verifyPayment = vi.fn().mockResolvedValue({ status: "paid_requires_review" });
+
+    render(<PaymentConfirmationPage lookup={lookup} verifyPayment={verifyPayment} />);
+
+    expect(
+      await screen.findByText("Pagamento recebido e em análise. Não realize outro pagamento."),
+    ).toBeVisible();
+    expect(screen.getByTestId("payment-confirmation-shell")).toHaveAttribute(
+      "data-confirmation-state",
+      "review",
+    );
+    expect(screen.queryByRole("button", { name: "Verificar novamente" })).not.toBeInTheDocument();
+    expect(verifyPayment).toHaveBeenCalledTimes(1);
+  });
+
   it("offers portal and WhatsApp shortcuts after payment verification", async () => {
     const whatsappGroupUrl = "https://chat.whatsapp.com/example-invite";
     const verifyPayment = vi.fn().mockResolvedValue({
