@@ -75,6 +75,19 @@ describe("registration checkout replacement migration contract", () => {
     expect(normalized).toContain("p_checkout_claim is null");
   });
 
+  it("truthfully archives historical checkouts that predate pricing snapshots", () => {
+    expect(normalized).toContain("pricing_type text check");
+    expect(normalized).toContain("standard_price_cents integer check");
+    expect(normalized).toContain("registration_price_cents integer check");
+    expect(normalized).not.toContain("pricing_type text not null");
+    expect(normalized).not.toContain("standard_price_cents integer not null");
+    expect(normalized).not.toContain("registration_price_cents integer not null");
+    expect(normalized).not.toContain("existing checkout snapshots are incomplete");
+    expect(generatedTypes).toContain("pricing_type: string | null");
+    expect(generatedTypes).toContain("standard_price_cents: number | null");
+    expect(generatedTypes).toContain("registration_price_cents: number | null");
+  });
+
   it("restricts replacement execution to the service role", () => {
     expect(normalized).toContain("security invoker set search_path = ''");
     const replacementSignature = String.raw`public\.replace_pending_registration_checkout\(\s*uuid, uuid, text, uuid, text, text, text, text, text, text, text, text,\s*date, uuid, text, text, text, text, text, integer, integer, integer, integer\s*\)`;

@@ -368,7 +368,11 @@ export function createRegistrationPaymentService(deps: {
           ) {
             throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
           }
-          const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+          const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now, {
+            registrationId: existing.id,
+            birthDate: input.birthDate,
+            checkoutContract: nextContract,
+          });
           if (ready) return ready;
           throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
         }
@@ -401,7 +405,11 @@ export function createRegistrationPaymentService(deps: {
           return null;
         }
         if (isCheckoutClaim(latest.checkoutUrl)) {
-          return waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+          return waitForCheckoutUrl(deps.repository, input.cpf, deps.now, {
+            registrationId: latest.id,
+            birthDate: input.birthDate,
+            checkoutContract: nextContract,
+          });
         }
         return isSafeInfinitePayCheckoutUrl(latest.checkoutUrl)
           ? { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu }
@@ -527,7 +535,28 @@ export function createRegistrationPaymentService(deps: {
 
       if (registration.paymentStatus === "paid") return { status: "paid" };
       if (registration.paymentStatus === "pending" && registration.checkoutUrl) {
-        return { status: "pending", checkoutUrl: registration.checkoutUrl };
+        if (isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
+          return { status: "pending", checkoutUrl: registration.checkoutUrl };
+        }
+        if (
+          isCheckoutClaim(registration.checkoutUrl) &&
+          !isCheckoutClaimStale(registration.checkoutUrl, deps.now())
+        ) {
+          const expected = await deps.repository.findByCpf?.(input.cpf);
+          if (
+            expected?.paymentStatus === "pending" &&
+            expected.birthDate === input.birthDate &&
+            expected.checkoutUrl === registration.checkoutUrl &&
+            expected.checkoutContract
+          ) {
+            const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now, {
+              registrationId: expected.id,
+              birthDate: expected.birthDate,
+              checkoutContract: expected.checkoutContract,
+            });
+            if (ready) return { status: "pending", checkoutUrl: ready.checkoutUrl };
+          }
+        }
       }
 
       throw new Error("Procure a organização para continuar o pagamento.");
@@ -667,16 +696,26 @@ async function waitForCheckoutUrl(
   repository: RegistrationRepository,
   cpf: string,
   now: () => string,
+  expected: {
+    registrationId: string;
+    birthDate: string;
+    checkoutContract: RegistrationCheckoutContract;
+  },
 ): Promise<{ checkoutUrl: string; orderNsu: string } | null> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const latest = await repository.findByCpf?.(cpf);
     if (
-      latest?.paymentStatus === "pending" &&
-      latest.orderNsu &&
-      latest.checkoutUrl &&
-      isSafeInfinitePayCheckoutUrl(latest.checkoutUrl)
+      !latest ||
+      latest.id !== expected.registrationId ||
+      latest.birthDate !== expected.birthDate ||
+      latest.paymentStatus !== "pending" ||
+      !latest.checkoutContract ||
+      !registrationCheckoutContractsMatch(latest.checkoutContract, expected.checkoutContract)
     ) {
+      return null;
+    }
+    if (latest.orderNsu && latest.checkoutUrl && isSafeInfinitePayCheckoutUrl(latest.checkoutUrl)) {
       return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
     }
     if (latest?.checkoutUrl && !isCheckoutClaim(latest.checkoutUrl)) return null;

@@ -4,9 +4,9 @@ create table public.registration_superseded_checkouts (
   order_nsu uuid not null unique,
   checkout_url text not null,
   amount_cents integer not null check (amount_cents > 0),
-  pricing_type text not null check (pricing_type in ('standard', 'promotional')),
-  standard_price_cents integer not null check (standard_price_cents > 0),
-  registration_price_cents integer not null check (registration_price_cents > 0),
+  pricing_type text check (pricing_type in ('standard', 'promotional')),
+  standard_price_cents integer check (standard_price_cents > 0),
+  registration_price_cents integer check (registration_price_cents > 0),
   remaining_price_cents integer check (remaining_price_cents >= 0),
   status text not null default 'superseded'
     check (status in ('superseded', 'paid_requires_review')),
@@ -182,11 +182,8 @@ begin
   end if;
 
   if v_registration.checkout_url ~ '^https://checkout\.infinitepay\.(io|com\.br)(/|$)' then
-    if v_registration.amount_cents is null
-      or v_registration.pricing_type is null
-      or v_registration.standard_price_cents is null
-      or v_registration.registration_price_cents is null then
-      raise exception 'Existing checkout snapshots are incomplete' using errcode = '23514';
+    if v_registration.amount_cents is null then
+      raise exception 'Existing checkout amount is missing' using errcode = '23514';
     end if;
 
     insert into public.registration_superseded_checkouts (

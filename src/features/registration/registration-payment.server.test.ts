@@ -652,6 +652,32 @@ describe("registration payment service", () => {
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
+  it("does not return a safe concurrent URL whose checkout contract changed while waiting", async () => {
+    const fullPriceInput: RegistrationInput = {
+      ...baseInput,
+      raffleChoice: "full_price",
+      displayedQuote: standardQuote,
+    };
+    const claim = `https://pending.invalid/creating/${fixedOrderNsu}/${Date.parse(fixedPaidAt)}`;
+    const expectedIdentity = pendingIdentity({
+      input: fullPriceInput,
+      appliedQuote: standardQuote,
+      orderNsu: fixedOrderNsu,
+      checkoutUrl: claim,
+    });
+    vi.mocked(fixture.repository.findByCpf!)
+      .mockResolvedValueOnce(expectedIdentity)
+      .mockResolvedValueOnce({
+        ...expectedIdentity,
+        checkoutUrl,
+        checkoutContract: pendingIdentity().checkoutContract,
+      });
+
+    await expect(fixture.service.startCheckout(fullPriceInput)).rejects.toThrow(
+      "O checkout já está sendo preparado. Tente novamente em instantes.",
+    );
+  });
+
   it("uses the concurrent replacement claim and final URL instead of creating twice", async () => {
     const fullPriceInput: RegistrationInput = {
       ...baseInput,
@@ -746,6 +772,42 @@ describe("registration payment service", () => {
 
     await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
       { status: "pending", checkoutUrl: existingCheckoutUrl },
+    );
+  });
+
+  it.each(["https://evil.example/checkout", `https://pending.invalid/creating/${fixedOrderNsu}/0`])(
+    "does not expose an unsafe or stale resume URL: %s",
+    async (unsafeUrl) => {
+      fixture.setResumeIdentityRecord({
+        birthDate: "1990-05-12",
+        paymentStatus: "pending",
+        checkoutUrl: unsafeUrl,
+      });
+
+      await expect(
+        fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" }),
+      ).rejects.toThrow("Procure a organização para continuar o pagamento.");
+    },
+  );
+
+  it("waits for a fresh resume claim and returns only the matching contract URL", async () => {
+    const claim = `https://pending.invalid/creating/${fixedOrderNsu}/${Date.parse(fixedPaidAt)}`;
+    const expectedIdentity = pendingIdentity({
+      input: { ...baseInput, birthDate: "1990-05-12" },
+      orderNsu: fixedOrderNsu,
+      checkoutUrl: claim,
+    });
+    fixture.setResumeIdentityRecord({
+      birthDate: "1990-05-12",
+      paymentStatus: "pending",
+      checkoutUrl: claim,
+    });
+    vi.mocked(fixture.repository.findByCpf!)
+      .mockResolvedValueOnce(expectedIdentity)
+      .mockResolvedValueOnce({ ...expectedIdentity, checkoutUrl });
+
+    await expect(fixture.service.resumeCheckout({ cpf, birthDate: "1990-05-12" })).resolves.toEqual(
+      { status: "pending", checkoutUrl },
     );
   });
 
@@ -995,6 +1057,24 @@ describe("registration payment service", () => {
       }),
     );
     expect(fixture.photoStorage.remove).toHaveBeenCalledWith(previousPhotoPath);
+  });
+
+  it("replaces a safe historical checkout whose pricing snapshots are unavailable", async () => {
+    fixture.setIdentityRecord(pendingIdentity({ checkoutContract: null }));
+
+    await expect(fixture.service.startCheckout(baseInput)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu: fixedOrderNsu,
+    });
+
+    expect(fixture.repository.replacePendingCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+        amountCents: 10000,
+      }),
+    );
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledOnce();
   });
 
   it("leaves the registration pending when checkout creation fails", async () => {

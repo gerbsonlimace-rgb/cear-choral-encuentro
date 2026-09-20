@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isSafeInfinitePayCheckoutUrl } from "./infinitepay.server";
 
 export type ParticipantRegistrationView = {
   participantName: string;
@@ -74,7 +75,11 @@ export function toParticipantView(row: ParticipantRow): ParticipantRegistrationV
     ...(row.paid_at ? { paidAt: row.paid_at } : {}),
     ...(row.order_nsu ? { orderNsu: row.order_nsu } : {}),
     ...(row.receipt_url ? { receiptUrl: row.receipt_url } : {}),
-    ...(row.payment_status !== "paid" && row.checkout_url ? { checkoutUrl: row.checkout_url } : {}),
+    ...(row.payment_status !== "paid" &&
+    row.checkout_url &&
+    isSafeInfinitePayCheckoutUrl(row.checkout_url)
+      ? { checkoutUrl: row.checkout_url }
+      : {}),
   };
 }
 

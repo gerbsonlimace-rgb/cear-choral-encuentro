@@ -613,12 +613,12 @@ export type Database = {
           paid_amount_cents: number | null
           paid_at: string | null
           payment_method: string | null
-          pricing_type: string
+          pricing_type: string | null
           receipt_url: string | null
           registration_id: string
-          registration_price_cents: number
+          registration_price_cents: number | null
           remaining_price_cents: number | null
-          standard_price_cents: number
+          standard_price_cents: number | null
           status: string
           superseded_at: string
         }
@@ -633,12 +633,12 @@ export type Database = {
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
-          pricing_type: string
+          pricing_type?: string | null
           receipt_url?: string | null
           registration_id: string
-          registration_price_cents: number
+          registration_price_cents?: number | null
           remaining_price_cents?: number | null
-          standard_price_cents: number
+          standard_price_cents?: number | null
           status?: string
           superseded_at?: string
         }
@@ -653,12 +653,12 @@ export type Database = {
           paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
-          pricing_type?: string
+          pricing_type?: string | null
           receipt_url?: string | null
           registration_id?: string
-          registration_price_cents?: number
+          registration_price_cents?: number | null
           remaining_price_cents?: number | null
-          standard_price_cents?: number
+          standard_price_cents?: number | null
           status?: string
           superseded_at?: string
         }
