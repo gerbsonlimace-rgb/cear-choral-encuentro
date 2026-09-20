@@ -103,6 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Inscrições abertas para o II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB, de 20 a 22 de novembro de 2026, em Quixadá.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Encontro de Coros Diocesanos e Litúrgicos — Regional Nordeste 1" },
+      { property: "og:locale", content: "pt_BR" },
       { property: "og:url", content: SITE_URL },
     ],
     links: [

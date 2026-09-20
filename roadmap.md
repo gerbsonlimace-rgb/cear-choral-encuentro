@@ -19,6 +19,9 @@
 - Make the administrative summary the `/admin` home page and correct its fixed-navigation layout.
 - Apply black navigation with white and gold states across desktop and mobile internal modules.
 - Simplify `/admin/inscricoes` with e-mail, one payment column, no regent column, and row actions in a three-dot menu.
+- Strengthen the WhatsApp/social link card with `og:site_name`, `og:locale`, and a correct sitemap URL in `robots.txt`.
+- Clear the remaining typecheck errors in the checkout-replacement RPC call and align its contract test with the regenerated Supabase types.
+- Restore the black (`bg-brand-ink`) sidebar and mobile bar in the internal shell, replacing the hardcoded zinc colour, and align both shell tests.
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
