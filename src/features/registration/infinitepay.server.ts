@@ -95,7 +95,7 @@ function withSitePath(siteUrl: string, path: string) {
   return `${siteUrl.replace(/\/+$/, "")}${path}`;
 }
 
-function normalizeInfinitePayPhoneNumber(value: string | undefined) {
+export function normalizeInfinitePayPhoneNumber(value: string | undefined) {
   if (!value) return undefined;
   const digits = value.replace(/\D/g, "");
   if (digits.length === 11) return `+55${digits}`;
