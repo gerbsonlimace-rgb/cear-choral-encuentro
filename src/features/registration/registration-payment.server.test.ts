@@ -800,7 +800,7 @@ describe("registration payment service", () => {
       phone: "85999999999",
     });
 
-    await expect((fixture.service as any).createCheckoutLink("registration-1")).resolves.toEqual({
+    await expect(fixture.service.createCheckoutLink("registration-1")).resolves.toEqual({
       checkoutUrl,
       reused: true,
     });
@@ -819,7 +819,7 @@ describe("registration payment service", () => {
       phone: "85999999999",
     });
 
-    await expect((fixture.service as any).createCheckoutLink("registration-1")).resolves.toEqual({
+    await expect(fixture.service.createCheckoutLink("registration-1")).resolves.toEqual({
       checkoutUrl,
       reused: false,
     });
@@ -856,7 +856,7 @@ describe("registration payment service", () => {
       return false;
     });
 
-    await expect((fixture.service as any).createCheckoutLink("registration-1")).rejects.toThrow(
+    await expect(fixture.service.createCheckoutLink("registration-1")).rejects.toThrow(
       "confirmada antes de salvar",
     );
   });
