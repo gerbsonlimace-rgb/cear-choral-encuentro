@@ -1161,12 +1161,15 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     },
 
     replacePendingCheckout: async (input) => {
+      // The database function stores these arguments verbatim, so NULL must stay
+      // NULL (it clears the column). The generated types mark every RPC argument
+      // as non-nullable, hence the assertions on the nullable ones.
       const { data, error } = await supabaseAdmin.rpc("replace_pending_registration_checkout", {
         p_amount_cents: input.amountCents,
         p_badge_name: input.badgeName,
         p_birth_date: input.birthDate,
         p_checkout_claim: input.checkoutClaim,
-        p_choir_id: input.choirId,
+        p_choir_id: input.choirId as string,
         p_choir_name: input.choirName,
         p_cpf: input.cpf,
         p_diocese: input.diocese,
@@ -1176,15 +1179,15 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         p_musical_profile: input.musicalProfile,
         p_name: input.name,
         p_new_order_nsu: input.orderNsu,
-        p_other_choir_name: input.otherChoirName,
+        p_other_choir_name: input.otherChoirName as string,
         p_phone: input.phone,
         p_photo_path: input.photoPath,
         p_pricing_type: input.pricingType,
         p_registration_id: input.registrationId,
         p_registration_price_cents: input.registrationPriceCents,
-        p_remaining_price_cents: input.remainingPriceCents,
+        p_remaining_price_cents: input.remainingPriceCents as number,
         p_standard_price_cents: input.standardPriceCents,
-        p_voice_part: input.voicePart,
+        p_voice_part: input.voicePart as string,
       });
 
       if (error) throw new Error("Não foi possível atualizar a inscrição.");
