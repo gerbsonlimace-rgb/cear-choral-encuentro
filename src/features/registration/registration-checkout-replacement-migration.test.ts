@@ -104,7 +104,7 @@ describe("registration checkout replacement migration contract", () => {
     expect(generatedTypes).toContain("replace_pending_registration_checkout: {");
     expect(generatedTypes).toContain("p_expected_order_nsu: string");
     expect(generatedTypes).toContain("p_expected_checkout_url: string");
-    expect(generatedTypes).toContain("p_remaining_price_cents: number | null");
+    expect(generatedTypes).toContain("p_remaining_price_cents: number");
     expect(generatedTypes).toContain("Returns: boolean");
   });
 });
