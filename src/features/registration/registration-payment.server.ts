@@ -340,7 +340,7 @@ export function createRegistrationPaymentService(deps: {
         input.displayedQuote.standardPriceCents !== appliedQuote.standardPriceCents ||
         input.displayedQuote.registrationPriceCents !== appliedQuote.registrationPriceCents ||
         (input.displayedQuote.remainingPriceCents ?? null) !==
-          (trustedQuote.remainingPriceCents ?? null);
+          (appliedQuote.remainingPriceCents ?? null);
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }

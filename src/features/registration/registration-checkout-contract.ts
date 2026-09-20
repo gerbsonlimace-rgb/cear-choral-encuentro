@@ -35,7 +35,10 @@ export function buildRegistrationCheckoutContract(
     pricingType: appliedQuote.pricingType,
     standardPriceCents: trustedQuote.standardPriceCents,
     registrationPriceCents: appliedQuote.registrationPriceCents,
-    remainingPriceCents: trustedQuote.remainingPriceCents ?? null,
+    remainingPriceCents:
+      appliedQuote.pricingType === "promotional"
+        ? (trustedQuote.remainingPriceCents ?? null)
+        : null,
   };
 }
 

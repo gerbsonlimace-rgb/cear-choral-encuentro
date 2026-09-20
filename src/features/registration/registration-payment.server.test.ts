@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InfinitePayClient } from "./infinitepay.server";
 import type { DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
+import type { ResolvedChoirSelection } from "@/features/choirs/choir-pricing.server";
 import {
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
@@ -70,7 +71,7 @@ const registrationPhoto = { contentType: "image/jpeg" as const, dataBase64: "cGh
 const registrationPhotoPath = `${fixedOrderNsu}/participant.jpg`;
 const existingCheckoutUrl = "https://checkout.infinitepay.com.br/antonio-gerbson/existing";
 
-const trustedSelection = {
+const trustedSelection: ResolvedChoirSelection = {
   choir: {
     id: choirId,
     name: "Coro Diocesano de Quixadá",
@@ -950,6 +951,37 @@ describe("registration payment service", () => {
     expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         items: [{ quantity: 1, price: 30000, description: "Inscrição — II Encontro de Coros" }],
+      }),
+    );
+  });
+
+  it("creates a full-price checkout without the promotional remaining balance", async () => {
+    vi.mocked(fixture.resolveChoirSelection).mockResolvedValueOnce({
+      ...trustedSelection,
+      quote: { ...trustedSelection.quote, remainingPriceCents: 25_000 },
+    });
+    const fullPriceInput: RegistrationInput = {
+      ...baseInput,
+      raffleChoice: "full_price",
+      displayedQuote: standardQuote,
+    };
+
+    await expect(fixture.service.startCheckout(fullPriceInput)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu: fixedOrderNsu,
+    });
+
+    const pendingInput = vi.mocked(fixture.repository.createPending).mock.calls[0]?.[0];
+    expect(pendingInput).toMatchObject({
+      amountCents: 30_000,
+      pricingType: "standard",
+      standardPriceCents: 30_000,
+      registrationPriceCents: 30_000,
+    });
+    expect(pendingInput).not.toHaveProperty("remainingPriceCents");
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ quantity: 1, price: 30_000, description: "Inscrição — II Encontro de Coros" }],
       }),
     );
   });
