@@ -157,9 +157,12 @@ as $$
 declare
   v_registration public.registrations;
 begin
-  if p_new_order_nsu = p_expected_order_nsu
-    or p_checkout_claim is distinct from
-      'https://pending.invalid/creating/' || p_new_order_nsu::text then
+  if p_new_order_nsu is null
+    or p_checkout_claim is null
+    or p_new_order_nsu = p_expected_order_nsu
+    or p_checkout_claim !~ (
+      '^https://pending[.]invalid/creating/' || p_new_order_nsu::text || '/[0-9]+$'
+    ) then
     raise exception 'Invalid replacement checkout claim' using errcode = '23514';
   end if;
 

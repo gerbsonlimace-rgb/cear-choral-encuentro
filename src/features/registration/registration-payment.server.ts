@@ -14,10 +14,13 @@ import {
   sanitizeInfinitePayReceiptUrl,
   type InfinitePayClient,
 } from "./infinitepay.server";
-import type { RegistrationCheckoutContract } from "./registration-checkout-contract";
+import {
+  buildRegistrationCheckoutContract,
+  registrationCheckoutContractsMatch,
+  type RegistrationCheckoutContract,
+} from "./registration-checkout-contract";
 import {
   buildCheckoutItems,
-  calculateOrderAmountCents,
   dioceseSchema,
   MAX_REGISTRATION_PHOTO_BYTES,
   musicalProfileSchema,
@@ -134,21 +137,6 @@ export type RegistrationRepository = {
     },
   ): Promise<void>;
   saveCheckoutUrl(orderNsu: string, checkoutUrl: string, checkoutClaim?: string): Promise<boolean>;
-  updatePending(
-    input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
-      registrationId: string;
-      orderNsu: string;
-      amountCents: number;
-      choirName: string;
-      photoPath: string;
-      pricingType: "standard" | "promotional";
-      standardPriceCents: number;
-      registrationPriceCents: number;
-      remainingPriceCents?: number;
-      expectedOrderNsu: string;
-      checkoutClaim?: string;
-    },
-  ): Promise<void>;
   updatePendingDetails(
     input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
       registrationId: string;
@@ -283,20 +271,6 @@ export function createRegistrationPaymentService(deps: {
       ) {
         throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
       }
-      if (!canResumeExisting && deps.findAuthUserByEmail) {
-        const authUser = await deps.findAuthUserByEmail(input.email.trim().toLowerCase());
-        if (authUser) throw new Error("Já existe um acesso com este e-mail.");
-      }
-      if (existing?.paymentStatus === "pending" && existing.checkoutUrl && existing.orderNsu) {
-        if (!isCheckoutClaim(existing.checkoutUrl)) {
-          return { checkoutUrl: existing.checkoutUrl, orderNsu: existing.orderNsu };
-        }
-        if (!isCheckoutClaimStale(existing.checkoutUrl, deps.now())) {
-          const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
-          if (ready) return ready;
-          throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
-        }
-      }
 
       const selection = input.choirId ? await deps.resolveChoirSelection(input.choirId) : null;
       const trustedQuote = selection
@@ -313,90 +287,175 @@ export function createRegistrationPaymentService(deps: {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
       }
 
-      const orderNsu = deps.randomUUID();
-      const checkoutClaim = createCheckoutClaim(orderNsu, deps.now());
-      const amountCents = calculateOrderAmountCents(input, appliedQuote);
-      const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
+      const nextContract = buildRegistrationCheckoutContract(input, appliedQuote, trustedQuote);
+      const emailChanged =
+        !canResumeExisting ||
+        existing.checkoutContract?.customer.email !== nextContract.customer.email;
+      if (emailChanged && deps.findAuthUserByEmail) {
+        const authUser = await deps.findAuthUserByEmail(nextContract.customer.email);
+        if (authUser) throw new Error("Já existe um acesso com este e-mail.");
+      }
+
+      if (existing?.paymentStatus === "pending") {
+        if (!existing.orderNsu || !existing.checkoutUrl) {
+          throw new Error("Não foi possível preparar o pagamento desta inscrição.");
+        }
+        if (
+          isCheckoutClaim(existing.checkoutUrl) &&
+          !isCheckoutClaimStale(existing.checkoutUrl, deps.now())
+        ) {
+          if (
+            !existing.checkoutContract ||
+            !registrationCheckoutContractsMatch(existing.checkoutContract, nextContract)
+          ) {
+            throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+          }
+          const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+          if (ready) return ready;
+          throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+        }
+        if (
+          !isCheckoutClaim(existing.checkoutUrl) &&
+          !isSafeInfinitePayCheckoutUrl(existing.checkoutUrl)
+        ) {
+          throw new Error("Não foi possível preparar o pagamento desta inscrição.");
+        }
+      }
+
       const {
         photo: _photo,
         raffleChoice: _raffleChoice,
         displayedQuote: _displayedQuote,
         ...registrationData
       } = input;
+      const choirName = selection?.choir.name ?? input.otherChoirName!;
 
+      const recoverConcurrentCheckout = async () => {
+        const latest = await deps.repository.findByCpf?.(input.cpf);
+        if (
+          latest?.paymentStatus !== "pending" ||
+          latest.birthDate !== input.birthDate ||
+          !latest.checkoutUrl ||
+          !latest.orderNsu ||
+          !latest.checkoutContract ||
+          !registrationCheckoutContractsMatch(latest.checkoutContract, nextContract)
+        ) {
+          return null;
+        }
+        if (isCheckoutClaim(latest.checkoutUrl)) {
+          return waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
+        }
+        return isSafeInfinitePayCheckoutUrl(latest.checkoutUrl)
+          ? { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu }
+          : null;
+      };
+
+      if (
+        existing?.paymentStatus === "pending" &&
+        existing.orderNsu &&
+        existing.checkoutUrl &&
+        !isCheckoutClaim(existing.checkoutUrl) &&
+        existing.checkoutContract &&
+        registrationCheckoutContractsMatch(existing.checkoutContract, nextContract)
+      ) {
+        const photoKey = deps.randomUUID();
+        const photoPath = await deps.photoStorage.upload(photoKey, input.photo);
+        let updated: boolean;
+        try {
+          updated = await deps.repository.updatePendingDetails({
+            ...registrationData,
+            registrationId: existing.id,
+            expectedOrderNsu: existing.orderNsu,
+            expectedCheckoutUrl: existing.checkoutUrl,
+            choirName,
+            photoPath,
+          });
+        } catch (caught) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          throw caught;
+        }
+        if (!updated) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          const concurrent = await recoverConcurrentCheckout();
+          if (concurrent) return concurrent;
+          throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+        }
+        if (existing.photoPath && existing.photoPath !== photoPath) {
+          await deps.photoStorage.remove(existing.photoPath).catch(() => undefined);
+        }
+        return { checkoutUrl: existing.checkoutUrl, orderNsu: existing.orderNsu };
+      }
+
+      const orderNsu = deps.randomUUID();
+      const checkoutClaim = createCheckoutClaim(orderNsu, deps.now());
+      const photoPath = await deps.photoStorage.upload(orderNsu, input.photo);
       const pendingInput = {
         ...registrationData,
         orderNsu,
-        amountCents,
-        choirName: selection?.choir.name ?? input.otherChoirName!,
+        amountCents: nextContract.amountCents,
+        choirName,
         photoPath,
-        pricingType: appliedQuote.pricingType,
-        standardPriceCents: trustedQuote.standardPriceCents,
-        registrationPriceCents: appliedQuote.registrationPriceCents,
-        ...(trustedQuote.remainingPriceCents !== undefined
-          ? { remainingPriceCents: trustedQuote.remainingPriceCents }
+        pricingType: nextContract.pricingType,
+        standardPriceCents: nextContract.standardPriceCents,
+        registrationPriceCents: nextContract.registrationPriceCents,
+        ...(nextContract.remainingPriceCents !== null
+          ? { remainingPriceCents: nextContract.remainingPriceCents }
           : {}),
         checkoutClaim,
       };
 
-      try {
-        if (existing?.paymentStatus === "pending") {
-          if (!existing.orderNsu) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
-          try {
-            await deps.repository.updatePending({
-              registrationId: existing.id,
-              expectedOrderNsu: existing.orderNsu,
-              ...pendingInput,
-            });
-          } catch (caught) {
-            const latest = await deps.repository.findByCpf?.(input.cpf);
-            if (
-              latest?.paymentStatus === "pending" &&
-              latest.birthDate === input.birthDate &&
-              latest.checkoutUrl &&
-              latest.orderNsu
-            ) {
-              if (isCheckoutClaim(latest.checkoutUrl)) {
-                const ready = await waitForCheckoutUrl(deps.repository, input.cpf, deps.now);
-                if (!ready) {
-                  throw new Error(
-                    "O checkout já está sendo preparado. Tente novamente em instantes.",
-                  );
-                }
-                await deps.photoStorage.remove(photoPath).catch(() => undefined);
-                return ready;
-              }
-              await deps.photoStorage.remove(photoPath).catch(() => undefined);
-              return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
-            }
-            throw caught;
-          }
-          if (existing.photoPath && existing.photoPath !== photoPath) {
-            await deps.photoStorage.remove(existing.photoPath).catch(() => undefined);
-          }
-        } else {
-          await deps.repository.createPending(pendingInput);
+      if (existing?.paymentStatus === "pending") {
+        if (!existing.orderNsu || !existing.checkoutUrl) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          throw new Error("Não foi possível preparar o pagamento desta inscrição.");
         }
-      } catch (caught) {
-        await deps.photoStorage.remove(photoPath).catch(() => undefined);
-        throw caught;
+        let replaced: boolean;
+        try {
+          replaced = await deps.repository.replacePendingCheckout({
+            ...registrationData,
+            registrationId: existing.id,
+            expectedOrderNsu: existing.orderNsu,
+            expectedCheckoutUrl: existing.checkoutUrl,
+            orderNsu,
+            checkoutClaim,
+            choirName,
+            photoPath,
+            amountCents: nextContract.amountCents,
+            pricingType: nextContract.pricingType,
+            standardPriceCents: nextContract.standardPriceCents,
+            registrationPriceCents: nextContract.registrationPriceCents,
+            remainingPriceCents: nextContract.remainingPriceCents,
+          });
+        } catch (caught) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          throw caught;
+        }
+        if (!replaced) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          const concurrent = await recoverConcurrentCheckout();
+          if (concurrent) return concurrent;
+          throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+        }
+        if (existing.photoPath && existing.photoPath !== photoPath) {
+          await deps.photoStorage.remove(existing.photoPath).catch(() => undefined);
+        }
+      } else {
+        try {
+          await deps.repository.createPending(pendingInput);
+        } catch (caught) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          throw caught;
+        }
       }
 
-      let checkout: { url: string };
-      try {
-        checkout = await deps.infinitePay.createCheckout({
-          orderNsu,
-          items: buildCheckoutItems(input, appliedQuote),
-          customer: { name: input.name, email: input.email, phoneNumber: input.phone },
-        });
-        const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
-        if (!saved) {
-          throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
-        }
-      } catch (caught) {
-        // Keep the pending registration complete so the participant photo remains
-        // available in the admin area while checkout can be retried later.
-        throw caught;
+      const checkout = await deps.infinitePay.createCheckout({
+        orderNsu,
+        items: nextContract.items,
+        customer: { name: input.name, email: input.email, phoneNumber: input.phone },
+      });
+      const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
+      if (!saved) {
+        throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
       }
 
       return { checkoutUrl: checkout.url, orderNsu };
@@ -558,10 +617,11 @@ async function waitForCheckoutUrl(
       latest?.paymentStatus === "pending" &&
       latest.orderNsu &&
       latest.checkoutUrl &&
-      !isCheckoutClaim(latest.checkoutUrl)
+      isSafeInfinitePayCheckoutUrl(latest.checkoutUrl)
     ) {
       return { checkoutUrl: latest.checkoutUrl, orderNsu: latest.orderNsu };
     }
+    if (latest?.checkoutUrl && !isCheckoutClaim(latest.checkoutUrl)) return null;
     if (latest?.checkoutUrl && isCheckoutClaimStale(latest.checkoutUrl, now())) return null;
   }
   return null;
@@ -907,44 +967,6 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
       if (error) throw new Error("Não foi possível salvar o checkout.");
       return data !== null;
-    },
-
-    updatePending: async (input) => {
-      const { data, error } = await supabaseAdmin
-        .from("registrations")
-        .update({
-          name: input.name,
-          badge_name: input.badgeName,
-          cpf: input.cpf,
-          photo_path: input.photoPath,
-          musical_profile: input.musicalProfile,
-          voice_part: input.voicePart,
-          phone: input.phone,
-          birth_date: input.birthDate,
-          choir_id: input.choirId,
-          choir_name: input.choirName,
-          other_choir_name: input.otherChoirName,
-          diocese: input.diocese,
-          email: input.email,
-          pricing_type: input.pricingType,
-          standard_price_cents: input.standardPriceCents,
-          registration_price_cents: input.registrationPriceCents,
-          ...(input.remainingPriceCents !== undefined
-            ? { remaining_price_cents: input.remainingPriceCents }
-            : {}),
-          amount_cents: input.amountCents,
-          payment_status: "pending",
-          order_nsu: input.orderNsu,
-          checkout_url: input.checkoutClaim ?? null,
-        })
-        .eq("id", input.registrationId)
-        .eq("payment_status", "pending")
-        .eq("order_nsu", input.expectedOrderNsu)
-        .select("id")
-        .maybeSingle();
-
-      if (error) throw new Error("Não foi possível atualizar a inscrição.");
-      if (!data) throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
     },
 
     updatePendingDetails: async (input) => {

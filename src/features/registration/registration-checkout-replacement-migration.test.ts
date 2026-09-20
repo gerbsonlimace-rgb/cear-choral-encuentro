@@ -11,7 +11,10 @@ const files = readdirSync(migrations).filter((name) =>
   name.endsWith("_add_registration_superseded_checkouts.sql"),
 );
 const sql = files.length === 1 ? readFileSync(path.join(migrations, files[0]), "utf8") : "";
-const normalized = sql.replace(/--[^\n]*/g, "").replace(/\s+/g, " ").toLowerCase();
+const normalized = sql
+  .replace(/--[^\n]*/g, "")
+  .replace(/\s+/g, " ")
+  .toLowerCase();
 
 describe("registration checkout replacement migration contract", () => {
   it("creates one private immutable superseded-checkout ledger", () => {
@@ -46,7 +49,9 @@ describe("registration checkout replacement migration contract", () => {
     ]) {
       expect(normalized).toContain(`new.${field} is distinct from old.${field}`);
     }
-    expect(normalized).toContain("old.status = 'superseded' and new.status = 'paid_requires_review'");
+    expect(normalized).toContain(
+      "old.status = 'superseded' and new.status = 'paid_requires_review'",
+    );
     expect(normalized).toContain("before update on public.registration_superseded_checkouts");
   });
 
@@ -58,20 +63,21 @@ describe("registration checkout replacement migration contract", () => {
     expect(normalized).toMatch(
       /insert into public\.registration_superseded_checkouts[\s\S]*update public\.registrations/,
     );
-    expect(normalized).toContain(
-      "v_registration.order_nsu is distinct from p_expected_order_nsu",
-    );
+    expect(normalized).toContain("v_registration.order_nsu is distinct from p_expected_order_nsu");
     expect(normalized).toContain(
       "v_registration.checkout_url is distinct from p_expected_checkout_url",
     );
     expect(normalized).toContain(String.raw`checkout\.infinitepay\.(io|com\.br)`);
     expect(normalized).toContain("https://pending.invalid/creating/");
+    expect(normalized).toContain("p_checkout_claim !~ (");
+    expect(normalized).toContain("p_new_order_nsu::text || '/[0-9]+$'");
+    expect(normalized).toContain("p_new_order_nsu is null");
+    expect(normalized).toContain("p_checkout_claim is null");
   });
 
   it("restricts replacement execution to the service role", () => {
     expect(normalized).toContain("security invoker set search_path = ''");
-    const replacementSignature =
-      String.raw`public\.replace_pending_registration_checkout\(\s*uuid, uuid, text, uuid, text, text, text, text, text, text, text, text,\s*date, uuid, text, text, text, text, text, integer, integer, integer, integer\s*\)`;
+    const replacementSignature = String.raw`public\.replace_pending_registration_checkout\(\s*uuid, uuid, text, uuid, text, text, text, text, text, text, text, text,\s*date, uuid, text, text, text, text, text, integer, integer, integer, integer\s*\)`;
     expect(normalized).toMatch(
       new RegExp(`revoke all on function ${replacementSignature} from public, anon, authenticated`),
     );

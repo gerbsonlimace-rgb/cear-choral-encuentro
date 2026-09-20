@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { InfinitePayClient } from "./infinitepay.server";
+import type { DisplayedQuote } from "@/features/choirs/choir-pricing.domain";
 import {
   MAX_REGISTRATION_PHOTO_BYTES,
   type PaymentLookup,
@@ -38,6 +39,10 @@ import {
   type RegistrationPaymentRecord,
   type RegistrationRepository,
 } from "./registration-payment.server";
+import {
+  buildRegistrationCheckoutContract,
+  type RegistrationCheckoutContract,
+} from "./registration-checkout-contract";
 import {
   createParticipantProvisioningService,
   createSupabaseParticipantProvisioningRepository,
@@ -81,6 +86,12 @@ const trustedSelection = {
   },
 };
 
+const standardQuote: DisplayedQuote = {
+  pricingType: "standard",
+  standardPriceCents: 30000,
+  registrationPriceCents: 30000,
+};
+
 const baseInput: RegistrationInput = {
   name: "Maria da Silva",
   badgeName: "Maria Silva",
@@ -103,6 +114,34 @@ const {
   displayedQuote: _displayedQuote,
   ...baseRegistrationInput
 } = baseInput;
+
+function pendingIdentity(
+  options: {
+    input?: RegistrationInput;
+    appliedQuote?: DisplayedQuote;
+    trustedQuote?: DisplayedQuote;
+    orderNsu?: string;
+    checkoutUrl?: string;
+    photoPath?: string;
+    checkoutContract?: RegistrationCheckoutContract | null;
+  } = {},
+): RegistrationIdentityRecord {
+  const input = options.input ?? baseInput;
+  const appliedQuote = options.appliedQuote ?? trustedSelection.quote;
+  const trustedQuote = options.trustedQuote ?? trustedSelection.quote;
+  return {
+    id: "registration-1",
+    paymentStatus: "pending",
+    birthDate: input.birthDate,
+    orderNsu: options.orderNsu ?? previousOrderNsu,
+    checkoutUrl: options.checkoutUrl ?? existingCheckoutUrl,
+    photoPath: options.photoPath ?? `${previousOrderNsu}/participant.jpg`,
+    checkoutContract:
+      options.checkoutContract === undefined
+        ? buildRegistrationCheckoutContract(input, appliedQuote, trustedQuote)
+        : options.checkoutContract,
+  };
+}
 
 const lookup: PaymentLookup = {
   orderNsu: fixedOrderNsu,
@@ -261,9 +300,6 @@ function createFixture() {
     saveCheckoutUrl: vi.fn(async () => {
       calls.push("saveCheckoutUrl");
       return true;
-    }),
-    updatePending: vi.fn(async () => {
-      calls.push("updatePending");
     }),
     updatePendingDetails: vi.fn(async () => true),
     replacePendingCheckout: vi.fn(async () => true),
@@ -428,6 +464,166 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("replaces a R$ 100 checkout after phone and full-price selection change", async () => {
+    fixture.setIdentityRecord(
+      pendingIdentity({ input: { ...baseInput, phone: "(85) 99999-1111" } }),
+    );
+    const fullPriceInput: RegistrationInput = {
+      ...baseInput,
+      phone: "(85) 98888-2222",
+      raffleChoice: "full_price",
+      displayedQuote: standardQuote,
+    };
+
+    await fixture.service.startCheckout(fullPriceInput);
+
+    expect(fixture.repository.replacePendingCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+        orderNsu: fixedOrderNsu,
+        amountCents: 30000,
+      }),
+    );
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderNsu: fixedOrderNsu,
+        items: [expect.objectContaining({ price: 30000 })],
+        customer: expect.objectContaining({ phoneNumber: "(85) 98888-2222" }),
+      }),
+    );
+  });
+
+  it("persists a nonfinancial edit and reuses the matching checkout", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+
+    const result = await fixture.service.startCheckout({
+      ...baseInput,
+      badgeName: "Novo crachá",
+    });
+
+    expect(fixture.repository.updatePendingDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        badgeName: "Novo crachá",
+        expectedOrderNsu: previousOrderNsu,
+        expectedCheckoutUrl: existingCheckoutUrl,
+      }),
+    );
+    expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+    expect(result).toEqual({ checkoutUrl: existingCheckoutUrl, orderNsu: previousOrderNsu });
+  });
+
+  it("reuses the checkout for equivalent Brazilian phone formats", async () => {
+    fixture.setIdentityRecord(
+      pendingIdentity({ input: { ...baseInput, phone: "(85) 99999-9999" } }),
+    );
+
+    const result = await fixture.service.startCheckout({
+      ...baseInput,
+      phone: "+55 85 99999-9999",
+    });
+
+    expect(fixture.repository.updatePendingDetails).toHaveBeenCalledOnce();
+    expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+    expect(result).toEqual({ checkoutUrl: existingCheckoutUrl, orderNsu: previousOrderNsu });
+  });
+
+  it("returns the concurrent matching checkout when a detail update loses its condition", async () => {
+    const concurrentIdentity = pendingIdentity({
+      orderNsu: fixedOrderNsu,
+      checkoutUrl,
+      photoPath: registrationPhotoPath,
+    });
+    vi.mocked(fixture.repository.findByCpf!)
+      .mockResolvedValueOnce(pendingIdentity())
+      .mockResolvedValueOnce(concurrentIdentity);
+    vi.mocked(fixture.repository.updatePendingDetails).mockResolvedValueOnce(false);
+
+    await expect(fixture.service.startCheckout(baseInput)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu: fixedOrderNsu,
+    });
+
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
+  });
+
+  it("never returns or archives an unsafe existing checkout URL", async () => {
+    fixture.setIdentityRecord(pendingIdentity({ checkoutUrl: "https://evil.example/checkout" }));
+
+    await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow(
+      "Não foi possível preparar o pagamento desta inscrição.",
+    );
+
+    expect(fixture.repository.updatePendingDetails).not.toHaveBeenCalled();
+    expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
+    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
+  });
+
+  it("does not return an unsafe URL after waiting on a concurrent claim", async () => {
+    const claim = `https://pending.invalid/creating/${fixedOrderNsu}/${Date.parse(fixedPaidAt)}`;
+    const claimedIdentity = pendingIdentity({
+      orderNsu: fixedOrderNsu,
+      checkoutUrl: claim,
+      photoPath: registrationPhotoPath,
+    });
+    vi.mocked(fixture.repository.findByCpf!)
+      .mockResolvedValueOnce(claimedIdentity)
+      .mockResolvedValueOnce({ ...claimedIdentity, checkoutUrl: "https://evil.example/checkout" });
+
+    await expect(fixture.service.startCheckout(baseInput)).rejects.toThrow(
+      "O checkout já está sendo preparado. Tente novamente em instantes.",
+    );
+
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("uses the concurrent replacement claim and final URL instead of creating twice", async () => {
+    const fullPriceInput: RegistrationInput = {
+      ...baseInput,
+      raffleChoice: "full_price",
+      displayedQuote: standardQuote,
+    };
+    const concurrentClaim = `https://pending.invalid/creating/${fixedOrderNsu}/1`;
+    const concurrentIdentity = pendingIdentity({
+      input: fullPriceInput,
+      appliedQuote: standardQuote,
+      orderNsu: fixedOrderNsu,
+      checkoutUrl: concurrentClaim,
+      photoPath: registrationPhotoPath,
+    });
+    vi.mocked(fixture.repository.findByCpf!)
+      .mockResolvedValueOnce(pendingIdentity())
+      .mockResolvedValueOnce(concurrentIdentity)
+      .mockResolvedValueOnce({ ...concurrentIdentity, checkoutUrl });
+    vi.mocked(fixture.repository.replacePendingCheckout).mockResolvedValueOnce(false);
+
+    await expect(fixture.service.startCheckout(fullPriceInput)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu: fixedOrderNsu,
+    });
+
+    expect(fixture.repository.replacePendingCheckout).toHaveBeenCalledOnce();
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+    expect(fixture.photoStorage.remove).toHaveBeenCalledWith(registrationPhotoPath);
+  });
+
+  it("checks a changed e-mail conflict before archiving the existing checkout", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+    fixture.findAuthUserByEmail.mockResolvedValueOnce({ id: "existing-auth-user" });
+
+    await expect(
+      fixture.service.startCheckout({ ...baseInput, email: "outra@example.com" }),
+    ).rejects.toThrow("Já existe um acesso com este e-mail.");
+
+    expect(fixture.findAuthUserByEmail).toHaveBeenCalledWith("outra@example.com");
+    expect(fixture.repository.updatePendingDetails).not.toHaveBeenCalled();
+    expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
+    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
   });
 
   it("uses the trusted standard price and persists an informed other choir", async () => {
@@ -706,7 +902,7 @@ describe("registration payment service", () => {
     expect(fixture.photoStorage.remove).not.toHaveBeenCalled();
   });
 
-  it("replaces the previous photo only after a stale pending registration is updated", async () => {
+  it("replaces the previous photo only after a stale pending claim is reserved", async () => {
     const previousPhotoPath = `${previousOrderNsu}/participant.jpg`;
     fixture.setIdentityRecord({
       id: "registration-1",
@@ -720,7 +916,7 @@ describe("registration payment service", () => {
 
     await fixture.service.startCheckout(baseInput);
 
-    expect(fixture.repository.updatePending).toHaveBeenCalledWith(
+    expect(fixture.repository.replacePendingCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         registrationId: "registration-1",
         expectedOrderNsu: previousOrderNsu,
@@ -745,7 +941,9 @@ describe("registration payment service", () => {
     expect(fixture.photoStorage.remove).not.toHaveBeenCalled();
   });
 
-  it("rejects a stale displayed price before saving or opening checkout", async () => {
+  it("rejects a stale displayed price before changing an existing checkout", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+
     await expect(
       fixture.service.startCheckout({
         ...baseInput,
@@ -754,6 +952,9 @@ describe("registration payment service", () => {
     ).rejects.toThrow("configuração de preços mudou");
 
     expect(fixture.repository.createPending).not.toHaveBeenCalled();
+    expect(fixture.repository.updatePendingDetails).not.toHaveBeenCalled();
+    expect(fixture.repository.replacePendingCheckout).not.toHaveBeenCalled();
+    expect(fixture.photoStorage.upload).not.toHaveBeenCalled();
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
@@ -1353,9 +1554,7 @@ describe("Supabase registration repository", () => {
           email: "maria@example.com",
           phoneNumber: "+5585999999999",
         },
-        items: [
-          { quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" },
-        ],
+        items: [{ quantity: 1, price: 10000, description: "Inscrição — II Encontro de Coros" }],
         amountCents: 10000,
         pricingType: "promotional",
         standardPriceCents: 30000,
