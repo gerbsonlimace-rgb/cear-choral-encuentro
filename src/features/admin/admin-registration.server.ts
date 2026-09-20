@@ -14,6 +14,7 @@ import {
   type AdminRegistrationQuery,
   type AdminRegistrationRow,
   type AdminRegistrationSummary,
+  type AdminSupersededCheckoutReview,
   type ManualPaymentReceipt,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
@@ -60,6 +61,8 @@ export const adminRegistrationColumns = [
 ].join(",");
 const complementPaymentColumns =
   "id,registration_id,amount_cents,status,checkout_url,created_at,paid_at,initiated_by_name,initiated_as";
+const supersededCheckoutReviewColumns =
+  "id,registration_id,order_nsu,amount_cents,paid_amount_cents,payment_method,installments,paid_at,infinitepay_transaction_nsu,receipt_url";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const PHOTO_URL_EXPIRY_SECONDS = 3600;
@@ -133,6 +136,9 @@ export type AdminExportAuditEvent = {
 export type AdminRegistrationRepository = {
   listCandidates?(search: string): Promise<AdminRegistrationCandidate[]>;
   listComplementPayments?(registrationIds: string[]): Promise<AdminComplementPaymentRow[]>;
+  listSupersededCheckoutReviews?(
+    registrationIds: string[],
+  ): Promise<Map<string, AdminSupersededCheckoutReview>>;
   signPhotos?(rows: AdminRegistrationRow[]): Promise<AdminRegistrationRow[]>;
   list(
     query: AdminRegistrationQuery,
@@ -225,6 +231,59 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         }
       }
       return rows;
+    },
+    async listSupersededCheckoutReviews(registrationIds) {
+      const reviews = new Map<string, AdminSupersededCheckoutReview>();
+      for (let offset = 0; offset < registrationIds.length; offset += 1000) {
+        const ids = registrationIds.slice(offset, offset + 1000);
+        if (ids.length === 0) continue;
+        const { data, error } = await supabaseAdmin
+          .from("registration_superseded_checkouts")
+          .select(supersededCheckoutReviewColumns)
+          .in("registration_id", ids)
+          .eq("status", "paid_requires_review")
+          .order("paid_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (error) {
+          throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
+        }
+        for (const value of (data ?? []) as Array<Record<string, unknown>>) {
+          const validDate =
+            typeof value.paid_at === "string" && Number.isFinite(Date.parse(value.paid_at));
+          if (
+            typeof value.id !== "string" ||
+            typeof value.registration_id !== "string" ||
+            typeof value.order_nsu !== "string" ||
+            value.order_nsu.trim().length === 0 ||
+            !Number.isSafeInteger(value.amount_cents) ||
+            Number(value.amount_cents) <= 0 ||
+            !Number.isSafeInteger(value.paid_amount_cents) ||
+            Number(value.paid_amount_cents) < Number(value.amount_cents) ||
+            (value.payment_method !== "pix" && value.payment_method !== "credit_card") ||
+            !Number.isSafeInteger(value.installments) ||
+            Number(value.installments) <= 0 ||
+            !validDate ||
+            typeof value.infinitepay_transaction_nsu !== "string" ||
+            value.infinitepay_transaction_nsu.trim().length === 0 ||
+            (value.receipt_url !== null && typeof value.receipt_url !== "string")
+          ) {
+            throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
+          }
+          if (!reviews.has(value.registration_id)) {
+            reviews.set(value.registration_id, {
+              orderNsu: value.order_nsu,
+              amountCents: Number(value.amount_cents),
+              paidAmountCents: Number(value.paid_amount_cents),
+              paymentMethod: value.payment_method,
+              installments: Number(value.installments),
+              paidAt: value.paid_at as string,
+              transactionNsu: value.infinitepay_transaction_nsu,
+              receiptUrl: value.receipt_url as string | null,
+            });
+          }
+        }
+      }
+      return reviews;
     },
     async signPhotos(rows) {
       return Promise.all(
@@ -440,7 +499,11 @@ export function createAdminRegistrationService(
     const complementIds = candidates
       .filter(({ row }) => row.payment_status === "paid" && row.pricing_type === "promotional")
       .map(({ row }) => row.id);
-    const payments = await repository.listComplementPayments(complementIds);
+    const [payments, reviews] = await Promise.all([
+      repository.listComplementPayments(complementIds),
+      repository.listSupersededCheckoutReviews?.(candidates.map(({ row }) => row.id)) ??
+        Promise.resolve(new Map<string, AdminSupersededCheckoutReview>()),
+    ]);
     const paymentsByRegistration = new Map<string, AdminComplementPaymentRow[]>();
     for (const payment of payments) {
       const current = paymentsByRegistration.get(payment.registrationId) ?? [];
@@ -457,6 +520,8 @@ export function createAdminRegistrationService(
       const row = enrichAdminRegistrationRow(
         candidate,
         paymentsByRegistration.get(candidate.row.id) ?? [],
+        null,
+        reviews.get(candidate.row.id) ?? null,
       );
       Object.defineProperty(row, "_photoPath", {
         value: candidate.row.photo_path,
@@ -535,7 +600,11 @@ export function createAdminRegistrationService(
     const complementIds = candidates
       .filter(({ row }) => row.payment_status === "paid" && row.pricing_type === "promotional")
       .map(({ row }) => row.id);
-    const payments = await repository.listComplementPayments!(complementIds);
+    const [payments, reviews] = await Promise.all([
+      repository.listComplementPayments!(complementIds),
+      repository.listSupersededCheckoutReviews?.(candidates.map(({ row }) => row.id)) ??
+        Promise.resolve(new Map<string, AdminSupersededCheckoutReview>()),
+    ]);
     const byRegistration = new Map<string, AdminComplementPaymentRow[]>();
     for (const payment of payments) {
       const list = byRegistration.get(payment.registrationId) ?? [];
@@ -549,7 +618,12 @@ export function createAdminRegistrationService(
       );
     }
     const rows = candidates.map((candidate) =>
-      enrichAdminRegistrationRow(candidate, byRegistration.get(candidate.row.id) ?? []),
+      enrichAdminRegistrationRow(
+        candidate,
+        byRegistration.get(candidate.row.id) ?? [],
+        null,
+        reviews.get(candidate.row.id) ?? null,
+      ),
     );
     return query.paymentStatus === "all"
       ? rows

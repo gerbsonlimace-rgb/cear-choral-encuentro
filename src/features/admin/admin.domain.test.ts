@@ -542,4 +542,28 @@ describe("admin derived financial state", () => {
       confirmedPrincipalCents: 0,
     });
   });
+
+  it("attaches a superseded checkout review without changing the current financial state", () => {
+    const review = {
+      orderNsu: "old-order",
+      amountCents: 10000,
+      paidAmountCents: 10000,
+      paymentMethod: "pix" as const,
+      installments: 1,
+      paidAt: "2026-09-19T15:00:00Z",
+      transactionNsu: "transaction-1",
+      receiptUrl: "https://receipt.infinitepay.io/late",
+    };
+    const candidate = { row: pendingRow, accountStatus: null, regentName: null };
+    const baseline = enrichAdminRegistrationRow(candidate, []);
+    const row = enrichAdminRegistrationRow(
+      candidate,
+      [],
+      null,
+      review,
+    );
+
+    expect(row.supersededCheckoutReview).toEqual(review);
+    expect(row.financialState).toEqual(baseline.financialState);
+  });
 });

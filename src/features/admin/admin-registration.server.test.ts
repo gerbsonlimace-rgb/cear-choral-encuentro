@@ -96,7 +96,13 @@ describe("registration export", () => {
       id: `row-${1000 + index}`,
       name: `Maria ${1000 + index}`,
     }));
-    const { trace } = databaseHarness([success(first, 1005), success(last, 1005), auditSuccess]);
+    const { trace } = databaseHarness([
+      success(first, 1005),
+      success(last, 1005),
+      success([]),
+      success([]),
+      auditSuccess,
+    ]);
     const service = createAdminRegistrationService(
       createSupabaseAdminRegistrationRepository(),
       now,
@@ -111,10 +117,16 @@ describe("registration export", () => {
       ["order", "id", { ascending: false }],
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
+      ["order", "paid_at", { ascending: false }],
+      ["order", "id", { ascending: false }],
+      ["order", "paid_at", { ascending: false }],
+      ["order", "id", { ascending: false }],
     ]);
     // Payment filters are derived after candidate retrieval; no raw
     // payment_status predicate may hide partially-paid registrations.
-    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
+    expect(
+      trace.filter(([method, column]) => method === "eq" && column === "payment_status"),
+    ).toEqual([]);
     expect(trace.filter(([method]) => method === "or")).toHaveLength(2);
     expect(trace.slice(-4)).toEqual([
       ["response", 200],
@@ -191,7 +203,7 @@ describe("registration export", () => {
   );
 
   it("rejects with a generic error instead of returning CSV when audit insertion fails", async () => {
-    const { trace } = databaseHarness([success([selectedRow]), failure]);
+    const { trace } = databaseHarness([success([selectedRow]), success([]), failure]);
     await expect(
       createAdminRegistrationService(createSupabaseAdminRegistrationRepository(), now).export(
         { search: "", paymentStatus: "paid" },
@@ -690,6 +702,71 @@ describe("derived registration listing", () => {
     await expect(
       createSupabaseAdminRegistrationRepository().listComplementPayments!(["registration"]),
     ).resolves.toMatchObject([{ initiatedAs: "participant", amountCents: 8000 }]);
+  });
+
+  it("returns only the newest validated superseded checkout review per registration", async () => {
+    const older = {
+      id: "review-old",
+      registration_id: "registration",
+      order_nsu: "old-order",
+      amount_cents: 10000,
+      paid_amount_cents: 10000,
+      payment_method: "pix",
+      installments: 1,
+      paid_at: "2026-09-18T10:00:00Z",
+      infinitepay_transaction_nsu: "transaction-old",
+      receipt_url: null,
+    };
+    const newest = {
+      ...older,
+      id: "review-new",
+      order_nsu: "new-order",
+      paid_at: "2026-09-19T10:00:00Z",
+      infinitepay_transaction_nsu: "transaction-new",
+      receipt_url: "https://receipt.infinitepay.io/late",
+    };
+    const { trace } = databaseHarness([success([newest, older] as unknown as ResultRow[])]);
+
+    const reviews = await createSupabaseAdminRegistrationRepository()
+      .listSupersededCheckoutReviews!(["registration"]);
+
+    expect(reviews.get("registration")).toEqual({
+      orderNsu: "new-order",
+      amountCents: 10000,
+      paidAmountCents: 10000,
+      paymentMethod: "pix",
+      installments: 1,
+      paidAt: "2026-09-19T10:00:00Z",
+      transactionNsu: "transaction-new",
+      receiptUrl: "https://receipt.infinitepay.io/late",
+    });
+    expect(trace).toContainEqual(["from", "registration_superseded_checkouts"]);
+    expect(trace).toContainEqual(["eq", "status", "paid_requires_review"]);
+    expect(trace).toContainEqual(["order", "paid_at", { ascending: false }]);
+  });
+
+  it("rejects malformed superseded checkout review rows", async () => {
+    databaseHarness([
+      success([
+        {
+          registration_id: "registration",
+          order_nsu: "order",
+          amount_cents: 10000,
+          paid_amount_cents: 10000,
+          payment_method: "pix",
+          installments: 0,
+          paid_at: "2026-09-19T10:00:00Z",
+          infinitepay_transaction_nsu: "transaction",
+          receipt_url: null,
+        } as unknown as ResultRow,
+      ]),
+    ]);
+
+    await expect(
+      createSupabaseAdminRegistrationRepository().listSupersededCheckoutReviews!([
+        "registration",
+      ]),
+    ).rejects.toThrow("Não foi possível consultar pagamentos de checkouts substituídos.");
   });
 });
 const failure: DatabaseResult = {

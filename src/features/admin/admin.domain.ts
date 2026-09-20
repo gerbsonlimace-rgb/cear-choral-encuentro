@@ -74,6 +74,17 @@ export type AdminRegistrationQuery = z.infer<typeof adminRegistrationQuerySchema
 export type AdminRegistrationExportQuery = z.infer<typeof adminRegistrationExportSchema>;
 export type RegistrationDatabaseRow = Tables<"registrations">;
 
+export type AdminSupersededCheckoutReview = {
+  orderNsu: string;
+  amountCents: number;
+  paidAmountCents: number;
+  paymentMethod: "pix" | "credit_card";
+  installments: number;
+  paidAt: string;
+  transactionNsu: string;
+  receiptUrl: string | null;
+};
+
 export type AdminRegistrationRow = {
   id: string;
   createdAt: string;
@@ -113,6 +124,7 @@ export type AdminRegistrationRow = {
   financialState?: RegistrationFinancialState;
   /** The newest creating/pending complement checkout, if one exists. */
   openComplementPayment?: ComplementPaymentRow | null;
+  supersededCheckoutReview?: AdminSupersededCheckoutReview | null;
   participantAccess?: AdminParticipantAccess | null;
 };
 
@@ -234,6 +246,7 @@ export function enrichAdminRegistrationRow(
   candidate: AdminRegistrationCandidate,
   payments: AdminComplementPaymentRow[],
   photoUrl: string | null = null,
+  supersededCheckoutReview: AdminSupersededCheckoutReview | null = null,
 ): AdminRegistrationRow {
   const confirmedComplementCents = payments.reduce(
     (total, payment) => total + (payment.status === "paid" ? payment.amountCents : 0),
@@ -267,7 +280,7 @@ export function enrichAdminRegistrationRow(
   if (mapped.participantAccess && financialState.status === "partially_paid") {
     mapped.participantAccess = resolveParticipantAccess("paid", candidate.accountStatus);
   }
-  return { ...mapped, financialState, openComplementPayment };
+  return { ...mapped, financialState, openComplementPayment, supersededCheckoutReview };
 }
 
 export function getAdminFinancialState(row: AdminRegistrationRow): RegistrationFinancialState {

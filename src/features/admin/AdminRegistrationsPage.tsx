@@ -178,6 +178,18 @@ const dateOnly = (value: string) => {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : "Não informado";
 };
 const optionalText = (value: string | null | undefined) => value?.trim() || "Não informado";
+const safeInfinitePayReceiptUrl = (value: string | null): string | null => {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const allowed = ["infinitepay.io", "infinitepay.com.br"].some(
+      (root) => url.hostname === root || url.hostname.endsWith(`.${root}`),
+    );
+    return url.protocol === "https:" && allowed ? value : null;
+  } catch {
+    return null;
+  }
+};
 
 const musicalProfileLabels: Record<string, string> = {
   coralista: "Coralista",
@@ -358,6 +370,8 @@ function RegistrationDetailsDialog({
       : row.pricingType === "standard"
         ? "Inscrição integral"
         : "Não informado";
+  const review = row.supersededCheckoutReview;
+  const reviewReceiptUrl = safeInfinitePayReceiptUrl(review?.receiptUrl ?? null);
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -410,6 +424,51 @@ function RegistrationDetailsDialog({
               {optionalText(row.observations)}
             </DetailItem>
           </DetailSection>
+
+          {review && (
+            <section
+              role="alert"
+              className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 lg:col-span-2"
+            >
+              <h3 className="font-semibold">Pagamento de checkout substituído</h3>
+              <p className="mt-1 text-sm">
+                Revisão administrativa necessária; a inscrição atual não foi confirmada
+                automaticamente.
+              </p>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-medium">Valor do checkout</dt>
+                  <dd>{money(review.amountCents)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Valor recebido</dt>
+                  <dd>{money(review.paidAmountCents)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Pago em</dt>
+                  <dd>{dateTime(review.paidAt)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Forma de pagamento</dt>
+                  <dd>{review.paymentMethod === "pix" ? "Pix" : "Cartão de crédito"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Transação</dt>
+                  <dd className="break-all">{review.transactionNsu}</dd>
+                </div>
+              </dl>
+              {reviewReceiptUrl && (
+                <a
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium underline"
+                  href={reviewReceiptUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  Ver comprovante <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              )}
+            </section>
+          )}
 
           <DetailSection title="Financeiro">
             <DetailItem label="Modalidade">{pricingType}</DetailItem>

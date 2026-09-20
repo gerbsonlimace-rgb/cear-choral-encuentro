@@ -520,6 +520,41 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("warns about a paid superseded checkout and exposes only its safe receipt link", async () => {
+    const reviewed = {
+      ...paid,
+      supersededCheckoutReview: {
+        orderNsu: "old-order",
+        amountCents: 10000,
+        paidAmountCents: 10000,
+        paymentMethod: "pix" as const,
+        installments: 1,
+        paidAt: "2026-09-19T15:00:00Z",
+        transactionNsu: "transaction-1",
+        receiptUrl: "https://receipt.infinitepay.io/late",
+      },
+    } satisfies AdminRegistrationRow;
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({ ...page, rows: [reviewed], total: 1 }),
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+
+    await user.click(within(table).getByRole("row", { name: "Ver todos os dados de Clara Paga" }));
+
+    const alert = within(screen.getByRole("dialog")).getByRole("alert");
+    expect(alert).toHaveTextContent("Pagamento de checkout substituído");
+    expect(alert).toHaveTextContent(/R\$\s*100,00/);
+    expect(alert).toHaveTextContent("Pix");
+    expect(alert).toHaveTextContent("transaction-1");
+    expect(alert).toHaveTextContent(
+      "Revisão administrativa necessária; a inscrição atual não foi confirmada automaticamente.",
+    );
+    expect(within(alert).getByRole("link", { name: "Ver comprovante" })).toHaveAttribute(
+      "href",
+      "https://receipt.infinitepay.io/late",
+    );
+  });
+
   it("keeps the row details modal separate from the More actions menu", async () => {
     const { user } = setup();
     const table = await screen.findByRole("table", { name: "Inscrições" });
