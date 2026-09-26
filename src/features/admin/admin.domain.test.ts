@@ -202,6 +202,7 @@ describe("admin registration history and CSV", () => {
       exempted_by: "11111111-1111-4111-8111-111111111111",
       amount_cents: 0,
       paid_amount_cents: 0,
+      pricing_type: "standard",
       standard_price_cents: 0,
       registration_price_cents: 0,
       remaining_price_cents: 0,
@@ -242,6 +243,37 @@ describe("admin registration history and CSV", () => {
     });
 
     expect(approved).toMatchObject({ isFreeRegistration: true, paymentOrigin: "exemption" });
+    expect(summarizeAdminRegistrations([approved])).toMatchObject({
+      exempt: 1,
+      paid: 0,
+      pending: 0,
+      receivedCents: 0,
+    });
+    const approvedCsv = parseCsv(buildRegistrationsCsv([approved], new Date("2026-09-26T16:00:00.000Z")).content)[1];
+    expect(approvedCsv.slice(9, 11)).toEqual(["Isento", "Isento"]);
+  });
+
+  it("exports a registration awaiting exemption approval without marking it paid", () => {
+    const awaitingApproval = mapAdminRegistrationRow({
+      ...pendingRow,
+      payment_origin: "exemption",
+      is_free_registration: true,
+      amount_cents: 0,
+      pricing_type: "standard",
+      standard_price_cents: 0,
+      registration_price_cents: 0,
+      payment_method: null,
+    });
+
+    const csv = parseCsv(buildRegistrationsCsv([awaitingApproval], new Date("2026-09-26T16:00:00.000Z")).content)[1];
+    expect(csv.slice(9, 11)).toEqual(["Aguardando aprovação", "Aguardando aprovação"]);
+    const summary = summarizeAdminRegistrations([awaitingApproval]);
+    expect(summary).toMatchObject({
+      paid: 0,
+      pending: 1,
+      receivedCents: 0,
+    });
+    expect(summary.exempt ?? 0).toBe(0);
   });
 
   // Detects a production mutation that fabricates shirt, value, or payment details for legacy registrations.

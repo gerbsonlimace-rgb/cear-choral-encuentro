@@ -283,13 +283,13 @@ describe("AdminRegistrationsPage read-only views", () => {
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
     expect(screen.queryByRole("menuitem", { name: "Gerar link de pagamento" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Marcar como pago" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("menuitem", { name: "Aprovar inscrição gratuita" }));
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Aprovar inscrição" }));
+    await user.click(screen.getByRole("menuitem", { name: "Aprovar como isento" }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Aprovar isenção" }));
     await waitFor(() => expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }));
-    expect(await screen.findByText("Inscrição gratuita aprovada.")).toBeVisible();
+    expect(await screen.findByText("Inscrição aprovada como isenta.")).toBeVisible();
   });
 
-  it("identifies an approved free registration separately from a manual exemption", async () => {
+  it("shows an approved registration as exempt using the existing exemption state", async () => {
     const approvedFree: AdminRegistrationRow = {
       ...paid,
       id: "approved-free",
@@ -301,11 +301,16 @@ describe("AdminRegistrationsPage read-only views", () => {
       paymentMethod: null,
       installments: null,
     };
-    setup({
+    const { user } = setup({
       loadRegistrations: vi.fn().mockResolvedValue({ rows: [approvedFree], total: 1, page: 1, pageSize: 25 }),
     });
     const table = await screen.findByRole("table", { name: "Inscrições" });
-    expect(within(table).getAllByText("Gratuito").length).toBeGreaterThan(0);
+    expect(within(table).getAllByText("Isento").length).toBeGreaterThan(0);
+    expect(within(table).queryByText("Gratuito")).not.toBeInTheDocument();
+    await user.click(within(table).getByRole("row", { name: "Ver todos os dados de Clara Paga" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Isenção administrativa")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Isento").length).toBeGreaterThan(0);
   });
 
   it("requires a receipt and submits its contents with immediate manual payment", async () => {

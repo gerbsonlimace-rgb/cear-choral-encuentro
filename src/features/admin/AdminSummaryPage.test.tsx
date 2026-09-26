@@ -7,10 +7,11 @@ describe("AdminSummaryPage", () => {
   it("shows the administrative overview after validating access", async () => {
     const checkAccess = vi.fn().mockResolvedValue({ status: "authorized" });
     const loadSummary = vi.fn().mockResolvedValue({
-      total: 18,
+      total: 20,
       paid: 12,
       pending: 5,
       legacy: 1,
+      exempt: 2,
       receivedCents: 150_000,
       pendingCents: 50_000,
       pendingRegentCents: 25_000,
@@ -36,8 +37,10 @@ describe("AdminSummaryPage", () => {
     expect(pendingTotal).toHaveTextContent("R$ 750,00");
     expect(pendingTotal).toHaveTextContent("R$ 500,00 em inscrições");
     expect(pendingTotal).toHaveTextContent("R$ 250,00 de regentes");
-    expect(screen.getAllByText("18").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("20").length).toBeGreaterThan(0);
+    expect(screen.getByText("Inscrições isentas").closest("article")).toHaveTextContent("2");
     const overview = screen.getByRole("region", { name: "Visão geral das inscrições" });
+    expect(within(overview).getByText("Isentos")).toBeInTheDocument();
     expect(within(overview).getByText("Financeiro por coro/diocese")).toBeInTheDocument();
     expect(within(overview).getByText("Coro de Quixadá")).toBeInTheDocument();
     expect(within(overview).getAllByText("R$ 250,00")).toHaveLength(2);

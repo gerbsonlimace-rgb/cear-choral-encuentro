@@ -443,7 +443,9 @@ function displayDate(value: string | null): string {
   return value === null ? "Não informado" : dateFormatter.format(new Date(value));
 }
 
-function displayStatus(value: RegistrationFinancialState["status"]): string {
+function displayStatus(row: AdminRegistrationRow): string {
+  if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
+  const value = getAdminFinancialState(row).status;
   return {
     pending: "Pendente",
     partially_paid: "Parcialmente pago",
@@ -459,7 +461,10 @@ function displayPaymentMethod(value: AdminRegistrationRow["paymentMethod"]): str
   return "Não informado";
 }
 
-function displayPricingType(value: AdminRegistrationRow["pricingType"]): string {
+function displayPricingType(row: AdminRegistrationRow): string {
+  if (getAdminFinancialState(row).status === "exempt") return "Isento";
+  if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
+  const value = row.pricingType;
   if (value === "standard") return "Normal";
   if (value === "promotional") return "Promocional";
   return "Não informado";
@@ -494,8 +499,8 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
       row.city,
       displayText(row.institution),
       row.role,
-      displayStatus(getAdminFinancialState(row).status),
-      displayPricingType(row.pricingType),
+      displayStatus(row),
+      displayPricingType(row),
       displayAmount(row.standardPriceCents),
       displayAmount(row.registrationPriceCents),
       displayAmount(

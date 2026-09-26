@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banknote, CheckCircle2, Clock3, Users } from "lucide-react";
+import { Banknote, CheckCircle2, CircleOff, Clock3, Users } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,6 +23,7 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
     { label: "Total", value: String(summary.total) },
     { label: "Pagas", value: String(summary.paid) },
     { label: "Pendentes", value: String(summary.pending) },
+    { label: "Isentos", value: String(summary.exempt ?? 0) },
     { label: "Históricas", value: String(summary.legacy) },
     { label: "Pendente do regente", value: money.format(summary.pendingRegentCents / 100) },
   ];
@@ -35,7 +36,7 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
             <h2 className="text-base font-semibold text-foreground">Inscrições</h2>
             <p className="text-xs text-muted-foreground">Todos os registros</p>
           </div>
-          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
             {counts.map((metric) => (
               <div key={metric.label}>
                 <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
@@ -131,6 +132,7 @@ export function AdminSummaryPage({
         { label: "Inscrições", value: String(summary.total), icon: Users },
         { label: "Pagamentos confirmados", value: String(summary.paid), icon: CheckCircle2 },
         { label: "Pagamentos pendentes", value: String(summary.pending), icon: Clock3 },
+        { label: "Inscrições isentas", value: String(summary.exempt ?? 0), icon: CircleOff },
       ]
     : [];
   const financialMetrics = summary
@@ -172,7 +174,7 @@ export function AdminSummaryPage({
               aria-label="Indicadores do encontro"
               className="space-y-3"
             >
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {registrationMetrics.map(({ label, value, icon: Icon }) => (
                   <article key={label} className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5">
                     <Icon aria-hidden="true" className="size-5 text-primary" />

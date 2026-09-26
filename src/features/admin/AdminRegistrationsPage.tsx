@@ -234,15 +234,13 @@ function Status({ row }: { row: AdminRegistrationRow }) {
   const freePending = row.paymentStatus === "pending" && row.isFreeRegistration;
   const label = freePending
     ? "Aguardando aprovação"
-    : row.isFreeRegistration && status === "exempt"
-      ? "Gratuito"
-      : {
-          legacy: "Histórico",
-          pending: "Pendente",
-          partially_paid: "Parcialmente pago",
-          paid: "Pago",
-          exempt: "Isento",
-        }[status];
+    : {
+        legacy: "Histórico",
+        pending: "Pendente",
+        partially_paid: "Parcialmente pago",
+        paid: "Pago",
+        exempt: "Isento",
+      }[status];
   return (
     <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
       {label}
@@ -368,16 +366,20 @@ function RegistrationDetailsDialog({
       : row.paymentOrigin === "infinitepay"
         ? "InfinitePay"
         : row.paymentOrigin === "exemption"
-          ? row.isFreeRegistration
-            ? "Inscrição gratuita"
+          ? row.paymentStatus === "pending"
+            ? "Isenção aguardando aprovação"
             : "Isenção administrativa"
           : "Não informado";
   const pricingType =
-    row.pricingType === "promotional"
-      ? "Programa de rifas"
-      : row.pricingType === "standard"
-        ? "Inscrição integral"
-        : "Não informado";
+    financial.status === "exempt"
+      ? "Isento"
+      : row.isFreeRegistration && row.paymentStatus === "pending"
+        ? "Aguardando aprovação"
+        : row.pricingType === "promotional"
+          ? "Programa de rifas"
+          : row.pricingType === "standard"
+            ? "Inscrição integral"
+            : "Não informado";
   const review = row.supersededCheckoutReview;
   const reviewReceiptUrl = safeInfinitePayReceiptUrl(review?.receiptUrl ?? null);
 
@@ -785,7 +787,7 @@ function RegistrationActions({
           )}
           {state.status === "pending" && row.isFreeRegistration && (
             <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
-              <BadgeCheck aria-hidden="true" /> Aprovar inscrição gratuita
+              <BadgeCheck aria-hidden="true" /> Aprovar como isento
             </DropdownMenuItem>
           )}
           {state.status === "partially_paid" &&
@@ -871,10 +873,10 @@ function RegistrationActions({
       <AlertDialog open={confirmExempt} onOpenChange={setConfirmExempt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{row.isFreeRegistration ? "Aprovar inscrição gratuita?" : "Marcar participante como isento?"}</AlertDialogTitle>
+            <AlertDialogTitle>{row.isFreeRegistration ? "Aprovar como isento?" : "Marcar participante como isento?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {row.isFreeRegistration
-                ? `A inscrição gratuita de ${row.name} será aprovada e o acesso poderá ser preparado.`
+                ? `A inscrição de ${row.name} será aprovada como isenta e o acesso poderá ser preparado.`
                 : `A inscrição de ${row.name} será confirmada sem cobrança. Todos os valores ficarão em ${money(0)} e o link de pagamento será cancelado.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -889,7 +891,7 @@ function RegistrationActions({
                 });
               }}
             >
-              {row.isFreeRegistration ? "Aprovar inscrição" : "Confirmar isenção"}
+              {row.isFreeRegistration ? "Aprovar isenção" : "Confirmar isenção"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1273,7 +1275,7 @@ export function AdminRegistrationsPage({
     try {
       const result = await markExempt({ data: { registrationId: row.id } });
       if (result.status !== "exempt") throw new Error("Unexpected exemption result");
-      setAnnouncement(row.isFreeRegistration ? "Inscrição gratuita aprovada." : "Participante marcado como isento. Valores zerados.");
+      setAnnouncement(row.isFreeRegistration ? "Inscrição aprovada como isenta." : "Participante marcado como isento. Valores zerados.");
       setRetry((value) => value + 1);
       setSummaryRetry((value) => value + 1);
       return true;
