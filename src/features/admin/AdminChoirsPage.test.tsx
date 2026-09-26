@@ -141,10 +141,24 @@ describe("AdminChoirsPage", () => {
           name: "Coro Litúrgico",
           diocese: "Diocese de Sobral",
           usesPromotionalPrice: true,
+          isFree: false,
           isActive: true,
         },
       }),
     );
+  });
+
+  it("allows the admin to mark a choir as free", async () => {
+    const createChoir = vi.fn(async ({ data }) => ({ ...promotionalChoir, ...data }));
+    const { user } = setup({ createChoir });
+    await user.click(await screen.findByRole("button", { name: "Cadastrar coro" }));
+    await user.type(screen.getByLabelText("Nome do coro"), "Coro Gratuito");
+    await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Quixadá");
+    await user.click(screen.getByRole("checkbox", { name: "Inscrição gratuita com aprovação do administrador" }));
+    await user.click(screen.getByRole("button", { name: "Salvar coro" }));
+    await waitFor(() => expect(createChoir).toHaveBeenCalledWith({ data: expect.objectContaining({
+      name: "Coro Gratuito", isFree: true, usesPromotionalPrice: false,
+    }) }));
   });
 
   it("requires a diocese from the official list and displays the saved affiliation", async () => {
@@ -192,6 +206,7 @@ describe("AdminChoirsPage", () => {
           name: promotionalChoir.name,
           diocese: "Diocese de Sobral",
           usesPromotionalPrice: true,
+          isFree: false,
           isActive: true,
         },
       }),

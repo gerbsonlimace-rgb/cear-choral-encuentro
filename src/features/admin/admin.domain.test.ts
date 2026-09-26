@@ -38,6 +38,7 @@ const legacyRow: RegistrationDatabaseRow = {
   email: "ana@example.com",
   exempted_at: null,
   exempted_by: null,
+  is_free_registration: false,
   phone: "85988887777",
   city: "Sobral",
   institution: null,
@@ -221,6 +222,26 @@ describe("admin registration history and CSV", () => {
       pendingCents: 0,
       expectedCents: 0,
     });
+  });
+
+  it("preserves the free registration origin after approval", () => {
+    const approved = mapAdminRegistrationRow({
+      ...paidRow,
+      payment_origin: "exemption",
+      is_free_registration: true,
+      exempted_at: "2026-09-26T16:00:00.000Z",
+      exempted_by: "11111111-1111-4111-8111-111111111111",
+      amount_cents: 0,
+      paid_amount_cents: 0,
+      standard_price_cents: 0,
+      registration_price_cents: 0,
+      shirt_price_cents: 0,
+      payment_method: null,
+      installments: null,
+      paid_at: null,
+    });
+
+    expect(approved).toMatchObject({ isFreeRegistration: true, paymentOrigin: "exemption" });
   });
 
   // Detects a production mutation that fabricates shirt, value, or payment details for legacy registrations.

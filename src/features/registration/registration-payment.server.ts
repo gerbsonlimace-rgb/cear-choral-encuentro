@@ -100,12 +100,15 @@ export type PublicPaymentStatus =
 
 export type RegistrationIdentityRecord = {
   id: string;
+  choirId?: string | null;
+  email?: string | null;
   paymentStatus: "pending" | "paid" | "legacy";
   birthDate: string;
   orderNsu: string | null;
   checkoutUrl: string | null;
   photoPath: string | null;
   checkoutContract: RegistrationCheckoutContract | null;
+  paymentOrigin?: "infinitepay" | "manual" | "exemption" | null;
 };
 
 export type RegistrationResumeRecord = {
@@ -138,6 +141,11 @@ export type RegistrationRepository = {
   ) => Promise<RegistrationLookupResult | null>;
   findForResume?: (cpf: string) => Promise<RegistrationResumeRecord | null>;
   findForCheckoutLink?: (registrationId: string) => Promise<RegistrationCheckoutLinkRecord | null>;
+  createFreePending(input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
+    choirName: string;
+    photoPath: string;
+    amountCents: 0;
+  }): Promise<void>;
   createPending(
     input: Omit<RegistrationInput, "photo" | "raffleChoice" | "displayedQuote"> & {
       orderNsu: string;
@@ -343,6 +351,36 @@ export function createRegistrationPaymentService(deps: {
           (appliedQuote.remainingPriceCents ?? null);
       if (quoteChanged) {
         throw new Error("A configuração de preços mudou. Confira o valor e tente novamente.");
+      }
+
+      if (appliedQuote.pricingType === "free") {
+        if (existing) {
+          if (existing.paymentOrigin === "exemption" && existing.paymentStatus === "pending" &&
+              existing.birthDate === input.birthDate && existing.orderNsu === null &&
+              existing.choirId === input.choirId && existing.email?.toLowerCase() === input.email.trim().toLowerCase()) {
+            return { status: "pending_approval" as const };
+          }
+          throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+        }
+        if (!selection) throw new Error("O coro selecionado não está disponível para inscrição.");
+        if (deps.findAuthUserByEmail) {
+          const authUser = await deps.findAuthUserByEmail(input.email.trim().toLowerCase());
+          if (authUser) throw new Error("Já existe um acesso com este e-mail.");
+        }
+        const photoPath = await deps.photoStorage.upload(deps.randomUUID(), input.photo);
+        const { photo: _photo, raffleChoice: _raffleChoice, displayedQuote: _displayedQuote, ...registrationData } = input;
+        try {
+          await deps.repository.createFreePending({
+            ...registrationData,
+            choirName: selection.choir.name,
+            photoPath,
+            amountCents: 0,
+          });
+        } catch (caught) {
+          await deps.photoStorage.remove(photoPath).catch(() => undefined);
+          throw caught;
+        }
+        return { status: "pending_approval" as const };
       }
 
       const nextContract = buildRegistrationCheckoutContract(input, appliedQuote, trustedQuote);
@@ -729,7 +767,7 @@ const paymentColumns =
 const supersededPaymentColumns =
   "id,registration_id,order_nsu,amount_cents,status,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at" as const;
 const identityColumns =
-  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
+  "id,choir_id,payment_status,payment_origin,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url" as const;
 const checkoutLinkColumns =
   "id,order_nsu,amount_cents,payment_status,checkout_url,name,email,phone" as const;
@@ -919,12 +957,16 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     }
     return {
       id: data.id,
+      choirId: data.choir_id,
+      email: data.email,
       paymentStatus,
       birthDate: data.birth_date,
       orderNsu: typeof data.order_nsu === "string" ? data.order_nsu : null,
       checkoutUrl: typeof data.checkout_url === "string" ? data.checkout_url : null,
       photoPath: typeof data.photo_path === "string" ? data.photo_path : null,
       checkoutContract,
+      paymentOrigin: data.payment_origin === "exemption" || data.payment_origin === "manual" || data.payment_origin === "infinitepay"
+        ? data.payment_origin as RegistrationIdentityRecord["paymentOrigin"] : null,
     };
   };
 
@@ -1070,6 +1112,44 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     findForResume,
     findRegistrationByIdentity,
     findSupersededPayment,
+    createFreePending: async (input) => {
+      const { error } = await supabaseAdmin.from("registrations").insert({
+        name: input.name,
+        badge_name: input.badgeName,
+        cpf: input.cpf,
+        photo_path: input.photoPath,
+        musical_profile: input.musicalProfile,
+        voice_part: input.voicePart,
+        phone: input.phone,
+        birth_date: input.birthDate,
+        choir_id: input.choirId,
+        choir_name: input.choirName,
+        other_choir_name: null,
+        diocese: input.diocese,
+        email: input.email,
+        city: null,
+        institution: null,
+        role: null,
+        observations: null,
+        include_shirt: false,
+        shirt_size: null,
+        pricing_type: "standard",
+        standard_price_cents: 0,
+        registration_price_cents: 0,
+        remaining_price_cents: 0,
+        shirt_price_cents: 0,
+        amount_cents: 0,
+        payment_status: "pending",
+        payment_origin: "exemption",
+        is_free_registration: true,
+        order_nsu: null,
+        checkout_url: null,
+      });
+      if (error?.code === "23505" && error.message.includes("registrations_cpf_uidx")) {
+        throw new Error(REGISTRATION_CPF_CONFLICT_MESSAGE);
+      }
+      if (error) throw new Error("Não foi possível salvar a inscrição gratuita.");
+    },
     createPending: async (input) => {
       const { error } = await supabaseAdmin.from("registrations").insert({
         name: input.name,

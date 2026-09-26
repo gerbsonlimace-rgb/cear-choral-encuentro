@@ -5,7 +5,7 @@ import { dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain"
 const optionalPositiveCentsSchema = z.number().int().positive().nullable();
 const optionalNonNegativeCentsSchema = z.number().int().nonnegative().nullable();
 
-export const pricingTypeSchema = z.enum(["standard", "promotional"]);
+export const pricingTypeSchema = z.enum(["standard", "promotional", "free"]);
 
 export const pricingSettingsSchema = z
   .object({
@@ -28,18 +28,30 @@ export const pricingSettingsSchema = z
     }
   });
 
-export const choirMutationSchema = z
+const choirMutationObjectSchema = z
   .object({
     name: z.string().trim().min(2, "Informe o nome do coro.").max(120),
     diocese: dioceseSchema,
     usesPromotionalPrice: z.boolean(),
+    isFree: z.boolean().optional(),
     isActive: z.boolean(),
   })
   .strict();
 
+const validateChoirPricingMode = (choir: { isFree?: boolean; usesPromotionalPrice: boolean }) =>
+  !choir.isFree || !choir.usesPromotionalPrice;
+
+export const choirMutationSchema = choirMutationObjectSchema.refine(validateChoirPricingMode, {
+    path: ["isFree"],
+    message: "Um coro gratuito não pode usar o valor promocional.",
+  });
+
 export const choirIdSchema = z.string().uuid();
 
-export const choirUpdateSchema = choirMutationSchema.extend({ id: choirIdSchema });
+export const choirUpdateSchema = choirMutationObjectSchema.extend({ id: choirIdSchema }).refine(validateChoirPricingMode, {
+  path: ["isFree"],
+  message: "Um coro gratuito não pode usar o valor promocional.",
+});
 
 export const choirActiveSchema = z
   .object({
@@ -51,11 +63,20 @@ export const choirActiveSchema = z
 export const displayedQuoteSchema = z
   .object({
     pricingType: pricingTypeSchema,
-    standardPriceCents: z.number().int().positive(),
-    registrationPriceCents: z.number().int().positive(),
+    standardPriceCents: z.number().int().nonnegative(),
+    registrationPriceCents: z.number().int().nonnegative(),
     remainingPriceCents: z.number().int().nonnegative().optional(),
   })
-  .strict();
+  .strict()
+  .refine((quote) => {
+    if (quote.pricingType === "free") {
+      return quote.standardPriceCents === 0 && quote.registrationPriceCents === 0 && quote.remainingPriceCents === undefined;
+    }
+    if (quote.standardPriceCents <= 0 || quote.registrationPriceCents <= 0) return false;
+    return quote.pricingType === "standard"
+      ? quote.standardPriceCents === quote.registrationPriceCents && quote.remainingPriceCents === undefined
+      : quote.registrationPriceCents < quote.standardPriceCents;
+  }, "O valor exibido para a inscrição é inválido.");
 
 export const raffleChoiceSchema = z.enum(["participate", "full_price"]);
 
@@ -108,10 +129,12 @@ export function formatCentsForInput(value: number | null): string {
 }
 
 export function resolveChoirPrice(
-  choir: Pick<AdminChoir, "isActive" | "usesPromotionalPrice">,
+  choir: Pick<AdminChoir, "isActive" | "usesPromotionalPrice" | "isFree">,
   settings: PricingSettings,
 ): ResolvedChoirPrice | null {
-  if (!choir.isActive || settings.standardPriceCents === null) return null;
+  if (!choir.isActive) return null;
+  if (choir.isFree) return { pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 };
+  if (settings.standardPriceCents === null) return null;
 
   if (choir.usesPromotionalPrice) {
     if (
@@ -142,6 +165,10 @@ export function applyRaffleChoice(
   availableQuote: DisplayedQuote,
   choice: RaffleChoice,
 ): DisplayedQuote {
+  if (availableQuote.pricingType === "free") {
+    if (choice !== "full_price") throw new Error("O programa de rifas não está disponível para este coro.");
+    return availableQuote;
+  }
   if (choice === "participate") {
     if (availableQuote.pricingType !== "promotional") {
       throw new Error("O programa de rifas não está disponível para este coro.");

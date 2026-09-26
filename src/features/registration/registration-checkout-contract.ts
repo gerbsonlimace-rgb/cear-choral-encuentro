@@ -21,6 +21,9 @@ export function buildRegistrationCheckoutContract(
   appliedQuote: DisplayedQuote,
   trustedQuote: DisplayedQuote,
 ): RegistrationCheckoutContract {
+  if (appliedQuote.pricingType === "free" || trustedQuote.pricingType === "free") {
+    throw new Error("Inscrições gratuitas não possuem checkout.");
+  }
   const items = buildCheckoutItems(input, appliedQuote);
   const phoneNumber = normalizeInfinitePayPhoneNumber(input.phone);
 

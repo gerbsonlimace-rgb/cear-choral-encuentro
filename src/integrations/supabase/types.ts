@@ -139,6 +139,7 @@ export type Database = {
           diocese: string | null
           id: string
           is_active: boolean
+          is_free: boolean
           name: string
           updated_at: string
           uses_promotional_price: boolean
@@ -148,6 +149,7 @@ export type Database = {
           diocese?: string | null
           id?: string
           is_active?: boolean
+          is_free?: boolean
           name: string
           updated_at?: string
           uses_promotional_price?: boolean
@@ -157,6 +159,7 @@ export type Database = {
           diocese?: string | null
           id?: string
           is_active?: boolean
+          is_free?: boolean
           name?: string
           updated_at?: string
           uses_promotional_price?: boolean
@@ -688,6 +691,7 @@ export type Database = {
           exempted_at: string | null
           exempted_by: string | null
           id: string
+          is_free_registration: boolean
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
           infinitepay_transaction_nsu: string | null
@@ -735,6 +739,7 @@ export type Database = {
           exempted_at?: string | null
           exempted_by?: string | null
           id?: string
+          is_free_registration?: boolean
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
@@ -782,6 +787,7 @@ export type Database = {
           exempted_at?: string | null
           exempted_by?: string | null
           id?: string
+          is_free_registration?: boolean
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null

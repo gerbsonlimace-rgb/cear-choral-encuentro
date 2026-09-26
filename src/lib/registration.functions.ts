@@ -32,7 +32,9 @@ export function getRegistrationCheckoutFailureMessage(caught: unknown): string {
 }
 
 export type StartRegistrationCheckoutResult =
-  { ok: true; checkoutUrl: string; orderNsu: string } | { ok: false; message: string };
+  | { ok: true; checkoutUrl: string; orderNsu: string }
+  | { ok: true; status: "pending_approval" }
+  | { ok: false; message: string };
 
 export const startRegistrationCheckout = createServerFn({ method: "POST" })
   .validator(registrationSchema)
@@ -61,7 +63,9 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
                 message.includes("configuração de preços mudou") ||
                 message.includes("Coro selecionado não está disponível")
               ? message
-              : "Não foi possível preparar o pagamento. Tente novamente.",
+              : data.raffleChoice === "full_price" && data.displayedQuote.pricingType === "free"
+                ? "Não foi possível enviar a inscrição. Tente novamente."
+                : "Não foi possível preparar o pagamento. Tente novamente.",
       };
     }
   });

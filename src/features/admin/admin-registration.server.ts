@@ -52,6 +52,7 @@ export const adminRegistrationColumns = [
   "installments",
   "paid_at",
   "payment_origin",
+  "is_free_registration",
   "manual_receipt_path",
   "manual_receipt_file_name",
   "manual_receipt_mime_type",

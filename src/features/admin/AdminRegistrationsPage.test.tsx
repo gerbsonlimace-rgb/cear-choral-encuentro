@@ -263,6 +263,51 @@ describe("AdminRegistrationsPage read-only views", () => {
     ).toBeInTheDocument();
   });
 
+  it("approves a free registration without offering payment actions", async () => {
+    const freePending: AdminRegistrationRow = {
+      ...pending,
+      paymentOrigin: "exemption",
+      isFreeRegistration: true,
+      amountCents: 0,
+      pricingType: "standard",
+      standardPriceCents: 0,
+      registrationPriceCents: 0,
+    };
+    const markExempt = vi.fn().mockResolvedValue({ status: "exempt", registrationId: "pending" });
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({ rows: [freePending], total: 1, page: 1, pageSize: 25 }),
+      markExempt,
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    expect(within(table).getAllByText("Aguardando aprovação").length).toBeGreaterThan(0);
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    expect(screen.queryByRole("menuitem", { name: "Gerar link de pagamento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Marcar como pago" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Aprovar inscrição gratuita" }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Aprovar inscrição" }));
+    await waitFor(() => expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }));
+    expect(await screen.findByText("Inscrição gratuita aprovada.")).toBeVisible();
+  });
+
+  it("identifies an approved free registration separately from a manual exemption", async () => {
+    const approvedFree: AdminRegistrationRow = {
+      ...paid,
+      id: "approved-free",
+      isFreeRegistration: true,
+      paymentOrigin: "exemption",
+      amountCents: 0,
+      paidAmountCents: 0,
+      paidAt: null,
+      paymentMethod: null,
+      installments: null,
+    };
+    setup({
+      loadRegistrations: vi.fn().mockResolvedValue({ rows: [approvedFree], total: 1, page: 1, pageSize: 25 }),
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    expect(within(table).getAllByText("Gratuito").length).toBeGreaterThan(0);
+  });
+
   it("requires a receipt and submits its contents with immediate manual payment", async () => {
     const markPaid = vi.fn().mockResolvedValue({
       status: "paid",

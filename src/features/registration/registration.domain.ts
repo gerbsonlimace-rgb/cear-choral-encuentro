@@ -213,7 +213,9 @@ export const registrationSchema = z
     }
 
     const coherentQuote =
-      value.displayedQuote.pricingType === "standard"
+      value.displayedQuote.pricingType === "free"
+        ? value.displayedQuote.standardPriceCents === 0 && value.displayedQuote.registrationPriceCents === 0
+        : value.displayedQuote.pricingType === "standard"
         ? value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents
         : value.displayedQuote.registrationPriceCents < value.displayedQuote.standardPriceCents;
     if (!coherentQuote) {
@@ -227,8 +229,9 @@ export const registrationSchema = z
     const choiceMatchesQuote =
       value.raffleChoice === "participate"
         ? value.displayedQuote.pricingType === "promotional"
-        : value.displayedQuote.pricingType === "standard" &&
-          value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents;
+        : value.displayedQuote.pricingType === "free" ||
+          (value.displayedQuote.pricingType === "standard" &&
+          value.displayedQuote.registrationPriceCents === value.displayedQuote.standardPriceCents);
     if (!choiceMatchesQuote) {
       context.addIssue({
         code: "custom",

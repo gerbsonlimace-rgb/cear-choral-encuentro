@@ -106,7 +106,7 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
 const settingsColumns =
   "standard_price_cents,promotional_price_cents,promotional_remaining_price_cents" as const;
 const choirColumns =
-  "id,name,diocese,uses_promotional_price,is_active,created_at,updated_at" as const;
+  "id,name,diocese,uses_promotional_price,is_free,is_active,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
@@ -125,6 +125,7 @@ function mapChoir(row: {
   name: string;
   diocese: string | null;
   uses_promotional_price: boolean;
+  is_free: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -134,6 +135,7 @@ function mapChoir(row: {
     name: row.name,
     diocese: dioceseSchema.nullable().parse(row.diocese),
     usesPromotionalPrice: row.uses_promotional_price,
+    isFree: row.is_free,
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -209,6 +211,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
             name: input.name,
             diocese: input.diocese,
             uses_promotional_price: input.usesPromotionalPrice,
+            is_free: input.isFree ?? false,
             is_active: input.isActive,
           })
           .select(choirColumns)
@@ -224,6 +227,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
             name: input.name,
             diocese: input.diocese,
             uses_promotional_price: input.usesPromotionalPrice,
+            is_free: input.isFree ?? false,
             is_active: input.isActive,
             updated_at: new Date().toISOString(),
           })

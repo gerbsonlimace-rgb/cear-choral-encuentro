@@ -98,6 +98,12 @@ describe("registration domain", () => {
     ).toBe(false);
   });
 
+  it("accepts a zero quote only for a free choir", () => {
+    const freeQuote = { pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 };
+    expect(registrationSchema.safeParse({ ...baseInput, displayedQuote: freeQuote }).success).toBe(true);
+    expect(registrationSchema.safeParse({ ...baseInput, displayedQuote: { ...standardQuote, registrationPriceCents: 0 } }).success).toBe(false);
+  });
+
   it("accepts exactly one configured or manually informed choir", () => {
     expect(
       registrationSchema.safeParse({

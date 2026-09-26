@@ -160,6 +160,35 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
 
+  it("submits a free choir for approval without opening checkout", async () => {
+    const user = userEvent.setup();
+    const freeConfiguration: PublicRegistrationConfiguration = {
+      standardPriceCents: null,
+      choirs: [{ id: quixadaId, name: "Coro Diocesano de Quixadá", diocese: "Diocese de Quixadá",
+        pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 }],
+    };
+    const startCheckout = vi.fn().mockResolvedValue({ ok: true, status: "pending_approval" });
+    const navigateToCheckout = vi.fn();
+    render(<RegistrationSection checkAvailability={available}
+      loadConfiguration={vi.fn(async () => freeConfiguration)}
+      startCheckout={startCheckout} navigateToCheckout={navigateToCheckout} />);
+    await fillPersonalData(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Sua participação" });
+    await fillParticipation(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("heading", { name: "Inscrição gratuita" })).toBeVisible();
+    expect(screen.queryByText(/InfinitePay · ambiente oficial/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Enviar inscrição gratuita" }));
+    expect(await screen.findByRole("heading", { name: "Inscrição enviada" })).toBeVisible();
+    expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      choirId: quixadaId, raffleChoice: "full_price",
+      displayedQuote: { pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 },
+    }));
+    expect(navigateToCheckout).not.toHaveBeenCalled();
+  }, 20_000);
+
   it("allows the personal-data fieldset to shrink inside a narrow card", () => {
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,

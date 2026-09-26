@@ -18,7 +18,7 @@ import {
 } from "./admin-registration.server";
 
 const expectedColumns =
-  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",

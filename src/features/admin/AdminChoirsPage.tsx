@@ -81,6 +81,7 @@ const emptyChoirDraft: ChoirDraft = {
   name: "",
   diocese: "",
   usesPromotionalPrice: false,
+  isFree: false,
   isActive: true,
 };
 
@@ -97,6 +98,7 @@ function settingsDraft(settings: PricingSettings): SettingsDraft {
 
 function choirAvailability(choir: AdminChoir, settings: PricingSettings) {
   if (!choir.isActive) return "Inativo";
+  if (choir.isFree) return "Inscrição gratuita com aprovação do administrador";
   if (choir.usesPromotionalPrice) {
     if (settings.standardPriceCents === null || settings.promotionalPriceCents === null) {
       return "Oculto: configure os valores normal e promocional.";
@@ -257,6 +259,7 @@ export function AdminChoirsPage({
       name: choir.name,
       diocese: choir.diocese ?? "",
       usesPromotionalPrice: choir.usesPromotionalPrice,
+      isFree: choir.isFree ?? false,
       isActive: choir.isActive,
     });
     setError("");
@@ -394,6 +397,7 @@ export function AdminChoirsPage({
                           {choir.usesPromotionalPrice && (
                             <Badge variant="outline">Promocional</Badge>
                           )}
+                          {choir.isFree && <Badge variant="outline">Gratuito</Badge>}
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
                           {choir.diocese ?? "Diocese não informada"}
@@ -487,7 +491,7 @@ export function AdminChoirsPage({
           <DialogHeader>
             <DialogTitle>{editing ? "Editar coro" : "Cadastrar coro"}</DialogTitle>
             <DialogDescription>
-              Defina o nome e se a promoção global deve ser aplicada automaticamente.
+              Defina o nome e a modalidade da inscrição do coro.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submitChoir} className="space-y-5">
@@ -537,6 +541,23 @@ export function AdminChoirsPage({
                   setChoirDraft((previous) => ({
                     ...previous,
                     usesPromotionalPrice: event.target.checked,
+                    isFree: event.target.checked ? false : previous.isFree,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+              <Label htmlFor="choir-free">Inscrição gratuita com aprovação do administrador</Label>
+              <input
+                id="choir-free"
+                type="checkbox"
+                className="size-5 accent-primary"
+                checked={choirDraft.isFree ?? false}
+                onChange={(event) =>
+                  setChoirDraft((previous) => ({
+                    ...previous,
+                    isFree: event.target.checked,
+                    usesPromotionalPrice: event.target.checked ? false : previous.usesPromotionalPrice,
                   }))
                 }
               />

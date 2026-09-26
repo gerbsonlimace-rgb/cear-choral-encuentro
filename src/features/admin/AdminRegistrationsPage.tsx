@@ -231,17 +231,21 @@ function ParticipantAvatar({ row, large = false }: { row: AdminRegistrationRow; 
 
 function Status({ row }: { row: AdminRegistrationRow }) {
   const status = getAdminFinancialState(row).status;
-  return (
-    <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
-      {
-        {
+  const freePending = row.paymentStatus === "pending" && row.isFreeRegistration;
+  const label = freePending
+    ? "Aguardando aprovação"
+    : row.isFreeRegistration && status === "exempt"
+      ? "Gratuito"
+      : {
           legacy: "Histórico",
           pending: "Pendente",
           partially_paid: "Parcialmente pago",
           paid: "Pago",
           exempt: "Isento",
-        }[status]
-      }
+        }[status];
+  return (
+    <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
+      {label}
     </Badge>
   );
 }
@@ -363,7 +367,11 @@ function RegistrationDetailsDialog({
       ? "Confirmação manual"
       : row.paymentOrigin === "infinitepay"
         ? "InfinitePay"
-        : "Não informado";
+        : row.paymentOrigin === "exemption"
+          ? row.isFreeRegistration
+            ? "Inscrição gratuita"
+            : "Isenção administrativa"
+          : "Não informado";
   const pricingType =
     row.pricingType === "promotional"
       ? "Programa de rifas"
@@ -762,7 +770,7 @@ function RegistrationActions({
               <a href={openUrl}>Continuar pagamento</a>
             </DropdownMenuItem>
           )}
-          {state.status === "pending" && (
+          {state.status === "pending" && !row.isFreeRegistration && (
             <>
               <DropdownMenuItem onSelect={() => onPaymentLink(row)}>
                 <Link2 aria-hidden="true" /> Gerar link de pagamento
@@ -774,6 +782,11 @@ function RegistrationActions({
                 <CircleOff aria-hidden="true" /> Marcar como isento
               </DropdownMenuItem>
             </>
+          )}
+          {state.status === "pending" && row.isFreeRegistration && (
+            <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
+              <BadgeCheck aria-hidden="true" /> Aprovar inscrição gratuita
+            </DropdownMenuItem>
           )}
           {state.status === "partially_paid" &&
             state.pendingCents > 0 &&
@@ -858,10 +871,11 @@ function RegistrationActions({
       <AlertDialog open={confirmExempt} onOpenChange={setConfirmExempt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Marcar participante como isento?</AlertDialogTitle>
+            <AlertDialogTitle>{row.isFreeRegistration ? "Aprovar inscrição gratuita?" : "Marcar participante como isento?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              A inscrição de {row.name} será confirmada sem cobrança. Todos os valores ficarão em{" "}
-              {money(0)} e o link de pagamento será cancelado.
+              {row.isFreeRegistration
+                ? `A inscrição gratuita de ${row.name} será aprovada e o acesso poderá ser preparado.`
+                : `A inscrição de ${row.name} será confirmada sem cobrança. Todos os valores ficarão em ${money(0)} e o link de pagamento será cancelado.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -875,7 +889,7 @@ function RegistrationActions({
                 });
               }}
             >
-              Confirmar isenção
+              {row.isFreeRegistration ? "Aprovar inscrição" : "Confirmar isenção"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1259,12 +1273,12 @@ export function AdminRegistrationsPage({
     try {
       const result = await markExempt({ data: { registrationId: row.id } });
       if (result.status !== "exempt") throw new Error("Unexpected exemption result");
-      setAnnouncement("Participante marcado como isento. Valores zerados.");
+      setAnnouncement(row.isFreeRegistration ? "Inscrição gratuita aprovada." : "Participante marcado como isento. Valores zerados.");
       setRetry((value) => value + 1);
       setSummaryRetry((value) => value + 1);
       return true;
     } catch {
-      setActionError("Não foi possível marcar o participante como isento. Tente novamente.");
+      setActionError(row.isFreeRegistration ? "Não foi possível aprovar a inscrição. Tente novamente." : "Não foi possível marcar o participante como isento. Tente novamente.");
       return false;
     } finally {
       actionBusy.current = false;

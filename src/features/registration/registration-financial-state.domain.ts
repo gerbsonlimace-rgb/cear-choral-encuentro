@@ -38,7 +38,7 @@ export function deriveRegistrationFinancialState(
   input: RegistrationFinancialStateInput,
 ): RegistrationFinancialState {
   if (input.isExempt) {
-    return { status: "exempt", pendingCents: 0, confirmedPrincipalCents: 0 };
+    return { status: input.paymentStatus === "pending" ? "pending" : "exempt", pendingCents: 0, confirmedPrincipalCents: 0 };
   }
   if (
     !isPositiveSafeInteger(input.initialAmountCents) ||

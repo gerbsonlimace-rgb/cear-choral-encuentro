@@ -225,7 +225,7 @@ const paymentColumns =
 const supersededPaymentColumns =
   "id,registration_id,order_nsu,amount_cents,status,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at";
 const identityColumns =
-  "id,payment_status,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
+  "id,choir_id,payment_status,payment_origin,birth_date,order_nsu,checkout_url,photo_path,name,email,phone,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents";
 const resumeIdentityColumns = "birth_date,payment_status,checkout_url";
 
 function paymentRow(overrides: Record<string, unknown> = {}) {
@@ -327,6 +327,7 @@ function createFixture() {
   const repository: RegistrationRepository = {
     findByCpf: vi.fn(async () => identityRecord),
     findRegistrationByIdentity: vi.fn(async () => lookupResult),
+    createFreePending: vi.fn(async () => { calls.push("createFreePending"); }),
     createPending: vi.fn(async (input) => {
       calls.push("createPending");
       record = {
@@ -535,6 +536,24 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("saves a free registration for admin approval without calling InfinitePay", async () => {
+    const freeQuote = { pricingType: "free" as const, standardPriceCents: 0, registrationPriceCents: 0 };
+    fixture.resolveChoirSelection.mockResolvedValue({
+      choir: { ...trustedSelection.choir, isFree: true },
+      quote: freeQuote,
+    });
+    const result = await fixture.service.startCheckout({
+      ...baseInput,
+      raffleChoice: "full_price",
+      displayedQuote: freeQuote,
+    });
+    expect(result).toEqual({ status: "pending_approval" });
+    expect(fixture.repository.createFreePending).toHaveBeenCalledWith(
+      expect.objectContaining({ choirId, choirName: "Coro Diocesano de Quixadá", amountCents: 0 }),
+    );
+    expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
   it("replaces a R$ 100 checkout after phone and full-price selection change", async () => {
@@ -1505,6 +1524,34 @@ describe("Supabase registration repository", () => {
     supabaseAdminMock.rpc.mockReset();
   });
 
+  it("persists a free request as pending without a payment order", async () => {
+    const database = createSupabaseHarness();
+    const repository = createSupabaseRegistrationRepository();
+
+    await repository.createFreePending({
+      ...baseRegistrationInput,
+      choirName: "Coro Diocesano de Quixadá",
+      photoPath: registrationPhotoPath,
+      amountCents: 0,
+    });
+
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["insert", expect.objectContaining({
+        choir_id: choirId,
+        amount_cents: 0,
+        payment_status: "pending",
+        payment_origin: "exemption",
+        is_free_registration: true,
+        order_nsu: null,
+        checkout_url: null,
+        standard_price_cents: 0,
+        registration_price_cents: 0,
+        remaining_price_cents: 0,
+      })],
+    ]);
+  });
+
   it("inserts the checkout contact data and clears unused historical fields", async () => {
     const database = createSupabaseHarness();
     const repository = createSupabaseRegistrationRepository();
@@ -1899,6 +1946,9 @@ describe("Supabase registration repository", () => {
 
     await expect(repository.findByCpf(cpf)).resolves.toEqual({
       id: "registration-1",
+      choirId: undefined,
+      email: "maria@example.com",
+      paymentOrigin: null,
       paymentStatus: "pending",
       birthDate: "1990-05-20",
       orderNsu: fixedOrderNsu,

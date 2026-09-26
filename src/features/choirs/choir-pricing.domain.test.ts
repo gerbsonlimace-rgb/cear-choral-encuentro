@@ -127,6 +127,20 @@ describe("choir pricing domain", () => {
     });
   });
 
+  it("offers a free choir even when no paid price is configured", () => {
+    const quote = resolveChoirPrice(
+      { ...baseChoir, isFree: true },
+      { standardPriceCents: null, promotionalPriceCents: null },
+    );
+    expect(quote).toEqual({
+      pricingType: "free",
+      standardPriceCents: 0,
+      registrationPriceCents: 0,
+    });
+    expect(applyRaffleChoice(quote!, "full_price")).toEqual(quote);
+    expect(() => applyRaffleChoice(quote!, "participate")).toThrow();
+  });
+
   it("automatically resolves the promotional price for an eligible choir", () => {
     expect(
       resolveChoirPrice(

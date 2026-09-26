@@ -11,6 +11,17 @@ const promotionalRegistration = {
 };
 
 describe("deriveRegistrationFinancialState", () => {
+  it("keeps a free registration pending until the admin approves it", () => {
+    expect(deriveRegistrationFinancialState({
+      paymentStatus: "pending",
+      isExempt: true,
+      initialAmountCents: 0,
+      pricingType: "standard",
+      standardPriceCents: 0,
+      registrationPriceCents: 0,
+      confirmedComplementCents: 0,
+    })).toEqual({ status: "pending", pendingCents: 0, confirmedPrincipalCents: 0 });
+  });
   it("shows the full registration price as pending before the initial checkout is confirmed", () => {
     expect(
       deriveRegistrationFinancialState({

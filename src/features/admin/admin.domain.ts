@@ -113,6 +113,7 @@ export type AdminRegistrationRow = {
   installments: number | null;
   paidAt: string | null;
   paymentOrigin?: "infinitepay" | "manual" | "exemption" | null;
+  isFreeRegistration?: boolean;
   hasManualReceipt?: boolean;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -221,6 +222,7 @@ export function mapAdminRegistrationRow(
       row.payment_origin === "exemption"
         ? row.payment_origin
         : null,
+    isFreeRegistration: row.is_free_registration,
     hasManualReceipt: Boolean(row.manual_receipt_path),
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,

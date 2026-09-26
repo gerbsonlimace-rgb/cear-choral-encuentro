@@ -111,6 +111,19 @@ describe("choir pricing service", () => {
     expect(configuration.choirs.map((choir) => choir.id)).toEqual([normalChoir.id]);
   });
 
+  it("publishes a free choir while paid prices are unavailable", async () => {
+    const freeChoir = { ...normalChoir, isFree: true };
+    const service = createChoirPricingService(repository({
+      getSettings: vi.fn(async () => ({ standardPriceCents: null, promotionalPriceCents: null })),
+      listChoirs: vi.fn(async () => [freeChoir]),
+    }));
+    await expect(service.getPublicConfiguration()).resolves.toEqual({
+      standardPriceCents: null,
+      choirs: [{ id: freeChoir.id, name: freeChoir.name, diocese: freeChoir.diocese,
+        pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 }],
+    });
+  });
+
   it("resolves a selected choir from current server settings", async () => {
     const service = createChoirPricingService(repository());
 
@@ -204,6 +217,7 @@ describe("Supabase choir pricing repository", () => {
       name: normalChoir.name,
       diocese: "Diocese de Sobral",
       uses_promotional_price: false,
+      is_free: false,
       is_active: true,
     });
   });

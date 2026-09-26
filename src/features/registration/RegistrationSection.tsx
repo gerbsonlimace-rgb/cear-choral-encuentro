@@ -204,7 +204,14 @@ function RegistrationPriceSummary({
         {selectedChoir && appliedQuote ? (
           <>
             <p className="mt-3 text-sm text-registration-muted">{selectedChoir.name}</p>
-            {raffleChoice === "participate" && remainingCents !== null ? (
+            {appliedQuote.pricingType === "free" ? (
+              <div className="registration-investment-panel mt-4 space-y-3">
+                <p className="text-3xl font-extrabold text-registration-ink">Gratuita</p>
+                <p className="text-sm text-registration-muted">
+                  Envie seus dados sem pagamento. A inscrição ficará aguardando a aprovação do administrador.
+                </p>
+              </div>
+            ) : raffleChoice === "participate" && remainingCents !== null ? (
               <div className="registration-investment-panel mt-4 space-y-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-4">
@@ -248,7 +255,7 @@ function RegistrationPriceSummary({
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-registration-muted">
+        {appliedQuote?.pricingType !== "free" && <div className="mt-4 flex flex-wrap gap-2 text-xs text-registration-muted">
           <ul className="contents">
             <li className="registration-payment-chip">
               <img
@@ -273,7 +280,7 @@ function RegistrationPriceSummary({
               <p className="text-[11px] text-registration-muted">Checkout seguro para concluir o pagamento.</p>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </aside>
   );
@@ -294,6 +301,7 @@ export function RegistrationSection({
   const [errors, setErrors] = useState<Partial<Record<RegistrationFormField, string>>>({});
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [freeSubmissionComplete, setFreeSubmissionComplete] = useState(false);
   const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(true);
   const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [choirQuery, setChoirQuery] = useState("");
@@ -445,7 +453,7 @@ export function RegistrationSection({
       const keepsExplicitChoice =
         previousChoir?.pricingType === "promotional" && nextChoir?.pricingType === "promotional";
       const raffleChoice =
-        choirId === OTHER_CHOIR_VALUE || nextChoir?.pricingType === "standard"
+        choirId === OTHER_CHOIR_VALUE || nextChoir?.pricingType === "standard" || nextChoir?.pricingType === "free"
           ? "full_price"
           : keepsExplicitChoice
             ? previous.raffleChoice
@@ -689,7 +697,11 @@ export function RegistrationSection({
     try {
       const checkout = await startCheckout(parsedForm.data);
       if (!checkout.ok) throw new Error(checkout.message);
-      navigateToCheckout(checkout.checkoutUrl);
+      if ("checkoutUrl" in checkout) {
+        navigateToCheckout(checkout.checkoutUrl);
+      } else {
+        setFreeSubmissionComplete(true);
+      }
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       const normalizedMessage = message.toLocaleLowerCase("pt-BR");
@@ -707,13 +719,30 @@ export function RegistrationSection({
             ? message
             : shouldRefresh
               ? "A configuração de preços mudou. Confira o valor e tente novamente."
-              : "Não foi possível preparar o pagamento. Tente novamente.",
+              : selectedChoir?.pricingType === "free"
+                ? "Não foi possível enviar a inscrição. Tente novamente."
+                : "Não foi possível preparar o pagamento. Tente novamente.",
       );
       if (shouldRefresh) await refreshConfiguration(true);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (freeSubmissionComplete) {
+    return (
+      <section id="inscricao" className="registration-shell bg-registration-surface px-4 py-12">
+        <div role="status" className="registration-surface mx-auto max-w-2xl p-6 text-center">
+          <BadgeCheck className="mx-auto size-12 text-amber-600" aria-hidden="true" />
+          <h2 className="mt-4 font-display text-2xl font-bold">Inscrição enviada</h2>
+          <p className="mt-3 text-sm text-registration-muted">
+            Sua inscrição gratuita foi recebida e aguarda aprovação do administrador.
+            Você não precisa realizar pagamento. Consulte a administração do evento para acompanhar a aprovação.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -732,7 +761,7 @@ export function RegistrationSection({
             Realize sua inscrição
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-registration-muted sm:text-base">
-            São apenas quatro etapas. Você poderá conferir tudo antes de pagar.
+            São apenas quatro etapas. Você poderá conferir tudo antes de enviar.
           </p>
         </div>
 
@@ -757,14 +786,14 @@ export function RegistrationSection({
           <div className="registration-card-content p-4 sm:p-6 lg:p-7">
             <p className="registration-progress-mobile md:hidden" aria-live="polite">
               Etapa {currentStep} de {registrationSteps.length} ·{" "}
-              {registrationSteps[currentStep - 1].label}
+              {currentStep === 3 && selectedChoir?.pricingType === "free" ? "Gratuidade" : registrationSteps[currentStep - 1].label}
             </p>
             <nav aria-label="Etapas da inscrição" className="mb-5">
               <ol className="registration-progress-desktop grid grid-cols-4 gap-2 sm:gap-4">
                 {[
                   { number: 1, label: "Meus dados" },
                   { number: 2, label: "Coro e perfil" },
-                  { number: 3, label: "Pagamento" },
+                  { number: 3, label: selectedChoir?.pricingType === "free" ? "Gratuidade" : "Pagamento" },
                   { number: 4, label: "Revisão" },
                 ].map((step) => {
                   const active = currentStep === step.number;
@@ -1089,11 +1118,11 @@ export function RegistrationSection({
                           aria-level={3}
                           className="block font-display text-xl font-extrabold text-foreground sm:text-2xl"
                         >
-                          {currentStep === 3 ? "Pagamento" : "Sua participação"}
+                          {currentStep === 3 ? (selectedChoir?.pricingType === "free" ? "Inscrição gratuita" : "Pagamento") : "Sua participação"}
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
                           {currentStep === 3
-                            ? "Escolha entre pagamento integral ou a opção promocional."
+                            ? selectedChoir?.pricingType === "free" ? "Sua inscrição será analisada pelo administrador, sem cobrança." : "Escolha entre pagamento integral ou a opção promocional."
                             : "Escolha seu coro e perfil musical."}
                         </span>
                       </span>
@@ -1169,7 +1198,7 @@ export function RegistrationSection({
                                     name="choirId"
                                     value={choir.id}
                                     checked={selected}
-                                    disabled={configuration?.standardPriceCents === null}
+                                    disabled={configuration?.standardPriceCents === null && choir.pricingType !== "free"}
                                     onChange={() => handleChoirChange(choir.id)}
                                     className="sr-only"
                                   />
@@ -1227,7 +1256,7 @@ export function RegistrationSection({
                             </label>
                           </div>
                         )}
-                        {configuration?.standardPriceCents === null && (
+                        {configuration?.standardPriceCents === null && !configuration.choirs.some((choir) => choir.pricingType === "free") && (
                           <p className="text-sm text-muted-foreground">
                             As inscrições estarão disponíveis após o cadastro do valor normal.
                           </p>
@@ -1346,7 +1375,13 @@ export function RegistrationSection({
                         )}
                       </div>
 
-                      {currentStep === 3 && displayedChoir && (
+                      {currentStep === 3 && displayedChoir?.pricingType === "free" && (
+                        <div className="mx-auto max-w-2xl rounded-xl border border-amber/35 bg-amber/10 p-5 text-sm text-registration-ink">
+                          <strong>Inscrição gratuita</strong>
+                          <p className="mt-2">Após o envio, o administrador analisará e aprovará sua inscrição. Nenhum pagamento será solicitado.</p>
+                        </div>
+                      )}
+                      {currentStep === 3 && displayedChoir && displayedChoir.pricingType !== "free" && (
                         <div className="mx-auto max-w-2xl">
                           <fieldset
                             id="raffleChoice"
@@ -1545,7 +1580,7 @@ export function RegistrationSection({
                           Confira sua inscrição
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Revise os dados antes de seguir para o pagamento.
+                          {displayedQuote?.pricingType === "free" ? "Revise os dados antes de enviar para aprovação." : "Revise os dados antes de seguir para o pagamento."}
                         </p>
                       </div>
                     </div>
@@ -1597,7 +1632,9 @@ export function RegistrationSection({
                           : []),
                         [
                           "Programa de rifas",
-                          form.raffleChoice === "participate"
+                          displayedQuote?.pricingType === "free"
+                            ? "Não se aplica"
+                            : form.raffleChoice === "participate"
                             ? "Participarei"
                             : "Pagamento integral",
                         ],
@@ -1686,22 +1723,22 @@ export function RegistrationSection({
                     disabled={
                       isSubmitting ||
                       !configuration ||
-                      configuration.standardPriceCents === null ||
+                      (configuration.standardPriceCents === null && !configuration.choirs.some((choir) => choir.pricingType === "free")) ||
                       (currentStep === 4 && (!displayedChoir || !displayedQuote))
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
                   >
                     <span className="min-w-0 break-words">
                       {isSubmitting
-                        ? "Preparando seu pagamento…"
+                        ? displayedQuote?.pricingType === "free" ? "Enviando inscrição…" : "Preparando seu pagamento…"
                         : currentStep === 4
-                          ? "Pagar com segurança na InfinitePay"
+                          ? displayedQuote?.pricingType === "free" ? "Enviar inscrição gratuita" : "Pagar com segurança na InfinitePay"
                           : "Continuar"}
                     </span>
                     {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
                   </Button>
                 </div>
-                {currentStep === 4 && (
+                {currentStep === 4 && displayedQuote?.pricingType !== "free" && (
                   <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs leading-relaxed text-muted-foreground">
                     <img src={infinitePayLogo} alt="InfinitePay" className="h-4 w-auto" />
                     <span>Você será direcionado ao ambiente seguro da InfinitePay.</span>
