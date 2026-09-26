@@ -13,8 +13,8 @@ describe("AdminSummaryPage", () => {
       legacy: 1,
       receivedCents: 150_000,
       pendingCents: 50_000,
-      pendingRegentCents: 0,
-      expectedCents: 200_000,
+      pendingRegentCents: 25_000,
+      expectedCents: 225_000,
       byChoir: [
         {
           choirName: "Coro de Quixadá",
@@ -30,11 +30,17 @@ describe("AdminSummaryPage", () => {
     render(<AdminSummaryPage checkAccess={checkAccess} loadSummary={loadSummary} />);
 
     expect((await screen.findAllByText("R$ 1.500,00")).length).toBeGreaterThan(0);
+    const receivedTotal = screen.getByText("Total recebido").closest("article");
+    const pendingTotal = screen.getByText("Total pendente").closest("article");
+    expect(receivedTotal).toHaveTextContent("R$ 1.500,00");
+    expect(pendingTotal).toHaveTextContent("R$ 750,00");
+    expect(pendingTotal).toHaveTextContent("R$ 500,00 em inscrições");
+    expect(pendingTotal).toHaveTextContent("R$ 250,00 de regentes");
     expect(screen.getAllByText("18").length).toBeGreaterThan(0);
     const overview = screen.getByRole("region", { name: "Visão geral das inscrições" });
     expect(within(overview).getByText("Financeiro por coro/diocese")).toBeInTheDocument();
     expect(within(overview).getByText("Coro de Quixadá")).toBeInTheDocument();
-    expect(within(overview).getByText("R$ 250,00")).toBeInTheDocument();
+    expect(within(overview).getAllByText("R$ 250,00")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("main")).toHaveClass(
       "internal-app",

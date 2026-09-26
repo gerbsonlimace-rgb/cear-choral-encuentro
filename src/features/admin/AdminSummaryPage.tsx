@@ -126,15 +126,26 @@ export function AdminSummaryPage({
     };
   }, [checkAccess, loadSummary]);
 
-  const metrics = summary
+  const registrationMetrics = summary
     ? [
         { label: "Inscrições", value: String(summary.total), icon: Users },
         { label: "Pagamentos confirmados", value: String(summary.paid), icon: CheckCircle2 },
         { label: "Pagamentos pendentes", value: String(summary.pending), icon: Clock3 },
+      ]
+    : [];
+  const financialMetrics = summary
+    ? [
         {
-          label: "Valor confirmado",
+          label: "Total recebido",
           value: money.format(summary.receivedCents / 100),
+          detail: "Pagamentos confirmados",
           icon: Banknote,
+        },
+        {
+          label: "Total pendente",
+          value: money.format((summary.pendingCents + summary.pendingRegentCents) / 100),
+          detail: `${money.format(summary.pendingCents / 100)} em inscrições · ${money.format(summary.pendingRegentCents / 100)} de regentes`,
+          icon: Clock3,
         },
       ]
     : [];
@@ -159,15 +170,27 @@ export function AdminSummaryPage({
           <>
             <section
               aria-label="Indicadores do encontro"
-              className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+              className="space-y-3"
             >
-              {metrics.map(({ label, value, icon: Icon }) => (
-                <article key={label} className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5">
-                  <Icon aria-hidden="true" className="size-5 text-primary" />
-                  <p className="mt-3 text-sm text-muted-foreground sm:mt-5">{label}</p>
-                  <p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
-                </article>
-              ))}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {registrationMetrics.map(({ label, value, icon: Icon }) => (
+                  <article key={label} className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5">
+                    <Icon aria-hidden="true" className="size-5 text-primary" />
+                    <p className="mt-3 text-sm text-muted-foreground sm:mt-5">{label}</p>
+                    <p className="mt-1 break-words text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {financialMetrics.map(({ label, value, detail, icon: Icon }) => (
+                  <article key={label} className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5">
+                    <Icon aria-hidden="true" className="size-5 text-primary" />
+                    <p className="mt-3 text-sm text-muted-foreground sm:mt-5">{label}</p>
+                    <p className="mt-1 break-words text-2xl font-semibold tabular-nums">{value}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
+                  </article>
+                ))}
+              </div>
             </section>
             <RegistrationSummaryBreakdown summary={summary} />
           </>
