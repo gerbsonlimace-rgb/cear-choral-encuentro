@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep `/euvou` as the public canonical photo-art route and redirect `/participante/minha-foto` to it, so shared links never require participant login.

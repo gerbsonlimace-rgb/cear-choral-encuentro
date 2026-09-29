@@ -84,7 +84,7 @@ export function ChoristerHomeTab({
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Link
-            to="/participante/minha-foto"
+            to="/euvou"
             aria-label="Crie sua foto do encontro"
             className={`${shortcutClassName} bg-amber-50 text-amber-700 hover:bg-amber-100`}
           >
