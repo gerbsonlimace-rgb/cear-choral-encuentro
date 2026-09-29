@@ -691,12 +691,12 @@ export type Database = {
           exempted_at: string | null
           exempted_by: string | null
           id: string
-          is_free_registration: boolean
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
           infinitepay_transaction_nsu: string | null
           installments: number | null
           institution: string | null
+          is_free_registration: boolean
           manual_paid_by: string | null
           manual_receipt_file_name: string | null
           manual_receipt_mime_type: string | null
@@ -739,12 +739,12 @@ export type Database = {
           exempted_at?: string | null
           exempted_by?: string | null
           id?: string
-          is_free_registration?: boolean
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
           installments?: number | null
           institution?: string | null
+          is_free_registration?: boolean
           manual_paid_by?: string | null
           manual_receipt_file_name?: string | null
           manual_receipt_mime_type?: string | null
@@ -787,12 +787,12 @@ export type Database = {
           exempted_at?: string | null
           exempted_by?: string | null
           id?: string
-          is_free_registration?: boolean
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
           installments?: number | null
           institution?: string | null
+          is_free_registration?: boolean
           manual_paid_by?: string | null
           manual_receipt_file_name?: string | null
           manual_receipt_mime_type?: string | null
