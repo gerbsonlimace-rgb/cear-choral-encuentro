@@ -60,7 +60,7 @@ describe("ChoristerHomeTab welcome", () => {
     expect(within(welcome).queryByText("Meu naipe")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Crie sua foto do encontro/ })).toHaveAttribute(
       "href",
-      "/participante/minha-foto",
+      "/euvou",
     );
   });
   it("does not show settled payment status on Home", () => {

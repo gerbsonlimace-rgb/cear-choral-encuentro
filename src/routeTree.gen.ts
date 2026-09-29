@@ -14,6 +14,7 @@ import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as InscricaoRouteImport } from './routes/inscricao'
+import { Route as EuvouRouteImport } from './routes/euvou'
 import { Route as AcessarRouteImport } from './routes/acessar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegenteIndexRouteImport } from './routes/regente.index'
@@ -61,6 +62,11 @@ const PagamentoRoute = PagamentoRouteImport.update({
 const InscricaoRoute = InscricaoRouteImport.update({
   id: '/inscricao',
   path: '/inscricao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EuvouRoute = EuvouRouteImport.update({
+  id: '/euvou',
+  path: '/euvou',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcessarRoute = AcessarRouteImport.update({
@@ -182,6 +188,7 @@ const AdminAtividadesRoute = AdminAtividadesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
   '/participante': typeof ParticipanteRouteWithChildren
@@ -273,6 +282,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acessar'
+    | '/euvou'
     | '/inscricao'
     | '/pagamento'
     | '/participante'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acessar'
+    | '/euvou'
     | '/inscricao'
     | '/pagamento'
     | '/sitemap.xml'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acessar'
+    | '/euvou'
     | '/inscricao'
     | '/pagamento'
     | '/participante'
@@ -362,6 +374,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
+  EuvouRoute: typeof EuvouRoute
   InscricaoRoute: typeof InscricaoRoute
   PagamentoRoute: typeof PagamentoRoute
   ParticipanteRoute: typeof ParticipanteRouteWithChildren
@@ -416,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/inscricao'
       fullPath: '/inscricao'
       preLoaderRoute: typeof InscricaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/euvou': {
+      id: '/euvou'
+      path: '/euvou'
+      fullPath: '/euvou'
+      preLoaderRoute: typeof EuvouRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acessar': {
@@ -622,6 +642,7 @@ const RegenteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
+  EuvouRoute: EuvouRoute,
   InscricaoRoute: InscricaoRoute,
   PagamentoRoute: PagamentoRoute,
   ParticipanteRoute: ParticipanteRouteWithChildren,

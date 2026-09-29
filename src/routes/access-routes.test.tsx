@@ -110,6 +110,10 @@ vi.mock("@/features/participant/ParticipantPortalPage", () => ({
   ),
 }));
 
+vi.mock("@/features/photo-art/PhotoArtEditor", () => ({
+  PhotoArtEditor: () => <h1>Escolha uma arte</h1>,
+}));
+
 const authorizedRegent: RegentAccess = {
   status: "authorized",
   role: "regent",
@@ -169,6 +173,20 @@ describe("unified portal routes", () => {
     const { router } = await renderRoute("/admin");
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/admin/resumo"));
+  });
+
+  it("opens the Eu Vou editor without participant access", async () => {
+    const { router } = await renderRoute("/euvou");
+
+    expect(router.state.location.pathname).toBe("/euvou");
+    expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
+  });
+
+  it("redirects the old participant photo link to Eu Vou", async () => {
+    const { history, router } = await renderRoute("/participante/minha-foto");
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/euvou"));
+    expect(history.length).toBe(1);
   });
 
   it.each([
