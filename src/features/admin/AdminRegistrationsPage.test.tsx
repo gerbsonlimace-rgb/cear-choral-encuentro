@@ -12,6 +12,7 @@ vi.mock("@/lib/admin.functions", () => ({
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
   markAdminRegistrationExempt: vi.fn(),
+  deleteAdminRegistration: vi.fn(),
   getAdminRegistrationReceipt: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
