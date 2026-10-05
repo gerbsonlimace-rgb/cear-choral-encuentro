@@ -704,6 +704,7 @@ function RegistrationActions({
   onPaymentLink,
   onMarkPaid,
   onMarkExempt,
+  onDelete,
   onViewReceipt,
   busy,
 }: {
