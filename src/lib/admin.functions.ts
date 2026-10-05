@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import {
   adminRegistrationExportSchema,
   adminMarkExemptSchema,
@@ -222,6 +223,17 @@ export const markAdminRegistrationExempt = createServerFn({ method: "POST" })
     const { getAdminRegistrationService } =
       await import("@/features/admin/admin-registration.server");
     return getAdminRegistrationService().markExempt(data.registrationId, context.adminUserId);
+  });
+
+export const deleteAdminRegistration = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(
+    z.object({ registrationId: z.string().uuid(), cpf: z.string().min(11).max(14) }).strict(),
+  )
+  .handler(async ({ data, context }) => {
+    const { deleteAdminRegistration: run } =
+      await import("@/features/admin/admin-registration-delete.server");
+    return run(data.registrationId, context.adminUserId, data.cpf);
   });
 
 export const getAdminRegistrationReceipt = createServerFn({ method: "POST" })
