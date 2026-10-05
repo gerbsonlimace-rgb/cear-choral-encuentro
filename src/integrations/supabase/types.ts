@@ -897,6 +897,14 @@ export type Database = {
         Args: { p_admin_user_id: string; p_registration_id: string }
         Returns: string
       }
+      delete_admin_registration_confirmed: {
+        Args: {
+          p_admin_user_id: string
+          p_cpf: string
+          p_registration_id: string
+        }
+        Returns: Json
+      }
       finish_choir_regent_password_operation: {
         Args: {
           p_membership_id: string
