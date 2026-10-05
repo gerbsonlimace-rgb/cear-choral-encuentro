@@ -78,6 +78,7 @@ import {
   listAdminRegistrations,
   markAdminRegistrationPaid,
   markAdminRegistrationExempt,
+  deleteAdminRegistration,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   type AdminAccessState,
@@ -101,6 +102,9 @@ import {
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
 type Props = {
+  deleteRegistration?: (input: {
+    data: { registrationId: string; cpf: string };
+  }) => Promise<{ status: "deleted" | "cpf_mismatch" }>;
   onSignedOut: () => void;
   onMissingSession: () => void;
   checkAdmin?: () => Promise<AdminAccessState>;
@@ -525,6 +529,7 @@ function RegistrationViews({
   onPaymentLink,
   onMarkPaid,
   onMarkExempt,
+  onDelete,
   onViewReceipt,
 }: {
   rows: AdminRegistrationRow[];
@@ -535,6 +540,7 @@ function RegistrationViews({
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
+  onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
@@ -608,6 +614,7 @@ function RegistrationViews({
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
                     onMarkExempt={onMarkExempt}
+                    onDelete={onDelete}
                     onViewReceipt={onViewReceipt}
                     busy={participantActionBusy}
                   />
@@ -647,6 +654,7 @@ function RegistrationViews({
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
                   onMarkExempt={onMarkExempt}
+                    onDelete={onDelete}
                   onViewReceipt={onViewReceipt}
                   busy={participantActionBusy}
                 />
@@ -705,12 +713,15 @@ function RegistrationActions({
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
+  onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
   const [confirmExempt, setConfirmExempt] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteCpf, setDeleteCpf] = useState("");
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
   const state = getAdminFinancialState(row);
@@ -746,7 +757,8 @@ function RegistrationActions({
     state.status === "pending" ||
     (state.status === "partially_paid" && state.pendingCents > 0) ||
     access?.canReprocess ||
-    access?.canReset;
+    access?.canReset ||
+    Boolean(onDelete);
   return (
     <>
       <DropdownMenu>
@@ -807,6 +819,20 @@ function RegistrationActions({
             <DropdownMenuItem onSelect={() => setConfirmReset(true)}>
               <KeyRound aria-hidden="true" /> Redefinir senha inicial
             </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => {
+                  setDeleteCpf("");
+                  setConfirmDelete(true);
+                }}
+              >
+                <Trash2 aria-hidden="true" /> Excluir inscrição
+              </DropdownMenuItem>
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -915,6 +941,48 @@ function RegistrationActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {onDelete && (
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir inscrição definitivamente?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A inscrição de {row.name}, seus pagamentos, presenças, foto, comprovante e o
+                acesso à área do participante serão apagados. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <label htmlFor={`delete-cpf-${row.id}`} className="text-sm font-medium">
+                Digite o CPF do participante para confirmar
+              </label>
+              <input
+                id={`delete-cpf-${row.id}`}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={14}
+                value={deleteCpf}
+                onChange={(event) => setDeleteCpf(event.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={busy || deleteCpf.replace(/\D/g, "").length !== 11}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void onDelete(row, deleteCpf).then((success) => {
+                    if (success) setConfirmDelete(false);
+                  });
+                }}
+              >
+                Excluir definitivamente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
@@ -966,6 +1034,7 @@ export function AdminRegistrationsPage({
   createPaymentLink = createAdminRegistrationCheckoutLink,
   markPaid = markAdminRegistrationPaid,
   markExempt = markAdminRegistrationExempt,
+  deleteRegistration = deleteAdminRegistration,
   getReceiptUrl = getAdminRegistrationReceipt,
   openReceiptUrl = defaultOpenReceiptUrl,
   copyToClipboard = defaultCopyToClipboard,
@@ -1288,6 +1357,31 @@ export function AdminRegistrationsPage({
     }
   }
 
+  async function runDeleteAction(row: AdminRegistrationRow, cpf: string): Promise<boolean> {
+    if (actionBusy.current || gate !== "authorized") return false;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      const result = await deleteRegistration({ data: { registrationId: row.id, cpf } });
+      if (result.status === "cpf_mismatch") {
+        setActionError("O CPF informado não confere com o da inscrição.");
+        return false;
+      }
+      setAnnouncement(`Inscrição de ${row.name} excluída.`);
+      setRetry((value) => value + 1);
+      setSummaryRetry((value) => value + 1);
+      return true;
+    } catch {
+      setActionError("Não foi possível excluir a inscrição. Tente novamente.");
+      return false;
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
   async function runReceiptAction(row: AdminRegistrationRow): Promise<void> {
     if (actionBusy.current || gate !== "authorized") return;
     actionBusy.current = true;
@@ -1499,6 +1593,7 @@ export function AdminRegistrationsPage({
                   onPaymentLink={(row) => void runPaymentLinkAction(row)}
                   onMarkPaid={runMarkPaidAction}
                   onMarkExempt={runMarkExemptAction}
+                  onDelete={runDeleteAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                 />
               ) : (
