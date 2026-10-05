@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   KeyRound,
+  Trash2,
   CircleOff,
 } from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
