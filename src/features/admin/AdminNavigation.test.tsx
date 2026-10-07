@@ -9,7 +9,7 @@ vi.mock("@/lib/portal-access.functions", () => ({ getPortalModes: vi.fn() }));
 
 describe("AdminNavigation", () => {
   it("offers participant mode in the shared topbar when both accesses are available", async () => {
-    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true });
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true, regent: false });
     const navigateTo = vi.fn();
     render(<AdminNavigation current="summary" navigateTo={navigateTo} />);
     const topbar = screen.getByTestId("internal-topbar");
