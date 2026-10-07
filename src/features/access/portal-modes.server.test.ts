@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findAdmin, findParticipant } = vi.hoisted(() => ({
+const { findAdmin, findParticipant, findPortal } = vi.hoisted(() => ({
   findAdmin: vi.fn(),
   findParticipant: vi.fn(),
+  findPortal: vi.fn(),
 }));
 vi.mock("@/features/admin/admin-auth.server", () => ({
   getAdminAuthorizer: () => ({ findActive: findAdmin }),
@@ -10,12 +11,17 @@ vi.mock("@/features/admin/admin-auth.server", () => ({
 vi.mock("@/features/participant/participant-auth.server", () => ({
   getParticipantAuthorizer: () => ({ findAccess: findParticipant }),
 }));
+vi.mock("@/features/regent/regent-auth.server", () => ({
+  getPortalAuthorizer: () => ({ findActive: findPortal }),
+}));
 
 import { resolvePortalModes } from "./portal-modes.server";
 
 beforeEach(() => {
   findAdmin.mockReset();
   findParticipant.mockReset();
+  findPortal.mockReset();
+  findPortal.mockResolvedValue(null);
 });
 
 describe("portal mode memberships", () => {
@@ -28,17 +34,31 @@ describe("portal mode memberships", () => {
     await expect(resolvePortalModes("signed-in-user")).resolves.toEqual({
       admin: true,
       participant: true,
+      regent: false,
     });
     expect(findAdmin).toHaveBeenCalledWith("signed-in-user");
     expect(findParticipant).toHaveBeenCalledWith("signed-in-user");
   });
 
-  it("does not grant an admin membership to an ordinary participant", async () => {
+  it("flags an active regent membership without granting admin", async () => {
     findAdmin.mockResolvedValue(null);
     findParticipant.mockResolvedValue({ status: "authorized" });
+    findPortal.mockResolvedValue({ role: "regent", choirId: "choir" });
+    await expect(resolvePortalModes("regent-user")).resolves.toEqual({
+      admin: false,
+      participant: true,
+      regent: true,
+    });
+  });
+
+  it("does not flag a revoked or missing regent membership", async () => {
+    findAdmin.mockResolvedValue(null);
+    findParticipant.mockResolvedValue({ status: "authorized" });
+    findPortal.mockResolvedValue(null);
     await expect(resolvePortalModes("participant")).resolves.toEqual({
       admin: false,
       participant: true,
+      regent: false,
     });
   });
 
@@ -48,6 +68,7 @@ describe("portal mode memberships", () => {
     await expect(resolvePortalModes("admin-only")).resolves.toEqual({
       admin: true,
       participant: false,
+      regent: false,
     });
   });
 
