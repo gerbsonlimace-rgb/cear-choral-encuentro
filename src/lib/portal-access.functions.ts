@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { UnifiedPortalAccess } from "@/features/access/portal-access.domain";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type PortalModes = { admin: boolean; participant: boolean };
+export type PortalModes = { admin: boolean; participant: boolean; regent: boolean };
 
 export const getPortalModes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
