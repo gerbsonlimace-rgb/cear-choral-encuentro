@@ -128,7 +128,7 @@ function deferred<T>() {
 
 describe("ParticipantPortalPage", () => {
   it("does not expose admin shortcuts to an ordinary participant even with a navigation callback", async () => {
-    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: false, participant: true });
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: false, participant: true, regent: false });
     const { user } = setup({ onOpenAdmin: vi.fn() });
     await screen.findByRole("heading", { name: "Maria da Silva" });
     expect(screen.queryByRole("link", { name: "Ir para admin" })).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("ParticipantPortalPage", () => {
     expect(screen.queryByRole("button", { name: "Ir para administração" })).not.toBeInTheDocument();
   });
   it("opens admin mode from the topbar without signing out", async () => {
-    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true });
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true, regent: false });
     const onOpenAdmin = vi.fn();
     const { user, signOut } = setup({ onOpenAdmin });
     await screen.findByRole("heading", { name: "Maria da Silva" });

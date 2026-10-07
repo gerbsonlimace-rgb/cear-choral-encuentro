@@ -36,7 +36,8 @@ export type AdminNavigationPath =
   | "/admin/avisos"
   | "/admin/atividades"
   | "/admin/configuracoes"
-  | "/participante";
+  | "/participante"
+  | "/regente";
 
 const links = [
   { key: "summary", href: "/admin/resumo", label: "Resumo", icon: LayoutDashboard },
