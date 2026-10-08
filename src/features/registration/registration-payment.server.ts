@@ -1397,7 +1397,11 @@ export function getRegistrationPaymentService() {
       findAuthUserByEmail: async (email) => {
         const { createSupabaseParticipantAuthAdmin } =
           await import("@/features/participant/participant-provisioning.server");
-        return createSupabaseParticipantAuthAdmin().findUserByEmail(email);
+        const authAdmin = createSupabaseParticipantAuthAdmin();
+        const user = await authAdmin.findUserByEmail(email);
+        // Staff accounts (admin/regent) without a participant link may register; they get linked later.
+        if (user && (await authAdmin.isLinkableStaffUser?.(user.id))) return null;
+        return user;
       },
       provisionParticipant: async (registrationId) => {
         const { getParticipantProvisioningService } =
