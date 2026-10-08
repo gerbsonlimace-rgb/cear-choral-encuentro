@@ -263,6 +263,11 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeInTheDocument();
     expect(screen.getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeInTheDocument();
     expect(screen.getByText("20 Rifas Cobrem o Resto")).toBeInTheDocument();
+    expect(screen.getByText("Prêmio da rifa")).toBeVisible();
+    expect(screen.getByText("R$ 1.000,00")).toBeVisible();
+    expect(screen.getByText("Maior vendedor")).toBeVisible();
+    expect(screen.getByText("R$ 500,00")).toBeVisible();
+    expect(screen.queryByText(/rifas paroquiais/i)).not.toBeInTheDocument();
     expect(screen.getByText("SEM GESTÃO DE RIFAS")).toBeInTheDocument();
     expect(screen.getByText("Valor total único")).toBeInTheDocument();
 
@@ -660,7 +665,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Pagamento integral" })).toBeVisible();
     expect(choices).toHaveTextContent(/Você paga apenas R\$ 100 agora/);
-    expect(choices).toHaveTextContent(/20 rifas/);
+    expect(choices).toHaveTextContent(/20 rifas de R\$ 10,00/);
     expect(choices).toHaveTextContent(/cobrem integralmente os R\$ 200,00 restantes/);
     expect(choices).toHaveTextContent(/Valor total únicoR\$ 300,00/);
   });

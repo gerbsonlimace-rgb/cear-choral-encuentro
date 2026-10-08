@@ -67,6 +67,7 @@ import type { RegistrationLookupResult } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
 import { loadRegistrationDraft, saveRegistrationDraft } from "./registration-draft";
 import { RegistrationInstallments } from "./RegistrationInstallments";
+import { RafflePrizeHighlight } from "./RafflePrizeHighlight";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -1571,8 +1572,9 @@ export function RegistrationSection({
                                   </span>
                                   <div className="mt-2 rounded-lg bg-stone-100 p-2.5 text-sm text-registration-ink">
                                     <strong className="block">Como funciona o subsídio:</strong>
-                                    <span className="mt-1 block text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas paroquiais de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</span>
+                                    <span className="mt-1 block text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</span>
                                   </div>
+                                  <RafflePrizeHighlight compact />
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>
                                   <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
                                     <li>Acesso integral a todas as formações litúrgicas</li>

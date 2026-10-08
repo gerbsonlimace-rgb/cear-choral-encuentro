@@ -45,6 +45,11 @@ describe("RegistrationCallout", () => {
     expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
     expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
     expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
+    expect(within(raffle).getByText("Prêmio da rifa")).toBeVisible();
+    expect(within(raffle).getByText("R$ 1.000,00")).toBeVisible();
+    expect(within(raffle).getByText("Maior vendedor")).toBeVisible();
+    expect(within(raffle).getByText("R$ 500,00")).toBeVisible();
+    expect(within(raffle).queryByText(/rifas paroquiais/i)).not.toBeInTheDocument();
     expect(within(raffle).getByRole("link", { name: "Selecionar este tipo de inscrição" })).toHaveAttribute(
       "href",
       "/inscricao",
@@ -124,7 +129,7 @@ describe("RegistrationCallout", () => {
     expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
     expect(within(raffle).getByText(/as vendas cobrem integralmente os R\$ 200,00 restantes/i)).toBeVisible();
     expect(within(raffle).getByText("R$ 100,00")).toBeVisible();
-    expect(within(raffle).getByText(/20 rifas paroquiais/i)).toBeVisible();
+    expect(within(raffle).getByText(/20 rifas de R\$ 10,00/i)).toBeVisible();
     expect(within(raffle).getByText(/R\$ 200,00/i)).toBeVisible();
   });
 
@@ -162,7 +167,7 @@ describe("RegistrationCallout", () => {
       "Pagamento integral direto (sem necessidade de venda de rifas)",
     );
     expect(within(raffle).getByText(/Você paga apenas R\$ 100 agora/)).toBeVisible();
-    expect(within(raffle).getByText(/20 rifas paroquiais de R\$ 10.*R\$ 200,00 restantes/i)).toBeVisible();
+    expect(within(raffle).getByText(/20 rifas de R\$ 10,00.*R\$ 200,00 restantes/i)).toBeVisible();
   });
 
   it("explains the complete stay modality without payment mechanics", () => {

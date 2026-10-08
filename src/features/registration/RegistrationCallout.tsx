@@ -15,6 +15,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { RegistrationInstallments } from "./RegistrationInstallments";
+import { RafflePrizeHighlight } from "./RafflePrizeHighlight";
 
 const eventBenefits = [
   { icon: Music2, label: "Acesso integral a todas as formações litúrgicas" },
@@ -132,8 +133,9 @@ export function RegistrationCallout() {
                 <Ticket className="size-4 text-amber-700" aria-hidden="true" />
                 <span>Como funciona o subsídio</span>:
               </p>
-              <p className="mt-1 text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas paroquiais de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</p>
+              <p className="mt-1 text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</p>
             </div>
+            <RafflePrizeHighlight />
             <p className="mt-5 text-xs font-bold text-stone-800">Tudo incluído no seu retiro:</p>
             <ul aria-label="Benefícios da inscrição com hospedagem e alimentação pelo programa de rifas" className="mt-2 space-y-2.5 text-sm text-stone-700">
               {completeBenefits.map(({ icon: Icon, label }) => (
