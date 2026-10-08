@@ -82,6 +82,31 @@ export function ChoristerHomeTab({
     <section aria-labelledby="chorister-home-title" className="space-y-4">
       <ChoristerWelcomeCard participant={participant} />
 
+      <a
+        href={WHATSAPP_GROUP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Entrar no grupo do encontro no WhatsApp"
+        className="flex min-h-16 items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-left transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-4"
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-600 text-emerald-50">
+          <MessageCircle aria-hidden="true" className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-zinc-900">
+            Grupo do encontro no WhatsApp
+          </span>
+          <span className="mt-0.5 block text-xs leading-4 text-zinc-600">
+            Converse com os demais coralistas e receba os avisos em primeira mão.
+          </span>
+        </span>
+        <ExternalLink
+          aria-hidden="true"
+          className="size-4 shrink-0 text-emerald-700 opacity-70"
+        />
+      </a>
+
+
       <section aria-labelledby="home-shortcuts-title" className="space-y-2">
         <h2 id="home-shortcuts-title" className="text-sm font-semibold text-zinc-900">
           Seu encontro, à mão
