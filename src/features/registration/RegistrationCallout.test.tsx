@@ -38,10 +38,7 @@ describe("RegistrationCallout", () => {
 
     expect(within(event).getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeVisible();
     expect(within(event).getByText("Sem custos de hospedagem inclusos")).toBeVisible();
-    expect(within(event).getByRole("link", { name: "Selecionar este tipo de inscrição" })).toHaveAttribute(
-      "href",
-      "/inscricao",
-    );
+    expect(within(event).queryByRole("link", { name: "Selecionar este tipo de inscrição" })).not.toBeInTheDocument();
     expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
     expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
     expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
@@ -50,10 +47,7 @@ describe("RegistrationCallout", () => {
     expect(within(raffle).getByText("Maior vendedor")).toBeVisible();
     expect(within(raffle).getByText("R$ 500,00")).toBeVisible();
     expect(within(raffle).queryByText(/rifas paroquiais/i)).not.toBeInTheDocument();
-    expect(within(raffle).getByRole("link", { name: "Selecionar este tipo de inscrição" })).toHaveAttribute(
-      "href",
-      "/inscricao",
-    );
+    expect(within(raffle).queryByRole("link", { name: "Selecionar este tipo de inscrição" })).not.toBeInTheDocument();
     expect(within(complete).getByText("SEM GESTÃO DE RIFAS")).toBeVisible();
     expect(within(complete).getByText("Valor total único")).toBeVisible();
     expect(within(complete).getByText(/à vista ou até 12x/)).toBeVisible();
@@ -215,6 +209,7 @@ describe("RegistrationCallout", () => {
       "href",
       "/inscricao",
     );
+    expect(within(primaryAction!).getByRole("link", { name: "Fazer Inscrição" })).toHaveClass("min-h-14", "text-lg");
     expect(giveaway).not.toBeNull();
     expect(
       primaryAction!.compareDocumentPosition(giveaway!) & Node.DOCUMENT_POSITION_FOLLOWING,

@@ -97,9 +97,6 @@ export function RegistrationCallout() {
                 </li>
               ))}
             </ul>
-            <Button asChild variant="secondary" className="mt-auto min-h-10 w-full rounded-lg font-bold">
-              <Link to="/inscricao">Selecionar este tipo de inscrição</Link>
-            </Button>
           </article>
 
           <article
@@ -142,7 +139,6 @@ export function RegistrationCallout() {
                 <li key={label} className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 rounded-full bg-amber-100 p-1 text-amber-800"><Icon className="size-3.5" strokeWidth={2.5} aria-hidden="true" /></span><span className="leading-snug">{label}</span></li>
               ))}
             </ul>
-            <Button asChild className="mt-auto min-h-10 w-full rounded-lg bg-amber-700 font-bold text-white hover:bg-amber-800"><Link to="/inscricao">Selecionar este tipo de inscrição</Link></Button>
           </article>
 
           <article
@@ -169,7 +165,6 @@ export function RegistrationCallout() {
                 <li key={label} className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 rounded-full bg-amber-100 p-1 text-amber-800"><Icon className="size-3.5" strokeWidth={2.5} aria-hidden="true" /></span><span className="leading-snug">{label}</span></li>
               ))}
             </ul>
-            <Button asChild variant="secondary" className="mt-auto min-h-10 w-full rounded-lg font-bold"><Link to="/inscricao">Selecionar este tipo de inscrição</Link></Button>
           </article>
         </div>
 
@@ -180,7 +175,7 @@ export function RegistrationCallout() {
           <Button
             asChild
             size="lg"
-            className="min-h-12 rounded-full bg-stone-900 px-8 font-display text-base font-bold text-amber-100 shadow-lg shadow-amber-950/25 hover:bg-stone-800"
+            className="min-h-14 rounded-full bg-stone-900 px-10 font-display text-lg font-bold text-amber-100 shadow-xl shadow-amber-950/25 hover:bg-stone-800"
           >
             <Link to="/inscricao">
               <Sparkles className="size-4" aria-hidden="true" />
