@@ -64,6 +64,8 @@ export type ParticipantProvisioningRepository = {
 
 export type ParticipantAuthAdmin = {
   findUserByEmail(email: string): Promise<{ id: string } | null>;
+  /** True when an existing account belongs to active staff (admin/regent) and has no participant link yet. */
+  isLinkableStaffUser?(userId: string): Promise<boolean>;
   createUser(input: {
     email: string;
     password: string;
@@ -303,13 +305,41 @@ export function createParticipantProvisioningService({
     if (account.provisioningClaimId !== claimId) return statusOf(account);
 
     const email = normalizeEmail(registration.email);
+    let linkUserId: string | null = null;
     try {
       const existing = await auth.findUserByEmail(email);
       if (existing) {
-        return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+        if (auth.isLinkableStaffUser && (await auth.isLinkableStaffUser(existing.id))) {
+          linkUserId = existing.id;
+        } else {
+          return markFailed(account, claimId, "conflict", "EMAIL_CONFLICT", "email_conflict");
+        }
       }
     } catch {
       return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
+    }
+
+    if (linkUserId) {
+      // Reuse the staff account (password unchanged) instead of creating a new login.
+      try {
+        const activated = await repository.activate({
+          accountId: account.id,
+          registrationId: account.registrationId,
+          claimId,
+          userId: linkUserId,
+        });
+        if (!activated) {
+          return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
+        }
+      } catch {
+        return markFailed(account, claimId, "pending", "AUTH_UNAVAILABLE", "provisioning_pending");
+      }
+      await appendOutcomeEvent({
+        registrationId: account.registrationId,
+        participantAccountId: account.id,
+        eventType: "provisioned",
+      });
+      return { status: "active" };
     }
 
     let createdUserId: string;
@@ -568,6 +598,18 @@ export function createSupabaseParticipantProvisioningRepository(): ParticipantPr
 
 export function createSupabaseParticipantAuthAdmin(): ParticipantAuthAdmin {
   return {
+    async isLinkableStaffUser(userId) {
+      const [admin, regent, linked] = await Promise.all([
+        supabaseAdmin.from("admin_users").select("id").eq("user_id", userId).is("revoked_at", null).limit(1),
+        supabaseAdmin.from("choir_regents").select("id").eq("user_id", userId).is("revoked_at", null).limit(1),
+        supabaseAdmin.from("participant_accounts").select("id").eq("user_id", userId).limit(1),
+      ]);
+      checkError(admin.error);
+      checkError(regent.error);
+      checkError(linked.error);
+      const isStaff = (admin.data?.length ?? 0) > 0 || (regent.data?.length ?? 0) > 0;
+      return isStaff && (linked.data?.length ?? 0) === 0;
+    },
     async findUserByEmail(email) {
       const normalizedEmail = normalizeEmail(email);
       let page = 1;
