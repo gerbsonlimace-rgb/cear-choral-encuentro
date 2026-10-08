@@ -1013,6 +1013,7 @@ export type Database = {
           p_email: string
           p_granted_by: string
           p_name: string
+          p_password_change_required: boolean
           p_user_id: string
         }
         Returns: {

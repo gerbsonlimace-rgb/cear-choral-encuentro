@@ -36,6 +36,7 @@ const input = {
   email: "regente@example.com",
   password: "SenhaTemp123",
 };
+type ExistingRegentInput = Omit<typeof input, "password">;
 const row: AdminRegentRow = {
   id: "22222222-2222-4222-8222-222222222222",
   choirId,
@@ -113,6 +114,75 @@ describe("regent administrative lifecycle", () => {
     expect(auth.updateUserById).not.toHaveBeenCalled();
     expect(auth.deleteUser).not.toHaveBeenCalled();
     expect(repository.grant).not.toHaveBeenCalled();
+  });
+  it("links an existing Auth account without changing its password or requiring a password change", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.grant).mockResolvedValue({ ...row, passwordChangeRequired: false });
+
+    await expect(
+      (service as unknown as {
+        linkExisting(input: ExistingRegentInput, actorId: string): Promise<unknown>;
+      }).linkExisting(
+        { choirId, name: "Irmã Macrina", email: "macrina@example.com" },
+        "admin-user",
+      ),
+    ).resolves.toEqual({ status: "success", regent: { ...row, passwordChangeRequired: false } });
+
+    expect(repository.grant).toHaveBeenCalledWith({
+      choirId,
+      userId: "existing-user",
+      name: "Irmã Macrina",
+      email: "macrina@example.com",
+      passwordChangeRequired: false,
+      grantedBy: "admin-user",
+    });
+    expect(auth.createUser).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
+  it("replaces a regent with an existing account without changing that account password", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.replace).mockResolvedValue({ ...row, passwordChangeRequired: false });
+
+    await expect(
+      (service as unknown as {
+        replaceExisting(input: ExistingRegentInput, actorId: string): Promise<unknown>;
+      }).replaceExisting(
+        { choirId, name: "Irmã Macrina", email: "macrina@example.com" },
+        "admin-user",
+      ),
+    ).resolves.toEqual({ status: "success", regent: { ...row, passwordChangeRequired: false } });
+
+    expect(repository.replace).toHaveBeenCalledWith({
+      choirId,
+      userId: "existing-user",
+      name: "Irmã Macrina",
+      email: "macrina@example.com",
+      passwordChangeRequired: false,
+      grantedBy: "admin-user",
+    });
+    expect(auth.createUser).not.toHaveBeenCalled();
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+  it("reports a missing existing account without changing memberships", async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      (service as unknown as {
+        linkExisting(input: ExistingRegentInput, actorId: string): Promise<unknown>;
+      }).linkExisting(
+        { choirId, name: "Irmã Macrina", email: "macrina@example.com" },
+        "admin-user",
+      ),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Nenhuma conta encontrada com esse e-mail.",
+    });
+
+    expect(repository.grant).not.toHaveBeenCalled();
+    expect(repository.replace).not.toHaveBeenCalled();
   });
   it("rejects an occupied choir before creating Auth data", async () => {
     const { service, auth, repository } = setup();
@@ -791,6 +861,7 @@ describe("Supabase administrative adapters", () => {
       p_name: "Ana Silva",
       p_email: "regente@example.com",
       p_granted_by: "admin-user",
+      p_password_change_required: true,
     });
     expect(from).not.toHaveBeenCalled();
   });

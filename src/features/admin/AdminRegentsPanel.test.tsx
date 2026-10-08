@@ -47,6 +47,43 @@ describe("AdminRegentsPanel", () => {
     for (const name of ["Cadastrar regente", "Substituir", "Inativar", "Redefinir senha"])
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
   });
+  it("offers the existing-user mode without requesting a temporary password", async () => {
+    const { user } = setup();
+    await screen.findByText("Maria");
+
+    await user.click(screen.getByRole("button", { name: "Vincular usuário existente" }));
+
+    expect(screen.getByRole("button", { name: "Vincular usuário existente" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByLabelText("Senha temporária")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/usará a senha que já possui e não precisará trocá-la/i),
+    ).toBeInTheDocument();
+  });
+  it("submits only identity data when linking an existing user", async () => {
+    const linkExistingRegent = vi.fn(async () => ({
+      status: "success" as const,
+      regent: { ...row, passwordChangeRequired: false },
+    }));
+    const { user } = setup({
+      linkExistingRegent,
+    } as Partial<AdminRegentsPanelProps>);
+    await screen.findByText("Maria");
+
+    await user.click(screen.getByRole("button", { name: "Vincular usuário existente" }));
+    await user.type(screen.getByLabelText("Nome"), "Irmã Macrina");
+    await user.type(screen.getByLabelText("E-mail"), "macrina@example.com");
+    await user.selectOptions(screen.getByLabelText("Coro"), choirId);
+    await user.click(screen.getByRole("button", { name: "Vincular regente" }));
+
+    await waitFor(() =>
+      expect(linkExistingRegent).toHaveBeenCalledWith({
+        data: { choirId, name: "Irmã Macrina", email: "macrina@example.com" },
+      }),
+    );
+  });
   it("preserves all entered values after a recoverable conflict", async () => {
     const { user, props } = setup({
       createRegent: vi.fn(async () => ({

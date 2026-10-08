@@ -787,11 +787,25 @@ export const createAdminRegent = createServerFn({ method: "POST" })
     (await loadAdminService()).create(data, context.adminUserId),
   );
 
+export const linkExistingAdminRegent = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(regentMutationSchema)
+  .handler(async ({ data, context }) =>
+    (await loadAdminService()).linkExisting(data, context.adminUserId),
+  );
+
 export const replaceAdminRegent = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(createRegentSchema)
   .handler(async ({ data, context }) =>
     (await loadAdminService()).replace(data, context.adminUserId),
+  );
+
+export const replaceAdminRegentWithExistingUser = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(regentMutationSchema)
+  .handler(async ({ data, context }) =>
+    (await loadAdminService()).replaceExisting(data, context.adminUserId),
   );
 
 export const revokeAdminRegent = createServerFn({ method: "POST" })

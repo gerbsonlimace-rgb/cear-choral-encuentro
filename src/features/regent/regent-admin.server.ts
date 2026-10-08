@@ -15,7 +15,7 @@ export type RegentAdminResult =
 type RegentGrant = RegentMutation & {
   userId: string;
   grantedBy: string;
-  passwordChangeRequired: true;
+  passwordChangeRequired: boolean;
 };
 export type RegentAdminRepository = {
   list(): Promise<AdminRegentRow[]>;
@@ -218,6 +218,55 @@ export function createRegentAdminService({
         : failure();
     }
   }
+  async function linkExisting(
+    input: RegentMutation,
+    actorId: string,
+    replace: boolean,
+  ): Promise<RegentAdminResult> {
+    let userId: string | undefined;
+    try {
+      const user = await auth.findUserByEmail(input.email);
+      if (!user) {
+        return { status: "error", message: "Nenhuma conta encontrada com esse e-mail." };
+      }
+      userId = user.id;
+      if (!replace && (await repository.findActiveByChoir(input.choirId))) {
+        return {
+          status: "conflict",
+          message: "Este coro já possui um regente ativo. Use Substituir.",
+        };
+      }
+      const grant: RegentGrant = {
+        ...input,
+        userId,
+        grantedBy: actorId,
+        passwordChangeRequired: false,
+      };
+      return success(await (replace ? repository.replace(grant) : repository.grant(grant)));
+    } catch (error) {
+      if (userId) {
+        try {
+          const membership = await repository.findByUserAndChoir(userId, input.choirId);
+          if (
+            membership?.revokedAt === null &&
+            membership.userId === userId &&
+            membership.choirId === input.choirId
+          ) {
+            return success(membership);
+          }
+        } catch {
+          // An inconclusive read must not change an existing Auth account.
+        }
+      }
+      return error instanceof RegentConflict ||
+        (error instanceof RegentGrantFailure && error.conflict)
+        ? {
+            status: "conflict",
+            message: "Já existe um vínculo ativo. Atualize a lista antes de tentar novamente.",
+          }
+        : failure();
+    }
+  }
   return {
     async list() {
       try {
@@ -228,6 +277,8 @@ export function createRegentAdminService({
     },
     create: (input: RegentCreation, actorId: string) => provision(input, actorId, false),
     replace: (input: RegentCreation, actorId: string) => provision(input, actorId, true),
+    linkExisting: (input: RegentMutation, actorId: string) => linkExisting(input, actorId, false),
+    replaceExisting: (input: RegentMutation, actorId: string) => linkExisting(input, actorId, true),
     async revoke(id: string, actorId: string): Promise<RegentAdminResult> {
       try {
         return success(await repository.revoke(id, actorId));
@@ -553,7 +604,7 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
             name: input.name,
             email: input.email,
             granted_by: input.grantedBy,
-            password_change_required: true,
+            password_change_required: input.passwordChangeRequired,
           })
           .select(columns)
           .single(),
@@ -567,6 +618,7 @@ export function createSupabaseRegentAdminRepository(): RegentAdminRepository {
           p_name: input.name,
           p_email: input.email,
           p_granted_by: input.grantedBy,
+          p_password_change_required: input.passwordChangeRequired,
         }),
       );
     },
