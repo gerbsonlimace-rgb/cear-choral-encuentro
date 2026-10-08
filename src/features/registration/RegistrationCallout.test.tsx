@@ -52,6 +52,24 @@ describe("RegistrationCallout", () => {
     expect(within(complete).getByText("SEM GESTÃO DE RIFAS")).toBeVisible();
     expect(within(complete).getByText("Valor total único")).toBeVisible();
     expect(within(complete).getByText(/à vista ou até 12x/)).toBeVisible();
+
+    const baseBenefits = [
+      "Acesso integral a todas as formações litúrgicas",
+      "Kit oficial do participante com partituras impressas",
+      "Certificado de participação diocesano (horas acadêmicas)",
+    ];
+    for (const benefit of baseBenefits) {
+      expect(within(event).getByText(benefit)).toBeVisible();
+      expect(within(raffle).getByText(benefit)).toBeVisible();
+      expect(within(complete).getByText(benefit)).toBeVisible();
+    }
+    for (const benefit of [
+      "Hospedagem no Centro Diocesano de Pastoral",
+      "Alimentação completa durante todos os dias (pensão total)",
+    ]) {
+      expect(within(raffle).getByText(benefit)).toBeVisible();
+      expect(within(complete).getByText(benefit)).toBeVisible();
+    }
   });
 
   it("starts with the event-only registration and its participation benefits", () => {
@@ -162,7 +180,9 @@ describe("RegistrationCallout", () => {
     expect(within(complete).getByText("R$ 300,00")).toBeVisible();
     expect(within(complete).getByText("Hospedagem no Centro Diocesano de Pastoral")).toBeVisible();
     expect(within(complete).getByText("Alimentação completa durante todos os dias (pensão total)")).toBeVisible();
-    expect(within(complete).getByText("Acesso a todas as formações, ensaios gerais, kit e certificado")).toBeVisible();
+    expect(within(complete).getByText("Acesso integral a todas as formações litúrgicas")).toBeVisible();
+    expect(within(complete).getByText("Kit oficial do participante com partituras impressas")).toBeVisible();
+    expect(within(complete).getByText("Certificado de participação diocesano (horas acadêmicas)")).toBeVisible();
     expect(within(complete).queryByText(/R\$ 100 agora/)).not.toBeInTheDocument();
   });
 

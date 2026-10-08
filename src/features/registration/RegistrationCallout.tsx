@@ -23,9 +23,9 @@ const eventBenefits = [
 ];
 
 const completeBenefits = [
+  ...eventBenefits,
   { icon: BedDouble, label: "Hospedagem no Centro Diocesano de Pastoral" },
   { icon: Utensils, label: "Alimentação completa durante todos os dias (pensão total)" },
-  { icon: Music2, label: "Acesso a todas as formações, ensaios gerais, kit e certificado" },
 ];
 
 export function RegistrationCallout() {

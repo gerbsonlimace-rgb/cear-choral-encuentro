@@ -266,6 +266,27 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByText("SEM GESTÃO DE RIFAS")).toBeInTheDocument();
     expect(screen.getByText("Valor total único")).toBeInTheDocument();
 
+    const baseBenefits = [
+      "Acesso integral a todas as formações litúrgicas",
+      "Kit oficial do participante com partituras impressas",
+      "Certificado de participação diocesano (horas acadêmicas)",
+    ];
+    for (const optionId of [
+      "registration-option-event",
+      "registration-option-raffle",
+      "registration-option-full-price",
+    ]) {
+      const option = screen.getByTestId(optionId);
+      for (const benefit of baseBenefits) {
+        expect(within(option).getByText(benefit)).toBeVisible();
+      }
+    }
+    for (const optionId of ["registration-option-raffle", "registration-option-full-price"]) {
+      const option = screen.getByTestId(optionId);
+      expect(within(option).getByText("Hospedagem no Centro Diocesano de Pastoral")).toBeVisible();
+      expect(within(option).getByText("Alimentação completa durante todos os dias (pensão total)")).toBeVisible();
+    }
+
     const raffleOption = screen.getByRole("radio", {
       name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas",
     });

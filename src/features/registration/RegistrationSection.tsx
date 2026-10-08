@@ -1575,9 +1575,11 @@ export function RegistrationSection({
                                   </div>
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>
                                   <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
+                                    <li>Acesso integral a todas as formações litúrgicas</li>
+                                    <li>Kit oficial do participante com partituras impressas</li>
+                                    <li>Certificado de participação diocesano (horas acadêmicas)</li>
                                     <li>Hospedagem no Centro Diocesano de Pastoral</li>
                                     <li>Alimentação completa durante todos os dias (pensão total)</li>
-                                    <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
                                   </ul>
                                   {selectedChoir?.pricingType !== "promotional" && (
                                     <span className="mt-3 block text-xs text-registration-muted">Disponível apenas para coros participantes do programa de rifas.</span>
@@ -1641,9 +1643,11 @@ export function RegistrationSection({
                                   </span>
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">O que está incluso:</span>
                                   <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
+                                    <li>Acesso integral a todas as formações litúrgicas</li>
+                                    <li>Kit oficial do participante com partituras impressas</li>
+                                    <li>Certificado de participação diocesano (horas acadêmicas)</li>
                                     <li>Hospedagem no Centro Diocesano de Pastoral</li>
                                     <li>Alimentação completa durante todos os dias (pensão total)</li>
-                                    <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
                                   </ul>
                                 </span>
                                 {form.participationType === "complete" && form.raffleChoice === "full_price" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
