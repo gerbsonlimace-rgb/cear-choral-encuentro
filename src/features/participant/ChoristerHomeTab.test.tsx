@@ -48,6 +48,19 @@ describe("ChoristerHomeTab welcome", () => {
     expect(screen.getByRole("button", { name: "Explorar cantos" })).toHaveClass("min-h-28");
   });
 
+  it("links Home to the event WhatsApp group", () => {
+    render(<ChoristerHomeTab participant={participant} />);
+
+    const group = screen.getByRole("link", { name: "Entrar no grupo do encontro no WhatsApp" });
+    expect(group).toHaveAttribute(
+      "href",
+      "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw",
+    );
+    expect(group).toHaveAttribute("target", "_blank");
+    expect(group).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+
   it("keeps identity details in the welcome card", () => {
     render(<ChoristerHomeTab participant={participant} />);
     const welcome = screen.getByRole("region", { name: "Boas-vindas e inscrição" });
