@@ -17,7 +17,6 @@ import {
   Piano,
   Search,
   ShieldCheck,
-  Ticket,
   UserRound,
   UsersRound,
   X,
@@ -61,6 +60,7 @@ import {
   type RegistrationPhotoInput,
   type Diocese,
   type MusicalProfile,
+  type ParticipationType,
   type VoicePart,
 } from "./registration.domain";
 import type { RegistrationLookupResult } from "./registration.domain";
@@ -147,6 +147,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   diocese: "",
   choirId: "",
   otherChoirName: "",
+  participationType: "complete",
   raffleChoice: "",
   musicalProfile: "",
   voicePart: "",
@@ -166,7 +167,7 @@ const stepFields: Record<1 | 2 | 3, RegistrationFormField[]> = {
 const registrationSteps = [
   { number: 1, label: "Meus dados" },
   { number: 2, label: "Coro e perfil" },
-  { number: 3, label: "Pagamento" },
+  { number: 3, label: "Modalidade" },
   { number: 4, label: "Revisão" },
 ] as const;
 
@@ -191,12 +192,17 @@ function RegistrationPriceSummary({
   return (
     <aside
       aria-label="Resumo do valor da inscrição"
-      className="registration-surface relative overflow-hidden p-5 lg:sticky lg:top-24"
+      className="registration-surface relative order-first overflow-hidden p-5 lg:order-last lg:sticky lg:top-24"
     >
       <div className="relative">
         <div className="flex items-center justify-between gap-3 border-b border-registration-line pb-3">
-          <h3 role="heading" aria-level={3} aria-label="Investimento" className="text-xs font-bold uppercase tracking-[0.12em] text-registration-ink">
-            Resumo do investimento
+          <h3
+            role="heading"
+            aria-level={3}
+            aria-label={appliedQuote?.pricingType === "free" ? "Resumo da inscrição" : "Pagamento de hoje"}
+            className="text-xs font-bold uppercase tracking-[0.12em] text-registration-ink"
+          >
+            {appliedQuote?.pricingType === "free" ? "Resumo da inscrição" : "Pagamento de hoje"}
           </h3>
           <ShieldCheck className="size-5 text-amber-600" aria-hidden="true" />
         </div>
@@ -215,29 +221,28 @@ function RegistrationPriceSummary({
               <div className="registration-investment-panel mt-4 space-y-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-bold">Pré-inscrição agora:</span>
+                    <span className="font-bold">Você paga hoje:</span>
                     <span className="text-3xl font-extrabold text-registration-ink">
                       {formatCurrency(appliedQuote.registrationPriceCents)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4 border-t border-registration-line pt-3">
-                    <span className="font-semibold">Valor restante:</span>
+                    <span className="font-semibold">Meta das rifas:</span>
                     <span className="font-bold text-registration-ink">{formatCurrency(remainingCents)}</span>
                   </div>
                 </div>
                 <p className="rounded-xl border border-amber/35 bg-amber/10 p-3 text-xs leading-relaxed text-registration-ink">
-                  Você está aderindo ao Programa de Venda de Rifas do seu coro, participando da
-                  venda de
-                  <strong> 25 rifas</strong> e realizando sua pré-inscrição no valor de{" "}
-                  <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong>. O valor
-                  restante de <strong>{formatCurrency(remainingCents)}</strong> deve ser enviado até
-                  30 de outubro.
+                  Você está aderindo ao Programa de Venda de Rifas do seu coro. Faça sua
+                  pré-inscrição no valor de{" "}
+                  <strong>{formatCurrency(appliedQuote.registrationPriceCents)}</strong> agora e
+                  assuma o compromisso de arrecadar{" "}
+                  <strong>{formatCurrency(remainingCents)} com 20 rifas</strong> junto ao seu coro.
                 </p>
               </div>
             ) : (
               <div className="registration-investment-panel mt-4 space-y-3">
                 <div className="flex items-end justify-between gap-4">
-                  <span className="font-bold">Valor da inscrição</span>
+                  <span className="font-bold">Você paga hoje</span>
                   <span className="text-3xl font-extrabold text-registration-ink">
                     {formatCurrency(appliedQuote.registrationPriceCents)}
                   </span>
@@ -277,7 +282,7 @@ function RegistrationPriceSummary({
             </span>
             <div className="min-w-0">
               <p className="text-xs font-bold text-registration-ink">InfinitePay · ambiente oficial</p>
-              <p className="text-[11px] text-registration-muted">Checkout seguro para concluir o pagamento.</p>
+              <p className="text-xs text-registration-muted">Checkout seguro para concluir o pagamento.</p>
             </div>
           </div>
         </div>}
@@ -368,7 +373,7 @@ export function RegistrationSection({
     mounted.current = true;
     const draft = loadRegistrationDraft();
     if (draft) {
-      setForm(draft.form);
+      setForm({ ...draft.form, participationType: draft.form.participationType ?? "complete" });
       setBirthDateInput(draft.birthDateInput ?? formatBirthDateInput(draft.form.birthDate));
       setPhoto(draft.photo);
       setPhotoFileName(draft.photoFileName);
@@ -393,18 +398,32 @@ export function RegistrationSection({
   const isOtherChoir = form.choirId === OTHER_CHOIR_VALUE;
   const displayedChoir = useMemo<PublicChoirOption | null>(() => {
     if (selectedChoir) return selectedChoir;
-    if (!isOtherChoir || configuration?.standardPriceCents === null || !configuration) return null;
+    if (
+      !isOtherChoir ||
+      !configuration ||
+      (form.participationType === "complete" && configuration.standardPriceCents === null)
+    ) {
+      return null;
+    }
     return {
       id: OTHER_CHOIR_VALUE,
       name: form.otherChoirName.trim() || "Outro",
       diocese: form.diocese || null,
       pricingType: "standard",
-      standardPriceCents: configuration.standardPriceCents,
-      registrationPriceCents: configuration.standardPriceCents,
+      standardPriceCents: configuration.standardPriceCents ?? configuration.eventPriceCents,
+      registrationPriceCents: configuration.standardPriceCents ?? configuration.eventPriceCents,
     };
-  }, [configuration, form.diocese, form.otherChoirName, isOtherChoir, selectedChoir]);
+  }, [configuration, form.diocese, form.otherChoirName, form.participationType, isOtherChoir, selectedChoir]);
   const displayedQuote = useMemo(() => {
     if (!displayedChoir) return null;
+    if (form.participationType === "event" && displayedChoir.pricingType !== "free") {
+      if (!configuration) return null;
+      return {
+        pricingType: "standard" as const,
+        standardPriceCents: configuration.eventPriceCents,
+        registrationPriceCents: configuration.eventPriceCents,
+      };
+    }
     const availableQuote: DisplayedQuote = {
       pricingType: displayedChoir.pricingType,
       standardPriceCents: displayedChoir.standardPriceCents,
@@ -416,7 +435,11 @@ export function RegistrationSection({
     const raffleChoice =
       displayedChoir.pricingType === "promotional" ? form.raffleChoice : "full_price";
     return raffleChoice ? applyRaffleChoice(availableQuote, raffleChoice) : null;
-  }, [displayedChoir, form.raffleChoice]);
+  }, [configuration, displayedChoir, form.participationType, form.raffleChoice]);
+  const reviewPaymentAmount =
+    displayedQuote && displayedQuote.pricingType !== "free"
+      ? formatCurrency(displayedQuote.registrationPriceCents)
+      : null;
 
   const filteredChoirs = useMemo(() => {
     const query = choirQuery.trim().toLocaleLowerCase("pt-BR");
@@ -453,7 +476,10 @@ export function RegistrationSection({
       const keepsExplicitChoice =
         previousChoir?.pricingType === "promotional" && nextChoir?.pricingType === "promotional";
       const raffleChoice =
-        choirId === OTHER_CHOIR_VALUE || nextChoir?.pricingType === "standard" || nextChoir?.pricingType === "free"
+        previous.participationType === "event" ||
+        choirId === OTHER_CHOIR_VALUE ||
+        nextChoir?.pricingType === "standard" ||
+        nextChoir?.pricingType === "free"
           ? "full_price"
           : keepsExplicitChoice
             ? previous.raffleChoice
@@ -470,6 +496,34 @@ export function RegistrationSection({
       choirId: undefined,
       otherChoirName: undefined,
       raffleChoice: undefined,
+    }));
+  };
+
+  const handleParticipationTypeChange = (participationType: ParticipationType) => {
+    setForm((previous) => {
+      const choir = configuration?.choirs.find((candidate) => candidate.id === previous.choirId);
+      return {
+        ...previous,
+        participationType,
+        raffleChoice:
+          participationType === "event" || choir?.pricingType !== "promotional" ? "full_price" : "",
+      };
+    });
+    setErrors((previous) => ({ ...previous, raffleChoice: undefined }));
+  };
+
+  const handleRegistrationOptionChange = (option: "event" | "raffle" | "full_price") => {
+    if (option === "event") {
+      handleParticipationTypeChange("event");
+      return;
+    }
+
+    if (option === "raffle" && selectedChoir?.pricingType !== "promotional") return;
+
+    handleParticipationTypeChange("complete");
+    setForm((previous) => ({
+      ...previous,
+      raffleChoice: option === "raffle" ? "participate" : "full_price",
     }));
   };
 
@@ -613,8 +667,12 @@ export function RegistrationSection({
       if (form.musicalProfile === "coralista" && !form.voicePart) {
         nextErrors.voicePart = "Selecione seu naipe vocal.";
       }
-    } else if (selectedChoir?.pricingType === "promotional" && !form.raffleChoice) {
-      nextErrors.raffleChoice = "Escolha como deseja realizar sua inscrição.";
+    } else if (
+      form.participationType === "complete" &&
+      selectedChoir?.pricingType === "promotional" &&
+      !form.raffleChoice
+    ) {
+      nextErrors.raffleChoice = "Escolha uma modalidade para continuar.";
     }
 
     setErrors((previous) => {
@@ -667,7 +725,7 @@ export function RegistrationSection({
       return;
     }
     if (!displayedQuote) {
-      const raffleChoiceError = "Escolha como deseja realizar sua inscrição.";
+      const raffleChoiceError = "Escolha uma modalidade para continuar.";
       setErrors((previous) => ({ ...previous, raffleChoice: raffleChoiceError }));
       focusFirstError({ raffleChoice: raffleChoiceError });
       return;
@@ -712,11 +770,14 @@ export function RegistrationSection({
         normalizedMessage.includes("configuração de preços mudou") ||
         normalizedMessage.includes("coro selecionado não está disponível");
       const emailConflict = normalizedMessage.includes("já existe um acesso com este e-mail");
+      const cpfConflict = normalizedMessage.includes("já existe uma inscrição para este cpf");
       setCheckoutError(
         externalCheckoutDisabled
           ? message
           : emailConflict
             ? message
+            : cpfConflict && selectedChoir?.pricingType === "free"
+              ? message
             : shouldRefresh
               ? "A configuração de preços mudou. Confira o valor e tente novamente."
               : selectedChoir?.pricingType === "free"
@@ -793,7 +854,7 @@ export function RegistrationSection({
                 {[
                   { number: 1, label: "Meus dados" },
                   { number: 2, label: "Coro e perfil" },
-                  { number: 3, label: selectedChoir?.pricingType === "free" ? "Gratuidade" : "Pagamento" },
+                  { number: 3, label: selectedChoir?.pricingType === "free" ? "Gratuidade" : "Modalidade" },
                   { number: 4, label: "Revisão" },
                 ].map((step) => {
                   const active = currentStep === step.number;
@@ -1118,11 +1179,17 @@ export function RegistrationSection({
                           aria-level={3}
                           className="block font-display text-xl font-extrabold text-foreground sm:text-2xl"
                         >
-                          {currentStep === 3 ? (selectedChoir?.pricingType === "free" ? "Inscrição gratuita" : "Pagamento") : "Sua participação"}
+                          {currentStep === 3
+                            ? selectedChoir?.pricingType === "free"
+                              ? "Inscrição gratuita"
+                              : "Modalidade"
+                            : "Sua participação"}
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
                           {currentStep === 3
-                            ? selectedChoir?.pricingType === "free" ? "Sua inscrição será analisada pelo administrador, sem cobrança." : "Escolha entre pagamento integral ou a opção promocional."
+                            ? selectedChoir?.pricingType === "free"
+                              ? "Sua inscrição será analisada pelo administrador, sem cobrança."
+                              : "Escolha o formato que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro."
                             : "Escolha seu coro e perfil musical."}
                         </span>
                       </span>
@@ -1198,7 +1265,11 @@ export function RegistrationSection({
                                     name="choirId"
                                     value={choir.id}
                                     checked={selected}
-                                    disabled={configuration?.standardPriceCents === null && choir.pricingType !== "free"}
+                                    disabled={
+                                      form.participationType === "complete" &&
+                                      configuration?.standardPriceCents === null &&
+                                      choir.pricingType !== "free"
+                                    }
                                     onChange={() => handleChoirChange(choir.id)}
                                     className="sr-only"
                                   />
@@ -1237,7 +1308,9 @@ export function RegistrationSection({
                                 value={OTHER_CHOIR_VALUE}
                                 checked={isOtherChoir}
                                 disabled={
-                                  !configuration || configuration.standardPriceCents === null
+                                  !configuration ||
+                                  (form.participationType === "complete" &&
+                                    configuration.standardPriceCents === null)
                                 }
                                 onChange={() => handleChoirChange(OTHER_CHOIR_VALUE)}
                                 className="sr-only"
@@ -1256,7 +1329,9 @@ export function RegistrationSection({
                             </label>
                           </div>
                         )}
-                        {configuration?.standardPriceCents === null && !configuration.choirs.some((choir) => choir.pricingType === "free") && (
+                        {form.participationType === "complete" &&
+                          configuration?.standardPriceCents === null &&
+                          !configuration.choirs.some((choir) => choir.pricingType === "free") && (
                           <p className="text-sm text-muted-foreground">
                             As inscrições estarão disponíveis após o cadastro do valor normal.
                           </p>
@@ -1375,132 +1450,195 @@ export function RegistrationSection({
                         )}
                       </div>
 
+                      {currentStep === 3 && displayedChoir?.pricingType !== "free" && (
+                        <fieldset
+                          id="raffleChoice"
+                          role="radiogroup"
+                          tabIndex={-1}
+                          aria-describedby={errors.raffleChoice ? "raffleChoice-error" : undefined}
+                          className="space-y-3"
+                        >
+                          <legend className="font-semibold text-foreground">Escolha sua modalidade</legend>
+                          <div className="space-y-3">
+                            <label
+                              data-testid="registration-option-event"
+                              data-surface="clear"
+                              data-selected={form.participationType === "event"}
+                              className={`block cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                form.participationType === "event"
+                                  ? "border-amber bg-amber/10 shadow-sm"
+                                  : "border-registration-line bg-white hover:border-amber/60"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="registrationOption"
+                                value="event"
+                                aria-label="Inscrição no Evento"
+                                checked={form.participationType === "event"}
+                                onChange={() => handleRegistrationOptionChange("event")}
+                                className="sr-only"
+                              />
+                              <span className="flex items-start justify-between gap-4">
+                                <span className="min-w-0">
+                                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-registration-muted">
+                                    PARTICIPAÇÃO INDIVIDUAL
+                                  </span>
+                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                    Inscrição no Evento
+                                  </strong>
+                                  <span className="mt-1 block text-sm text-registration-muted">
+                                    Acesso às formações, kit e certificado oficial
+                                  </span>
+                                  <span className="mt-4 block rounded-lg bg-stone-100 px-3 py-2.5">
+                                    <span className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-registration-muted">Investimento</span>
+                                    <span className="mt-1 flex flex-wrap items-baseline gap-2">
+                                      <strong className="font-display text-2xl text-registration-ink">{formatCurrency(configuration?.eventPriceCents ?? 8000)}</strong>
+                                      <span className="text-xs font-semibold text-registration-muted">• à vista</span>
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-registration-muted">Sem custos de hospedagem inclusos</span>
+                                  </span>
+                                  <span className="mt-4 block text-xs font-bold text-registration-muted">O que está incluso:</span>
+                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                    <li>Acesso integral a todas as formações litúrgicas</li>
+                                    <li>Kit oficial do participante com partituras impressas</li>
+                                    <li>Certificado de participação diocesano (horas acadêmicas)</li>
+                                  </ul>
+                                </span>
+                                {form.participationType === "event" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
+                              </span>
+                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
+                                form.participationType === "event" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              }`}>
+                                {form.participationType === "event" ? "Selecionado" : "Selecionar este plano"}
+                              </span>
+                            </label>
+
+                            <label
+                              data-testid="registration-option-raffle"
+                              data-surface="clear"
+                              data-selected={form.participationType === "complete" && form.raffleChoice === "participate"}
+                              className={`block rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                form.participationType === "complete" && form.raffleChoice === "participate"
+                                  ? "border-amber bg-amber/10 shadow-sm"
+                                  : selectedChoir?.pricingType === "promotional"
+                                    ? "cursor-pointer border-registration-line bg-white hover:border-amber/60"
+                                    : "cursor-not-allowed border-registration-line bg-muted/30 opacity-65"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="registrationOption"
+                                value="raffle"
+                                aria-label="Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"
+                                checked={form.participationType === "complete" && form.raffleChoice === "participate"}
+                                disabled={selectedChoir?.pricingType !== "promotional"}
+                                onChange={() => handleRegistrationOptionChange("raffle")}
+                                className="sr-only"
+                              />
+                              <span className="flex items-start justify-between gap-4">
+                                <span className="min-w-0">
+                                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-700">
+                                    EXPERIÊNCIA COMPLETA SUBSIDIADA
+                                  </span>
+                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                    Inscrição + Hospedagem e Alimentação
+                                  </strong>
+                                  <span className="mt-1 block text-sm text-registration-muted">Entrada facilitada com programa diocesano de rifas</span>
+                                  <span className="mt-4 block rounded-lg bg-amber-50 px-3 py-2.5">
+                                    <span className="block text-[0.68rem] font-bold uppercase leading-tight tracking-[0.12em] text-amber-800">Entrada inicial hoje</span>
+                                    <span className="mt-1 flex flex-wrap items-baseline gap-2">
+                                      <strong className="font-display text-2xl text-registration-ink">{formatCurrency(selectedChoir?.registrationPriceCents ?? 10000)}</strong>
+                                      <span className="text-xs font-semibold text-registration-muted">hoje no ato</span>
+                                    </span>
+                                    <span className="mt-1 inline-flex rounded-md bg-amber-700 px-2 py-1 text-xs font-black leading-tight text-white">20 Rifas Cobrem o Resto</span>
+                                    <span className="mt-1 block text-xs text-registration-muted">Total nominal do pacote: R$ 300,00</span>
+                                  </span>
+                                  <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm text-registration-ink">
+                                    <strong className="block">Como funciona o subsídio:</strong>
+                                    <span className="mt-1 block text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas paroquiais de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</span>
+                                  </div>
+                                  <span className="mt-4 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>
+                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                    <li>Hospedagem no Centro Diocesano de Pastoral</li>
+                                    <li>Alimentação completa durante todos os dias (pensão total)</li>
+                                    <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
+                                  </ul>
+                                  {selectedChoir?.pricingType !== "promotional" && (
+                                    <span className="mt-3 block text-xs text-registration-muted">Disponível apenas para coros participantes do programa de rifas.</span>
+                                  )}
+                                </span>
+                                {form.participationType === "complete" && form.raffleChoice === "participate" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
+                              </span>
+                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
+                                form.participationType === "complete" && form.raffleChoice === "participate" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              }`}>
+                                {form.participationType === "complete" && form.raffleChoice === "participate" ? "Selecionado" : "Selecionar este plano"}
+                              </span>
+                            </label>
+
+                            <label
+                              data-testid="registration-option-full-price"
+                              data-surface="clear"
+                              data-selected={form.participationType === "complete" && form.raffleChoice === "full_price"}
+                              className={`block cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                                form.participationType === "complete" && form.raffleChoice === "full_price"
+                                  ? "border-amber bg-amber/10 shadow-sm"
+                                  : "border-registration-line bg-white hover:border-amber/60"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="registrationOption"
+                                value="full_price"
+                                aria-label="Inscrição + Hospedagem e Alimentação — Pagamento integral"
+                                checked={form.participationType === "complete" && form.raffleChoice === "full_price"}
+                                onChange={() => handleRegistrationOptionChange("full_price")}
+                                className="sr-only"
+                              />
+                              <span className="flex items-start justify-between gap-4">
+                                <span className="min-w-0">
+                                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-registration-muted">SEM GESTÃO DE RIFAS</span>
+                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                    Inscrição + Hospedagem e Alimentação
+                                  </strong>
+                                  <span className="mt-1 block text-sm text-registration-muted">Pagamento integral direto (sem necessidade de venda de rifas)</span>
+                                  <span className="mt-4 block rounded-lg bg-stone-100 px-3 py-2.5">
+                                    <span className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-registration-muted">Valor total único</span>
+                                    <span className="mt-1 flex flex-wrap items-baseline gap-2">
+                                      <strong className="font-display text-2xl text-registration-ink">{formatCurrency(displayedChoir?.standardPriceCents ?? 30000)}</strong>
+                                      <span className="text-xs font-semibold text-registration-muted">• à vista ou até 3x</span>
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-registration-muted">Quitação completa imediata</span>
+                                  </span>
+                                  <span className="mt-4 block text-xs font-bold text-registration-muted">O que está incluso:</span>
+                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                    <li>Hospedagem no Centro Diocesano de Pastoral</li>
+                                    <li>Alimentação completa durante todos os dias (pensão total)</li>
+                                    <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
+                                  </ul>
+                                </span>
+                                {form.participationType === "complete" && form.raffleChoice === "full_price" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
+                              </span>
+                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
+                                form.participationType === "complete" && form.raffleChoice === "full_price" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              }`}>
+                                {form.participationType === "complete" && form.raffleChoice === "full_price" ? "Selecionado" : "Selecionar este plano"}
+                              </span>
+                            </label>
+                          </div>
+                          {errors.raffleChoice && (
+                            <p id="raffleChoice-error" role="alert" className="mt-3 text-sm text-destructive">
+                              {errors.raffleChoice}
+                            </p>
+                          )}
+                        </fieldset>
+                      )}
+
                       {currentStep === 3 && displayedChoir?.pricingType === "free" && (
                         <div className="mx-auto max-w-2xl rounded-xl border border-amber/35 bg-amber/10 p-5 text-sm text-registration-ink">
                           <strong>Inscrição gratuita</strong>
                           <p className="mt-2">Após o envio, o administrador analisará e aprovará sua inscrição. Nenhum pagamento será solicitado.</p>
-                        </div>
-                      )}
-                      {currentStep === 3 && displayedChoir && displayedChoir.pricingType !== "free" && (
-                        <div className="mx-auto max-w-2xl">
-                          <fieldset
-                            id="raffleChoice"
-                            role="radiogroup"
-                            tabIndex={-1}
-                            aria-describedby={
-                              errors.raffleChoice ? "raffleChoice-error" : undefined
-                            }
-                            className="rounded-xl border border-border bg-muted/35 p-4 outline-none"
-                          >
-                            <legend className="font-semibold text-foreground">
-                              Como deseja realizar sua inscrição?
-                            </legend>
-                            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                              {isOtherChoir
-                                ? "Para coros informados manualmente, a inscrição é realizada pelo valor integral."
-                                : "Escolha a opção que funciona melhor para você. Confira abaixo quanto pagar agora e quando sua vaga será confirmada."}
-                            </p>
-                            <div
-                              className={`registration-choice-grid mt-4 grid gap-3 ${isOtherChoir ? "max-w-md" : "sm:grid-cols-2"}`}
-                            >
-                              {selectedChoir?.pricingType === "promotional" && (
-                                <label
-                                  data-testid="payment-option-raffle"
-                                  data-surface="clear"
-                                  data-selected={form.raffleChoice === "participate"}
-                                  className="cursor-pointer"
-                                >
-                                  <input
-                                    type="radio"
-                                    name="raffleChoice"
-                                    value="participate"
-                                    aria-label="Quero participar do Programa de Venda de Rifas"
-                                    checked={form.raffleChoice === "participate"}
-                                    onChange={(event) =>
-                                      handleChange("raffleChoice", event.target.value)
-                                    }
-                                    className="peer sr-only"
-                                  />
-                                  <span
-                                    className={`registration-payment-option flex min-h-48 flex-col rounded-xl border p-4 transition-colors hover:border-amber peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60 ${form.raffleChoice === "participate" ? "border-amber bg-amber-50 text-registration-ink shadow-sm" : "border-registration-line bg-white text-registration-ink"}`}
-                                  >
-                                    <span className="flex items-start gap-3">
-                                      <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
-                                        <Ticket className="size-5" aria-hidden="true" />
-                                      </span>
-                                      <span className="font-bold leading-snug">
-                                        Participar do Programa de Venda de Rifas
-                                      </span>
-                                    </span>
-                                    <strong className="mt-4 block font-display text-xl font-extrabold">
-                                      Pague {formatCurrency(selectedChoir.registrationPriceCents)}{" "}
-                                      agora
-                                    </strong>
-                                    <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
-                                      Você faz sua pré-inscrição, participa da venda de 25 rifas e
-                                      envia o restante de{" "}
-                                      {formatCurrency(
-                                        selectedChoir.remainingPriceCents ??
-                                          selectedChoir.standardPriceCents -
-                                            selectedChoir.registrationPriceCents,
-                                      )}{" "}
-                                      até 30 de outubro. Os blocos de rifas serão entregues ao
-                                      regente ou responsável, que fará a distribuição aos
-                                      coralistas e a prestação de contas. Sua vaga será confirmada
-                                      após esse pagamento.
-                                    </span>
-                                  </span>
-                                </label>
-                              )}
-                              <label
-                                data-testid="payment-option-full-price"
-                                data-surface="clear"
-                                data-selected={form.raffleChoice === "full_price"}
-                                className="cursor-pointer"
-                              >
-                                <input
-                                  type="radio"
-                                  name="raffleChoice"
-                                  value="full_price"
-                                  aria-label="Prefiro pagar a inscrição integral"
-                                  checked={form.raffleChoice === "full_price"}
-                                  onChange={(event) =>
-                                    handleChange("raffleChoice", event.target.value)
-                                  }
-                                  className="peer sr-only"
-                                />
-                                <span
-                                  className={`registration-payment-option flex min-h-48 flex-col rounded-xl border p-4 transition-colors hover:border-amber peer-focus-visible:ring-2 peer-focus-visible:ring-amber/60 ${form.raffleChoice === "full_price" ? "border-amber bg-amber-50 text-registration-ink shadow-sm" : "border-registration-line bg-white text-registration-ink"}`}
-                                >
-                                  <span className="flex items-start gap-3">
-                                    <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-current/20">
-                                      <CreditCard className="size-5" aria-hidden="true" />
-                                    </span>
-                                    <span className="font-bold leading-snug">
-                                      Pagar a inscrição integral
-                                    </span>
-                                  </span>
-                                  <strong className="mt-4 block font-display text-xl font-extrabold">
-                                    Pague {formatCurrency(displayedChoir.standardPriceCents)} agora
-                                  </strong>
-                                  <span className="mt-2 block text-sm font-normal leading-relaxed opacity-75">
-                                    Conclua sua inscrição em um único pagamento via Pix ou em até 5x
-                                    no cartão. Sua vaga será confirmada após a aprovação do
-                                    pagamento.
-                                  </span>
-                                </span>
-                              </label>
-                            </div>
-                            {errors.raffleChoice && (
-                              <p
-                                id="raffleChoice-error"
-                                role="alert"
-                                className="mt-3 text-sm text-destructive"
-                              >
-                                {errors.raffleChoice}
-                              </p>
-                            )}
-                          </fieldset>
                         </div>
                       )}
 
@@ -1570,7 +1708,12 @@ export function RegistrationSection({
 
               {currentStep === 4 && (
                 <div className="registration-review grid items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
-                  <div className="space-y-6">
+                  <RegistrationPriceSummary
+                    selectedChoir={displayedChoir}
+                    appliedQuote={displayedQuote}
+                    raffleChoice={form.raffleChoice}
+                  />
+                  <div className="order-last space-y-6 lg:order-first">
                     <div className="flex items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
                         <BadgeCheck className="size-5" aria-hidden="true" />
@@ -1590,7 +1733,7 @@ export function RegistrationSection({
                           <BadgeCheck className="size-4" aria-hidden="true" />
                         </span>
                         <span role="heading" aria-level={4} className="text-xs font-extrabold uppercase tracking-[0.12em] text-registration-ink">
-                          Credencial do coralista
+                          Confira seus dados
                         </span>
                       </div>
                       <button
@@ -1631,13 +1774,23 @@ export function RegistrationSection({
                             ]
                           : []),
                         [
-                          "Programa de rifas",
-                          displayedQuote?.pricingType === "free"
-                            ? "Não se aplica"
-                            : form.raffleChoice === "participate"
-                            ? "Participarei"
-                            : "Pagamento integral",
+                          "Formato de inscrição",
+                          form.participationType === "event"
+                            ? "Inscrição no evento"
+                            : "Inscrição no evento, hospedagem e alimentação",
                         ],
+                        ...(form.participationType === "complete"
+                          ? [
+                              [
+                                "Programa de rifas",
+                                displayedQuote?.pricingType === "free"
+                                  ? "Não se aplica"
+                                  : form.raffleChoice === "participate"
+                                    ? "Participarei"
+                                    : "Pagamento integral",
+                              ],
+                            ]
+                          : []),
                         ["Foto", photoFileName],
                       ].map(([label, value]) => (
                         <div key={label} className="min-w-0 rounded-xl border border-registration-line bg-white p-3">
@@ -1656,7 +1809,7 @@ export function RegistrationSection({
                           <Music2 className="size-4" aria-hidden="true" />
                         </span>
                         <span role="heading" aria-level={4} className="text-xs font-extrabold uppercase tracking-[0.12em] text-registration-ink">
-                          Participação e pagamento
+                          Precisa ajustar algo?
                         </span>
                       </div>
                       <div className="registration-review-edit-actions">
@@ -1672,16 +1825,11 @@ export function RegistrationSection({
                           onClick={() => setCurrentStep(3)}
                           className="registration-edit-button"
                         >
-                          Editar pagamento
+                          Editar modalidade
                         </button>
                       </div>
                     </div>
                   </div>
-                  <RegistrationPriceSummary
-                    selectedChoir={displayedChoir}
-                    appliedQuote={displayedQuote}
-                    raffleChoice={form.raffleChoice}
-                  />
                 </div>
               )}
 
@@ -1723,7 +1871,9 @@ export function RegistrationSection({
                     disabled={
                       isSubmitting ||
                       !configuration ||
-                      (configuration.standardPriceCents === null && !configuration.choirs.some((choir) => choir.pricingType === "free")) ||
+                      (form.participationType === "complete" &&
+                        configuration.standardPriceCents === null &&
+                        !configuration.choirs.some((choir) => choir.pricingType === "free")) ||
                       (currentStep === 4 && (!displayedChoir || !displayedQuote))
                     }
                     className="min-h-12 w-full rounded-lg bg-foreground px-7 text-base font-extrabold text-background hover:bg-foreground/90"
@@ -1732,7 +1882,11 @@ export function RegistrationSection({
                       {isSubmitting
                         ? displayedQuote?.pricingType === "free" ? "Enviando inscrição…" : "Preparando seu pagamento…"
                         : currentStep === 4
-                          ? displayedQuote?.pricingType === "free" ? "Enviar inscrição gratuita" : "Pagar com segurança na InfinitePay"
+                          ? displayedQuote?.pricingType === "free"
+                            ? "Enviar inscrição gratuita"
+                            : reviewPaymentAmount
+                              ? `Ir para pagamento de ${reviewPaymentAmount} na InfinitePay`
+                              : "Ir para pagamento na InfinitePay"
                           : "Continuar"}
                     </span>
                     {!isSubmitting && <ArrowRight className="ml-2 size-5" aria-hidden="true" />}
@@ -1741,7 +1895,9 @@ export function RegistrationSection({
                 {currentStep === 4 && displayedQuote?.pricingType !== "free" && (
                   <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs leading-relaxed text-muted-foreground">
                     <img src={infinitePayLogo} alt="InfinitePay" className="h-4 w-auto" />
-                    <span>Você será direcionado ao ambiente seguro da InfinitePay.</span>
+                    <span>
+                      Você será direcionado para pagar {reviewPaymentAmount} no ambiente seguro da InfinitePay.
+                    </span>
                   </p>
                 )}
                 <p className="flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-muted-foreground">

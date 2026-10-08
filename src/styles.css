@@ -1134,14 +1134,28 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-page #inscricao .public-registration-option {
-  min-height: 18.5rem;
   padding: 1.5rem;
 }
 
-.public-event-page #inscricao .public-registration-option .font-display {
-  font-size: clamp(2.35rem, 3.8vw, 3.15rem);
+.public-event-page #inscricao .public-registration-option h3.font-display {
+  font-size: clamp(1.95rem, 3.2vw, 2.65rem);
   letter-spacing: -0.045em;
   line-height: 0.95;
+}
+
+.public-event-page #inscricao .public-registration-option .public-registration-price {
+  font-size: clamp(2.1rem, 3.4vw, 2.95rem);
+  line-height: 0.95;
+}
+
+.public-event-page #inscricao .public-registration-option-summary {
+  min-height: 1.15rem;
+  letter-spacing: 0.01em;
+}
+
+.public-event-page #inscricao .public-registration-raffle-note {
+  border-color: #d59d1c;
+  box-shadow: 0 4px 12px rgba(130, 84, 0, 0.12);
 }
 
 .public-event-page #inscricao .public-registration-price {
@@ -1283,7 +1297,20 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
   }
 
   .public-event-page #inscricao .public-registration-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .public-event-page #inscricao .public-registration-option {
+    padding: 1.25rem;
+  }
+
+  .public-event-page #inscricao .public-registration-option h3.font-display {
+    font-size: clamp(1.7rem, 2.35vw, 2.1rem);
+    line-height: 0.98;
+  }
+
+  .public-event-page #inscricao .public-registration-option .public-registration-price {
+    font-size: clamp(1.9rem, 2.9vw, 2.5rem);
   }
 
   .public-event-page #inscricao .public-giveaway-books img {
@@ -1621,13 +1648,8 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
   }
 
-  .public-event-page #inscricao .public-registration-heading > p:first-child {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.625rem;
-  }
-
   .public-event-page #inscricao .public-registration-title {
-    margin-top: 0.75rem;
+    margin-top: 0;
     font-size: clamp(1.9rem, 9vw, 2.4rem);
     line-height: 1.02;
   }
@@ -1652,9 +1674,13 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
     font-size: 0.625rem;
   }
 
-  .public-event-page #inscricao .public-registration-option .font-display {
-    font-size: 2.25rem;
+  .public-event-page #inscricao .public-registration-option h3.font-display {
+    font-size: clamp(1.85rem, 8.5vw, 2.25rem);
     line-height: 0.95;
+  }
+
+  .public-event-page #inscricao .public-registration-option .public-registration-price {
+    font-size: 2.25rem;
   }
 
   .public-event-page #inscricao .public-registration-option p,

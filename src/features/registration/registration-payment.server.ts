@@ -226,6 +226,7 @@ export function createRegistrationPaymentService(deps: {
   now: () => string;
   resolveChoirSelection: (choirId: string) => Promise<ResolvedChoirSelection>;
   resolveStandardRegistrationQuote: () => Promise<DisplayedQuote>;
+  resolveEventParticipationQuote: () => Promise<DisplayedQuote>;
   provisionParticipant: (registrationId: string) => Promise<{ status: ParticipantAccessStatus }>;
   findAuthUserByEmail?: (email: string) => Promise<{ id: string } | null>;
   getParticipantPortalAccessLink?: (registrationId: string) => Promise<string | null>;
@@ -339,10 +340,18 @@ export function createRegistrationPaymentService(deps: {
       }
 
       const selection = input.choirId ? await deps.resolveChoirSelection(input.choirId) : null;
-      const trustedQuote = selection
+      const completeQuote = selection
         ? selection.quote
         : await deps.resolveStandardRegistrationQuote();
-      const appliedQuote = applyRaffleChoice(trustedQuote, input.raffleChoice);
+      const trustedQuote =
+        input.participationType === "event" && completeQuote.pricingType !== "free"
+          ? await deps.resolveEventParticipationQuote()
+          : completeQuote;
+      if (input.participationType === "event" && input.raffleChoice !== "full_price") {
+        throw new Error("O programa de rifas não está disponível para a inscrição no evento.");
+      }
+      const appliedQuote =
+        input.participationType === "event" ? trustedQuote : applyRaffleChoice(trustedQuote, input.raffleChoice);
       const quoteChanged =
         input.displayedQuote.pricingType !== appliedQuote.pricingType ||
         input.displayedQuote.standardPriceCents !== appliedQuote.standardPriceCents ||
@@ -1394,6 +1403,7 @@ export function getRegistrationPaymentService() {
       resolveChoirSelection: (choirId) => getChoirPricingService().resolveActiveChoir(choirId),
       resolveStandardRegistrationQuote: () =>
         getChoirPricingService().resolveStandardRegistrationQuote(),
+      resolveEventParticipationQuote: () => getChoirPricingService().resolveEventParticipationQuote(),
       findAuthUserByEmail: async (email) => {
         const { createSupabaseParticipantAuthAdmin } =
           await import("@/features/participant/participant-provisioning.server");

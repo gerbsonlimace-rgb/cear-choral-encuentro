@@ -21,6 +21,7 @@ const draft: RegistrationDraft = {
     choirId: "11111111-1111-4111-8111-111111111111",
     otherChoirName: "",
     musicalProfile: "coralista",
+    participationType: "complete",
     raffleChoice: "participate",
     voicePart: "soprano",
   },
@@ -62,6 +63,16 @@ describe("registration draft", () => {
     expect(loadRegistrationDraft(savedAt + 1)?.form.musicalProfile).toBe("coralista");
   });
 
+  it("uses the complete format for drafts saved before the participation choice", () => {
+    const { participationType: _participationType, ...legacyForm } = draft.form;
+    window.localStorage.setItem(
+      REGISTRATION_DRAFT_STORAGE_KEY,
+      JSON.stringify({ version: 1, savedAt, ...draft, form: legacyForm }),
+    );
+
+    expect(loadRegistrationDraft(savedAt + 1)?.form.participationType).toBe("complete");
+  });
+
   it("preserves a partially typed birth date even when it is the only entered field", () => {
     const partialBirthDateDraft: RegistrationDraft = {
       form: {
@@ -75,6 +86,7 @@ describe("registration draft", () => {
         choirId: "",
         otherChoirName: "",
         musicalProfile: "",
+        participationType: "complete",
         raffleChoice: "",
         voicePart: "",
       },

@@ -234,11 +234,11 @@ describe("landing page access", () => {
       }),
     ).toBeVisible();
 
-    const options = within(registration!).getByRole("article", {
-      name: "Inscrição Integral",
+    const completeRegistration = within(registration!).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
     });
     expect(
-      options.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
+      completeRegistration.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -253,7 +253,7 @@ describe("landing page access", () => {
     ).toBeVisible();
     expect(
       within(registration!).getByText(
-        "Selecione a modalidade ideal para sua vaga. Todas as opções garantem credenciamento completo, partituras originais e certificado oficial.",
+        "Escolha o formato que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro.",
       ),
     ).toBeVisible();
 
@@ -283,10 +283,12 @@ describe("landing page access", () => {
     expect(
       within(registration!).queryByRole("region", { name: "Resumo do plano selecionado" }),
     ).not.toBeInTheDocument();
+    expect(within(registration!).getByRole("article", { name: "Inscrição no evento" })).toBeVisible();
     expect(
-      within(registration!).getByRole("article", { name: "Inscrição Integral" }),
+      within(registration!).getByRole("article", {
+        name: "Inscrição + hospedagem e alimentação",
+      }),
     ).toBeVisible();
-    expect(within(registration!).getByRole("article", { name: "Programa de Rifas" })).toBeVisible();
   });
 
   it.skip("presents the included benefits before a full-width registration choice", async () => {
@@ -418,19 +420,24 @@ describe("landing page access", () => {
     expect(raffleOption).toBeChecked();
   });
 
-  it("keeps informational cards compact and free of the removed integral benefits", () => {
+  it("shows the complete participation benefits without turning the home into a payment selector", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
-    const integralCard = within(registration!).getByRole("article", {
-      name: "Inscrição Integral",
+    const completeCard = within(registration!).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
     });
-    expect(integralCard).not.toBeNull();
-    expect(integralCard).toHaveClass("p-5");
-    expect(integralCard).not.toHaveTextContent("Acesso a todas as sessões formativas");
-    expect(integralCard).not.toHaveTextContent("Caderno oficial de partituras");
+    expect(completeCard).toHaveClass("p-5");
+    expect(completeCard).toHaveTextContent("Acesso a todas as formações");
+    expect(completeCard).toHaveTextContent("Kit de participação");
+    expect(completeCard).toHaveTextContent("Certificado de participação");
+    expect(completeCard).toHaveTextContent("Alimentação em todos os dias do evento");
+    expect(completeCard).toHaveTextContent(
+      "Hospedagem no Centro Diocesano de Pastoral durante todos os dias do evento",
+    );
+    expect(completeCard).not.toHaveTextContent("R$ 100 agora");
     expect(within(registration!).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();
     const primaryActionLink = registration!.querySelector<HTMLElement>(
       ".public-registration-primary-action a",

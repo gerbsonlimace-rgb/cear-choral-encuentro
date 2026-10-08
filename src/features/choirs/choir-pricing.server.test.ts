@@ -69,6 +69,7 @@ describe("choir pricing service", () => {
 
     await expect(service.getPublicConfiguration()).resolves.toEqual({
       standardPriceCents: 30000,
+      eventPriceCents: 8000,
       choirs: [
         {
           id: promotionalChoir.id,
@@ -119,6 +120,7 @@ describe("choir pricing service", () => {
     }));
     await expect(service.getPublicConfiguration()).resolves.toEqual({
       standardPriceCents: null,
+      eventPriceCents: 8000,
       choirs: [{ id: freeChoir.id, name: freeChoir.name, diocese: freeChoir.diocese,
         pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 }],
     });

@@ -1,5 +1,4 @@
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,69 +23,146 @@ function getRegistrationSection() {
 }
 
 describe("RegistrationCallout", () => {
-  it("puts the registration choices before shared benefits and the giveaway", () => {
+  it("presents each modality with the investment block, context label, and selection action", () => {
     render(<RegistrationCallout />);
 
     const registration = getRegistrationSection();
-    const integral = within(registration).getByRole("article", {
-      name: "Inscrição Integral",
-    });
+    const event = within(registration).getByRole("article", { name: "Inscrição no evento" });
     const raffle = within(registration).getByRole("article", {
-      name: "Programa de Rifas",
+      name: "Inscrição + hospedagem e alimentação com rifas",
     });
-    const benefits = within(registration).getByRole("list", {
-      name: "Benefícios gerais da inscrição",
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
+    });
+
+    expect(within(event).getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeVisible();
+    expect(within(event).getByText("Sem custos de hospedagem inclusos")).toBeVisible();
+    expect(within(event).getByRole("link", { name: "Selecionar este plano" })).toHaveAttribute(
+      "href",
+      "/inscricao",
+    );
+    expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
+    expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
+    expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
+    expect(within(raffle).getByRole("link", { name: "Selecionar este plano" })).toHaveAttribute(
+      "href",
+      "/inscricao",
+    );
+    expect(within(complete).getByText("SEM GESTÃO DE RIFAS")).toBeVisible();
+    expect(within(complete).getByText("Valor total único")).toBeVisible();
+    expect(within(complete).getByText(/à vista ou até 3x/)).toBeVisible();
+  });
+
+  it("starts with the event-only registration and its participation benefits", () => {
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+    const event = within(registration).getByRole("article", {
+      name: "Inscrição no evento",
+    });
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
     });
     const giveaway = within(registration).getByRole("region", {
       name: "Sorteio especial para inscrições até 30 de setembro",
     });
 
     expect(
-      integral.compareDocumentPosition(benefits) & Node.DOCUMENT_POSITION_FOLLOWING,
+      event.compareDocumentPosition(complete) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      raffle.compareDocumentPosition(benefits) & Node.DOCUMENT_POSITION_FOLLOWING,
+      complete.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(within(event).getByRole("heading", { name: "Inscrição no Evento" })).toBeVisible();
+    expect(within(event).getByText("Acesso integral a todas as formações litúrgicas")).toBeVisible();
+    expect(within(event).getByText("Kit oficial do participante com partituras impressas")).toBeVisible();
+    expect(within(event).getByText("Certificado de participação diocesano (horas acadêmicas)")).toBeVisible();
     expect(
-      benefits.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(within(benefits).getByText("Formações & Certificado")).toBeVisible();
-    expect(within(benefits).getByText("Alimentação Completa")).toBeVisible();
-    expect(within(benefits).getByText("Hospedagem (Quartos duplos ou triplos)")).toBeVisible();
-    expect(within(benefits).getByText("Kit com Partituras")).toBeVisible();
+      within(event).queryByText(/Alimentação e hospedagem são detalhes não incluídos/),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps the raffle card compact and opens its five-step regulation dialog", async () => {
-    const user = userEvent.setup();
+  it("orders the public registration cards by entry price and explains the raffle commitment", () => {
     render(<RegistrationCallout />);
 
     const registration = getRegistrationSection();
+    const event = within(registration).getByRole("article", {
+      name: "Inscrição no evento",
+    });
     const raffle = within(registration).getByRole("article", {
-      name: "Programa de Rifas",
+      name: "Inscrição + hospedagem e alimentação com rifas",
+    });
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
     });
 
-    expect(within(raffle).getByText(/Venda mínima de 25 rifas de R\$ 10/)).toBeVisible();
-    expect(within(raffle).getByText(/Prestação de contas até 30\/10 com o regente/)).toBeVisible();
-    expect(within(raffle).getByText(/Concorra a R\$ 1\.000 no sorteio/)).toBeVisible();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      event.compareDocumentPosition(raffle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      raffle.compareDocumentPosition(complete) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
+    expect(within(raffle).getByText(/as vendas cobrem integralmente os R\$ 200,00 restantes/i)).toBeVisible();
+    expect(within(raffle).getByText("R$ 100,00")).toBeVisible();
+    expect(within(raffle).getByText(/20 rifas paroquiais/i)).toBeVisible();
+    expect(within(raffle).getByText(/R\$ 200,00/i)).toBeVisible();
+  });
 
-    await user.click(
-      within(raffle).getByRole("button", {
-        name: /Ver regulamento e etapas das rifas/,
-      }),
+  it("keeps the card headers focused on the participation titles", () => {
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+
+    expect(within(registration).queryByText("Participação no evento")).not.toBeInTheDocument();
+    expect(within(registration).queryByText("Programa de rifas")).not.toBeInTheDocument();
+    expect(within(registration).queryByText("Participação com estadia")).not.toBeInTheDocument();
+  });
+
+  it("makes the participation and payment differences scannable inside each card", () => {
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+    const event = within(registration).getByRole("article", {
+      name: "Inscrição no evento",
+    });
+    const raffle = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação com rifas",
+    });
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
+    });
+
+    expect(within(event).getByTestId("registration-option-summary")).toHaveTextContent(
+      "Acesso às formações, kit e certificado oficial",
     );
+    expect(within(raffle).getByTestId("registration-option-summary")).toHaveTextContent(
+      "Entrada facilitada com programa diocesano de rifas",
+    );
+    expect(within(complete).getByTestId("registration-option-summary")).toHaveTextContent(
+      "Pagamento integral direto (sem necessidade de venda de rifas)",
+    );
+    expect(within(raffle).getByText(/Você paga apenas R\$ 100 agora/)).toBeVisible();
+    expect(within(raffle).getByText(/20 rifas paroquiais de R\$ 10.*R\$ 200,00 restantes/i)).toBeVisible();
+  });
 
-    const dialog = await screen.findByRole("dialog", {
-      name: "Regulamento do Programa de Rifas",
+  it("explains the complete stay modality without payment mechanics", () => {
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
     });
-    expect(within(dialog).getByText(/Pague R\$ 100 agora/)).toBeVisible();
-    expect(within(dialog).getByText(/Agende com seu regente/)).toBeVisible();
-    expect(within(dialog).getByText(/Venda pelo menos 25 rifas/)).toBeVisible();
-    expect(within(dialog).getByText(/Envie o valor arrecadado/)).toBeVisible();
-    expect(within(dialog).getByText(/Sorteio do prêmio de R\$ 1\.000/)).toBeVisible();
 
-    await user.click(within(dialog).getByRole("button", { name: "Entendido, fechar" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      within(complete).getByRole("heading", { name: "Inscrição + Hospedagem e Alimentação" }),
+    ).toBeVisible();
+    expect(within(complete).getByText("Valor total único")).toBeVisible();
+    expect(within(complete).getByText("R$ 300,00")).toBeVisible();
+    expect(within(complete).getByText("Hospedagem no Centro Diocesano de Pastoral")).toBeVisible();
+    expect(within(complete).getByText("Alimentação completa durante todos os dias (pensão total)")).toBeVisible();
+    expect(within(complete).getByText("Acesso a todas as formações, ensaios gerais, kit e certificado")).toBeVisible();
+    expect(within(complete).queryByText(/R\$ 100 agora/)).not.toBeInTheDocument();
   });
 
   it("separates the primary action and lays out the giveaway as a horizontal card", () => {
@@ -97,7 +173,6 @@ describe("RegistrationCallout", () => {
     const primaryAction = registration.querySelector<HTMLElement>(
       "[data-registration-primary-action]",
     );
-    const benefits = registration.querySelector<HTMLElement>(".public-registration-benefits");
     const giveaway = registration.querySelector<HTMLElement>(
       '[aria-label^="Sorteio especial"]',
     );
@@ -107,18 +182,17 @@ describe("RegistrationCallout", () => {
     expect(registration.querySelector(".public-registration-intro")).not.toBeNull();
     expect(registration.querySelector(".public-registration-option")).not.toBeNull();
     expect(primaryAction).not.toBeNull();
-    expect(benefits).not.toBeNull();
     expect(
       options!.compareDocumentPosition(primaryAction!) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      primaryAction!.compareDocumentPosition(benefits!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(within(primaryAction!).getByRole("link", { name: "Fazer Inscrição" })).toHaveAttribute(
       "href",
       "/inscricao",
     );
     expect(giveaway).not.toBeNull();
+    expect(
+      primaryAction!.compareDocumentPosition(giveaway!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(within(giveaway!).getByLabelText("Livros do sorteio")).toBeVisible();
     expect(giveaway!.querySelector(".public-giveaway-books")).not.toBeNull();
     expect(giveaway!.querySelector(".public-giveaway-action")).not.toBeNull();
@@ -135,10 +209,11 @@ describe("RegistrationCallout", () => {
       getRegistrationSection().querySelectorAll<HTMLElement>(".public-registration-price"),
     );
 
-    expect(prices).toHaveLength(2);
+    expect(prices).toHaveLength(3);
     expect(prices.map((price) => price.textContent?.trim())).toEqual([
-      "R$ 300,00",
+      "R$ 80,00",
       "R$ 100,00",
+      "R$ 300,00",
     ]);
   });
 

@@ -14,6 +14,7 @@ const canindeId = "33333333-3333-4333-8333-333333333333";
 
 const configuration: PublicRegistrationConfiguration = {
   standardPriceCents: 30000,
+  eventPriceCents: 8000,
   choirs: [
     {
       id: quixadaId,
@@ -22,7 +23,7 @@ const configuration: PublicRegistrationConfiguration = {
       pricingType: "promotional",
       standardPriceCents: 30000,
       registrationPriceCents: 10000,
-      remainingPriceCents: 25000,
+      remainingPriceCents: 20000,
     },
     {
       id: sobralId,
@@ -44,6 +45,8 @@ const configuration: PublicRegistrationConfiguration = {
 };
 const loadConfiguration = vi.fn(async () => configuration);
 const available = vi.fn(async () => ({ cpfTaken: false, emailTaken: false }));
+const paymentButtonName = (amount: string) =>
+  new RegExp(`Ir para pagamento de R\\$\\s*${amount} na InfinitePay`);
 
 async function fillPersonalData(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Nome completo para certificado"), "Maria da Silva");
@@ -82,13 +85,13 @@ async function goToReview(
   await goToParticipation(user);
   await fillParticipation(user, choirId);
   await user.click(screen.getByRole("button", { name: "Continuar" }));
-  await screen.findByRole("heading", { name: "Pagamento" });
+  await screen.findByRole("heading", { name: "Modalidade" });
   if (raffleChoice) {
     await user.click(
       screen.getByLabelText(
         raffleChoice === "participate"
-          ? "Quero participar do Programa de Venda de Rifas"
-          : "Prefiro pagar a inscrição integral",
+          ? "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"
+          : "Inscrição + Hospedagem e Alimentação — Pagamento integral",
       ),
     );
   }
@@ -138,7 +141,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     ).toEqual(["cpf", "name", "badgeName"]);
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Meus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Coro e perfil");
-    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Pagamento");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Modalidade");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByText(/Etapa 1 de 4/)).toBeInTheDocument();
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
@@ -160,10 +163,51 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByLabelText("WhatsApp")).toHaveValue("(85) 99999-9999");
   });
 
+  it("offers event-only participation for R$ 80 in payment step after the choir is selected", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await goToParticipation(user);
+
+    expect(screen.queryByRole("radio", { name: "Inscrição no Evento" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    expect(screen.queryByRole("radio", { name: "Inscrição no Evento" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Coralista" }));
+    await user.click(screen.getByRole("radio", { name: "Soprano" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeInTheDocument();
+    expect(screen.getByText("R$ 80,00")).toBeInTheDocument();
+  }, 20_000);
+
+  it("shows R$ 80 without raffle choices for event-only participation", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await goToParticipation(user);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.click(screen.getByRole("radio", { name: "Coralista" }));
+    await user.click(screen.getByRole("radio", { name: "Soprano" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Inscrição no Evento" }));
+    expect(screen.getByTestId("registration-option-event")).toHaveTextContent("R$ 80,00");
+    expect(screen.getByTestId("registration-option-event")).toHaveTextContent(
+      "Certificado de participação",
+    );
+    expect(screen.queryByText("Como deseja realizar sua inscrição?")).not.toBeInTheDocument();
+  });
+
   it("submits a free choir for approval without opening checkout", async () => {
     const user = userEvent.setup();
     const freeConfiguration: PublicRegistrationConfiguration = {
       standardPriceCents: null,
+      eventPriceCents: 8000,
       choirs: [{ id: quixadaId, name: "Coro Diocesano de Quixadá", diocese: "Diocese de Quixadá",
         pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 }],
     };
@@ -180,6 +224,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(await screen.findByRole("heading", { name: "Inscrição gratuita" })).toBeVisible();
     expect(screen.queryByText(/InfinitePay · ambiente oficial/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("heading", { name: "Resumo da inscrição" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Pagamento de hoje" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Enviar inscrição gratuita" }));
     expect(await screen.findByRole("heading", { name: "Inscrição enviada" })).toBeVisible();
     expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({
@@ -187,6 +233,86 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       displayedQuote: { pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 },
     }));
     expect(navigateToCheckout).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it("shows the three home registration modalities as independent options", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await goToParticipation(user);
+    await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
+    await user.click(screen.getByRole("radio", { name: "Coralista" }));
+    await user.click(screen.getByRole("radio", { name: "Soprano" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", {
+        name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", {
+        name: "Inscrição + Hospedagem e Alimentação — Pagamento integral",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/As vendas cobrem integralmente os R\$ 200,00 restantes do retiro!/)).toBeInTheDocument();
+    expect(screen.getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeInTheDocument();
+    expect(screen.getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeInTheDocument();
+    expect(screen.getByText("20 Rifas Cobrem o Resto")).toBeInTheDocument();
+    expect(screen.getByText("SEM GESTÃO DE RIFAS")).toBeInTheDocument();
+    expect(screen.getByText("Valor total único")).toBeInTheDocument();
+
+    const raffleOption = screen.getByRole("radio", {
+      name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas",
+    });
+    const fullPriceOption = screen.getByRole("radio", {
+      name: "Inscrição + Hospedagem e Alimentação — Pagamento integral",
+    });
+    await user.click(raffleOption);
+    expect(raffleOption).toBeChecked();
+    await user.click(fullPriceOption);
+    expect(fullPriceOption).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Inscrição no Evento" }));
+    expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeChecked();
+  }, 20_000);
+
+  it("shows the CPF conflict returned for a rejected free submission", async () => {
+    const user = userEvent.setup();
+    const message = "Já existe uma inscrição para este CPF.";
+    const freeConfiguration: PublicRegistrationConfiguration = {
+      standardPriceCents: null,
+      eventPriceCents: 8000,
+      choirs: [
+        {
+          id: quixadaId,
+          name: "Coro Diocesano de Quixadá",
+          diocese: "Diocese de Quixadá",
+          pricingType: "free",
+          standardPriceCents: 0,
+          registrationPriceCents: 0,
+        },
+      ],
+    };
+    render(
+      <RegistrationSection
+        checkAvailability={available}
+        loadConfiguration={vi.fn(async () => freeConfiguration)}
+        startCheckout={vi.fn().mockResolvedValue({ ok: false, message })}
+      />,
+    );
+
+    await goToParticipation(user);
+    await fillParticipation(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Inscrição gratuita" });
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Enviar inscrição gratuita" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
   }, 20_000);
 
   it("allows the personal-data fieldset to shrink inside a narrow card", () => {
@@ -301,7 +427,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Pagamento" });
+    await screen.findByRole("heading", { name: "Modalidade" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
     expect(screen.getAllByText("Coro Diocesano de Sobral").length).toBeGreaterThan(0);
@@ -423,20 +549,20 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(
-      screen.queryByLabelText("Quero participar do Programa de Venda de Rifas"),
+      screen.queryByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Prefiro pagar a inscrição integral")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).not.toBeInTheDocument();
     await user.type(otherChoir, "Coral Santa Cecília");
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Pagamento" });
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    await screen.findByRole("heading", { name: "Modalidade" });
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
     expect(screen.getAllByText("Coral Santa Cecília").length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("300,00") }));
     await waitFor(() =>
       expect(startCheckout).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -476,25 +602,18 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
 
     expect(
-      screen.queryByRole("radiogroup", {
-        name: "Como deseja realizar sua inscrição?",
-      }),
+      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(await screen.findByRole("heading", { name: "Pagamento" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
 
-    const choices = screen.getByRole("radiogroup", {
-      name: "Como deseja realizar sua inscrição?",
-    });
-    expect(choices).toHaveTextContent(/Pague R\$ 100,00 agora/);
-    expect(choices).toHaveTextContent(/25 rifas/);
-    expect(choices).toHaveTextContent(/restante de R\$ 250,00 até 30 de outubro/);
-    expect(choices).toHaveTextContent(/vaga será confirmada após esse pagamento/);
-    expect(choices).toHaveTextContent(
-      /Os blocos de rifas serão entregues ao regente ou responsável, que fará a distribuição aos coralistas e a prestação de contas\./,
-    );
-    expect(choices).toHaveTextContent(/Pague R\$ 300,00 agora/);
-    expect(choices).toHaveTextContent(/Pix ou em até 5x no cartão/);
+    const choices = screen.getByRole("radiogroup", { name: "Escolha sua modalidade" });
+    expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Pagamento integral" })).toBeVisible();
+    expect(choices).toHaveTextContent(/Você paga apenas R\$ 100 agora/);
+    expect(choices).toHaveTextContent(/20 rifas/);
+    expect(choices).toHaveTextContent(/cobrem integralmente os R\$ 200,00 restantes/);
+    expect(choices).toHaveTextContent(/Valor total únicoR\$ 300,00/);
   });
 
   it("requires an explicit raffle choice before advancing and focuses the group", async () => {
@@ -508,21 +627,19 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    const raffleChoice = screen.getByRole("radiogroup", {
-      name: "Como deseja realizar sua inscrição?",
-    });
+    const raffleChoice = screen.getByRole("radiogroup", { name: "Escolha sua modalidade" });
     expect(
-      screen.getByLabelText("Quero participar do Programa de Venda de Rifas"),
+      screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"),
     ).not.toBeChecked();
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).not.toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).not.toBeChecked();
     expect(
-      await screen.findByText("Escolha como deseja realizar sua inscrição."),
+      await screen.findByText("Escolha uma modalidade para continuar."),
     ).toBeInTheDocument();
     await waitFor(() => expect(raffleChoice).toHaveFocus());
-    expect(screen.getByRole("heading", { name: "Pagamento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
   });
 
-  it("shows the raffle pre-registration and remaining balance after the participant opts in", async () => {
+  it("shows the raffle pre-registration and 20-ticket target after the participant opts in", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
@@ -530,14 +647,14 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await goToReview(user);
 
     const summary = screen.getByLabelText("Resumo do valor da inscrição");
-    expect(summary).toHaveTextContent(/Pré-inscrição agora:\s*R\$ 100,00/);
-    expect(summary).toHaveTextContent(/Valor restante:\s*R\$ 250,00/);
-    expect(summary).toHaveTextContent(/25 rifas/);
+    expect(summary).toHaveTextContent(/Você paga hoje:\s*R\$ 100,00/);
+    expect(summary).toHaveTextContent(/Meta das rifas:\s*R\$ 200,00/);
+    expect(summary).toHaveTextContent(/arrecadar R\$ 200,00 com 20 rifas/);
     expect(summary).not.toHaveTextContent(
       /Sua vaga será confirmada após o pagamento do valor restante, que pode ser feito via Pix ou em até 5x no cartão\./,
     );
     expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent("Participarei");
-  });
+  }, 20_000);
 
   it("shows only the full amount due now when the participant declines the raffle program", async () => {
     const user = userEvent.setup();
@@ -547,9 +664,9 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await goToReview(user, quixadaId, "full_price");
 
     const summary = screen.getByLabelText("Resumo do valor da inscrição");
-    expect(summary).toHaveTextContent("Valor da inscriçãoR$ 300,00");
+    expect(summary).toHaveTextContent("Você paga hojeR$ 300,00");
     expect(summary).toHaveTextContent(/vaga será confirmada após a confirmação desse pagamento/);
-    expect(summary).not.toHaveTextContent("Pré-inscrição agora");
+    expect(summary).not.toHaveTextContent("Meta das rifas");
     expect(summary).not.toHaveTextContent("Valor restante");
     expect(screen.getByText("Programa de rifas").parentElement).toHaveTextContent(
       "Pagamento integral",
@@ -566,16 +683,16 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Pagamento" });
-    expect(screen.getByText(/Pague R\$.*300,00 agora/)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Modalidade" });
+    expect(screen.getByTestId("registration-option-full-price")).toHaveTextContent(/Valor total únicoR\$ 300,00/);
     expect(
-      screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
+      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByLabelText("Resumo do valor da inscrição")).toHaveTextContent(
-      "Valor da inscriçãoR$ 300,00",
+      "Você paga hojeR$ 300,00",
     );
   });
 
@@ -590,26 +707,26 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await user.click(screen.getByLabelText("Prefiro pagar a inscrição integral"));
+    await user.click(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral"));
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Canindé" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
 
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(
-      screen.queryByRole("radiogroup", { name: "Como deseja realizar sua inscrição?" }),
+      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(
-      screen.getByLabelText("Quero participar do Programa de Venda de Rifas"),
+      screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"),
     ).not.toBeChecked();
-    expect(screen.getByLabelText("Prefiro pagar a inscrição integral")).not.toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).not.toBeChecked();
   });
 
   it("preserves values when moving back from review", async () => {
@@ -667,7 +784,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToReview(user);
 
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     await waitFor(() => expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl));
     firstPage.unmount();
 
@@ -710,7 +827,24 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("radio", { name: "Coro Diocesano de Quixadá" })).toBeInTheDocument();
   });
 
-  it("explains the secure InfinitePay redirection on the review step", async () => {
+  it("puts the payment summary before the review details so it is seen first on mobile", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+    await goToReview(user);
+
+    const summary = screen.getByLabelText("Resumo do valor da inscrição");
+    const detailsHeading = screen.getByRole("heading", { name: "Confira seus dados" });
+
+    expect(
+      summary.compareDocumentPosition(detailsHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(summary).toHaveTextContent(/Você paga hoje:\s*R\$ 100,00/);
+    expect(summary).toHaveTextContent(/Meta das rifas:\s*R\$ 200,00/);
+  });
+
+  it("names the exact payment amount before redirecting to InfinitePay", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
@@ -718,11 +852,13 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await goToReview(user);
 
     expect(
-      screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }),
+      screen.getByRole("button", {
+        name: /Ir para pagamento de R\$\s*100,00 na InfinitePay/,
+      }),
     ).toBeInTheDocument();
     expect(screen.getByAltText("InfinitePay")).toBeInTheDocument();
     expect(
-      screen.getByText("Você será direcionado ao ambiente seguro da InfinitePay."),
+      screen.getByText(/Você será direcionado para pagar R\$\s*100,00 no ambiente seguro da InfinitePay\./),
     ).toBeInTheDocument();
   });
 
@@ -745,7 +881,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await goToReview(user);
 
     const paymentButton = screen.getByRole("button", {
-      name: "Pagar com segurança na InfinitePay",
+      name: paymentButtonName("100,00"),
     });
     const form = paymentButton.closest("form");
     expect(form).not.toBeNull();
@@ -775,7 +911,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     );
     await goToReview(user);
 
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     expect(await screen.findByRole("button", { name: "Preparando seu pagamento…" })).toBeDisabled();
 
     resolveCheckout({ ok: true, checkoutUrl: safeUrl, orderNsu: fixedOrderNsu });
@@ -797,7 +933,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     await waitFor(() =>
       expect(startCheckout).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -809,7 +945,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
             pricingType: "promotional",
             standardPriceCents: 30000,
             registrationPriceCents: 10000,
-            remainingPriceCents: 25000,
+            remainingPriceCents: 20000,
           },
         }),
       ),
@@ -831,7 +967,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user, quixadaId, "full_price");
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("300,00") }));
 
     await waitFor(() =>
       expect(startCheckout).toHaveBeenCalledWith(
@@ -862,7 +998,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user, sobralId, null);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("300,00") }));
 
     await waitFor(() =>
       expect(startCheckout).toHaveBeenCalledWith(
@@ -892,7 +1028,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
   });
@@ -910,7 +1046,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível preparar o pagamento",
     );
@@ -928,7 +1064,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       />,
     );
     await goToReview(user);
-    await user.click(screen.getByRole("button", { name: "Pagar com segurança na InfinitePay" }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("100,00") }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
   });
 
@@ -980,22 +1116,22 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    const raffleOption = screen.getByTestId("payment-option-raffle");
-    const fullPriceOption = screen.getByTestId("payment-option-full-price");
+    const raffleOption = screen.getByTestId("registration-option-raffle");
+    const fullPriceOption = screen.getByTestId("registration-option-full-price");
     expect(raffleOption).toHaveAttribute("data-surface", "clear");
     expect(raffleOption).toHaveAttribute("data-selected", "false");
-    await user.click(screen.getByLabelText("Quero participar do Programa de Venda de Rifas"));
-    expect(raffleOption).toHaveAttribute("data-selected", "true");
-    expect(fullPriceOption).toHaveAttribute("data-selected", "false");
+    await user.click(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"));
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas")).toBeChecked();
+    expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).not.toBeChecked();
   });
 
-  it("groups the review into credential and investment sections with direct edit actions", async () => {
+  it("groups the review into data and payment sections with direct edit actions", async () => {
     const user = userEvent.setup();
     render(<RegistrationSection loadConfiguration={loadConfiguration} />);
     await goToReview(user);
 
-    expect(screen.getByRole("heading", { name: "Credencial do coralista" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Investimento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Confira seus dados" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pagamento de hoje" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Editar dados pessoais" }));
     expect(screen.getByRole("heading", { name: "Dados do participante" })).toBeInTheDocument();
   });
@@ -1025,14 +1161,14 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: /Sua participa/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("heading", { name: "Pagamento" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("heading", { name: /Confira sua inscri/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Editar pagamento" }));
-    expect(screen.getByRole("heading", { name: "Pagamento" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Editar modalidade" }));
+    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
   });
 
   it("shows the choir first, uses simple lists, and adds visual profile cues", async () => {
@@ -1081,10 +1217,10 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Regente" }));
     expect(screen.queryByRole("radiogroup", { name: "Naipe vocal" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Pagamento" });
+    await screen.findByRole("heading", { name: "Modalidade" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByRole("heading", { name: /Confira sua inscri/ });
-    await user.click(screen.getByRole("button", { name: /Pagar com seguran/ }));
+    await user.click(screen.getByRole("button", { name: paymentButtonName("300,00") }));
 
     await waitFor(() =>
       expect(startCheckout).toHaveBeenCalledWith(

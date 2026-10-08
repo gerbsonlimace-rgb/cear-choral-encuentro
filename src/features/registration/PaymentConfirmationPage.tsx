@@ -270,14 +270,16 @@ function ConfirmedPayment({
                           <span>Acesso ao app liberado</span>.{" "}
                         </>
                       )}
-                      Sua vaga será confirmada após a quitação do valor restante.
+                      Sua vaga será confirmada após a conclusão do programa de rifas do seu coro.
                     </>
                   ) : (
                     <><span>Vaga confirmada</span>. Confira abaixo os dados da sua inscrição e guarde este comprovante.</>
                   )}
                 </p>
                 {isPreRegistration && (
-                  <p className="mt-3 font-bold text-foreground">Valor restante: {remainingValue}</p>
+                  <p className="mt-3 font-bold text-foreground">
+                    Meta das rifas (20 rifas): {remainingValue}
+                  </p>
                 )}
               </div>
             </div>

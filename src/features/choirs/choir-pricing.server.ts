@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   pricingSettingsSchema,
   resolveChoirPrice,
+  resolveEventParticipationQuote,
   type AdminChoir,
   type ChoirMutation,
   type PricingSettings,
@@ -44,6 +45,7 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
 
       return {
         standardPriceCents: settings.standardPriceCents,
+        eventPriceCents: resolveEventParticipationQuote(settings).registrationPriceCents,
         choirs: sortChoirs(choirs).flatMap((choir) => {
           const quote = resolveChoirPrice(choir, settings);
           return quote
@@ -63,6 +65,10 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
         standardPriceCents: settings.standardPriceCents,
         registrationPriceCents: settings.standardPriceCents,
       };
+    },
+
+    async resolveEventParticipationQuote() {
+      return resolveEventParticipationQuote(await repository.getSettings());
     },
 
     async resolveActiveChoir(id: string): Promise<ResolvedChoirSelection> {

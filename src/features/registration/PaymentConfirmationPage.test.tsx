@@ -120,8 +120,8 @@ describe("PaymentConfirmationPage", () => {
 
     expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Acesso ao app liberado")).toBeVisible();
-    expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
-    expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+    expect(screen.getByText(/Meta das rifas \(20 rifas\): R\$\s*200,00/)).toBeVisible();
+    expect(screen.getByText(/vaga será confirmada após a conclusão do programa de rifas/i)).toBeVisible();
     expect(screen.queryByText("Vaga confirmada")).not.toBeInTheDocument();
   });
 
@@ -140,7 +140,7 @@ describe("PaymentConfirmationPage", () => {
 
     expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Vaga confirmada")).toBeVisible();
-    expect(screen.queryByText(/Valor restante:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Meta das rifas/)).not.toBeInTheDocument();
   });
 
   it("shows a branded confirmation with registration details, export, and Coralista access", async () => {
@@ -285,8 +285,8 @@ describe("PaymentConfirmationPage", () => {
       expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
       expect(screen.queryByText(message)).not.toBeInTheDocument();
       expect(await screen.findByRole("heading", { name: "Acesso ao portal do participante" })).toBeVisible();
-      expect(screen.getByText(/Valor restante: R\$\s*200,00/)).toBeVisible();
-      expect(screen.getByText(/vaga será confirmada após a quitação/i)).toBeVisible();
+      expect(screen.getByText(/Meta das rifas \(20 rifas\): R\$\s*200,00/)).toBeVisible();
+      expect(screen.getByText(/vaga será confirmada após a conclusão do programa de rifas/i)).toBeVisible();
       expect(screen.queryByText("Acesso ao app liberado")).not.toBeInTheDocument();
     },
   );

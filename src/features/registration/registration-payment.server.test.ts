@@ -107,6 +107,7 @@ const baseInput: RegistrationInput = {
   musicalProfile: "coralista",
   voicePart: "soprano",
   photo: registrationPhoto,
+  participationType: "complete",
   raffleChoice: "participate",
   displayedQuote: trustedSelection.quote,
 };
@@ -414,6 +415,11 @@ function createFixture() {
     standardPriceCents: 30000,
     registrationPriceCents: 30000,
   }));
+  const resolveEventParticipationQuote = vi.fn(async () => ({
+    pricingType: "standard" as const,
+    standardPriceCents: 8000,
+    registrationPriceCents: 8000,
+  }));
 
   const service = createRegistrationPaymentService({
     repository,
@@ -423,6 +429,7 @@ function createFixture() {
     now: () => fixedPaidAt,
     resolveChoirSelection,
     resolveStandardRegistrationQuote,
+    resolveEventParticipationQuote,
     provisionParticipant,
     getParticipantCredentials,
     findAuthUserByEmail,
@@ -437,6 +444,7 @@ function createFixture() {
     findAuthUserByEmail,
     resolveChoirSelection,
     resolveStandardRegistrationQuote,
+    resolveEventParticipationQuote,
     repository,
     service,
     setIdentityRecord(next: typeof identityRecord) {
@@ -536,6 +544,39 @@ describe("registration payment service", () => {
     });
     expect(result).toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
     expect(fixture.photoStorage.upload).toHaveBeenCalledWith(fixedOrderNsu, registrationPhoto);
+  });
+
+  it("charges R$ 80 without raffle commitment for event-only participation from a promotional choir", async () => {
+    const eventOnlyInput = {
+      ...baseInput,
+      participationType: "event" as const,
+      raffleChoice: "full_price" as const,
+      displayedQuote: {
+        pricingType: "standard" as const,
+        standardPriceCents: 8000,
+        registrationPriceCents: 8000,
+      },
+    } as RegistrationInput & { participationType: "event" };
+
+    await expect(fixture.service.startCheckout(eventOnlyInput)).resolves.toEqual({
+      checkoutUrl,
+      orderNsu: fixedOrderNsu,
+    });
+
+    expect(fixture.repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        participationType: "event",
+        amountCents: 8000,
+        pricingType: "standard",
+        standardPriceCents: 8000,
+        registrationPriceCents: 8000,
+      }),
+    );
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ quantity: 1, price: 8000, description: "Inscrição — II Encontro de Coros" }],
+      }),
+    );
   });
 
   it("saves a free registration for admin approval without calling InfinitePay", async () => {

@@ -30,6 +30,7 @@ const baseInput = {
   musicalProfile: "coralista" as const,
   voicePart: "soprano" as const,
   photo: { contentType: "image/jpeg" as const, dataBase64: "cGhvdG8=" },
+  participationType: "complete" as const,
   raffleChoice: "full_price" as const,
   displayedQuote: standardQuote,
 };
@@ -165,6 +166,31 @@ describe("registration domain", () => {
         ...baseInput,
         raffleChoice: "full_price",
         displayedQuote: promotionalQuote,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts R$ 80 only without the raffle program for event-only participation", () => {
+    const eventQuote = {
+      pricingType: "standard" as const,
+      standardPriceCents: 8000,
+      registrationPriceCents: 8000,
+    };
+
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        participationType: "event",
+        raffleChoice: "full_price",
+        displayedQuote: eventQuote,
+      }).success,
+    ).toBe(true);
+    expect(
+      registrationSchema.safeParse({
+        ...baseInput,
+        participationType: "event",
+        raffleChoice: "participate",
+        displayedQuote: eventQuote,
       }).success,
     ).toBe(false);
   });

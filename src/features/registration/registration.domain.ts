@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   displayedQuoteSchema,
+  participationTypeSchema,
   raffleChoiceSchema,
   type DisplayedQuote,
 } from "@/features/choirs/choir-pricing.domain";
@@ -182,6 +183,7 @@ export const registrationSchema = z
     musicalProfile: musicalProfileSchema,
     voicePart: voicePartSchema.nullable(),
     photo: registrationPhotoSchema,
+    participationType: participationTypeSchema,
     raffleChoice: raffleChoiceSchema,
     displayedQuote: displayedQuoteSchema,
   })
@@ -227,7 +229,9 @@ export const registrationSchema = z
     }
 
     const choiceMatchesQuote =
-      value.raffleChoice === "participate"
+      value.participationType === "event"
+        ? value.raffleChoice === "full_price" && value.displayedQuote.pricingType === "standard"
+        : value.raffleChoice === "participate"
         ? value.displayedQuote.pricingType === "promotional"
         : value.displayedQuote.pricingType === "free" ||
           (value.displayedQuote.pricingType === "standard" &&

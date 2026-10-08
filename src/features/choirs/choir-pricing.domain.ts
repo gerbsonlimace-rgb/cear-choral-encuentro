@@ -6,12 +6,15 @@ const optionalPositiveCentsSchema = z.number().int().positive().nullable();
 const optionalNonNegativeCentsSchema = z.number().int().nonnegative().nullable();
 
 export const pricingTypeSchema = z.enum(["standard", "promotional", "free"]);
+export const participationTypeSchema = z.enum(["complete", "event"]);
+export const DEFAULT_EVENT_PARTICIPATION_PRICE_CENTS = 8000;
 
 export const pricingSettingsSchema = z
   .object({
     standardPriceCents: optionalPositiveCentsSchema,
     promotionalPriceCents: optionalPositiveCentsSchema,
     promotionalRemainingPriceCents: optionalNonNegativeCentsSchema.optional(),
+    eventPriceCents: optionalPositiveCentsSchema.optional(),
   })
   .strict()
   .superRefine((settings, context) => {
@@ -84,6 +87,7 @@ export type PricingSettings = z.infer<typeof pricingSettingsSchema>;
 export type ChoirMutation = z.infer<typeof choirMutationSchema>;
 export type DisplayedQuote = z.infer<typeof displayedQuoteSchema>;
 export type RaffleChoice = z.infer<typeof raffleChoiceSchema>;
+export type ParticipationType = z.infer<typeof participationTypeSchema>;
 export type ResolvedChoirPrice = DisplayedQuote;
 
 export type AdminChoir = Omit<ChoirMutation, "diocese"> & {
@@ -105,8 +109,20 @@ export type PublicChoirOption = {
 
 export type PublicRegistrationConfiguration = {
   standardPriceCents: number | null;
+  eventPriceCents: number;
   choirs: PublicChoirOption[];
 };
+
+export function resolveEventParticipationQuote(
+  settings: Pick<PricingSettings, "eventPriceCents">,
+): DisplayedQuote {
+  const eventPriceCents = settings.eventPriceCents ?? DEFAULT_EVENT_PARTICIPATION_PRICE_CENTS;
+  return {
+    pricingType: "standard",
+    standardPriceCents: eventPriceCents,
+    registrationPriceCents: eventPriceCents,
+  };
+}
 
 export function parseCurrencyToCents(value: string): number | null {
   const normalized = value.trim();

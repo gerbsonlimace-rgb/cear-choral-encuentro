@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { raffleChoiceSchema, type RaffleChoice } from "@/features/choirs/choir-pricing.domain";
+import {
+  participationTypeSchema,
+  raffleChoiceSchema,
+  type ParticipationType,
+  type RaffleChoice,
+} from "@/features/choirs/choir-pricing.domain";
 import {
   MAX_REGISTRATION_PHOTO_BYTES,
   dioceseSchema,
@@ -27,6 +32,7 @@ export type RegistrationDraftForm = {
   choirId: string;
   otherChoirName: string;
   musicalProfile: "" | MusicalProfile;
+  participationType: ParticipationType;
   raffleChoice: "" | RaffleChoice;
   voicePart: "" | VoicePart;
 };
@@ -55,6 +61,7 @@ const draftSchema = z
         choirId: z.string().max(100),
         otherChoirName: z.string().max(120).default(""),
         musicalProfile: z.union([z.literal(""), musicalProfileSchema]).default(""),
+        participationType: participationTypeSchema.default("complete"),
         raffleChoice: z.union([z.literal(""), raffleChoiceSchema]),
         voicePart: z.union([z.literal(""), voicePartSchema]),
       })

@@ -9,6 +9,8 @@ vi.mock("@/lib/regent.functions", () => ({
   listAdminRegents: vi.fn(async () => []),
   createAdminRegent: vi.fn(),
   replaceAdminRegent: vi.fn(),
+  linkExistingAdminRegent: vi.fn(),
+  replaceAdminRegentWithExistingUser: vi.fn(),
   revokeAdminRegent: vi.fn(),
   resetAdminRegentPassword: vi.fn(),
 }));
