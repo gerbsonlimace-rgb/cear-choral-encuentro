@@ -37,14 +37,14 @@ describe("RegistrationCallout", () => {
 
     expect(within(event).getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeVisible();
     expect(within(event).getByText("Sem custos de hospedagem inclusos")).toBeVisible();
-    expect(within(event).getByRole("link", { name: "Selecionar este plano" })).toHaveAttribute(
+    expect(within(event).getByRole("link", { name: "Selecionar este tipo de inscrição" })).toHaveAttribute(
       "href",
       "/inscricao",
     );
     expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
     expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
     expect(within(raffle).getByText("Como funciona o subsídio")).toBeVisible();
-    expect(within(raffle).getByRole("link", { name: "Selecionar este plano" })).toHaveAttribute(
+    expect(within(raffle).getByRole("link", { name: "Selecionar este tipo de inscrição" })).toHaveAttribute(
       "href",
       "/inscricao",
     );

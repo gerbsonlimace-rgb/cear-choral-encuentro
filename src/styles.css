@@ -355,16 +355,16 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
   --secondary-foreground: #1b1c1a;
   --muted: #f5f3ef;
   --muted-foreground: #665f54;
-  --accent: #e8b43c;
+  --accent: #d5a900;
   --accent-foreground: #11161f;
   --border: #e7e2d8;
   --input: #d3c4b0;
-  --ring: #e8b43c;
+  --ring: #d5a900;
   --teal: #11161f;
   --teal-foreground: #ffffff;
   --emerald: #855300;
   --emerald-foreground: #ffffff;
-  --amber: #e8b43c;
+  --amber: #d5a900;
   --amber-foreground: #11161f;
   background: var(--background);
   color: var(--foreground);
@@ -562,7 +562,9 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 }
 
 .public-event-page .public-registration-section {
-  background-image: linear-gradient(135deg, #d49e35 0%, #f7bd51 52%, #e99500 100%);
+  background-color: #fbf9f5;
+  background-image: none;
+  border-block: 1px solid #e7e2d8;
 }
 
 .public-event-footer {
@@ -1093,7 +1095,9 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
 .public-event-page #inscricao.public-registration-section {
   padding-top: 4rem;
   padding-bottom: 4.5rem;
-  background-image: linear-gradient(135deg, #d49e35 0%, #f7bd51 52%, #e99500 100%);
+  background-color: #fbf9f5;
+  background-image: none;
+  border-block: 1px solid #e7e2d8;
 }
 
 .public-event-page #inscricao > .relative.z-10 {

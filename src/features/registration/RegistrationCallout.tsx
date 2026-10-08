@@ -32,7 +32,7 @@ export function RegistrationCallout() {
     <section
       id="inscricao"
       aria-labelledby="registration-callout-title"
-      className="public-editorial-section public-registration-section relative isolate scroll-mt-20 overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,#ffd95a_0%,#f6b61f_45%,#cf8205_100%)] px-4 py-8 text-stone-950 sm:px-6 sm:py-10 lg:py-12"
+      className="public-editorial-section public-registration-section relative isolate scroll-mt-20 overflow-hidden bg-background px-4 py-8 text-stone-950 sm:px-6 sm:py-10 lg:py-12"
     >
       <div
         aria-hidden="true"
@@ -53,8 +53,8 @@ export function RegistrationCallout() {
             Como você deseja participar?
           </h2>
           <p className="public-registration-intro mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-800 sm:text-base">
-            Escolha o formato que combina com a sua participação. No próximo passo, você verá a
-            forma de pagamento disponível para o seu coro.
+            Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo,
+            você verá a forma de pagamento disponível para o seu coro.
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export function RegistrationCallout() {
               ))}
             </ul>
             <Button asChild variant="secondary" className="mt-auto min-h-10 w-full rounded-lg font-bold">
-              <Link to="/inscricao">Selecionar este plano</Link>
+              <Link to="/inscricao">Selecionar este tipo de inscrição</Link>
             </Button>
           </article>
 
@@ -137,7 +137,7 @@ export function RegistrationCallout() {
                 <li key={label} className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 rounded-full bg-amber-100 p-1 text-amber-800"><Icon className="size-3.5" strokeWidth={2.5} aria-hidden="true" /></span><span className="leading-snug">{label}</span></li>
               ))}
             </ul>
-            <Button asChild className="mt-auto min-h-10 w-full rounded-lg bg-amber-700 font-bold text-white hover:bg-amber-800"><Link to="/inscricao">Selecionar este plano</Link></Button>
+            <Button asChild className="mt-auto min-h-10 w-full rounded-lg bg-amber-700 font-bold text-white hover:bg-amber-800"><Link to="/inscricao">Selecionar este tipo de inscrição</Link></Button>
           </article>
 
           <article
@@ -163,7 +163,7 @@ export function RegistrationCallout() {
                 <li key={label} className="flex items-start gap-2.5"><span className="mt-0.5 shrink-0 rounded-full bg-amber-100 p-1 text-amber-800"><Icon className="size-3.5" strokeWidth={2.5} aria-hidden="true" /></span><span className="leading-snug">{label}</span></li>
               ))}
             </ul>
-            <Button asChild variant="secondary" className="mt-auto min-h-10 w-full rounded-lg font-bold"><Link to="/inscricao">Selecionar este plano</Link></Button>
+            <Button asChild variant="secondary" className="mt-auto min-h-10 w-full rounded-lg font-bold"><Link to="/inscricao">Selecionar este tipo de inscrição</Link></Button>
           </article>
         </div>
 

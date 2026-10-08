@@ -167,7 +167,7 @@ const stepFields: Record<1 | 2 | 3, RegistrationFormField[]> = {
 const registrationSteps = [
   { number: 1, label: "Meus dados" },
   { number: 2, label: "Coro e perfil" },
-  { number: 3, label: "Modalidade" },
+  { number: 3, label: "Tipo de inscrição" },
   { number: 4, label: "Revisão" },
 ] as const;
 
@@ -672,7 +672,7 @@ export function RegistrationSection({
       selectedChoir?.pricingType === "promotional" &&
       !form.raffleChoice
     ) {
-      nextErrors.raffleChoice = "Escolha uma modalidade para continuar.";
+      nextErrors.raffleChoice = "Escolha um tipo de inscrição para continuar.";
     }
 
     setErrors((previous) => {
@@ -725,7 +725,7 @@ export function RegistrationSection({
       return;
     }
     if (!displayedQuote) {
-      const raffleChoiceError = "Escolha uma modalidade para continuar.";
+      const raffleChoiceError = "Escolha um tipo de inscrição para continuar.";
       setErrors((previous) => ({ ...previous, raffleChoice: raffleChoiceError }));
       focusFirstError({ raffleChoice: raffleChoiceError });
       return;
@@ -854,7 +854,7 @@ export function RegistrationSection({
                 {[
                   { number: 1, label: "Meus dados" },
                   { number: 2, label: "Coro e perfil" },
-                  { number: 3, label: selectedChoir?.pricingType === "free" ? "Gratuidade" : "Modalidade" },
+                  { number: 3, label: selectedChoir?.pricingType === "free" ? "Gratuidade" : "Tipo de inscrição" },
                   { number: 4, label: "Revisão" },
                 ].map((step) => {
                   const active = currentStep === step.number;
@@ -1182,14 +1182,14 @@ export function RegistrationSection({
                           {currentStep === 3
                             ? selectedChoir?.pricingType === "free"
                               ? "Inscrição gratuita"
-                              : "Modalidade"
+                              : "Tipo de inscrição"
                             : "Sua participação"}
                         </span>
                         <span className="block text-sm font-normal text-muted-foreground">
                           {currentStep === 3
                             ? selectedChoir?.pricingType === "free"
                               ? "Sua inscrição será analisada pelo administrador, sem cobrança."
-                              : "Escolha o formato que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro."
+                              : "Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro."
                             : "Escolha seu coro e perfil musical."}
                         </span>
                       </span>
@@ -1458,7 +1458,7 @@ export function RegistrationSection({
                           aria-describedby={errors.raffleChoice ? "raffleChoice-error" : undefined}
                           className="space-y-3"
                         >
-                          <legend className="font-semibold text-foreground">Escolha sua modalidade</legend>
+                          <legend className="font-semibold text-foreground">Escolha o tipo de inscrição</legend>
                           <div className="space-y-3">
                             <label
                               data-testid="registration-option-event"
@@ -1507,10 +1507,22 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "event" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
-                                form.participationType === "event" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                                form.participationType === "event" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
-                                {form.participationType === "event" ? "Selecionado" : "Selecionar este plano"}
+                                {form.participationType === "event" ? (
+                                  <>
+                                    <span className="grid size-5 place-items-center rounded-full bg-amber-700 text-white">
+                                      <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                                    </span>
+                                    Tipo de inscrição selecionado
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="size-4 rounded-full border-2 border-stone-300" aria-hidden="true" />
+                                    Selecionar este tipo de inscrição
+                                  </>
+                                )}
                               </span>
                             </label>
 
@@ -1570,10 +1582,22 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "complete" && form.raffleChoice === "participate" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
-                                form.participationType === "complete" && form.raffleChoice === "participate" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                                form.participationType === "complete" && form.raffleChoice === "participate" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
-                                {form.participationType === "complete" && form.raffleChoice === "participate" ? "Selecionado" : "Selecionar este plano"}
+                                {form.participationType === "complete" && form.raffleChoice === "participate" ? (
+                                  <>
+                                    <span className="grid size-5 place-items-center rounded-full bg-amber-700 text-white">
+                                      <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                                    </span>
+                                    Tipo de inscrição selecionado
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="size-4 rounded-full border-2 border-stone-300" aria-hidden="true" />
+                                    Selecionar este tipo de inscrição
+                                  </>
+                                )}
                               </span>
                             </label>
 
@@ -1620,10 +1644,22 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "complete" && form.raffleChoice === "full_price" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 block rounded-lg px-3 py-2 text-center text-sm font-bold ${
-                                form.participationType === "complete" && form.raffleChoice === "full_price" ? "bg-amber-700 text-white" : "bg-stone-100 text-stone-800"
+                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                                form.participationType === "complete" && form.raffleChoice === "full_price" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
-                                {form.participationType === "complete" && form.raffleChoice === "full_price" ? "Selecionado" : "Selecionar este plano"}
+                                {form.participationType === "complete" && form.raffleChoice === "full_price" ? (
+                                  <>
+                                    <span className="grid size-5 place-items-center rounded-full bg-amber-700 text-white">
+                                      <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                                    </span>
+                                    Tipo de inscrição selecionado
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="size-4 rounded-full border-2 border-stone-300" aria-hidden="true" />
+                                    Selecionar este tipo de inscrição
+                                  </>
+                                )}
                               </span>
                             </label>
                           </div>
@@ -1825,7 +1861,7 @@ export function RegistrationSection({
                           onClick={() => setCurrentStep(3)}
                           className="registration-edit-button"
                         >
-                          Editar modalidade
+                          Editar tipo de inscrição
                         </button>
                       </div>
                     </div>

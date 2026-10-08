@@ -85,7 +85,7 @@ async function goToReview(
   await goToParticipation(user);
   await fillParticipation(user, choirId);
   await user.click(screen.getByRole("button", { name: "Continuar" }));
-  await screen.findByRole("heading", { name: "Modalidade" });
+  await screen.findByRole("heading", { name: "Tipo de inscrição" });
   if (raffleChoice) {
     await user.click(
       screen.getByLabelText(
@@ -141,7 +141,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     ).toEqual(["cpf", "name", "badgeName"]);
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Meus dados");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Coro e perfil");
-    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Modalidade");
+    expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Tipo de inscrição");
     expect(screen.getByLabelText("Etapas da inscrição")).toHaveTextContent("Revisão");
     expect(screen.getByText(/Etapa 1 de 4/)).toBeInTheDocument();
     expect(screen.getByLabelText("Foto do participante")).toBeRequired();
@@ -177,7 +177,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tipo de inscrição" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeInTheDocument();
     expect(screen.getByText("R$ 80,00")).toBeInTheDocument();
   }, 20_000);
@@ -194,7 +194,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tipo de inscrição" })).toBeVisible();
     await user.click(screen.getByRole("radio", { name: "Inscrição no Evento" }));
     expect(screen.getByTestId("registration-option-event")).toHaveTextContent("R$ 80,00");
     expect(screen.getByTestId("registration-option-event")).toHaveTextContent(
@@ -247,7 +247,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tipo de inscrição" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeInTheDocument();
     expect(
       screen.getByRole("radio", {
@@ -427,7 +427,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Modalidade" });
+    await screen.findByRole("heading", { name: "Tipo de inscrição" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(await screen.findByRole("heading", { name: "Confira sua inscrição" })).toBeVisible();
     expect(screen.getAllByText("Coro Diocesano de Sobral").length).toBeGreaterThan(0);
@@ -556,7 +556,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Modalidade" });
+    await screen.findByRole("heading", { name: "Tipo de inscrição" });
     expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -602,12 +602,12 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
 
     expect(
-      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
+      screen.queryByRole("radiogroup", { name: "Escolha o tipo de inscrição" }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(await screen.findByRole("heading", { name: "Modalidade" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tipo de inscrição" })).toBeVisible();
 
-    const choices = screen.getByRole("radiogroup", { name: "Escolha sua modalidade" });
+    const choices = screen.getByRole("radiogroup", { name: "Escolha o tipo de inscrição" });
     expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Inscrição + Hospedagem e Alimentação — Pagamento integral" })).toBeVisible();
     expect(choices).toHaveTextContent(/Você paga apenas R\$ 100 agora/);
@@ -627,16 +627,16 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    const raffleChoice = screen.getByRole("radiogroup", { name: "Escolha sua modalidade" });
+    const raffleChoice = screen.getByRole("radiogroup", { name: "Escolha o tipo de inscrição" });
     expect(
       screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Entrada com programa de rifas"),
     ).not.toBeChecked();
     expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).not.toBeChecked();
     expect(
-      await screen.findByText("Escolha uma modalidade para continuar."),
+      await screen.findByText("Escolha um tipo de inscrição para continuar."),
     ).toBeInTheDocument();
     await waitFor(() => expect(raffleChoice).toHaveFocus());
-    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tipo de inscrição" })).toBeInTheDocument();
   });
 
   it("shows the raffle pre-registration and 20-ticket target after the participant opts in", async () => {
@@ -683,10 +683,10 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coralista" }));
     await user.click(screen.getByRole("radio", { name: "Soprano" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Modalidade" });
+    await screen.findByRole("heading", { name: "Tipo de inscrição" });
     expect(screen.getByTestId("registration-option-full-price")).toHaveTextContent(/Valor total únicoR\$ 300,00/);
     expect(
-      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
+      screen.queryByRole("radiogroup", { name: "Escolha o tipo de inscrição" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     expect(screen.queryByText(/vender rifas/i)).not.toBeInTheDocument();
@@ -717,7 +717,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Coro Diocesano de Sobral" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(
-      screen.queryByRole("radiogroup", { name: "Escolha sua modalidade" }),
+      screen.queryByRole("radiogroup", { name: "Escolha o tipo de inscrição" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Inscrição + Hospedagem e Alimentação — Pagamento integral")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
@@ -1161,14 +1161,14 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: /Sua participa/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tipo de inscrição" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("heading", { name: /Confira sua inscri/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Editar modalidade" }));
-    expect(screen.getByRole("heading", { name: "Modalidade" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Editar tipo de inscrição" }));
+    expect(screen.getByRole("heading", { name: "Tipo de inscrição" })).toBeInTheDocument();
   });
 
   it("shows the choir first, uses simple lists, and adds visual profile cues", async () => {
@@ -1217,7 +1217,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     await user.click(screen.getByRole("radio", { name: "Regente" }));
     expect(screen.queryByRole("radiogroup", { name: "Naipe vocal" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    await screen.findByRole("heading", { name: "Modalidade" });
+    await screen.findByRole("heading", { name: "Tipo de inscrição" });
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByRole("heading", { name: /Confira sua inscri/ });
     await user.click(screen.getByRole("button", { name: paymentButtonName("300,00") }));
