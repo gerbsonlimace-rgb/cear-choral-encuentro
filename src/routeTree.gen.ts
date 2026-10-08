@@ -17,7 +17,6 @@ import { Route as PagamentoRouteImport } from './routes/pagamento'
 import { Route as ParticipanteRouteImport } from './routes/participante'
 import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as TmpChoristerHomeRouteImport } from './routes/tmp-chorister-home'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAtividadesRouteImport } from './routes/admin.atividades'
 import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
@@ -78,11 +77,6 @@ const RegenteRoute = RegenteRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TmpChoristerHomeRoute = TmpChoristerHomeRouteImport.update({
-  id: '/tmp-chorister-home',
-  path: '/tmp-chorister-home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -200,7 +194,6 @@ export interface FileRoutesByFullPath {
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/tmp-chorister-home': typeof TmpChoristerHomeRoute
   '/admin/atividades': typeof AdminAtividadesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
@@ -230,7 +223,6 @@ export interface FileRoutesByTo {
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/tmp-chorister-home': typeof TmpChoristerHomeRoute
   '/admin/atividades': typeof AdminAtividadesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
@@ -263,7 +255,6 @@ export interface FileRoutesById {
   '/participante': typeof ParticipanteRouteWithChildren
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/tmp-chorister-home': typeof TmpChoristerHomeRoute
   '/admin/atividades': typeof AdminAtividadesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
@@ -297,7 +288,6 @@ export interface FileRouteTypes {
     | '/participante'
     | '/regente'
     | '/sitemap.xml'
-    | '/tmp-chorister-home'
     | '/admin/atividades'
     | '/admin/avisos'
     | '/admin/configuracoes'
@@ -327,7 +317,6 @@ export interface FileRouteTypes {
     | '/inscricao'
     | '/pagamento'
     | '/sitemap.xml'
-    | '/tmp-chorister-home'
     | '/admin/atividades'
     | '/admin/avisos'
     | '/admin/configuracoes'
@@ -359,7 +348,6 @@ export interface FileRouteTypes {
     | '/participante'
     | '/regente'
     | '/sitemap.xml'
-    | '/tmp-chorister-home'
     | '/admin/atividades'
     | '/admin/avisos'
     | '/admin/configuracoes'
@@ -392,7 +380,6 @@ export interface RootRouteChildren {
   ParticipanteRoute: typeof ParticipanteRouteWithChildren
   RegenteRoute: typeof RegenteRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  TmpChoristerHomeRoute: typeof TmpChoristerHomeRoute
   AdminAtividadesRoute: typeof AdminAtividadesRoute
   AdminAvisosRoute: typeof AdminAvisosRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
@@ -463,13 +450,6 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tmp-chorister-home': {
-      id: '/tmp-chorister-home'
-      path: '/tmp-chorister-home'
-      fullPath: '/tmp-chorister-home'
-      preLoaderRoute: typeof TmpChoristerHomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -668,7 +648,6 @@ const rootRouteChildren: RootRouteChildren = {
   ParticipanteRoute: ParticipanteRouteWithChildren,
   RegenteRoute: RegenteRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  TmpChoristerHomeRoute: TmpChoristerHomeRoute,
   AdminAtividadesRoute: AdminAtividadesRoute,
   AdminAvisosRoute: AdminAvisosRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
