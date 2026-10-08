@@ -1191,7 +1191,10 @@ export function RegistrationSection({
                           {currentStep === 3
                             ? selectedChoir?.pricingType === "free"
                               ? "Sua inscrição será analisada pelo administrador, sem cobrança."
-                              : "Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro."
+                              : <>
+                                  <span>Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro.</span>
+                                  <span className="mt-1 block font-semibold text-amber-700">Inscrições se encerram em 08/11.</span>
+                                </>
                             : "Escolha seu coro e perfil musical."}
                         </span>
                       </span>
@@ -1572,7 +1575,10 @@ export function RegistrationSection({
                                   </span>
                                   <div className="mt-2 rounded-lg bg-stone-100 p-2.5 text-sm text-registration-ink">
                                     <strong className="block">Como funciona o subsídio:</strong>
-                                    <span className="mt-1 block text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</span>
+                                    <span className="mt-1 block text-xs leading-relaxed">
+                                      Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro.
+                                      <strong className="mt-1 block text-amber-800">Envie os R$ 200,00 arrecadados até 30/10.</strong>
+                                    </span>
                                   </div>
                                   <RafflePrizeHighlight compact />
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>

@@ -216,11 +216,11 @@ describe("landing page access", () => {
     expect(registration).not.toBeNull();
 
     const giveaway = within(registration!).getByRole("region", {
-      name: "Sorteio especial para inscrições até 30 de setembro",
+      name: "Sorteio especial para inscrições até 20 de outubro",
     });
     expect(
       within(giveaway).getByRole("heading", {
-        name: "Inscreva-se até 30/09 e concorra aos dois livros exclusivos",
+        name: "Inscreva-se até 20/10 e concorra aos dois livros exclusivos",
       }),
     ).toBeVisible();
     expect(
@@ -258,12 +258,12 @@ describe("landing page access", () => {
     ).toBeVisible();
 
     const giveaway = within(registration!).getByRole("region", {
-      name: "Sorteio especial para inscrições até 30 de setembro",
+      name: "Sorteio especial para inscrições até 20 de outubro",
     });
     expect(within(giveaway).getByText("Sorteio especial")).toBeVisible();
     expect(
       within(giveaway).getByRole("heading", {
-        name: "Inscreva-se até 30/09 e concorra aos dois livros exclusivos",
+        name: "Inscreva-se até 20/10 e concorra aos dois livros exclusivos",
       }),
     ).toBeVisible();
     expect(within(giveaway).getByText("Válido para todas as modalidades")).toBeVisible();

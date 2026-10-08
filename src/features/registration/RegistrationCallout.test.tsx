@@ -38,6 +38,7 @@ describe("RegistrationCallout", () => {
 
     expect(within(event).getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeVisible();
     expect(within(event).getByText("Sem custos de hospedagem inclusos")).toBeVisible();
+    expect(within(registration).getByText("Inscrições se encerram em 08/11.")).toBeVisible();
     expect(within(event).queryByRole("link", { name: "Selecionar este tipo de inscrição" })).not.toBeInTheDocument();
     expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
     expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
@@ -82,7 +83,7 @@ describe("RegistrationCallout", () => {
       name: "Inscrição + hospedagem e alimentação",
     });
     const giveaway = within(registration).getByRole("region", {
-      name: "Sorteio especial para inscrições até 30 de setembro",
+      name: "Sorteio especial para inscrições até 20 de outubro",
     });
 
     expect(
@@ -124,7 +125,8 @@ describe("RegistrationCallout", () => {
     expect(within(raffle).getByText(/as vendas cobrem integralmente os R\$ 200,00 restantes/i)).toBeVisible();
     expect(within(raffle).getByText("R$ 100,00")).toBeVisible();
     expect(within(raffle).getByText(/20 rifas de R\$ 10,00/i)).toBeVisible();
-    expect(within(raffle).getByText(/R\$ 200,00/i)).toBeVisible();
+    expect(within(raffle).getAllByText(/R\$ 200,00/i).length).toBeGreaterThan(0);
+    expect(within(raffle).getByText(/Envie os R\$ 200,00 arrecadados até 30\/10/i)).toBeVisible();
   });
 
   it("keeps the card headers focused on the participation titles", () => {
@@ -162,6 +164,7 @@ describe("RegistrationCallout", () => {
     );
     expect(within(raffle).getByText(/Você paga apenas R\$ 100 agora/)).toBeVisible();
     expect(within(raffle).getByText(/20 rifas de R\$ 10,00.*R\$ 200,00 restantes/i)).toBeVisible();
+    expect(within(raffle).getByText(/Envie os R\$ 200,00 arrecadados até 30\/10/i)).toBeVisible();
   });
 
   it("explains the complete stay modality without payment mechanics", () => {
@@ -243,7 +246,7 @@ describe("RegistrationCallout", () => {
 
     const registration = getRegistrationSection();
     const giveaway = within(registration).getByRole("region", {
-      name: "Sorteio especial para inscrições até 30 de setembro",
+      name: "Sorteio especial para inscrições até 20 de outubro",
     });
     const cta = within(giveaway).getByRole("link", { name: "Fazer Inscrição" });
 

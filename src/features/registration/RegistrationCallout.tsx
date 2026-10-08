@@ -58,6 +58,9 @@ export function RegistrationCallout() {
             Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo,
             você verá a forma de pagamento disponível para o seu coro.
           </p>
+          <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-amber-800">
+            Inscrições se encerram em 08/11.
+          </p>
         </div>
 
         <div className="public-registration-options mt-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -128,7 +131,10 @@ export function RegistrationCallout() {
                 <Ticket className="size-4 text-amber-700" aria-hidden="true" />
                 <span>Como funciona o subsídio</span>:
               </p>
-              <p className="mt-1 text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                Você paga apenas R$ 100 agora e recebe 20 rifas de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro.
+                <strong className="mt-1 block text-amber-800">Envie os R$ 200,00 arrecadados até 30/10.</strong>
+              </p>
             </div>
             <RafflePrizeHighlight />
             <p className="mt-5 text-xs font-bold text-stone-800">Tudo incluído no seu retiro:</p>
@@ -183,7 +189,7 @@ export function RegistrationCallout() {
         </div>
 
         <section
-          aria-label="Sorteio especial para inscrições até 30 de setembro"
+          aria-label="Sorteio especial para inscrições até 20 de outubro"
           className="public-registration-benefits public-giveaway relative mt-7 grid grid-cols-1 items-center gap-4 border-t border-amber-200/80 pt-4 sm:mt-8 md:grid-cols-12"
         >
             <div className="space-y-2 md:col-span-7">
@@ -194,7 +200,7 @@ export function RegistrationCallout() {
               <h3 className="font-display text-lg font-bold leading-snug text-stone-900 sm:text-xl">
                 Inscreva-se até{" "}
                 <span className="text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-2">
-                  30/09
+                  20/10
                 </span>{" "}
                 e concorra aos dois livros exclusivos
               </h3>
