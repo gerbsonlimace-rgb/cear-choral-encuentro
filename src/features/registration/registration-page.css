@@ -182,6 +182,10 @@
   max-width: 48rem;
 }
 
+.registration-shell .registration-step-panel--types {
+  max-width: none;
+}
+
 .registration-shell .registration-step-panel > .registration-step-fieldset {
   border: 0;
 }

@@ -842,7 +842,7 @@ export function RegistrationSection({
           </div>
         )}
 
-        <div className="registration-card relative mx-auto mt-5 max-w-5xl overflow-visible rounded-2xl border border-registration-line bg-white shadow-registration-card">
+        <div className="registration-card relative mx-auto mt-5 max-w-6xl overflow-visible rounded-2xl border border-registration-line bg-white shadow-registration-card">
           <div className="h-1.5 rounded-t-2xl bg-amber" aria-hidden="true" />
           <div className="registration-card-content p-4 sm:p-6 lg:p-7">
             <p className="registration-progress-mobile md:hidden" aria-live="polite">
@@ -1167,7 +1167,7 @@ export function RegistrationSection({
               )}
 
               {(currentStep === 2 || currentStep === 3) && (
-                <div className="registration-step-panel mx-auto max-w-2xl">
+                <div className={`registration-step-panel mx-auto ${currentStep === 3 ? "registration-step-panel--types max-w-none" : "max-w-2xl"}`}>
                   <fieldset className="registration-step-fieldset space-y-6">
                     <legend className="registration-step-legend flex items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-foreground text-background">
@@ -1459,12 +1459,12 @@ export function RegistrationSection({
                           className="space-y-3"
                         >
                           <legend className="font-semibold text-foreground">Escolha o tipo de inscrição</legend>
-                          <div className="space-y-3">
+                          <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <label
                               data-testid="registration-option-event"
                               data-surface="clear"
                               data-selected={form.participationType === "event"}
-                              className={`block cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                              className={`flex cursor-pointer flex-col rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                 form.participationType === "event"
                                   ? "border-amber bg-amber/10 shadow-sm"
                                   : "border-registration-line bg-white hover:border-amber/60"
@@ -1484,13 +1484,13 @@ export function RegistrationSection({
                                   <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-registration-muted">
                                     PARTICIPAÇÃO INDIVIDUAL
                                   </span>
-                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                  <strong className="mt-1 block font-display text-lg font-extrabold leading-tight text-registration-ink">
                                     Inscrição no Evento
                                   </strong>
-                                  <span className="mt-1 block text-sm text-registration-muted">
+                                  <span className="mt-1 block text-xs text-registration-muted">
                                     Acesso às formações, kit e certificado oficial
                                   </span>
-                                  <span className="mt-4 block rounded-lg bg-stone-100 px-3 py-2.5">
+                                  <span className="mt-3 block rounded-lg bg-stone-100 px-2.5 py-2">
                                     <span className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-registration-muted">Investimento</span>
                                     <span className="mt-1 flex flex-wrap items-baseline gap-2">
                                       <strong className="font-display text-2xl text-registration-ink">{formatCurrency(configuration?.eventPriceCents ?? 8000)}</strong>
@@ -1498,8 +1498,8 @@ export function RegistrationSection({
                                     </span>
                                     <span className="mt-0.5 block text-xs text-registration-muted">Sem custos de hospedagem inclusos</span>
                                   </span>
-                                  <span className="mt-4 block text-xs font-bold text-registration-muted">O que está incluso:</span>
-                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                  <span className="mt-3 block text-xs font-bold text-registration-muted">O que está incluso:</span>
+                                  <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
                                     <li>Acesso integral a todas as formações litúrgicas</li>
                                     <li>Kit oficial do participante com partituras impressas</li>
                                     <li>Certificado de participação diocesano (horas acadêmicas)</li>
@@ -1507,7 +1507,7 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "event" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                              <span className={`mt-4 flex min-h-9 items-center justify-center gap-2 border-t pt-2 text-sm font-bold ${
                                 form.participationType === "event" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
                                 {form.participationType === "event" ? (
@@ -1530,7 +1530,7 @@ export function RegistrationSection({
                               data-testid="registration-option-raffle"
                               data-surface="clear"
                               data-selected={form.participationType === "complete" && form.raffleChoice === "participate"}
-                              className={`block rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                              className={`flex flex-col rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                 form.participationType === "complete" && form.raffleChoice === "participate"
                                   ? "border-amber bg-amber/10 shadow-sm"
                                   : selectedChoir?.pricingType === "promotional"
@@ -1553,11 +1553,11 @@ export function RegistrationSection({
                                   <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-700">
                                     EXPERIÊNCIA COMPLETA SUBSIDIADA
                                   </span>
-                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                  <strong className="mt-1 block font-display text-lg font-extrabold leading-tight text-registration-ink">
                                     Inscrição + Hospedagem e Alimentação
                                   </strong>
-                                  <span className="mt-1 block text-sm text-registration-muted">Entrada facilitada com programa diocesano de rifas</span>
-                                  <span className="mt-4 block rounded-lg bg-amber-50 px-3 py-2.5">
+                                  <span className="mt-1 block text-xs text-registration-muted">Entrada facilitada com programa diocesano de rifas</span>
+                                  <span className="mt-3 block rounded-lg bg-amber-50 px-2.5 py-2">
                                     <span className="block text-[0.68rem] font-bold uppercase leading-tight tracking-[0.12em] text-amber-800">Entrada inicial hoje</span>
                                     <span className="mt-1 flex flex-wrap items-baseline gap-2">
                                       <strong className="font-display text-2xl text-registration-ink">{formatCurrency(selectedChoir?.registrationPriceCents ?? 10000)}</strong>
@@ -1566,12 +1566,12 @@ export function RegistrationSection({
                                     <span className="mt-1 inline-flex rounded-md bg-amber-700 px-2 py-1 text-xs font-black leading-tight text-white">20 Rifas Cobrem o Resto</span>
                                     <span className="mt-1 block text-xs text-registration-muted">Total nominal do pacote: R$ 300,00</span>
                                   </span>
-                                  <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm text-registration-ink">
+                                  <div className="mt-2 rounded-lg bg-stone-100 p-2.5 text-sm text-registration-ink">
                                     <strong className="block">Como funciona o subsídio:</strong>
                                     <span className="mt-1 block text-xs leading-relaxed">Você paga apenas R$ 100 agora e recebe 20 rifas paroquiais de R$ 10,00. As vendas cobrem integralmente os R$ 200,00 restantes do retiro!</span>
                                   </div>
-                                  <span className="mt-4 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>
-                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                  <span className="mt-3 block text-xs font-bold text-registration-muted">Tudo incluído no seu retiro:</span>
+                                  <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
                                     <li>Hospedagem no Centro Diocesano de Pastoral</li>
                                     <li>Alimentação completa durante todos os dias (pensão total)</li>
                                     <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
@@ -1582,7 +1582,7 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "complete" && form.raffleChoice === "participate" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                              <span className={`mt-4 flex min-h-9 items-center justify-center gap-2 border-t pt-2 text-sm font-bold ${
                                 form.participationType === "complete" && form.raffleChoice === "participate" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
                                 {form.participationType === "complete" && form.raffleChoice === "participate" ? (
@@ -1605,7 +1605,7 @@ export function RegistrationSection({
                               data-testid="registration-option-full-price"
                               data-surface="clear"
                               data-selected={form.participationType === "complete" && form.raffleChoice === "full_price"}
-                              className={`block cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
+                              className={`flex cursor-pointer flex-col rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-amber/40 ${
                                 form.participationType === "complete" && form.raffleChoice === "full_price"
                                   ? "border-amber bg-amber/10 shadow-sm"
                                   : "border-registration-line bg-white hover:border-amber/60"
@@ -1623,11 +1623,11 @@ export function RegistrationSection({
                               <span className="flex items-start justify-between gap-4">
                                 <span className="min-w-0">
                                   <span className="block text-[0.68rem] font-bold uppercase tracking-[0.14em] text-registration-muted">SEM GESTÃO DE RIFAS</span>
-                                  <strong className="mt-2 block font-display text-xl font-extrabold leading-tight text-registration-ink">
+                                  <strong className="mt-1 block font-display text-lg font-extrabold leading-tight text-registration-ink">
                                     Inscrição + Hospedagem e Alimentação
                                   </strong>
-                                  <span className="mt-1 block text-sm text-registration-muted">Pagamento integral direto (sem necessidade de venda de rifas)</span>
-                                  <span className="mt-4 block rounded-lg bg-stone-100 px-3 py-2.5">
+                                  <span className="mt-1 block text-xs text-registration-muted">Pagamento integral direto (sem necessidade de venda de rifas)</span>
+                                  <span className="mt-3 block rounded-lg bg-stone-100 px-2.5 py-2">
                                     <span className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-registration-muted">Valor total único</span>
                                     <span className="mt-1 flex flex-wrap items-baseline gap-2">
                                       <strong className="font-display text-2xl text-registration-ink">{formatCurrency(displayedChoir?.standardPriceCents ?? 30000)}</strong>
@@ -1635,8 +1635,8 @@ export function RegistrationSection({
                                     </span>
                                     <span className="mt-0.5 block text-xs text-registration-muted">Quitação completa imediata</span>
                                   </span>
-                                  <span className="mt-4 block text-xs font-bold text-registration-muted">O que está incluso:</span>
-                                  <ul className="mt-2 space-y-2 text-sm text-registration-ink">
+                                  <span className="mt-3 block text-xs font-bold text-registration-muted">O que está incluso:</span>
+                                  <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
                                     <li>Hospedagem no Centro Diocesano de Pastoral</li>
                                     <li>Alimentação completa durante todos os dias (pensão total)</li>
                                     <li>Acesso a todas as formações, ensaios gerais, kit e certificado</li>
@@ -1644,7 +1644,7 @@ export function RegistrationSection({
                                 </span>
                                 {form.participationType === "complete" && form.raffleChoice === "full_price" && <Check className="size-5 shrink-0 text-amber-700" aria-hidden="true" />}
                               </span>
-                              <span className={`mt-5 flex min-h-10 items-center justify-center gap-2 border-t pt-3 text-sm font-bold ${
+                              <span className={`mt-4 flex min-h-9 items-center justify-center gap-2 border-t pt-2 text-sm font-bold ${
                                 form.participationType === "complete" && form.raffleChoice === "full_price" ? "border-amber-200 text-amber-800" : "border-stone-200 text-stone-600"
                               }`}>
                                 {form.participationType === "complete" && form.raffleChoice === "full_price" ? (
