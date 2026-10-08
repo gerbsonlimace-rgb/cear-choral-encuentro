@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { RegistrationInstallments } from "./RegistrationInstallments";
 
 const eventBenefits = [
   { icon: Music2, label: "Acesso integral a todas as formações litúrgicas" },
@@ -84,6 +85,7 @@ export function RegistrationCallout() {
                 <span className="text-xs font-semibold text-stone-600">• à vista</span>
               </div>
               <p className="mt-1 text-xs font-semibold text-stone-600">Sem custos de hospedagem inclusos</p>
+              <RegistrationInstallments amountCents={8_000} />
             </div>
             <p className="mt-5 text-xs font-bold text-stone-800">O que está incluso:</p>
             <ul aria-label="Benefícios da inscrição no evento" className="mt-2 space-y-2.5 text-sm text-stone-700">
@@ -123,6 +125,7 @@ export function RegistrationCallout() {
                 <span className="rounded-md bg-amber-700 px-2 py-1 text-[0.68rem] font-black leading-tight text-white">20 Rifas Cobrem o Resto</span>
               </div>
               <p className="mt-1 text-xs font-semibold text-stone-600">Total nominal do pacote: R$ 300,00</p>
+              <RegistrationInstallments amountCents={10_000} />
             </div>
             <div aria-label="Subsídio da inscrição pelo programa de rifas" className="mt-3 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-700">
               <p className="flex items-center gap-1.5 font-bold text-stone-900">
@@ -154,8 +157,9 @@ export function RegistrationCallout() {
             </div>
             <div className="mt-5 rounded-xl bg-stone-100 px-4 py-3">
               <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-stone-500">Valor total único</p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-2"><span className="public-registration-price font-display text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">R$ 300,00</span><span className="text-xs font-semibold text-stone-600">• à vista ou até 3x</span></div>
+              <div className="mt-1 flex flex-wrap items-baseline gap-2"><span className="public-registration-price font-display text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">R$ 300,00</span><span className="text-xs font-semibold text-stone-600">• à vista ou até 12x</span></div>
               <p className="mt-1 text-xs font-semibold text-stone-600">Quitação completa imediata</p>
+              <RegistrationInstallments amountCents={30_000} />
             </div>
             <p className="mt-5 text-xs font-bold text-stone-800">O que está incluso:</p>
             <ul aria-label="Benefícios da inscrição com hospedagem e alimentação" className="mt-2 space-y-2.5 text-sm text-stone-700">

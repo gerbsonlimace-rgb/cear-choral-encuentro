@@ -280,6 +280,34 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("radio", { name: "Inscrição no Evento" })).toBeChecked();
   }, 20_000);
 
+  it("reveals the exact installment table for each modality in the wizard", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
+    );
+
+    await goToParticipation(user);
+    await fillParticipation(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByRole("heading", { name: "Tipo de inscrição" });
+
+    const event = screen.getByTestId("registration-option-event");
+    const raffle = screen.getByTestId("registration-option-raffle");
+    const complete = screen.getByTestId("registration-option-full-price");
+
+    await user.click(within(event).getByRole("button", { name: "Ver parcelas" }));
+    await user.click(within(raffle).getByRole("button", { name: "Ver parcelas" }));
+    await user.click(within(complete).getByRole("button", { name: "Ver parcelas" }));
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(3);
+    const eventInstallments = within(screen.getAllByRole("dialog")[0]).getAllByRole("listitem");
+    expect(eventInstallments[0]).toHaveTextContent("1x de R$ 83,51");
+    expect(eventInstallments.at(-1)).toHaveTextContent("12x de R$ 8,00");
+    expect(screen.getByText("12x de R$ 8,00")).toBeVisible();
+    expect(screen.getByText("12x de R$ 10,00")).toBeVisible();
+    expect(screen.getByText("12x de R$ 30,00")).toBeVisible();
+  }, 20_000);
+
   it("shows the CPF conflict returned for a rejected free submission", async () => {
     const user = userEvent.setup();
     const message = "Já existe uma inscrição para este CPF.";

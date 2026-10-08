@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -50,7 +51,7 @@ describe("RegistrationCallout", () => {
     );
     expect(within(complete).getByText("SEM GESTÃO DE RIFAS")).toBeVisible();
     expect(within(complete).getByText("Valor total único")).toBeVisible();
-    expect(within(complete).getByText(/à vista ou até 3x/)).toBeVisible();
+    expect(within(complete).getByText(/à vista ou até 12x/)).toBeVisible();
   });
 
   it("starts with the event-only registration and its participation benefits", () => {
@@ -228,5 +229,34 @@ describe("RegistrationCallout", () => {
 
     expect(cta).toHaveAttribute("href", "/inscricao");
     expect(within(registration).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();
+  });
+
+  it("reveals the exact card installment tables for all three amounts", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationCallout />);
+
+    const registration = getRegistrationSection();
+    const event = within(registration).getByRole("article", { name: "Inscrição no evento" });
+    const raffle = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação com rifas",
+    });
+    const complete = within(registration).getByRole("article", {
+      name: "Inscrição + hospedagem e alimentação",
+    });
+
+    await user.click(within(event).getByRole("button", { name: "Ver parcelas" }));
+    await user.click(within(raffle).getByRole("button", { name: "Ver parcelas" }));
+    await user.click(within(complete).getByRole("button", { name: "Ver parcelas" }));
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(3);
+    const eventInstallments = within(screen.getAllByRole("dialog")[0]).getAllByRole("listitem");
+    expect(eventInstallments[0]).toHaveTextContent("1x de R$ 83,51");
+    expect(eventInstallments.at(-1)).toHaveTextContent("12x de R$ 8,00");
+    expect(screen.getByText("12x de R$ 8,00")).toBeVisible();
+    expect(screen.getByText("1x de R$ 83,51")).toBeVisible();
+    expect(screen.getByText("12x de R$ 10,00")).toBeVisible();
+    expect(screen.getByText("1x de R$ 104,39")).toBeVisible();
+    expect(screen.getByText("12x de R$ 30,00")).toBeVisible();
+    expect(screen.getByText("1x de R$ 313,16")).toBeVisible();
   });
 });

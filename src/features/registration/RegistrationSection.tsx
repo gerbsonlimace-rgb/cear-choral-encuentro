@@ -66,6 +66,7 @@ import {
 import type { RegistrationLookupResult } from "./registration.domain";
 import { prepareRegistrationPhoto } from "./registration-photo";
 import { loadRegistrationDraft, saveRegistrationDraft } from "./registration-draft";
+import { RegistrationInstallments } from "./RegistrationInstallments";
 
 type RegistrationSectionProps = {
   loadConfiguration?: () => Promise<PublicRegistrationConfiguration>;
@@ -1497,6 +1498,7 @@ export function RegistrationSection({
                                       <span className="text-xs font-semibold text-registration-muted">• à vista</span>
                                     </span>
                                     <span className="mt-0.5 block text-xs text-registration-muted">Sem custos de hospedagem inclusos</span>
+                                    <RegistrationInstallments amountCents={configuration?.eventPriceCents ?? 8_000} />
                                   </span>
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">O que está incluso:</span>
                                   <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
@@ -1565,6 +1567,7 @@ export function RegistrationSection({
                                     </span>
                                     <span className="mt-1 inline-flex rounded-md bg-amber-700 px-2 py-1 text-xs font-black leading-tight text-white">20 Rifas Cobrem o Resto</span>
                                     <span className="mt-1 block text-xs text-registration-muted">Total nominal do pacote: R$ 300,00</span>
+                                    <RegistrationInstallments amountCents={selectedChoir?.registrationPriceCents ?? 10_000} />
                                   </span>
                                   <div className="mt-2 rounded-lg bg-stone-100 p-2.5 text-sm text-registration-ink">
                                     <strong className="block">Como funciona o subsídio:</strong>
@@ -1631,9 +1634,10 @@ export function RegistrationSection({
                                     <span className="block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-registration-muted">Valor total único</span>
                                     <span className="mt-1 flex flex-wrap items-baseline gap-2">
                                       <strong className="font-display text-2xl text-registration-ink">{formatCurrency(displayedChoir?.standardPriceCents ?? 30000)}</strong>
-                                      <span className="text-xs font-semibold text-registration-muted">• à vista ou até 3x</span>
+                                      <span className="text-xs font-semibold text-registration-muted">• à vista ou até 12x</span>
                                     </span>
                                     <span className="mt-0.5 block text-xs text-registration-muted">Quitação completa imediata</span>
+                                    <RegistrationInstallments amountCents={displayedChoir?.standardPriceCents ?? 30_000} />
                                   </span>
                                   <span className="mt-3 block text-xs font-bold text-registration-muted">O que está incluso:</span>
                                   <ul className="mt-1.5 space-y-1.5 text-sm text-registration-ink">
