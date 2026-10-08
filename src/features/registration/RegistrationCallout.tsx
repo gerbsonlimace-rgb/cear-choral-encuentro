@@ -77,7 +77,6 @@ export function RegistrationCallout() {
                   Acesso às formações, kit e certificado oficial
                 </p>
               </div>
-              <span className="mt-1 size-5 shrink-0 rounded-full bg-stone-200" aria-hidden="true" />
             </div>
             <div className="mt-5 rounded-xl bg-stone-100 px-4 py-3">
               <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-stone-500">INVESTIMENTO</p>
@@ -112,7 +111,6 @@ export function RegistrationCallout() {
                 <h3 className="mt-3 font-display text-2xl font-extrabold leading-tight text-stone-950 sm:text-3xl">Inscrição + Hospedagem e Alimentação</h3>
                 <p data-testid="registration-option-summary" className="mt-1 text-xs font-semibold text-stone-600">Entrada facilitada com programa diocesano de rifas</p>
               </div>
-              <span className="mt-1 size-5 shrink-0 rounded-full border-[5px] border-amber-700" aria-hidden="true" />
             </div>
             <div className="mt-5 rounded-xl bg-amber-50 px-4 py-3">
               <div className="flex items-end justify-between gap-3">
@@ -151,7 +149,6 @@ export function RegistrationCallout() {
                 <h3 className="mt-3 font-display text-2xl font-extrabold leading-tight text-stone-950 sm:text-3xl">Inscrição + Hospedagem e Alimentação</h3>
                 <p data-testid="registration-option-summary" className="mt-1 text-xs font-semibold text-stone-600">Pagamento integral direto (sem necessidade de venda de rifas)</p>
               </div>
-              <span className="mt-1 size-5 shrink-0 rounded-full bg-stone-200" aria-hidden="true" />
             </div>
             <div className="mt-5 rounded-xl bg-stone-100 px-4 py-3">
               <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-stone-500">Valor total único</p>
