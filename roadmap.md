@@ -23,6 +23,7 @@
 - Clear the remaining typecheck errors in the checkout-replacement RPC call and align its contract test with the regenerated Supabase types.
 - Restore the black (`bg-brand-ink`) sidebar and mobile bar in the internal shell, replacing the hardcoded zinc colour, and align both shell tests.
 - Publish the photo-art editor at `/euvou`, redirect its old participant-only URL, and add a WhatsApp-ready social image.
+- Add a "Grupo do encontro no WhatsApp" button to the participant home, linking to the event group chat.
 
 ## Open
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
