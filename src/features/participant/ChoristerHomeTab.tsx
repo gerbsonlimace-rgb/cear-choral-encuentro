@@ -2,7 +2,9 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
+  ExternalLink,
   Files,
+  MessageCircle,
   Music2,
   Play,
   type LucideIcon,
@@ -63,6 +65,8 @@ function ShortcutIllustration({ icon: Icon }: { icon: LucideIcon }) {
     </svg>
   );
 }
+
+const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw";
 
 const shortcutClassName =
   "group relative flex min-h-28 min-w-0 flex-col items-start rounded-2xl p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-3";
