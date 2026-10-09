@@ -457,7 +457,7 @@ describe("admin registration summary", () => {
       receivedCents: 50000,
       pendingCents: 30000,
       pendingRegentCents: 40000,
-      expectedCents: 120000,
+      expectedCents: 80000,
       byChoir: [
         {
           choirName: "Diocese de Quixadá",
@@ -465,7 +465,7 @@ describe("admin registration summary", () => {
           receivedCents: 20000,
           pendingCents: 30000,
           pendingRegentCents: 40000,
-          expectedCents: 90000,
+          expectedCents: 50000,
         },
         {
           choirName: "Arquidiocese de Fortaleza",

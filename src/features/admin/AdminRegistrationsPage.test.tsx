@@ -112,7 +112,7 @@ const summary: AdminRegistrationSummary = {
   receivedCents: 20000,
   pendingCents: 50000,
   pendingRegentCents: 40000,
-  expectedCents: 110000,
+  expectedCents: 70000,
   byChoir: [
     {
       choirName: "Diocese de Quixadá",
@@ -120,7 +120,7 @@ const summary: AdminRegistrationSummary = {
       receivedCents: 20000,
       pendingCents: 50000,
       pendingRegentCents: 40000,
-      expectedCents: 110000,
+      expectedCents: 70000,
     },
     {
       choirName: "Diocese de Sobral",
@@ -471,7 +471,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
     expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
-      "R$ 1.100,00",
+      "R$ 700,00",
     );
     expect(
       screen.queryByRole("region", { name: "Visão geral das inscrições" }),

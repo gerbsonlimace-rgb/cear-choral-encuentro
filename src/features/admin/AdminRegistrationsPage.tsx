@@ -1006,7 +1006,7 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
     {
       label: "Total previsto",
       value: money(summary.expectedCents),
-      hint: "Recebido + pendente + regente",
+      hint: "Recebido + pendente",
       icon: ChartNoAxesCombined,
     },
   ];

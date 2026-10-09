@@ -25,7 +25,6 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
     { label: "Pendentes", value: String(summary.pending) },
     { label: "Isentos", value: String(summary.exempt ?? 0) },
     { label: "Históricas", value: String(summary.legacy) },
-    { label: "Pendente do regente", value: money.format(summary.pendingRegentCents / 100) },
   ];
 
   return (
@@ -77,14 +76,6 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
                         {money.format(item.pendingCents / 100)}
                       </dd>
                     </div>
-                    {item.pendingRegentCents > 0 && (
-                      <div className="flex items-baseline justify-between gap-2">
-                        <dt className="text-muted-foreground">Pendente do regente</dt>
-                        <dd className="font-semibold tabular-nums text-foreground">
-                          {money.format(item.pendingRegentCents / 100)}
-                        </dd>
-                      </div>
-                    )}
                     <div className="flex items-baseline justify-between gap-2 border-t border-border/70 pt-1.5">
                       <dt className="text-muted-foreground">Total previsto</dt>
                       <dd className="font-semibold tabular-nums text-primary">
@@ -145,8 +136,8 @@ export function AdminSummaryPage({
         },
         {
           label: "Total pendente",
-          value: money.format((summary.pendingCents + summary.pendingRegentCents) / 100),
-          detail: `${money.format(summary.pendingCents / 100)} em inscrições · ${money.format(summary.pendingRegentCents / 100)} de regentes`,
+          value: money.format(summary.pendingCents / 100),
+          detail: `${money.format(summary.pendingCents / 100)} em inscrições`,
           icon: Clock3,
         },
       ]

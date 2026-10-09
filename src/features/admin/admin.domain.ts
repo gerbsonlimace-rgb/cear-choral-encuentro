@@ -377,13 +377,12 @@ export function summarizeAdminRegistrations(
     choirs.set(row.choirName, choir);
   }
 
-  summary.expectedCents = summary.receivedCents + summary.pendingCents + summary.pendingRegentCents;
+  summary.expectedCents = summary.receivedCents + summary.pendingCents;
   summary.byChoir = [...choirs.entries()]
     .map(([choirName, financials]) => ({
       choirName,
       ...financials,
-      expectedCents:
-        financials.receivedCents + financials.pendingCents + financials.pendingRegentCents,
+      expectedCents: financials.receivedCents + financials.pendingCents,
     }))
     .sort(
       (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),
