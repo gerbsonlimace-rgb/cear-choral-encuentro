@@ -29,6 +29,7 @@ const baseInput: RegistrationInput = {
   diocese: "Diocese de Quixadá",
   choirId: "22222222-2222-4222-8222-222222222222",
   otherChoirName: null,
+  participationType: "complete",
   musicalProfile: "coralista",
   voicePart: "soprano",
   photo: { contentType: "image/jpeg", dataBase64: "cGhvdG8=" },

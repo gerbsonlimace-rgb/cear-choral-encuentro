@@ -19,7 +19,11 @@ const settings = {
 
 function service(): ChoirPricingServicePort {
   return {
-    getPublicConfiguration: vi.fn(async () => ({ choirs: [], standardPriceCents: 30000 })),
+    getPublicConfiguration: vi.fn(async () => ({
+      choirs: [],
+      standardPriceCents: 30000,
+      eventPriceCents: 30000,
+    })),
     getAdminData: vi.fn(async () => ({ settings, choirs: [] })),
     saveSettings: vi.fn(async (input) => input),
     createChoir: vi.fn(async (input) => ({

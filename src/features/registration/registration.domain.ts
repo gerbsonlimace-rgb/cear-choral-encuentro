@@ -4,7 +4,10 @@ import {
   participationTypeSchema,
   raffleChoiceSchema,
   type DisplayedQuote,
+  type ParticipationType,
 } from "@/features/choirs/choir-pricing.domain";
+
+export type { ParticipationType } from "@/features/choirs/choir-pricing.domain";
 import { dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain";
 
 export { dioceseOptions, dioceseSchema, type Diocese } from "@/features/dioceses/diocese.domain";

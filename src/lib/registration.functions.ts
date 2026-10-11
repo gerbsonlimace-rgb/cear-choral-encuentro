@@ -87,10 +87,15 @@ export const checkRegistrationAvailability = createServerFn({ method: "POST" })
       repository.findByCpf(data.cpf),
       repository.findByEmail(data.email),
     ]);
-    const authRecord = await createSupabaseParticipantAuthAdmin().findUserByEmail(data.email);
+    const authAdmin = createSupabaseParticipantAuthAdmin();
+    const authRecord = await authAdmin.findUserByEmail(data.email);
+    const linkableStaff =
+      authRecord && authAdmin.isLinkableStaffUser
+        ? await authAdmin.isLinkableStaffUser(authRecord.id)
+        : false;
     return {
       cpfTaken: Boolean(cpfRecord),
-      emailTaken: Boolean(emailRecord || authRecord),
+      emailTaken: Boolean(emailRecord || (authRecord && !linkableStaff)),
     };
   });
 

@@ -1007,39 +1007,72 @@ export type Database = {
         }
         Returns: boolean
       }
-      replace_active_choir_regent: {
-        Args: {
-          p_choir_id: string
-          p_email: string
-          p_granted_by: string
-          p_name: string
-          p_password_change_required: boolean
-          p_user_id: string
-        }
-        Returns: {
-          choir_id: string
-          email: string
-          granted_at: string
-          granted_by: string
-          id: string
-          name: string
-          password_change_candidate_fingerprint: string | null
-          password_change_operation_kind: string | null
-          password_change_operation_previous_required: boolean | null
-          password_change_operation_stage: string | null
-          password_change_required: boolean
-          password_change_retry_token_hash: string | null
-          revoked_at: string | null
-          revoked_by: string | null
-          user_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "choir_regents"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      replace_active_choir_regent:
+        | {
+            Args: {
+              p_choir_id: string
+              p_email: string
+              p_granted_by: string
+              p_name: string
+              p_user_id: string
+            }
+            Returns: {
+              choir_id: string
+              email: string
+              granted_at: string
+              granted_by: string
+              id: string
+              name: string
+              password_change_candidate_fingerprint: string | null
+              password_change_operation_kind: string | null
+              password_change_operation_previous_required: boolean | null
+              password_change_operation_stage: string | null
+              password_change_required: boolean
+              password_change_retry_token_hash: string | null
+              revoked_at: string | null
+              revoked_by: string | null
+              user_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "choir_regents"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_choir_id: string
+              p_email: string
+              p_granted_by: string
+              p_name: string
+              p_password_change_required: boolean
+              p_user_id: string
+            }
+            Returns: {
+              choir_id: string
+              email: string
+              granted_at: string
+              granted_by: string
+              id: string
+              name: string
+              password_change_candidate_fingerprint: string | null
+              password_change_operation_kind: string | null
+              password_change_operation_previous_required: boolean | null
+              password_change_operation_stage: string | null
+              password_change_required: boolean
+              password_change_retry_token_hash: string | null
+              revoked_at: string | null
+              revoked_by: string | null
+              user_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "choir_regents"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       replace_coroapp_event_sources: {
         Args: { p_admin_user_id: string; p_sources: Json }
         Returns: {
