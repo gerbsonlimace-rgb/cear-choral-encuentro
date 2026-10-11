@@ -501,6 +501,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
         diocese: "Diocese de Quixadá",
         choirId: "44444444-4444-4444-8444-444444444444",
         otherChoirName: "",
+        participationType: "complete",
         musicalProfile: "coralista",
         raffleChoice: "full_price",
         voicePart: "soprano",
