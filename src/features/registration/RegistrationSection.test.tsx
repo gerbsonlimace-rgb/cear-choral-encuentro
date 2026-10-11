@@ -323,17 +323,21 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     const raffle = screen.getByTestId("registration-option-raffle");
     const complete = screen.getByTestId("registration-option-full-price");
 
-    await user.click(within(event).getByRole("button", { name: "Ver parcelas" }));
-    await user.click(within(raffle).getByRole("button", { name: "Ver parcelas" }));
-    await user.click(within(complete).getByRole("button", { name: "Ver parcelas" }));
+    const cases = [
+      { card: event, first: "1x de R$ 83,51", last: "12x de R$ 8,00" },
+      { card: raffle, first: "1x de R$ 104,39", last: "12x de R$ 10,00" },
+      { card: complete, first: "1x de R$ 313,16", last: "12x de R$ 30,00" },
+    ];
 
-    expect(screen.getAllByRole("dialog")).toHaveLength(3);
-    const eventInstallments = within(screen.getAllByRole("dialog")[0]).getAllByRole("listitem");
-    expect(eventInstallments[0]).toHaveTextContent("1x de R$ 83,51");
-    expect(eventInstallments.at(-1)).toHaveTextContent("12x de R$ 8,00");
-    expect(screen.getByText("12x de R$ 8,00")).toBeVisible();
-    expect(screen.getByText("12x de R$ 10,00")).toBeVisible();
-    expect(screen.getByText("12x de R$ 30,00")).toBeVisible();
+    for (const { card, first, last } of cases) {
+      await user.click(within(card).getByRole("button", { name: "Ver parcelas" }));
+      const dialog = await screen.findByRole("dialog");
+      const installments = within(dialog).getAllByRole("listitem");
+      expect(installments[0]).toHaveTextContent(first);
+      expect(installments.at(-1)).toHaveTextContent(last);
+      await user.click(within(card).getByRole("button", { name: "Ocultar parcelas" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    }
   }, 20_000);
 
   it("shows the CPF conflict returned for a rejected free submission", async () => {
