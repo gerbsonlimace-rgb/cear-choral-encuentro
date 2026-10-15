@@ -254,3 +254,30 @@ export const getAdminRegistrationReceipt = createServerFn({ method: "POST" })
       await import("@/features/admin/admin-registration.server");
     return getAdminRegistrationService().getReceiptUrl(data.registrationId);
   });
+
+const adminRoleInput = z.object({ registrationId: z.string().uuid() }).strict();
+
+export const listAdminRegistrationRoles = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(z.object({ registrationIds: z.array(z.string().uuid()).max(200) }).strict())
+  .handler(async ({ data, context }) => {
+    const { listRegistrationAdminRoles } = await import("@/features/admin/admin-roles.server");
+    return listRegistrationAdminRoles(data.registrationIds, context.adminUserId);
+  });
+
+export const grantAdminFromRegistration = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminRoleInput)
+  .handler(async ({ data, context }) => {
+    const { grantAdminFromRegistration: run } = await import("@/features/admin/admin-roles.server");
+    return run(data.registrationId, context.adminUserId);
+  });
+
+export const revokeAdminFromRegistration = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminRoleInput)
+  .handler(async ({ data, context }) => {
+    const { revokeAdminFromRegistration: run } =
+      await import("@/features/admin/admin-roles.server");
+    return run(data.registrationId, context.adminUserId);
+  });

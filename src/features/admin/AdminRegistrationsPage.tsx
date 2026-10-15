@@ -21,6 +21,8 @@ import {
   KeyRound,
   Trash2,
   CircleOff,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
@@ -84,9 +86,13 @@ import {
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
   updateAdminRegistration,
+  listAdminRegistrationRoles,
+  grantAdminFromRegistration,
+  revokeAdminFromRegistration,
   type AdminAccessState,
   type AdminRegistrationsBootstrap,
 } from "@/lib/admin.functions";
+import type { RegistrationAdminRole } from "@/features/admin/admin-roles.server";
 import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
 import type { PublicChoirOption } from "@/features/choirs/choir-pricing.domain";
 import { dioceseOptions, type Diocese } from "@/features/dioceses/diocese.domain";
@@ -169,7 +175,20 @@ type Props = {
     data: AdminUpdateRegistrationInput;
   }) => Promise<{ status: "updated"; registrationId: string }>;
   loadChoirs?: () => Promise<{ choirs: PublicChoirOption[] }>;
+  loadRoles?: (input: {
+    data: { registrationIds: string[] };
+  }) => Promise<Record<string, RegistrationAdminRole>>;
+  grantAdmin?: (input: { data: { registrationId: string } }) => Promise<unknown>;
+  revokeAdmin?: (input: { data: { registrationId: string } }) => Promise<unknown>;
 };
+
+function AdminTag() {
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full bg-brand-gold/20 px-2 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wide text-foreground">
+      Admin
+    </span>
+  );
+}
 
 const defaultGetSession = () => supabase.auth.getSession();
 const defaultSignOut = () => supabase.auth.signOut();
@@ -551,6 +570,8 @@ function RegistrationViews({
   onDelete,
   onViewReceipt,
   onEdit,
+  roles,
+  onToggleAdmin,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
@@ -563,6 +584,8 @@ function RegistrationViews({
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
+  roles?: Record<string, RegistrationAdminRole>;
+  onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
 }) {
   const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
   const openWithKeyboard = (event: KeyboardEvent<HTMLElement>, row: AdminRegistrationRow) => {
@@ -612,7 +635,10 @@ function RegistrationViews({
                   <div className="flex items-center gap-3">
                     <ParticipantAvatar row={row} />
                     <div className="min-w-0">
-                      <p className="break-words font-medium">{row.name}</p>
+                      <p className="break-words font-medium">
+                        {row.name}
+                        {roles?.[row.id]?.isAdmin && <AdminTag />}
+                      </p>
                       <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
                     </div>
                   </div>
@@ -638,6 +664,8 @@ function RegistrationViews({
                     onDelete={onDelete}
                     onViewReceipt={onViewReceipt}
                     onEdit={onEdit}
+                    role={roles?.[row.id]}
+                    onToggleAdmin={onToggleAdmin}
                     busy={participantActionBusy}
                   />
                 </TableCell>
@@ -663,7 +691,10 @@ function RegistrationViews({
                 <div className="flex min-w-0 items-center gap-3">
                   <ParticipantAvatar row={row} />
                   <div className="min-w-0">
-                    <h2 className="break-words text-sm font-semibold">{row.name}</h2>
+                    <h2 className="break-words text-sm font-semibold">
+                      {row.name}
+                      {roles?.[row.id]?.isAdmin && <AdminTag />}
+                    </h2>
                     <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{dateTime(row.createdAt)}</p>
                   </div>
@@ -676,9 +707,11 @@ function RegistrationViews({
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
                   onMarkExempt={onMarkExempt}
-                    onDelete={onDelete}
+                  onDelete={onDelete}
                   onViewReceipt={onViewReceipt}
                   onEdit={onEdit}
+                  role={roles?.[row.id]}
+                  onToggleAdmin={onToggleAdmin}
                   busy={participantActionBusy}
                 />
               </div>
@@ -729,6 +762,8 @@ function RegistrationActions({
   onDelete,
   onViewReceipt,
   onEdit,
+  role,
+  onToggleAdmin,
   busy,
 }: {
   row: AdminRegistrationRow;
@@ -741,12 +776,15 @@ function RegistrationActions({
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
+  role?: RegistrationAdminRole;
+  onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
   const [confirmExempt, setConfirmExempt] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmAdmin, setConfirmAdmin] = useState(false);
   const [deleteCpf, setDeleteCpf] = useState("");
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
@@ -854,6 +892,29 @@ function RegistrationActions({
             <DropdownMenuItem onSelect={() => setConfirmReset(true)}>
               <KeyRound aria-hidden="true" /> Redefinir senha inicial
             </DropdownMenuItem>
+          )}
+          {onToggleAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!role?.hasAccount || (role.isAdmin && role.isSelf)}
+                onSelect={() => setConfirmAdmin(true)}
+              >
+                {role?.isAdmin ? (
+                  <ShieldOff aria-hidden="true" />
+                ) : (
+                  <ShieldCheck aria-hidden="true" />
+                )}
+                <span className="flex flex-col">
+                  {role?.isAdmin ? "Remover administrador" : "Tornar administrador"}
+                  {!role?.hasAccount && (
+                    <span className="text-xs text-muted-foreground">
+                      Libere o acesso do participante primeiro.
+                    </span>
+                  )}
+                </span>
+              </DropdownMenuItem>
+            </>
           )}
           {onDelete && (
             <>
@@ -1013,6 +1074,33 @@ function RegistrationActions({
                 }}
               >
                 Excluir definitivamente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      {onToggleAdmin && (
+        <AlertDialog open={confirmAdmin} onOpenChange={setConfirmAdmin}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {role?.isAdmin ? "Remover administrador?" : "Tornar administrador?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {role?.isAdmin
+                  ? `${row.name} perderá o acesso à administração. A inscrição e a área do participante continuam iguais.`
+                  : `${row.name} poderá acessar a administração com o mesmo login da área do participante.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={busy}
+                onClick={() =>
+                  void onToggleAdmin(row, !role?.isAdmin).then(() => setConfirmAdmin(false))
+                }
+              >
+                {role?.isAdmin ? "Remover administrador" : "Tornar administrador"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1419,6 +1507,9 @@ export function AdminRegistrationsPage({
   navigateTo,
   updateRegistration = updateAdminRegistration,
   loadChoirs = getPublicRegistrationConfiguration,
+  loadRoles = listAdminRegistrationRoles,
+  grantAdmin = grantAdminFromRegistration,
+  revokeAdmin = revokeAdminFromRegistration,
 }: Props) {
   const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
@@ -1439,7 +1530,24 @@ export function AdminRegistrationsPage({
   const [balanceTarget, setBalanceTarget] = useState<AdminRegistrationRow | null>(null);
   const [editTarget, setEditTarget] = useState<AdminRegistrationRow | null>(null);
   const [editChoirs, setEditChoirs] = useState<PublicChoirOption[]>([]);
+  const [roles, setRoles] = useState<Record<string, RegistrationAdminRole>>({});
+  const [rolesRetry, setRolesRetry] = useState(0);
   const [retry, setRetry] = useState(0);
+  const roleRowIds = result?.rows.map((row) => row.id).join(",") ?? "";
+  useEffect(() => {
+    if (gate !== "authorized" || !roleRowIds) return;
+    let active = true;
+    loadRoles({ data: { registrationIds: roleRowIds.split(",") } })
+      .then((value) => {
+        if (active) setRoles(value ?? {});
+      })
+      .catch(() => {
+        if (active) setRoles({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [gate, roleRowIds, rolesRetry, loadRoles]);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
@@ -1635,6 +1743,36 @@ export function AdminRegistrationsPage({
     } finally {
       actionBusy.current = false;
       if (current === revision.current) setExporting(false);
+    }
+  }
+
+  async function runToggleAdmin(row: AdminRegistrationRow, makeAdmin: boolean): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      await (makeAdmin ? grantAdmin : revokeAdmin)({ data: { registrationId: row.id } });
+      setAnnouncement(
+        makeAdmin
+          ? `${row.name} agora é administrador.`
+          : `${row.name} não é mais administrador.`,
+      );
+      setRolesRetry((value) => value + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const known = [
+        "Libere o acesso do participante primeiro.",
+        "Você não pode remover seu próprio acesso.",
+        "É preciso manter pelo menos um administrador.",
+      ];
+      setActionError(
+        known.includes(message) ? message : "Não foi possível concluir. Tente novamente.",
+      );
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
     }
   }
 
@@ -2006,6 +2144,8 @@ export function AdminRegistrationsPage({
                   onDelete={runDeleteAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                   onEdit={openEditDialog}
+                  roles={roles}
+                  onToggleAdmin={runToggleAdmin}
                 />
               ) : (
                 <Card>

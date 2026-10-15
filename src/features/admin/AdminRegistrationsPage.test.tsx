@@ -17,6 +17,9 @@ vi.mock("@/lib/admin.functions", () => ({
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
   updateAdminRegistration: vi.fn(),
+  listAdminRegistrationRoles: vi.fn(async () => ({})),
+  grantAdminFromRegistration: vi.fn(),
+  revokeAdminFromRegistration: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 
