@@ -84,9 +84,9 @@ const optionalTrimmed = (max: number) =>
     .transform((value) => (value === "" ? null : value))
     .nullable();
 
-export const adminUpdateRegistrationSchema = z
+const adminUpdateRegistrationFields = z
   .object({
-    registrationId: z.string().uuid(),
+    registrationId: z.string().min(1),
     name: z.string().trim().min(2, "Informe o nome completo.").max(100),
     badgeName: z
       .string()
