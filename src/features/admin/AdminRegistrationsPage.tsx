@@ -1081,6 +1081,8 @@ export function AdminRegistrationsPage({
   getSession = defaultGetSession,
   signOut = defaultSignOut,
   navigateTo,
+  updateRegistration = updateAdminRegistration,
+  loadChoirs = getPublicRegistrationConfiguration,
 }: Props) {
   const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
@@ -1099,6 +1101,8 @@ export function AdminRegistrationsPage({
   const [exporting, setExporting] = useState(false);
   const [participantActionBusy, setParticipantActionBusy] = useState(false);
   const [balanceTarget, setBalanceTarget] = useState<AdminRegistrationRow | null>(null);
+  const [editTarget, setEditTarget] = useState<AdminRegistrationRow | null>(null);
+  const [editChoirs, setEditChoirs] = useState<PublicChoirOption[]>([]);
   const [retry, setRetry] = useState(0);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
@@ -1411,6 +1415,41 @@ export function AdminRegistrationsPage({
     } catch {
       setActionError("Não foi possível excluir a inscrição. Tente novamente.");
       return false;
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
+  function openEditDialog(row: AdminRegistrationRow) {
+    setActionError("");
+    setEditTarget(row);
+    if (editChoirs.length > 0) return;
+    void loadChoirs()
+      .then((configuration) => setEditChoirs(configuration.choirs))
+      .catch(() => setEditChoirs([]));
+  }
+
+  async function runEditAction(input: AdminUpdateRegistrationInput): Promise<string | null> {
+    if (actionBusy.current || gate !== "authorized") {
+      return "Não foi possível salvar. Tente novamente.";
+    }
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      await updateRegistration({ data: input });
+      setAnnouncement("Dados da inscrição atualizados.");
+      setRetry((value) => value + 1);
+      setSummaryRetry((value) => value + 1);
+      return null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const known = ["Já existe uma conta com esse e-mail.", "Selecione um coro válido."].find(
+        (text) => message.includes(text),
+      );
+      return known ?? "Não foi possível salvar. Tente novamente.";
     } finally {
       actionBusy.current = false;
       setParticipantActionBusy(false);
