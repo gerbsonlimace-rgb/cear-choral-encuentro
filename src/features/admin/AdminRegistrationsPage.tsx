@@ -728,6 +728,7 @@ function RegistrationActions({
   onMarkExempt,
   onDelete,
   onViewReceipt,
+  onEdit,
   busy,
 }: {
   row: AdminRegistrationRow;
@@ -739,6 +740,7 @@ function RegistrationActions({
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
+  onEdit?: (row: AdminRegistrationRow) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
@@ -776,6 +778,7 @@ function RegistrationActions({
     setConfirmMarkPaid(true);
   };
   const hasActions =
+    Boolean(onEdit) ||
     row.hasManualReceipt ||
     (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
     state.status === "pending" ||
@@ -798,6 +801,14 @@ function RegistrationActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          {onEdit && (
+            <>
+              <DropdownMenuItem onSelect={() => onEdit(row)}>
+                <Pencil aria-hidden="true" /> Editar dados
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {row.hasManualReceipt && (
             <DropdownMenuItem onSelect={() => onViewReceipt(row)}>
               <ExternalLink aria-hidden="true" /> Ver comprovante
