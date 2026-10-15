@@ -15,6 +15,7 @@ import {
   type AdminRegistrationRow,
   type AdminRegistrationSummary,
   type AdminSupersededCheckoutReview,
+  type AdminUpdateRegistrationInput,
   type ManualPaymentReceipt,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
@@ -663,6 +664,10 @@ export function createAdminRegistrationService(
     async getReceiptUrl(registrationId: string) {
       if (!repository.getReceiptUrl) throw new Error("Ação administrativa indisponível.");
       return repository.getReceiptUrl(registrationId);
+    },
+    async update(input: AdminUpdateRegistrationInput) {
+      if (!repository.updateRegistration) throw new Error("Ação administrativa indisponível.");
+      return repository.updateRegistration(input);
     },
   };
 
