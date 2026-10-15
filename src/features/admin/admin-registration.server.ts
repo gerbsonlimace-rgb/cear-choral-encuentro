@@ -15,6 +15,7 @@ import {
   type AdminRegistrationRow,
   type AdminRegistrationSummary,
   type AdminSupersededCheckoutReview,
+  type AdminUpdateRegistrationInput,
   type ManualPaymentReceipt,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
@@ -157,6 +158,9 @@ export type AdminRegistrationRepository = {
     adminUserId: string,
   ) => Promise<{ status: "exempt"; registrationId: string }>;
   getReceiptUrl?(registrationId: string): Promise<{ signedUrl: string; expiresIn: number }>;
+  updateRegistration?(
+    input: AdminUpdateRegistrationInput,
+  ): Promise<{ status: "updated"; registrationId: string }>;
 };
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
@@ -479,6 +483,76 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       }
       return { signedUrl: signed.signedUrl, expiresIn: RECEIPT_URL_EXPIRY_SECONDS };
     },
+    async updateRegistration(input) {
+      const { data: current, error: readError } = await supabaseAdmin
+        .from("registrations")
+        .select("id,email")
+        .eq("id", input.registrationId)
+        .maybeSingle();
+      if (readError) throw new Error("Não foi possível consultar a inscrição.");
+      if (!current) throw new Error("Inscrição não encontrada.");
+
+      const nextEmail = input.email.trim().toLowerCase();
+      const currentEmail = current.email?.trim().toLowerCase() ?? null;
+      if (nextEmail !== currentEmail) {
+        const { data: account } = await supabaseAdmin
+          .from("participant_accounts")
+          .select("user_id")
+          .eq("registration_id", input.registrationId)
+          .maybeSingle();
+        if (account?.user_id) {
+          const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+            account.user_id,
+            { email: nextEmail },
+          );
+          if (authError) {
+            throw new Error(
+              /already|duplicate|exists/i.test(authError.message)
+                ? "Já existe uma conta com esse e-mail."
+                : "Não foi possível atualizar o e-mail de acesso do participante.",
+            );
+          }
+        }
+      }
+
+      let choirName = input.otherChoirName;
+      if (input.choirId) {
+        const { data: choir, error: choirError } = await supabaseAdmin
+          .from("choirs")
+          .select("name")
+          .eq("id", input.choirId)
+          .maybeSingle();
+        if (choirError || !choir) throw new Error("Selecione um coro válido.");
+        choirName = choir.name;
+      }
+      if (!choirName) throw new Error("Selecione um coro ou informe outro coro.");
+
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({
+          name: input.name,
+          badge_name: input.badgeName,
+          cpf: input.cpf,
+          email: nextEmail,
+          phone: input.phone,
+          birth_date: input.birthDate,
+          diocese: input.diocese,
+          choir_id: input.choirId,
+          choir_name: choirName,
+          other_choir_name: input.choirId ? null : input.otherChoirName,
+          city: input.city,
+          institution: input.institution,
+          role: input.role,
+          musical_profile: input.musicalProfile,
+          voice_part: input.voicePart,
+          observations: input.observations,
+        })
+        .eq("id", input.registrationId)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) throw new Error("Não foi possível salvar os dados da inscrição.");
+      return { status: "updated", registrationId: data.id };
+    },
   };
   return repository;
 }
@@ -591,6 +665,10 @@ export function createAdminRegistrationService(
     async getReceiptUrl(registrationId: string) {
       if (!repository.getReceiptUrl) throw new Error("Ação administrativa indisponível.");
       return repository.getReceiptUrl(registrationId);
+    },
+    async update(input: AdminUpdateRegistrationInput) {
+      if (!repository.updateRegistration) throw new Error("Ação administrativa indisponível.");
+      return repository.updateRegistration(input);
     },
   };
 

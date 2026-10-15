@@ -16,6 +16,7 @@ vi.mock("@/lib/admin.functions", () => ({
   getAdminRegistrationReceipt: vi.fn(),
   reprocessParticipantAccess: vi.fn(),
   resetParticipantInitialPassword: vi.fn(),
+  updateAdminRegistration: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 
@@ -862,5 +863,62 @@ describe("AdminRegistrationsPage access and interactions", () => {
     expect(onSignedOut).toHaveBeenCalledOnce();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByText("Ana Histórica")).not.toBeInTheDocument();
+  });
+});
+
+describe("AdminRegistrationsPage edit registration", () => {
+  const choirOption = {
+    id: "choir-1",
+    name: "Coro Diocesano de Quixadá",
+    diocese: null,
+    pricingType: "standard" as const,
+    standardPriceCents: 30000,
+    registrationPriceCents: 30000,
+  };
+
+  it("opens a prefilled edit dialog from the actions menu and saves changes", async () => {
+    const updateRegistration = vi
+      .fn()
+      .mockResolvedValue({ status: "updated", registrationId: "pending" });
+    const loadChoirs = vi.fn().mockResolvedValue({ choirs: [choirOption] });
+    const { user } = setup({ updateRegistration, loadChoirs });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(
+      within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: /Editar dados/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Nome completo")).toHaveValue("Bruno Pendente");
+    expect(within(dialog).getByLabelText("E-mail")).toHaveValue("ana@example.com");
+    await user.clear(within(dialog).getByLabelText("Nome completo"));
+    await user.type(within(dialog).getByLabelText("Nome completo"), "Bruno Corrigido");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(updateRegistration).toHaveBeenCalledOnce());
+    expect(updateRegistration.mock.calls[0][0].data).toMatchObject({
+      registrationId: "pending",
+      name: "Bruno Corrigido",
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the dialog open and shows the error when saving fails", async () => {
+    const updateRegistration = vi
+      .fn()
+      .mockRejectedValue(new Error("Já existe uma conta com esse e-mail."));
+    const { user } = setup({
+      updateRegistration,
+      loadChoirs: vi.fn().mockResolvedValue({ choirs: [choirOption] }),
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(
+      within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: /Editar dados/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar alterações" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Já existe uma conta com esse e-mail.",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

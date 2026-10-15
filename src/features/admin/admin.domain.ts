@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  birthDateSchema,
+  brazilianMobilePhoneSchema,
+  cpfSchema,
+  musicalProfileSchema,
+  voicePartSchema,
+} from "@/features/registration/registration.domain";
+import { dioceseSchema } from "@/features/dioceses/diocese.domain";
 import type { Tables } from "@/integrations/supabase/types";
 import type { ComplementPaymentRow } from "@/features/regent/regent-payments.domain";
 import {
@@ -68,6 +76,86 @@ export const adminMarkExemptSchema = z
   })
   .strict();
 
+const optionalTrimmed = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => (value === "" ? null : value))
+    .nullable();
+
+const adminUpdateRegistrationFields = z
+  .object({
+    registrationId: z.string().min(1),
+    name: z.string().trim().min(2, "Informe o nome completo.").max(100),
+    badgeName: z
+      .string()
+      .trim()
+      .min(2, "Informe o nome para o crachá.")
+      .max(60)
+      .nullable()
+      .default(null),
+    cpf: cpfSchema,
+    email: z.string().trim().email("Informe um e-mail válido.").max(254),
+    phone: brazilianMobilePhoneSchema,
+    birthDate: birthDateSchema,
+    diocese: dioceseSchema,
+    choirId: z.string().uuid("Selecione um coro válido.").nullable(),
+    otherChoirName: z
+      .string()
+      .trim()
+      .min(2, "Informe o nome do coro.")
+      .max(120)
+      .nullable(),
+    city: optionalTrimmed(100).default(null),
+    institution: optionalTrimmed(120).default(null),
+    role: optionalTrimmed(60).default(null),
+    musicalProfile: musicalProfileSchema.nullable().default(null),
+    voicePart: voicePartSchema.nullable().default(null),
+    observations: optionalTrimmed(500).default(null),
+  })
+  .strict();
+
+type AdminUpdateRegistrationFields = z.infer<typeof adminUpdateRegistrationFields>;
+
+function refineAdminUpdateRegistration(
+  value: AdminUpdateRegistrationFields,
+  context: z.RefinementCtx,
+) {
+  const hasConfiguredChoir = value.choirId !== null;
+  const hasOtherChoir = value.otherChoirName !== null;
+  if (hasConfiguredChoir === hasOtherChoir) {
+    context.addIssue({
+      code: "custom",
+      path: [hasConfiguredChoir ? "otherChoirName" : "choirId"],
+      message: "Selecione um coro ou informe outro coro.",
+    });
+  }
+  if (value.musicalProfile === "coralista" && value.voicePart === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["voicePart"],
+      message: "Selecione o naipe vocal.",
+    });
+  }
+  if (value.musicalProfile !== "coralista" && value.voicePart !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["voicePart"],
+      message: "O naipe vocal deve ser informado apenas para Coralista.",
+    });
+  }
+}
+
+export const adminUpdateRegistrationFormSchema =
+  adminUpdateRegistrationFields.superRefine(refineAdminUpdateRegistration);
+
+export const adminUpdateRegistrationSchema = adminUpdateRegistrationFields
+  .extend({ registrationId: z.string().uuid() })
+  .superRefine(refineAdminUpdateRegistration);
+
+export type AdminUpdateRegistrationInput = z.infer<typeof adminUpdateRegistrationSchema>;
+
 export type ManualPaymentReceipt = z.infer<typeof manualPaymentReceiptSchema>;
 
 export type AdminRegistrationQuery = z.infer<typeof adminRegistrationQuerySchema>;
@@ -94,6 +182,7 @@ export type AdminRegistrationRow = {
   birthDate: string;
   diocese: string;
   choirName: string;
+  choirId?: string | null;
   otherChoirName: string | null;
   email: string;
   phone: string;
@@ -198,6 +287,7 @@ export function mapAdminRegistrationRow(
     birthDate: row.birth_date ?? "",
     diocese: displayText(row.diocese),
     choirName: row.choir_name,
+    choirId: row.choir_id,
     otherChoirName: row.other_choir_name,
     email: displayText(row.email),
     phone: row.phone,
