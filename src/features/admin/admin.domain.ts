@@ -114,32 +114,45 @@ const adminUpdateRegistrationFields = z
     voicePart: voicePartSchema.nullable().default(null),
     observations: optionalTrimmed(500).default(null),
   })
-  .strict()
-  .superRefine((value, context) => {
-    const hasConfiguredChoir = value.choirId !== null;
-    const hasOtherChoir = value.otherChoirName !== null;
-    if (hasConfiguredChoir === hasOtherChoir) {
-      context.addIssue({
-        code: "custom",
-        path: [hasConfiguredChoir ? "otherChoirName" : "choirId"],
-        message: "Selecione um coro ou informe outro coro.",
-      });
-    }
-    if (value.musicalProfile === "coralista" && value.voicePart === null) {
-      context.addIssue({
-        code: "custom",
-        path: ["voicePart"],
-        message: "Selecione o naipe vocal.",
-      });
-    }
-    if (value.musicalProfile !== "coralista" && value.voicePart !== null) {
-      context.addIssue({
-        code: "custom",
-        path: ["voicePart"],
-        message: "O naipe vocal deve ser informado apenas para Coralista.",
-      });
-    }
-  });
+  .strict();
+
+type AdminUpdateRegistrationFields = z.infer<typeof adminUpdateRegistrationFields>;
+
+function refineAdminUpdateRegistration(
+  value: AdminUpdateRegistrationFields,
+  context: z.RefinementCtx,
+) {
+  const hasConfiguredChoir = value.choirId !== null;
+  const hasOtherChoir = value.otherChoirName !== null;
+  if (hasConfiguredChoir === hasOtherChoir) {
+    context.addIssue({
+      code: "custom",
+      path: [hasConfiguredChoir ? "otherChoirName" : "choirId"],
+      message: "Selecione um coro ou informe outro coro.",
+    });
+  }
+  if (value.musicalProfile === "coralista" && value.voicePart === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["voicePart"],
+      message: "Selecione o naipe vocal.",
+    });
+  }
+  if (value.musicalProfile !== "coralista" && value.voicePart !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["voicePart"],
+      message: "O naipe vocal deve ser informado apenas para Coralista.",
+    });
+  }
+}
+
+export const adminUpdateRegistrationFormSchema =
+  adminUpdateRegistrationFields.superRefine(refineAdminUpdateRegistration);
+
+export const adminUpdateRegistrationSchema = adminUpdateRegistrationFields
+  .extend({ registrationId: z.string().uuid() })
+  .superRefine(refineAdminUpdateRegistration);
 
 export type AdminUpdateRegistrationInput = z.infer<typeof adminUpdateRegistrationSchema>;
 
