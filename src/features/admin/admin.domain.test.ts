@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RegistrationDatabaseRow } from "./admin.domain";
 import {
   adminRegistrationExportSchema,
+  adminUpdateRegistrationSchema,
   adminRegistrationQuerySchema,
   buildRegistrationsCsv,
   enrichAdminRegistrationRow,
@@ -618,5 +619,73 @@ describe("admin derived financial state", () => {
 
     expect(row.supersededCheckoutReview).toEqual(review);
     expect(row.financialState).toEqual(baseline.financialState);
+  });
+});
+
+describe("adminUpdateRegistrationSchema", () => {
+  const validInput = {
+    registrationId: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",
+    name: "Ana Histórica",
+    badgeName: "Ana",
+    cpf: "529.982.247-25",
+    email: "ana@example.com",
+    phone: "(85) 99999-0000",
+    birthDate: "1990-01-01",
+    diocese: "Diocese de Sobral",
+    choirId: null,
+    otherChoirName: "Coro Livre",
+    city: "",
+    institution: null,
+    role: "",
+    musicalProfile: "coralista",
+    voicePart: "soprano",
+    observations: "",
+  };
+
+  it("accepts cadastral edits and normalizes empty optional fields", () => {
+    const parsed = adminUpdateRegistrationSchema.parse(validInput);
+    expect(parsed.cpf).toBe("52998224725");
+    expect(parsed.city).toBeNull();
+    expect(parsed.role).toBeNull();
+    expect(parsed.observations).toBeNull();
+    expect(parsed.otherChoirName).toBe("Coro Livre");
+  });
+
+  it("requires exactly one choir source", () => {
+    expect(
+      adminUpdateRegistrationSchema.safeParse({ ...validInput, otherChoirName: null }).success,
+    ).toBe(false);
+    expect(
+      adminUpdateRegistrationSchema.safeParse({
+        ...validInput,
+        choirId: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires voice part only for coralistas", () => {
+    expect(
+      adminUpdateRegistrationSchema.safeParse({ ...validInput, voicePart: null }).success,
+    ).toBe(false);
+    expect(
+      adminUpdateRegistrationSchema.safeParse({
+        ...validInput,
+        musicalProfile: "regente",
+        voicePart: "soprano",
+      }).success,
+    ).toBe(false);
+    expect(
+      adminUpdateRegistrationSchema.safeParse({
+        ...validInput,
+        musicalProfile: "regente",
+        voicePart: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unexpected financial fields", () => {
+    expect(
+      adminUpdateRegistrationSchema.safeParse({ ...validInput, amountCents: 0 }).success,
+    ).toBe(false);
   });
 });
