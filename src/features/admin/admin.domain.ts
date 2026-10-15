@@ -169,6 +169,7 @@ export type AdminRegistrationRow = {
   birthDate: string;
   diocese: string;
   choirName: string;
+  choirId?: string | null;
   otherChoirName: string | null;
   email: string;
   phone: string;
@@ -273,6 +274,7 @@ export function mapAdminRegistrationRow(
     birthDate: row.birth_date ?? "",
     diocese: displayText(row.diocese),
     choirName: row.choir_name,
+    choirId: row.choir_id,
     otherChoirName: row.other_choir_name,
     email: displayText(row.email),
     phone: row.phone,
