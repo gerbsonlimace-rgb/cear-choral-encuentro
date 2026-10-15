@@ -1669,6 +1669,7 @@ export function AdminRegistrationsPage({
                   onMarkExempt={runMarkExemptAction}
                   onDelete={runDeleteAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
+                  onEdit={openEditDialog}
                 />
               ) : (
                 <Card>
@@ -1678,6 +1679,15 @@ export function AdminRegistrationsPage({
                 </Card>
               ))
             )}
+            <EditRegistrationDialog
+              row={editTarget}
+              choirs={editChoirs}
+              busy={participantActionBusy}
+              onOpenChange={(open) => {
+                if (!open) setEditTarget(null);
+              }}
+              onSave={runEditAction}
+            />
             <BalancePaymentDialog
               target={
                 balanceTarget && getAdminFinancialState(balanceTarget).status === "partially_paid"
