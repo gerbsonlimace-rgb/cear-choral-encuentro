@@ -550,6 +550,7 @@ function RegistrationViews({
   onMarkExempt,
   onDelete,
   onViewReceipt,
+  onEdit,
 }: {
   rows: AdminRegistrationRow[];
   participantActionBusy: boolean;
@@ -561,6 +562,7 @@ function RegistrationViews({
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
+  onEdit?: (row: AdminRegistrationRow) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
   const openWithKeyboard = (event: KeyboardEvent<HTMLElement>, row: AdminRegistrationRow) => {
@@ -635,6 +637,7 @@ function RegistrationViews({
                     onMarkExempt={onMarkExempt}
                     onDelete={onDelete}
                     onViewReceipt={onViewReceipt}
+                    onEdit={onEdit}
                     busy={participantActionBusy}
                   />
                 </TableCell>
@@ -675,6 +678,7 @@ function RegistrationViews({
                   onMarkExempt={onMarkExempt}
                     onDelete={onDelete}
                   onViewReceipt={onViewReceipt}
+                  onEdit={onEdit}
                   busy={participantActionBusy}
                 />
               </div>
