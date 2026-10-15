@@ -1022,6 +1022,342 @@ function RegistrationActions({
   );
 }
 
+const editBlank = (value: string | null | undefined) =>
+  !value || value === "Não informado" ? "" : value;
+
+const OTHER_CHOIR_VALUE = "other";
+
+function EditRegistrationDialog({
+  row,
+  choirs,
+  busy,
+  onOpenChange,
+  onSave,
+}: {
+  row: AdminRegistrationRow | null;
+  choirs: PublicChoirOption[];
+  busy: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (input: AdminUpdateRegistrationInput) => Promise<string | null>;
+}) {
+  return (
+    <Dialog open={row !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Editar dados da inscrição</DialogTitle>
+          <DialogDescription>
+            Corrija os dados cadastrais de {row?.name}. Valores, pagamento e foto não são
+            alterados aqui.
+          </DialogDescription>
+        </DialogHeader>
+        {row && (
+          <EditRegistrationForm
+            key={row.id}
+            row={row}
+            choirs={choirs}
+            busy={busy}
+            onSave={onSave}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditRegistrationForm({
+  row,
+  choirs,
+  busy,
+  onSave,
+  onClose,
+}: {
+  row: AdminRegistrationRow;
+  choirs: PublicChoirOption[];
+  busy: boolean;
+  onSave: (input: AdminUpdateRegistrationInput) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const validDiocese = dioceseOptions.some((option) => option.value === row.diocese)
+    ? (row.diocese as Diocese)
+    : dioceseOptions[0].value;
+  const validProfile = musicalProfileOptions.some((option) => option.value === row.musicalProfile)
+    ? (row.musicalProfile as MusicalProfile)
+    : "coralista";
+  const validVoicePart = voicePartOptions.some((option) => option.value === row.voicePart)
+    ? (row.voicePart as VoicePart)
+    : "";
+
+  const [name, setName] = useState(row.name);
+  const [badgeName, setBadgeName] = useState(row.badgeName ?? "");
+  const [cpf, setCpf] = useState(row.cpf);
+  const [email, setEmail] = useState(editBlank(row.email));
+  const [phone, setPhone] = useState(row.phone);
+  const [birthDate, setBirthDate] = useState(row.birthDate);
+  const [diocese, setDiocese] = useState<Diocese>(validDiocese);
+  const [choirChoice, setChoirChoice] = useState(row.choirId ?? OTHER_CHOIR_VALUE);
+  const [otherChoirName, setOtherChoirName] = useState(
+    row.otherChoirName ?? (row.choirId ? "" : row.choirName),
+  );
+  const [city, setCity] = useState(editBlank(row.city));
+  const [institution, setInstitution] = useState(editBlank(row.institution));
+  const [role, setRole] = useState(editBlank(row.role));
+  const [musicalProfile, setMusicalProfile] = useState<MusicalProfile>(validProfile);
+  const [voicePart, setVoicePart] = useState<VoicePart | "">(validVoicePart);
+  const [observations, setObservations] = useState(editBlank(row.observations));
+  const [error, setError] = useState("");
+
+  const choirOptions =
+    row.choirId && !choirs.some((choir) => choir.id === row.choirId)
+      ? [...choirs, { id: row.choirId, name: row.choirName } as PublicChoirOption]
+      : choirs;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setError("");
+    const parsed = adminUpdateRegistrationSchema.safeParse({
+      registrationId: row.id,
+      name,
+      badgeName: badgeName.trim() === "" ? null : badgeName,
+      cpf,
+      email,
+      phone,
+      birthDate,
+      diocese,
+      choirId: choirChoice === OTHER_CHOIR_VALUE ? null : choirChoice,
+      otherChoirName: choirChoice === OTHER_CHOIR_VALUE ? otherChoirName : null,
+      city,
+      institution,
+      role,
+      musicalProfile,
+      voicePart: musicalProfile === "coralista" && voicePart !== "" ? voicePart : null,
+      observations,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Revise os dados informados.");
+      return;
+    }
+    const failure = await onSave(parsed.data);
+    if (failure) {
+      setError(failure);
+      return;
+    }
+    onClose();
+  }
+
+  return (
+    <form onSubmit={(event) => void submit(event)} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="edit-name">Nome completo</Label>
+          <Input
+            id="edit-name"
+            value={name}
+            maxLength={100}
+            disabled={busy}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-badge-name">Nome no crachá</Label>
+          <Input
+            id="edit-badge-name"
+            value={badgeName}
+            maxLength={60}
+            disabled={busy}
+            onChange={(event) => setBadgeName(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-cpf">CPF</Label>
+          <Input
+            id="edit-cpf"
+            inputMode="numeric"
+            value={cpf}
+            maxLength={14}
+            disabled={busy}
+            onChange={(event) => setCpf(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-email">E-mail</Label>
+          <Input
+            id="edit-email"
+            type="email"
+            value={email}
+            maxLength={254}
+            disabled={busy}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-phone">WhatsApp</Label>
+          <Input
+            id="edit-phone"
+            inputMode="tel"
+            value={phone}
+            maxLength={30}
+            disabled={busy}
+            onChange={(event) => setPhone(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-birth-date">Data de nascimento</Label>
+          <Input
+            id="edit-birth-date"
+            type="date"
+            value={birthDate}
+            disabled={busy}
+            onChange={(event) => setBirthDate(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-diocese">Diocese</Label>
+          <Select
+            value={diocese}
+            disabled={busy}
+            onValueChange={(value) => setDiocese(value as Diocese)}
+          >
+            <SelectTrigger id="edit-diocese">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {dioceseOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-choir">Coro</Label>
+          <Select value={choirChoice} disabled={busy} onValueChange={setChoirChoice}>
+            <SelectTrigger id="edit-choir">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {choirOptions.map((choir) => (
+                <SelectItem key={choir.id} value={choir.id}>
+                  {choir.name}
+                </SelectItem>
+              ))}
+              <SelectItem value={OTHER_CHOIR_VALUE}>Outro coro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {choirChoice === OTHER_CHOIR_VALUE && (
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="edit-other-choir">Nome do outro coro</Label>
+            <Input
+              id="edit-other-choir"
+              value={otherChoirName}
+              maxLength={120}
+              disabled={busy}
+              onChange={(event) => setOtherChoirName(event.target.value)}
+            />
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="edit-city">Cidade</Label>
+          <Input
+            id="edit-city"
+            value={city}
+            maxLength={100}
+            disabled={busy}
+            onChange={(event) => setCity(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-institution">Instituição</Label>
+          <Input
+            id="edit-institution"
+            value={institution}
+            maxLength={120}
+            disabled={busy}
+            onChange={(event) => setInstitution(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-role">Função</Label>
+          <Input
+            id="edit-role"
+            value={role}
+            maxLength={60}
+            disabled={busy}
+            onChange={(event) => setRole(event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-musical-profile">Perfil musical</Label>
+          <Select
+            value={musicalProfile}
+            disabled={busy}
+            onValueChange={(value) => setMusicalProfile(value as MusicalProfile)}
+          >
+            <SelectTrigger id="edit-musical-profile">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {musicalProfileOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {musicalProfile === "coralista" && (
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice-part">Naipe vocal</Label>
+            <Select
+              value={voicePart}
+              disabled={busy}
+              onValueChange={(value) => setVoicePart(value as VoicePart)}
+            >
+              <SelectTrigger id="edit-voice-part">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {voicePartOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="edit-observations">Observações</Label>
+          <Textarea
+            id="edit-observations"
+            value={observations}
+            maxLength={500}
+            rows={3}
+            disabled={busy}
+            onChange={(event) => setObservations(event.target.value)}
+          />
+        </div>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? "Salvando…" : "Salvar alterações"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
   const financial = [
     {
