@@ -107,7 +107,7 @@ import type {
   AdminRegistrationSummary,
 } from "./admin.domain";
 import {
-  adminUpdateRegistrationSchema,
+  adminUpdateRegistrationFormSchema,
   getAdminFinancialState,
   manualPaymentReceiptMimeTypeSchema,
   MAX_MANUAL_PAYMENT_RECEIPT_BYTES,
