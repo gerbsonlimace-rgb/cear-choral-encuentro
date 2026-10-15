@@ -525,6 +525,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         if (choirError || !choir) throw new Error("Selecione um coro válido.");
         choirName = choir.name;
       }
+      if (!choirName) throw new Error("Selecione um coro ou informe outro coro.");
 
       const { data, error } = await supabaseAdmin
         .from("registrations")
