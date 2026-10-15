@@ -1116,7 +1116,7 @@ function EditRegistrationForm({
     event.preventDefault();
     if (busy) return;
     setError("");
-    const parsed = adminUpdateRegistrationSchema.safeParse({
+    const parsed = adminUpdateRegistrationFormSchema.safeParse({
       registrationId: row.id,
       name,
       badgeName: badgeName.trim() === "" ? null : badgeName,
