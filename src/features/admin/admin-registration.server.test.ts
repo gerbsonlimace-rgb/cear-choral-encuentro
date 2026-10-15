@@ -994,3 +994,45 @@ describe("registration repository list", () => {
     ).rejects.toThrow("Não foi possível consultar as inscrições.");
   });
 });
+
+describe("registration update", () => {
+  it("delegates cadastral updates to the repository", async () => {
+    const updateRegistration = vi
+      .fn()
+      .mockResolvedValue({ status: "updated", registrationId: "registration-1" });
+    const service = createAdminRegistrationService(
+      { updateRegistration } as never,
+      () => new Date("2026-09-08T01:00:00Z"),
+    );
+    const input = {
+      registrationId: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",
+      name: "Maria Corrigida",
+      badgeName: "Maria",
+      cpf: "52998224725",
+      email: "maria@example.com",
+      phone: "85999999999",
+      birthDate: "1990-01-02",
+      diocese: "Diocese de Quixadá",
+      choirId: null,
+      otherChoirName: "Coro Livre",
+      city: null,
+      institution: null,
+      role: null,
+      musicalProfile: "coralista",
+      voicePart: "soprano",
+      observations: null,
+    } as const;
+    await expect(service.update(input as never)).resolves.toEqual({
+      status: "updated",
+      registrationId: "registration-1",
+    });
+    expect(updateRegistration).toHaveBeenCalledWith(input);
+  });
+
+  it("fails when the repository does not support updates", async () => {
+    const service = createAdminRegistrationService({} as never, () => new Date());
+    await expect(service.update({} as never)).rejects.toThrow(
+      "Ação administrativa indisponível.",
+    );
+  });
+});
