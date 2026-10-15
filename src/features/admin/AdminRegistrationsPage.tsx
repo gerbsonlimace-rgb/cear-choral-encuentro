@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Link2,
   MoreHorizontal,
+  Pencil,
   RefreshCw,
   KeyRound,
   Trash2,
@@ -82,9 +83,20 @@ import {
   deleteAdminRegistration,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
+  updateAdminRegistration,
   type AdminAccessState,
   type AdminRegistrationsBootstrap,
 } from "@/lib/admin.functions";
+import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.functions";
+import type { PublicChoirOption } from "@/features/choirs/choir-pricing.domain";
+import { dioceseOptions, type Diocese } from "@/features/dioceses/diocese.domain";
+import {
+  musicalProfileOptions,
+  voicePartOptions,
+  type MusicalProfile,
+  type VoicePart,
+} from "@/features/registration/registration.domain";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   AdminExportFile,
@@ -95,9 +107,11 @@ import type {
   AdminRegistrationSummary,
 } from "./admin.domain";
 import {
+  adminUpdateRegistrationSchema,
   getAdminFinancialState,
   manualPaymentReceiptMimeTypeSchema,
   MAX_MANUAL_PAYMENT_RECEIPT_BYTES,
+  type AdminUpdateRegistrationInput,
   type ManualPaymentReceipt,
 } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
@@ -151,6 +165,10 @@ type Props = {
   }>;
   navigateToCheckout?: (url: string) => void;
   navigateTo?: (to: AdminNavigationPath | "/regente") => void;
+  updateRegistration?: (input: {
+    data: AdminUpdateRegistrationInput;
+  }) => Promise<{ status: "updated"; registrationId: string }>;
+  loadChoirs?: () => Promise<{ choirs: PublicChoirOption[] }>;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();
