@@ -1015,8 +1015,7 @@ function RegistrationActions({
                 Excluir definitivamente
               </AlertDialogAction>
             </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+PLACEHOLDER
       )}
     </>
   );
@@ -1419,6 +1418,9 @@ export function AdminRegistrationsPage({
   navigateTo,
   updateRegistration = updateAdminRegistration,
   loadChoirs = getPublicRegistrationConfiguration,
+  loadRoles = listAdminRegistrationRoles,
+  grantAdmin = grantAdminFromRegistration,
+  revokeAdmin = revokeAdminFromRegistration,
 }: Props) {
   const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
@@ -1439,7 +1441,24 @@ export function AdminRegistrationsPage({
   const [balanceTarget, setBalanceTarget] = useState<AdminRegistrationRow | null>(null);
   const [editTarget, setEditTarget] = useState<AdminRegistrationRow | null>(null);
   const [editChoirs, setEditChoirs] = useState<PublicChoirOption[]>([]);
+  const [roles, setRoles] = useState<Record<string, RegistrationAdminRole>>({});
+  const [rolesRetry, setRolesRetry] = useState(0);
   const [retry, setRetry] = useState(0);
+  const roleRowIds = result?.rows.map((row) => row.id).join(",") ?? "";
+  useEffect(() => {
+    if (gate !== "authorized" || !roleRowIds) return;
+    let active = true;
+    loadRoles({ data: { registrationIds: roleRowIds.split(",") } })
+      .then((value) => {
+        if (active) setRoles(value ?? {});
+      })
+      .catch(() => {
+        if (active) setRoles({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [gate, roleRowIds, rolesRetry, loadRoles]);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
@@ -1635,6 +1654,36 @@ export function AdminRegistrationsPage({
     } finally {
       actionBusy.current = false;
       if (current === revision.current) setExporting(false);
+    }
+  }
+
+  async function runToggleAdmin(row: AdminRegistrationRow, makeAdmin: boolean): Promise<void> {
+    if (actionBusy.current || gate !== "authorized") return;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      await (makeAdmin ? grantAdmin : revokeAdmin)({ data: { registrationId: row.id } });
+      setAnnouncement(
+        makeAdmin
+          ? `${row.name} agora é administrador.`
+          : `${row.name} não é mais administrador.`,
+      );
+      setRolesRetry((value) => value + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const known = [
+        "Libere o acesso do participante primeiro.",
+        "Você não pode remover seu próprio acesso.",
+        "É preciso manter pelo menos um administrador.",
+      ];
+      setActionError(
+        known.includes(message) ? message : "Não foi possível concluir. Tente novamente.",
+      );
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
     }
   }
 
@@ -2006,6 +2055,8 @@ export function AdminRegistrationsPage({
                   onDelete={runDeleteAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                   onEdit={openEditDialog}
+                  roles={roles}
+                  onToggleAdmin={runToggleAdmin}
                 />
               ) : (
                 <Card>
