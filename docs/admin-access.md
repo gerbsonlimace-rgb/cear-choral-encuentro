@@ -18,3 +18,10 @@ Em uma sessão SQL administrativa autorizada, preencha `revoked_at = now()` e
 reconcessão deve inserir uma nova associação para preservar o histórico.
 
 Nenhum desses passos é executado pela aplicação ou por esta entrega local.
+
+## Pelo painel
+
+Em /admin/inscricoes, no menu "Mais" de um inscrito com acesso de participante
+liberado, use "Tornar administrador" ou "Remover administrador". A promoção cria
+uma nova linha em `admin_users` (com `granted_by`); a remoção preenche
+`revoked_at`/`revoked_by`. Não é possível remover a si mesmo nem o último admin.
