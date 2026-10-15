@@ -5,6 +5,7 @@ import {
   adminMarkExemptSchema,
   adminMarkPaidSchema,
   adminRegistrationQuerySchema,
+  adminUpdateRegistrationSchema,
   type AdminExportFile,
   type AdminRegistrationExportQuery,
   type AdminRegistrationPage,
@@ -234,6 +235,15 @@ export const deleteAdminRegistration = createServerFn({ method: "POST" })
     const { deleteAdminRegistration: run } =
       await import("@/features/admin/admin-registration-delete.server");
     return run(data.registrationId, context.adminUserId, data.cpf);
+  });
+
+export const updateAdminRegistration = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminUpdateRegistrationSchema)
+  .handler(async ({ data }) => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().update(data);
   });
 
 export const getAdminRegistrationReceipt = createServerFn({ method: "POST" })
