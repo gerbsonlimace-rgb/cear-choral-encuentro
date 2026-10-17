@@ -1,0 +1,1 @@
+GRANT INSERT, UPDATE ON TABLE public.admin_users TO service_role;

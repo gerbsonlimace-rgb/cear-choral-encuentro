@@ -24,7 +24,7 @@
 - Restore the black (`bg-brand-ink`) sidebar and mobile bar in the internal shell, replacing the hardcoded zinc colour, and align both shell tests.
 - Publish the photo-art editor at `/euvou`, redirect its old participant-only URL, and add a WhatsApp-ready social image.
 - Add a "Grupo do encontro no WhatsApp" button to the participant home, linking to the event group chat.
+- Fix administrator promotion and removal by restoring service-only write privileges; verify public roles remain denied.
 
 ## Open
-- Fix the administrator promotion confirmation and its reported generic error.
-- Verify participant portal login end-to-end (needs a real registration; none exist right now).
+- Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
