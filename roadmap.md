@@ -26,4 +26,5 @@
 - Add a "Grupo do encontro no WhatsApp" button to the participant home, linking to the event group chat.
 
 ## Open
+- Fix the administrator promotion confirmation and its reported generic error.
 - Verify participant portal login end-to-end (needs a real registration; none exist right now).
