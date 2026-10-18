@@ -115,6 +115,24 @@ async function fetchActiveRegentNames(choirIds: string[]): Promise<Map<string, s
   return names;
 }
 
+function matchesAdminRegistrationFilters(
+  row: Pick<AdminRegistrationRow, "choirId" | "musicalProfile">,
+  query: Pick<AdminRegistrationQuery, "choirId" | "musicalProfile">,
+): boolean {
+  if (query.choirId === "other") {
+    if (row.choirId !== null) return false;
+  } else if (query.choirId !== "all" && row.choirId !== query.choirId) {
+    return false;
+  }
+  if (
+    query.musicalProfile !== "all" &&
+    (row.musicalProfile ?? null) !== query.musicalProfile
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
   const cpfSearch = search.replace(/\D/g, "");
