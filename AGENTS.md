@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep `/euvou` as the public canonical photo-art route and redirect `/participante/minha-foto` to it, so shared links never require participant login.
+- Compute admin raffle tracking separately from registration financial state so administrative obligations never change checkout eligibility or confirmed revenue.

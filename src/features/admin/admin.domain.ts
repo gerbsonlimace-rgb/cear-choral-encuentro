@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getAdminRafflePending } from "./admin-raffle.domain";
 import {
   birthDateSchema,
   brazilianMobilePhoneSchema,
@@ -246,6 +247,8 @@ export type AdminRegistrationPage = {
 };
 
 export type AdminChoirFinancials = {
+  rafflePendingCents?: number;
+  rafflePendingTickets?: number | null;
   choirName: string;
   total: number;
   receivedCents: number;
@@ -255,6 +258,8 @@ export type AdminChoirFinancials = {
 };
 
 export type AdminRegistrationSummary = {
+  rafflePendingCents?: number;
+  rafflePendingTickets?: number | null;
   total: number;
   paid: number;
   pending: number;
@@ -418,6 +423,8 @@ export function summarizeAdminRegistrations(
   >,
 ): AdminRegistrationSummary {
   const summary: AdminRegistrationSummary = {
+    rafflePendingCents: 0,
+    rafflePendingTickets: 0,
     total: rows.length,
     paid: 0,
     pending: 0,
@@ -431,7 +438,7 @@ export function summarizeAdminRegistrations(
   };
   const choirs = new Map<
     string,
-    { total: number; receivedCents: number; pendingCents: number; pendingRegentCents: number }
+    { total: number; receivedCents: number; pendingCents: number; pendingRegentCents: number; rafflePendingCents: number; rafflePendingTickets: number | null }
   >();
 
   for (const row of rows) {
@@ -442,12 +449,23 @@ export function summarizeAdminRegistrations(
       summary.exempt = (summary.exempt ?? 0) + 1;
     } else summary[financialState.status] += 1;
     const choir = choirs.get(row.choirName) ?? {
+      rafflePendingCents: 0,
+      rafflePendingTickets: 0,
       total: 0,
       receivedCents: 0,
       pendingCents: 0,
       pendingRegentCents: 0,
     };
     choir.total += 1;
+    const raffle = getAdminRafflePending(row as AdminRegistrationRow, financialState);
+    if (raffle) {
+      summary.rafflePendingCents = (summary.rafflePendingCents ?? 0) + raffle.cents;
+      choir.rafflePendingCents += raffle.cents;
+      summary.rafflePendingTickets = summary.rafflePendingTickets === null || raffle.tickets === null
+        ? null : (summary.rafflePendingTickets ?? 0) + raffle.tickets;
+      choir.rafflePendingTickets = choir.rafflePendingTickets === null || raffle.tickets === null
+        ? null : choir.rafflePendingTickets + raffle.tickets;
+    }
 
     if (financialState.status === "paid" || financialState.status === "partially_paid") {
       const receivedCents = financialState.confirmedPrincipalCents;

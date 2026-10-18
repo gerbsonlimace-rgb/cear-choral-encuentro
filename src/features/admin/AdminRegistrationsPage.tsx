@@ -121,6 +121,7 @@ import {
   type ManualPaymentReceipt,
 } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import { getAdminRafflePending, formatAdminRafflePending } from "./admin-raffle.domain";
 
 type Props = {
   deleteRegistration?: (input: {
@@ -322,6 +323,7 @@ function readReceipt(file: File): Promise<ManualPaymentReceipt> {
 
 function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
   const state = getAdminFinancialState(row);
+  const raffle = getAdminRafflePending(row, state);
   const received = receivedAmountCents(row);
   const pending = pendingAmountCents(row);
   return (
@@ -340,13 +342,16 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
                 Recebido: <span className="font-medium text-foreground">{money(received)}</span>
               </p>
             )}
-            {pending !== null && (
+            {pending !== null && (!raffle || state.status === "pending") && (
               <p>
-                Pendente: <span className="font-medium text-foreground">{money(pending)}</span>
+                Pendente na inscrição: <span className="font-medium text-foreground">{money(raffle && state.status === "pending" ? pending - raffle.cents : pending)}</span>
               </p>
             )}
             {received === null && pending === null && <p>Valores não informados</p>}
           </>
+        )}
+        {raffle && (
+          <p>Pendente em rifas: <span className="font-medium text-foreground">{formatAdminRafflePending(raffle)}</span></p>
         )}
       </div>
     </div>
@@ -528,7 +533,12 @@ function RegistrationDetailsDialog({
             <DetailItem label="Valor da inscrição">{money(row.registrationPriceCents)}</DetailItem>
             <DetailItem label="Valor do pedido">{money(row.amountCents)}</DetailItem>
             <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
-            <DetailItem label="Pendente">{money(financial.pendingCents)}</DetailItem>
+            <DetailItem label="Pendente na inscrição">{money(financial.pendingCents)}</DetailItem>
+            {getAdminRafflePending(row, financial) && (
+              <DetailItem label="Pendente em rifas">
+                {formatAdminRafflePending(getAdminRafflePending(row, financial) ?? { cents: 0, tickets: 0 })}
+              </DetailItem>
+            )}
             <DetailItem label="Forma de pagamento">{paymentMethod}</DetailItem>
             <DetailItem label="Parcelas">{row.installments ?? "Não informado"}</DetailItem>
             <DetailItem label="Origem do pagamento">{paymentOrigin}</DetailItem>
@@ -1461,6 +1471,12 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
       icon: Clock3,
     },
     {
+      label: "Pendente em rifas",
+      value: money(summary.rafflePendingCents ?? 0),
+      hint: formatAdminRafflePending({ cents: summary.rafflePendingCents ?? 0, tickets: summary.rafflePendingTickets ?? null }),
+      icon: Clock3,
+    },
+    {
       label: "Total previsto",
       value: money(summary.expectedCents),
       hint: "Recebido + pendente",
@@ -1468,7 +1484,7 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
     },
   ];
   return (
-    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-3">
+    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {financial.map((metric) => (
         <InternalMetricCard
           key={metric.label}
