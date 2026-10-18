@@ -308,6 +308,13 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         .select(adminRegistrationColumns, { count: "exact" });
       if (query.paymentStatus !== "all")
         request = request.eq("payment_status", query.paymentStatus);
+      if (query.choirId === "other") {
+        request = request.is("choir_id", null);
+      } else if (query.choirId !== "all") {
+        request = request.eq("choir_id", query.choirId);
+      }
+      if (query.musicalProfile !== "all")
+        request = request.eq("musical_profile", query.musicalProfile);
       if (query.search) request = request.or(registrationSearchFilter(query.search));
       const start = (query.page - 1) * query.pageSize;
       const { data, error, count } = await request
