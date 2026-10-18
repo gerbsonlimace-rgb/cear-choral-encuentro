@@ -710,7 +710,7 @@ describe("derived registration listing", () => {
     const candidates = [
       make("choir-a", "98458155-7dc0-4ff5-8635-d1d4d908db94", "regente"),
       make("other-b", null, "coralista"),
-      make("coral-c", "98458155-7dc0-4ff5-8635-d1d4d908db94", "coralista"),
+      make("coral-c", "4f6a4bd8-4db4-4a3d-97ad-5a2d8b06b741", "coralista"),
     ];
     const repository = {
       listCandidates: vi.fn().mockResolvedValue(candidates),
@@ -1065,7 +1065,7 @@ describe("registration repository list", () => {
 
   it("applies choir and musical profile filters to the registration query", async () => {
     const choirId = "98458155-7dc0-4ff5-8635-d1d4d908db94";
-    const { trace } = databaseHarness([success([])]);
+    const { trace } = databaseHarness([success([]), success([])]);
     const repository = createSupabaseAdminRegistrationRepository();
     await repository.list({
       search: "",
