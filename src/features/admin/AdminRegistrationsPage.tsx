@@ -198,6 +198,8 @@ const defaultOpenReceiptUrl = (url: string) => window.open(url, "_blank", "noope
 const initialQuery: AdminRegistrationQuery = {
   search: "",
   paymentStatus: "all",
+  choirId: "all",
+  musicalProfile: "all",
   page: 1,
   pageSize: 25,
 };
@@ -1738,7 +1740,12 @@ export function AdminRegistrationsPage({
     setAnnouncement("");
     try {
       const file = await exportRegistrations({
-        data: { search: query.search, paymentStatus: query.paymentStatus },
+        data: {
+          search: query.search,
+          paymentStatus: query.paymentStatus,
+          choirId: query.choirId,
+          musicalProfile: query.musicalProfile,
+        },
       });
       if (current !== revision.current) return;
       const url = URL.createObjectURL(new Blob([file.content], { type: "text/csv;charset=utf-8" }));
