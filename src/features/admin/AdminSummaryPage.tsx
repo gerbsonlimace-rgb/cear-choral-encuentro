@@ -72,7 +72,7 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
                       </dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-2">
-                      <dt className="text-muted-foreground">Pendente</dt>
+                      <dt className="text-muted-foreground">Pendente taxa de inscrição</dt>
                       <dd className="font-semibold tabular-nums text-foreground">
                         {money.format(item.pendingCents / 100)}
                       </dd>
