@@ -279,7 +279,7 @@ function Status({ row }: { row: AdminRegistrationRow }) {
     ? "Aguardando aprovação"
     : {
         legacy: "Histórico",
-        pending: "Pendente",
+        pending: "Pendente taxa de inscrição",
         partially_paid: "Parcialmente pago",
         paid: "Pago",
         exempt: "Isento",
@@ -344,7 +344,7 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
             )}
             {pending !== null && (!raffle || state.status === "pending") && (
               <p>
-                Pendente na inscrição: <span className="font-medium text-foreground">{money(getAdminRegistrationPendingCents(row, state))}</span>
+                Pendente taxa de inscrição: <span className="font-medium text-foreground">{money(getAdminRegistrationPendingCents(row, state))}</span>
               </p>
             )}
             {received === null && pending === null && <p>Valores não informados</p>}
@@ -533,7 +533,7 @@ function RegistrationDetailsDialog({
             <DetailItem label="Valor da inscrição">{money(row.registrationPriceCents)}</DetailItem>
             <DetailItem label="Valor do pedido">{money(row.amountCents)}</DetailItem>
             <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
-            <DetailItem label="Pendente na inscrição">{money(getAdminRegistrationPendingCents(row, financial))}</DetailItem>
+            <DetailItem label="Pendente taxa de inscrição">{money(getAdminRegistrationPendingCents(row, financial))}</DetailItem>
             {getAdminRafflePending(row, financial) && (
               <DetailItem label="Pendente em rifas">
                 {formatAdminRafflePending(getAdminRafflePending(row, financial) ?? { cents: 0, tickets: 0 })}
@@ -1465,7 +1465,7 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
       icon: Banknote,
     },
     {
-      label: "Pendente",
+      label: "Pendente taxa de inscrição",
       value: money(summary.pendingCents),
       hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
       icon: Clock3,
