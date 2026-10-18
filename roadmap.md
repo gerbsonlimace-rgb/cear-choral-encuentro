@@ -27,5 +27,5 @@
 - Fix administrator promotion and removal by restoring service-only write privileges; verify public roles remain denied.
 
 ## Open
-- Show pending raffle amounts in the admin panel; exempt groups owe 20 raffle tickets equivalent to R$ 200, without changing participant or regent pages.
+- Show pending raffle amounts in the admin panel; each exempt-group participant has 20 raffle tickets equivalent to R$ 200, without changing participant or regent pages or checkouts.
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
