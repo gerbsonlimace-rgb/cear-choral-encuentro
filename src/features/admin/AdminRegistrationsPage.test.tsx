@@ -22,6 +22,20 @@ vi.mock("@/lib/admin.functions", () => ({
   revokeAdminFromRegistration: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
+vi.mock("@/lib/choir-pricing.functions", () => ({
+  getPublicRegistrationConfiguration: vi.fn(async () => ({
+    choirs: [
+      {
+        id: "choir-1",
+        name: "Coro Diocesano de Quixadá",
+        diocese: null,
+        pricingType: "standard",
+        standardPriceCents: 30000,
+        registrationPriceCents: 30000,
+      },
+    ],
+  })),
+}));
 
 beforeAll(() => {
   // jsdom has no layout/pointer capture; retain the real Radix Select behavior.
@@ -445,7 +459,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     await user.click(await screen.findByRole("option", { name: "Parcialmente pagas" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "", paymentStatus: "partially_paid", page: 1, pageSize: 25 },
+        data: { search: "", paymentStatus: "partially_paid", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
       }),
     );
   });
@@ -756,7 +770,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "Clara", paymentStatus: "all", page: 1, pageSize: 25 },
+        data: { search: "Clara", paymentStatus: "all", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
       }),
     );
     expect(screen.getByText("Página 1 de 3")).toBeInTheDocument();
@@ -767,13 +781,13 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await user.click(await screen.findByRole("option", { name: "Pagas" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "Clara", paymentStatus: "paid", page: 1, pageSize: 25 },
+        data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
       }),
     );
     await user.click(screen.getByRole("button", { name: "Próxima" }));
     await screen.findByText("Página 2 de 3");
     expect(loadRegistrations).toHaveBeenLastCalledWith({
-      data: { search: "Clara", paymentStatus: "paid", page: 2, pageSize: 25 },
+      data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", page: 2, pageSize: 25 },
     });
     expect(window.location.href).not.toContain("Clara");
   }, 15000);
@@ -795,7 +809,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await screen.findByRole("table");
     await user.click(screen.getByRole("button", { name: "Exportar CSV" }));
     expect(exportRegistrations).toHaveBeenCalledWith({
-      data: { search: "Ana", paymentStatus: "all" },
+      data: { search: "Ana", paymentStatus: "all", choirId: "all", musicalProfile: "all" },
     });
     const blob = createObjectURL.mock.calls[0][0] as Blob;
     expect(blob.type).toBe("text/csv;charset=utf-8");
