@@ -697,6 +697,67 @@ describe("derived registration listing", () => {
     expect(page.total).toBe(expected.length);
   });
 
+  it.each([
+    ["all", ["choir-a", "other-b", "coral-c"]],
+    ["other", ["other-b"]],
+    ["98458155-7dc0-4ff5-8635-d1d4d908db94", ["choir-a"]],
+  ] as const)("applies the choir filter %s before paging", async (filter, expected) => {
+    const make = (id: string, choir_id: string | null, musical_profile: string | null) => ({
+      row: { ...selectedRow, id, choir_id, musical_profile } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [
+      make("choir-a", "98458155-7dc0-4ff5-8635-d1d4d908db94", "regente"),
+      make("other-b", null, "coralista"),
+      make("coral-c", "98458155-7dc0-4ff5-8635-d1d4d908db94", "coralista"),
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: "all",
+      choirId: filter,
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(expected);
+    expect(page.total).toBe(expected.length);
+  });
+
+  it("applies the musical profile filter before paging", async () => {
+    const make = (id: string, musical_profile: string | null) => ({
+      row: { ...selectedRow, id, musical_profile } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [make("regent", "regente"), make("singer", "coralista")];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "coralista",
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(["singer"]);
+  });
+
   it("bounds complement ID batches at 1,000", async () => {
     const { trace } = databaseHarness([success([]), success([])]);
     await createSupabaseAdminRegistrationRepository().listComplementPayments!(
