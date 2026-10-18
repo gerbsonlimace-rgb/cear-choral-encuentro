@@ -9,6 +9,7 @@ export const Route = createFileRoute("/admin/resumo")({
   component: AdminSummaryRoute,
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
       { title: "Resumo | Administração do Encontro de Coros" },
       {
         name: "description",

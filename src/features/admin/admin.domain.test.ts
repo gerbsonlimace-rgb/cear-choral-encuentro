@@ -450,6 +450,8 @@ describe("admin registration summary", () => {
     ];
 
     expect(summarizeAdminRegistrations(rows)).toEqual({
+      rafflePendingCents: 60000,
+      rafflePendingTickets: 60,
       total: 5,
       paid: 1,
       pending: 1,
@@ -462,6 +464,8 @@ describe("admin registration summary", () => {
       byChoir: [
         {
           choirName: "Diocese de Quixadá",
+          rafflePendingCents: 60000,
+          rafflePendingTickets: 60,
           total: 3,
           receivedCents: 20000,
           pendingCents: 30000,
@@ -470,6 +474,8 @@ describe("admin registration summary", () => {
         },
         {
           choirName: "Arquidiocese de Fortaleza",
+          rafflePendingCents: 0,
+          rafflePendingTickets: 0,
           total: 1,
           receivedCents: 30000,
           pendingCents: 0,
@@ -478,6 +484,8 @@ describe("admin registration summary", () => {
         },
         {
           choirName: "Diocese de Sobral",
+          rafflePendingCents: 0,
+          rafflePendingTickets: 0,
           total: 1,
           receivedCents: 0,
           pendingCents: 0,

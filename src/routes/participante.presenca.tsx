@@ -9,6 +9,11 @@ export const Route = createFileRoute("/participante/presenca")({
   validateSearch: searchSchema,
   component: ParticipantAttendanceRoute,
   head: () => ({ meta: [
+      { name: "description", content: "Confirmar presença no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Confirmar presença | Encontro de Coros" },
+      { property: "og:description", content: "Confirmar presença no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     { title: "Confirmar presença | Encontro de Coros" },
     { name: "robots", content: "noindex, nofollow" },
     { name: "color-scheme", content: "light" },

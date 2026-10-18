@@ -6,6 +6,7 @@ export const Route = createFileRoute("/admin/")({
   },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
       { title: "Administração | Encontro de Coros" },
       {
         name: "description",

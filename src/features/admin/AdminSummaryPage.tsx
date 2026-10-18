@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin.functions";
 import type { AdminRegistrationSummary } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import { formatAdminRafflePending } from "./admin-raffle.domain";
 
 type Props = {
   checkAccess?: () => Promise<AdminAccessState>;
@@ -76,6 +77,12 @@ function RegistrationSummaryBreakdown({ summary }: { summary: AdminRegistrationS
                         {money.format(item.pendingCents / 100)}
                       </dd>
                     </div>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <dt className="text-muted-foreground">Pendente em rifas</dt>
+                      <dd className="font-semibold tabular-nums text-foreground">
+                        {formatAdminRafflePending({ cents: item.rafflePendingCents ?? 0, tickets: item.rafflePendingTickets ?? null })}
+                      </dd>
+                    </div>
                     <div className="flex items-baseline justify-between gap-2 border-t border-border/70 pt-1.5">
                       <dt className="text-muted-foreground">Total previsto</dt>
                       <dd className="font-semibold tabular-nums text-primary">
@@ -138,6 +145,12 @@ export function AdminSummaryPage({
           label: "Total pendente",
           value: money.format(summary.pendingCents / 100),
           detail: `${money.format(summary.pendingCents / 100)} em inscrições`,
+          icon: Clock3,
+        },
+        {
+          label: "Pendente em rifas",
+          value: money.format((summary.rafflePendingCents ?? 0) / 100),
+          detail: formatAdminRafflePending({ cents: summary.rafflePendingCents ?? 0, tickets: summary.rafflePendingTickets ?? null }),
           icon: Clock3,
         },
       ]

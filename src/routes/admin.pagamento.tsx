@@ -12,6 +12,14 @@ const returnSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/admin/pagamento")({
+  head: () => ({ meta: [
+      { title: "Pagamento administrativo | Encontro de Coros" },
+      { name: "description", content: "Pagamento administrativo no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Pagamento administrativo | Encontro de Coros" },
+      { property: "og:description", content: "Pagamento administrativo no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (search) => returnSearchSchema.parse(search),
   beforeLoad: async () => {
     const access = await getAdminAccess();

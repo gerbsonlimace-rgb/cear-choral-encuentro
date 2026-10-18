@@ -8,6 +8,11 @@ export const Route = createFileRoute("/acessar")({
   component: UnifiedPortalAccessRoute,
   head: () => ({
     meta: [
+      { name: "description", content: "Acessar portal no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Acessar portal | Encontro de Coros" },
+      { property: "og:description", content: "Acessar portal no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Acessar portal | Encontro de Coros" },
       { name: "robots", content: "noindex, nofollow" },
       { name: "theme-color", content: "#ffffff" },

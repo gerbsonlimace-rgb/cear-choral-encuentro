@@ -7,6 +7,10 @@ export const Route = createFileRoute("/inscricao")({
   component: RegistrationPage,
   head: () => ({
     meta: [
+      { property: "og:title", content: "Inscrição | II Encontro de Coros" },
+      { property: "og:description", content: "Inscrição no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Inscrição | II Encontro de Coros" },
       {
         name: "description",
