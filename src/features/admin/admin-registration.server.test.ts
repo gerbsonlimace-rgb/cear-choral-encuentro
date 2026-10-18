@@ -107,7 +107,10 @@ describe("registration export", () => {
       createSupabaseAdminRegistrationRepository(),
       now,
     );
-    const file = await service.export({ search: "Maria", paymentStatus: "paid" }, "user-1");
+    const file = await service.export(
+      { search: "Maria", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
+      "user-1",
+    );
     expect(trace.filter(([method]) => method === "range")).toEqual([
       ["range", 0, 999],
       ["range", 1000, 1999],
@@ -162,7 +165,10 @@ describe("registration export", () => {
     const file = await createAdminRegistrationService(
       createSupabaseAdminRegistrationRepository(),
       now,
-    ).export({ search: "", paymentStatus: "all" }, "user-1");
+    ).export(
+      { search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all" },
+      "user-1",
+    );
     expect(file.content.split("\r\n")).toHaveLength(1);
     expect(trace).toContainEqual([
       "insert",
@@ -193,7 +199,7 @@ describe("registration export", () => {
       const { trace } = databaseHarness(results);
       await expect(
         createAdminRegistrationService(createSupabaseAdminRegistrationRepository(), now).export(
-          { search: "Maria", paymentStatus: "paid" },
+          { search: "Maria", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
           "user-1",
         ),
       ).rejects.toThrow("Não foi possível consultar as inscrições.");
@@ -206,7 +212,7 @@ describe("registration export", () => {
     const { trace } = databaseHarness([success([selectedRow]), success([]), failure]);
     await expect(
       createAdminRegistrationService(createSupabaseAdminRegistrationRepository(), now).export(
-        { search: "", paymentStatus: "paid" },
+        { search: "", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
         "user-1",
       ),
     ).rejects.toThrow("Não foi possível registrar a exportação.");
@@ -218,7 +224,14 @@ describe("registration export", () => {
     const service = getAdminRegistrationService();
     expect(trace).toEqual([]);
     await expect(
-      service.list({ search: "", paymentStatus: "pending", page: 1, pageSize: 10 }),
+      service.list({
+        search: "",
+        paymentStatus: "pending",
+        choirId: "all",
+        musicalProfile: "all",
+        page: 1,
+        pageSize: 10,
+      }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
     expect(trace.filter(([method]) => method === "eq")).toEqual([]);
   });
@@ -509,7 +522,12 @@ describe("derived registration listing", () => {
 
     await expect(
       createAdminRegistrationService(repository, () => new Date()).export(
-        { search: "", paymentStatus: "partially_paid" },
+        {
+          search: "",
+          paymentStatus: "partially_paid",
+          choirId: "all",
+          musicalProfile: "all",
+        },
         "admin-1",
       ),
     ).resolves.toMatchObject({ fileName: expect.stringContaining("inscricoes-") });
@@ -571,6 +589,8 @@ describe("derived registration listing", () => {
     const page = await service.list({
       search: "Maria",
       paymentStatus: "partially_paid",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 1,
     });
@@ -668,11 +688,74 @@ describe("derived registration listing", () => {
     const page = await createAdminRegistrationService(repository, () => new Date()).list({
       search: "",
       paymentStatus: filter,
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 100,
     });
     expect(page.rows.map((row) => row.id)).toEqual(expected);
     expect(page.total).toBe(expected.length);
+  });
+
+  it.each([
+    ["all", ["choir-a", "other-b", "coral-c"]],
+    ["other", ["other-b"]],
+    ["98458155-7dc0-4ff5-8635-d1d4d908db94", ["choir-a"]],
+  ] as const)("applies the choir filter %s before paging", async (filter, expected) => {
+    const make = (id: string, choir_id: string | null, musical_profile: string | null) => ({
+      row: { ...selectedRow, id, choir_id, musical_profile } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [
+      make("choir-a", "98458155-7dc0-4ff5-8635-d1d4d908db94", "regente"),
+      make("other-b", null, "coralista"),
+      make("coral-c", "4f6a4bd8-4db4-4a3d-97ad-5a2d8b06b741", "coralista"),
+    ];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: "all",
+      choirId: filter,
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(expected);
+    expect(page.total).toBe(expected.length);
+  });
+
+  it("applies the musical profile filter before paging", async () => {
+    const make = (id: string, musical_profile: string | null) => ({
+      row: { ...selectedRow, id, musical_profile } as RegistrationDatabaseRow,
+      accountStatus: null,
+      regentName: null,
+    });
+    const candidates = [make("regent", "regente"), make("singer", "coralista")];
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([]),
+      signPhotos: vi.fn(async (rows) => rows),
+      list: vi.fn(),
+      listAll: vi.fn(),
+      recordExport: vi.fn(),
+    };
+    const page = await createAdminRegistrationService(repository, () => new Date()).list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "coralista",
+      page: 1,
+      pageSize: 100,
+    });
+    expect(page.rows.map((row) => row.id)).toEqual(["singer"]);
   });
 
   it("bounds complement ID batches at 1,000", async () => {
@@ -828,6 +911,8 @@ describe("registration repository list", () => {
     await createSupabaseAdminRegistrationRepository().list({
       search: "529.982.247-25",
       paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
@@ -842,6 +927,8 @@ describe("registration repository list", () => {
     const page = await createSupabaseAdminRegistrationRepository().list({
       search: "Maria",
       paymentStatus: "paid",
+      choirId: "all",
+      musicalProfile: "all",
       page: 2,
       pageSize: 25,
     });
@@ -913,6 +1000,8 @@ describe("registration repository list", () => {
     await createSupabaseAdminRegistrationRepository().list({
       search: String.raw`"),payment_status.eq.paid\%_`,
       paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
@@ -929,6 +1018,8 @@ describe("registration repository list", () => {
       createSupabaseAdminRegistrationRepository().list({
         search: "",
         paymentStatus: "all",
+        choirId: "all",
+        musicalProfile: "all",
         page: 1,
         pageSize: 25,
       }),
@@ -951,13 +1042,50 @@ describe("registration repository list", () => {
     ]);
     const repository = createSupabaseAdminRegistrationRepository();
 
-    const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
+    const page = await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 25,
+    });
     expect(page.rows[0].photoUrl).toBe("https://storage.example/signed/foto.jpg");
     expect(createSignedUrl).toHaveBeenCalledWith("a/foto.jpg", 3600);
 
-    await repository.listAll({ search: "", paymentStatus: "all" });
+    await repository.listAll({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+    });
     expect(createSignedUrl).toHaveBeenCalledTimes(1);
     expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
+  });
+
+  it("applies choir and musical profile filters to the registration query", async () => {
+    const choirId = "98458155-7dc0-4ff5-8635-d1d4d908db94";
+    const { trace } = databaseHarness([success([]), success([])]);
+    const repository = createSupabaseAdminRegistrationRepository();
+    await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId,
+      musicalProfile: "coralista",
+      page: 1,
+      pageSize: 25,
+    });
+    expect(trace).toContainEqual(["eq", "choir_id", choirId]);
+    expect(trace).toContainEqual(["eq", "musical_profile", "coralista"]);
+    await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "other",
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 25,
+    });
+    expect(trace).toContainEqual(["is", "choir_id", null]);
   });
 
   it("creates a short-lived signed URL for an administrator receipt", async () => {
@@ -988,6 +1116,8 @@ describe("registration repository list", () => {
       createSupabaseAdminRegistrationRepository().list({
         search: "",
         paymentStatus: "all",
+        choirId: "all",
+        musicalProfile: "all",
         page: 1,
         pageSize: 25,
       }),

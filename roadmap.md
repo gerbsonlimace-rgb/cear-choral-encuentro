@@ -26,6 +26,7 @@
 - Add a "Grupo do encontro no WhatsApp" button to the participant home, linking to the event group chat.
 - Fix administrator promotion and removal by restoring service-only write privileges; verify public roles remain denied.
 - Show pending raffle amounts in the admin panel; each exempt-group participant has 20 raffle tickets equivalent to R$ 200, without changing participant or regent pages or checkouts.
+- Add choir and musical-role filters to the admin registrations list, applied in the database query and kept in the CSV export.
 
 ## Open
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).

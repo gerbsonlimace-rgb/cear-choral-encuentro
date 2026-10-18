@@ -115,6 +115,24 @@ async function fetchActiveRegentNames(choirIds: string[]): Promise<Map<string, s
   return names;
 }
 
+function matchesAdminRegistrationFilters(
+  row: Pick<AdminRegistrationRow, "choirId" | "musicalProfile">,
+  query: Pick<AdminRegistrationQuery, "choirId" | "musicalProfile">,
+): boolean {
+  if (query.choirId === "other") {
+    if (row.choirId !== null) return false;
+  } else if (query.choirId !== "all" && row.choirId !== query.choirId) {
+    return false;
+  }
+  if (
+    query.musicalProfile !== "all" &&
+    (row.musicalProfile ?? null) !== query.musicalProfile
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
   const cpfSearch = search.replace(/\D/g, "");
@@ -308,6 +326,13 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         .select(adminRegistrationColumns, { count: "exact" });
       if (query.paymentStatus !== "all")
         request = request.eq("payment_status", query.paymentStatus);
+      if (query.choirId === "other") {
+        request = request.is("choir_id", null);
+      } else if (query.choirId !== "all") {
+        request = request.eq("choir_id", query.choirId);
+      }
+      if (query.musicalProfile !== "all")
+        request = request.eq("musical_profile", query.musicalProfile);
       if (query.search) request = request.or(registrationSearchFilter(query.search));
       const start = (query.page - 1) * query.pageSize;
       const { data, error, count } = await request
@@ -604,10 +629,12 @@ export function createAdminRegistrationService(
       });
       return row;
     });
-    const filtered =
-      query.paymentStatus === "all"
-        ? enriched
-        : enriched.filter((row) => row.financialState?.status === query.paymentStatus);
+    const filtered = enriched.filter(
+      (row) =>
+        matchesAdminRegistrationFilters(row, query) &&
+        (query.paymentStatus === "all" ||
+          row.financialState?.status === query.paymentStatus),
+    );
     const start = (query.page - 1) * query.pageSize;
     const pageRows = filtered.slice(start, start + query.pageSize);
     const signed =
@@ -621,7 +648,12 @@ export function createAdminRegistrationService(
       const completeRows =
         repository.listCandidates && repository.listComplementPayments
           ? await listAllEnriched()
-          : await repository.listAll({ search: "", paymentStatus: "all" });
+          : await repository.listAll({
+              search: "",
+              paymentStatus: "all",
+              choirId: "all",
+              musicalProfile: "all",
+            });
       return summarizeAdminRegistrations(completeRows);
     },
     async export(
@@ -673,7 +705,12 @@ export function createAdminRegistrationService(
   };
 
   async function listAllEnriched(
-    query: AdminRegistrationExportQuery = { search: "", paymentStatus: "all" },
+    query: AdminRegistrationExportQuery = {
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+    },
   ) {
     const candidates = await repository.listCandidates!(query.search);
     const complementIds = candidates
@@ -704,9 +741,12 @@ export function createAdminRegistrationService(
         reviews.get(candidate.row.id) ?? null,
       ),
     );
-    return query.paymentStatus === "all"
-      ? rows
-      : rows.filter((row) => row.financialState?.status === query.paymentStatus);
+    return rows.filter(
+      (row) =>
+        matchesAdminRegistrationFilters(row, query) &&
+        (query.paymentStatus === "all" ||
+          row.financialState?.status === query.paymentStatus),
+    );
   }
 }
 

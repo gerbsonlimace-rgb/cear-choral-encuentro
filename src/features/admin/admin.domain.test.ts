@@ -166,6 +166,8 @@ describe("admin registration filters", () => {
     expect(adminRegistrationQuerySchema.parse({ search: "  Maria  " })).toEqual({
       search: "Maria",
       paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
@@ -187,10 +189,30 @@ describe("admin registration filters", () => {
 
   // Detects a production mutation that lets list-only pagination fields reach the export boundary.
   it("removes pagination from export input", () => {
-    expect(adminRegistrationExportSchema.parse({ search: "Ana", paymentStatus: "paid" })).toEqual({
+    expect(
+      adminRegistrationExportSchema.parse({
+        search: "Ana",
+        paymentStatus: "paid",
+        choirId: "other",
+        musicalProfile: "coralista",
+      }),
+    ).toEqual({
       search: "Ana",
       paymentStatus: "paid",
+      choirId: "other",
+      musicalProfile: "coralista",
     });
+  });
+
+  // Detects a production mutation that drops the choir filter values from the schema contract.
+  it("accepts a specific choir id and rejects an invalid choir filter", () => {
+    const choirId = "0f806f4f-e3f8-4435-a2ad-151941e569ac";
+    expect(
+      adminRegistrationQuerySchema.parse({ choirId, musicalProfile: "regente" }),
+    ).toMatchObject({ choirId, musicalProfile: "regente" });
+    expect(() =>
+      adminRegistrationQuerySchema.parse({ choirId: "not-a-uuid" }),
+    ).toThrow();
   });
 });
 

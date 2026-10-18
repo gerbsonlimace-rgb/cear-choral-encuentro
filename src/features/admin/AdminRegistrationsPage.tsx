@@ -198,6 +198,8 @@ const defaultOpenReceiptUrl = (url: string) => window.open(url, "_blank", "noope
 const initialQuery: AdminRegistrationQuery = {
   search: "",
   paymentStatus: "all",
+  choirId: "all",
+  musicalProfile: "all",
   page: 1,
   pageSize: 25,
 };
@@ -1564,6 +1566,20 @@ export function AdminRegistrationsPage({
       active = false;
     };
   }, [gate, roleRowIds, rolesRetry, loadRoles]);
+  useEffect(() => {
+    if (gate !== "authorized" || editChoirs.length > 0) return;
+    let active = true;
+    loadChoirs()
+      .then((configuration) => {
+        if (active) setEditChoirs(configuration.choirs);
+      })
+      .catch(() => {
+        if (active) setEditChoirs([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [gate, editChoirs.length, loadChoirs]);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
@@ -1738,7 +1754,12 @@ export function AdminRegistrationsPage({
     setAnnouncement("");
     try {
       const file = await exportRegistrations({
-        data: { search: query.search, paymentStatus: query.paymentStatus },
+        data: {
+          search: query.search,
+          paymentStatus: query.paymentStatus,
+          choirId: query.choirId,
+          musicalProfile: query.musicalProfile,
+        },
       });
       if (current !== revision.current) return;
       const url = URL.createObjectURL(new Blob([file.content], { type: "text/csv;charset=utf-8" }));
@@ -2089,7 +2110,7 @@ export function AdminRegistrationsPage({
             )}
             <form
               onSubmit={search}
-              className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"
+              className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end"
             >
               <div className="min-w-0 flex-1 space-y-2">
                 <Label htmlFor="registration-search">Pesquisar inscrições</Label>
@@ -2108,7 +2129,7 @@ export function AdminRegistrationsPage({
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2 sm:w-44">
+              <div className="space-y-2 sm:w-40">
                 <Label htmlFor="registration-status">Situação</Label>
                 <Select
                   value={query.paymentStatus}
@@ -2128,6 +2149,53 @@ export function AdminRegistrationsPage({
                     <SelectItem value="exempt">Isentas</SelectItem>
                     <SelectItem value="partially_paid">Parcialmente pagas</SelectItem>
                     <SelectItem value="legacy">Históricas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:w-48">
+                <Label htmlFor="registration-choir">Coro</Label>
+                <Select
+                  value={query.choirId}
+                  disabled={loading || exporting}
+                  onValueChange={(value: AdminRegistrationQuery["choirId"]) => {
+                    setAnnouncement("");
+                    setQuery((previous) => ({ ...previous, choirId: value, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger id="registration-choir">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os coros</SelectItem>
+                    {editChoirs.map((choir) => (
+                      <SelectItem key={choir.id} value={choir.id}>
+                        {choir.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="other">Outro coro (fora da lista)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:w-40">
+                <Label htmlFor="registration-role">Função</Label>
+                <Select
+                  value={query.musicalProfile}
+                  disabled={loading || exporting}
+                  onValueChange={(value: AdminRegistrationQuery["musicalProfile"]) => {
+                    setAnnouncement("");
+                    setQuery((previous) => ({ ...previous, musicalProfile: value, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger id="registration-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as funções</SelectItem>
+                    {musicalProfileOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
