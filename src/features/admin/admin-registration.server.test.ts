@@ -509,7 +509,12 @@ describe("derived registration listing", () => {
 
     await expect(
       createAdminRegistrationService(repository, () => new Date()).export(
-        { search: "", paymentStatus: "partially_paid" },
+        {
+          search: "",
+          paymentStatus: "partially_paid",
+          choirId: "all",
+          musicalProfile: "all",
+        },
         "admin-1",
       ),
     ).resolves.toMatchObject({ fileName: expect.stringContaining("inscricoes-") });
@@ -670,6 +675,8 @@ describe("derived registration listing", () => {
     const page = await createAdminRegistrationService(repository, () => new Date()).list({
       search: "",
       paymentStatus: filter,
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 100,
     });
@@ -888,8 +895,6 @@ describe("registration repository list", () => {
           shirtSize: null,
           shirtPriceCents: null,
           paymentStatus: "paid",
-          choirId: "all",
-          musicalProfile: "all",
           amountCents: 3000,
           paidAmountCents: 3000,
           paymentMethod: "pix",
@@ -963,11 +968,23 @@ describe("registration repository list", () => {
     ]);
     const repository = createSupabaseAdminRegistrationRepository();
 
-    const page = await repository.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 });
+    const page = await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 25,
+    });
     expect(page.rows[0].photoUrl).toBe("https://storage.example/signed/foto.jpg");
     expect(createSignedUrl).toHaveBeenCalledWith("a/foto.jpg", 3600);
 
-    await repository.listAll({ search: "", paymentStatus: "all" });
+    await repository.listAll({
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+    });
     expect(createSignedUrl).toHaveBeenCalledTimes(1);
     expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
   });
