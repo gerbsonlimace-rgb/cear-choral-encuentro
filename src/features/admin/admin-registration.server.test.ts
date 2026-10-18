@@ -1063,6 +1063,31 @@ describe("registration repository list", () => {
     expect(trace.filter(([method]) => method === "from")).toHaveLength(2);
   });
 
+  it("applies choir and musical profile filters to the registration query", async () => {
+    const choirId = "98458155-7dc0-4ff5-8635-d1d4d908db94";
+    const { trace } = databaseHarness([success([])]);
+    const repository = createSupabaseAdminRegistrationRepository();
+    await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId,
+      musicalProfile: "coralista",
+      page: 1,
+      pageSize: 25,
+    });
+    expect(trace).toContainEqual(["eq", "choir_id", choirId]);
+    expect(trace).toContainEqual(["eq", "musical_profile", "coralista"]);
+    await repository.list({
+      search: "",
+      paymentStatus: "all",
+      choirId: "other",
+      musicalProfile: "all",
+      page: 1,
+      pageSize: 25,
+    });
+    expect(trace).toContainEqual(["is", "choir_id", null]);
+  });
+
   it("creates a short-lived signed URL for an administrator receipt", async () => {
     const createSignedUrl = vi.fn().mockResolvedValue({
       data: { signedUrl: "https://storage.example/signed/receipt.pdf" },
