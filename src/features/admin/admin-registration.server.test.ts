@@ -107,7 +107,10 @@ describe("registration export", () => {
       createSupabaseAdminRegistrationRepository(),
       now,
     );
-    const file = await service.export({ search: "Maria", paymentStatus: "paid" }, "user-1");
+    const file = await service.export(
+      { search: "Maria", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
+      "user-1",
+    );
     expect(trace.filter(([method]) => method === "range")).toEqual([
       ["range", 0, 999],
       ["range", 1000, 1999],
@@ -162,7 +165,10 @@ describe("registration export", () => {
     const file = await createAdminRegistrationService(
       createSupabaseAdminRegistrationRepository(),
       now,
-    ).export({ search: "", paymentStatus: "all" }, "user-1");
+    ).export(
+      { search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all" },
+      "user-1",
+    );
     expect(file.content.split("\r\n")).toHaveLength(1);
     expect(trace).toContainEqual([
       "insert",
@@ -193,7 +199,7 @@ describe("registration export", () => {
       const { trace } = databaseHarness(results);
       await expect(
         createAdminRegistrationService(createSupabaseAdminRegistrationRepository(), now).export(
-          { search: "Maria", paymentStatus: "paid" },
+          { search: "Maria", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
           "user-1",
         ),
       ).rejects.toThrow("Não foi possível consultar as inscrições.");
@@ -206,7 +212,7 @@ describe("registration export", () => {
     const { trace } = databaseHarness([success([selectedRow]), success([]), failure]);
     await expect(
       createAdminRegistrationService(createSupabaseAdminRegistrationRepository(), now).export(
-        { search: "", paymentStatus: "paid" },
+        { search: "", paymentStatus: "paid", choirId: "all", musicalProfile: "all" },
         "user-1",
       ),
     ).rejects.toThrow("Não foi possível registrar a exportação.");
@@ -218,7 +224,14 @@ describe("registration export", () => {
     const service = getAdminRegistrationService();
     expect(trace).toEqual([]);
     await expect(
-      service.list({ search: "", paymentStatus: "pending", page: 1, pageSize: 10 }),
+      service.list({
+        search: "",
+        paymentStatus: "pending",
+        choirId: "all",
+        musicalProfile: "all",
+        page: 1,
+        pageSize: 10,
+      }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
     expect(trace.filter(([method]) => method === "eq")).toEqual([]);
   });
