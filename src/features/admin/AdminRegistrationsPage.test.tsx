@@ -423,7 +423,7 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(within(view).getAllByText("Pagamento").length).toBeGreaterThan(0);
       expect(within(view).getAllByText(/R\$\s*120,00/).length).toBeGreaterThan(0);
     }
-    expect(screen.getAllByText("Pendente").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pendente taxa de inscrição").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/R\$\s*0,00/).length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByRole("button", { name: "Mais ações para Eduarda Parcial" })[0]);
@@ -473,7 +473,7 @@ describe("AdminRegistrationsPage read-only views", () => {
 
     const financial = await screen.findByRole("group", { name: "Resumo financeiro" });
     expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
-    expect(within(financial).getByText("Pendente").parentElement).toHaveTextContent("R$ 500,00");
+    expect(within(financial).getByText("Pendente taxa de inscrição").parentElement).toHaveTextContent("R$ 500,00");
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 700,00",
     );
@@ -509,7 +509,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     for (const view of [table, cards]) {
       const scope = within(view);
       expect(scope.getByText("Histórico")).toBeInTheDocument();
-      expect(scope.getByText("Pendente")).toBeInTheDocument();
+      expect(scope.getByText("Pendente taxa de inscrição")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getByText("Valores não informados")).toBeInTheDocument();
       expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
