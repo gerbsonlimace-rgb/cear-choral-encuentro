@@ -27,6 +27,11 @@ export const Route = createFileRoute("/regente")({
   component: RegentPortalRoute,
   head: () => ({
     meta: [
+      { name: "description", content: "Área do regente no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Área do regente | Encontro de Coros" },
+      { property: "og:description", content: "Área do regente no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Área do regente | Encontro de Coros" },
       { name: "robots", content: "noindex, nofollow" },
     ],

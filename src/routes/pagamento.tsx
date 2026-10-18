@@ -12,6 +12,14 @@ const returnSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/pagamento")({
+  head: () => ({ meta: [
+      { title: "Confirmação de pagamento | Encontro de Coros" },
+      { name: "description", content: "Confirmação de pagamento no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Confirmação de pagamento | Encontro de Coros" },
+      { property: "og:description", content: "Confirmação de pagamento no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (search) => returnSearchSchema.parse(search),
   component: PaymentReturnRoute,
 });

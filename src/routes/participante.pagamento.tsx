@@ -25,6 +25,11 @@ export const Route = createFileRoute("/participante/pagamento")({
   },
   head: () => ({
     meta: [
+      { name: "description", content: "Pagamento da inscrição no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Pagamento da inscrição | Área do participante" },
+      { property: "og:description", content: "Pagamento da inscrição no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Pagamento da inscrição | Área do participante" },
       { name: "robots", content: "noindex, nofollow" },
     ],

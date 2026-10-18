@@ -8,7 +8,12 @@ export const Route = createFileRoute("/regente/")({
   component: RegentIndexRoute,
   head: () => ({
     meta: [
-      { title: "Área do regente | Encontro de Coros" },
+      { name: "description", content: "Meu coro no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Meu coro | Encontro de Coros" },
+      { property: "og:description", content: "Meu coro no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { title: "Meu coro | Encontro de Coros" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

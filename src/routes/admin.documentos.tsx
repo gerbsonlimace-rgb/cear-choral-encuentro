@@ -6,6 +6,11 @@ export const Route = createFileRoute("/admin/documentos")({
   component: AdminDocumentsRoute,
   head: () => ({
     meta: [
+      { name: "description", content: "Documentos no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Documentos | Administração do Encontro de Coros" },
+      { property: "og:description", content: "Documentos no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Documentos | Administração do Encontro de Coros" },
       { name: "robots", content: "noindex, nofollow" },
     ],

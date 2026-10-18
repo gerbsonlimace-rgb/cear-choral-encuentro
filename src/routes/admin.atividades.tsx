@@ -8,6 +8,11 @@ export const Route = createFileRoute("/admin/atividades")({
   ssr: false,
   component: AdminEventActivitiesRoute,
   head: () => ({ meta: [
+      { name: "description", content: "Programação no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:title", content: "Programação | Administração do Encontro de Coros" },
+      { property: "og:description", content: "Programação no portal do II Encontro de Coros Diocesanos e Litúrgicos do Ceará." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     { title: "Programação | Administração do Encontro de Coros" },
     { name: "robots", content: "noindex, nofollow" },
   ] }),
