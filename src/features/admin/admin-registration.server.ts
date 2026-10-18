@@ -629,10 +629,12 @@ export function createAdminRegistrationService(
       });
       return row;
     });
-    const filtered =
-      query.paymentStatus === "all"
-        ? enriched
-        : enriched.filter((row) => row.financialState?.status === query.paymentStatus);
+    const filtered = enriched.filter(
+      (row) =>
+        matchesAdminRegistrationFilters(row, query) &&
+        (query.paymentStatus === "all" ||
+          row.financialState?.status === query.paymentStatus),
+    );
     const start = (query.page - 1) * query.pageSize;
     const pageRows = filtered.slice(start, start + query.pageSize);
     const signed =
@@ -646,7 +648,12 @@ export function createAdminRegistrationService(
       const completeRows =
         repository.listCandidates && repository.listComplementPayments
           ? await listAllEnriched()
-          : await repository.listAll({ search: "", paymentStatus: "all" });
+          : await repository.listAll({
+              search: "",
+              paymentStatus: "all",
+              choirId: "all",
+              musicalProfile: "all",
+            });
       return summarizeAdminRegistrations(completeRows);
     },
     async export(
