@@ -24,9 +24,27 @@ export const adminPaymentStatusSchema = z.enum([
   "legacy",
 ]);
 
+/** Sentinel accepted in place of a choir uuid to disable the choir filter. */
+export const ADMIN_CHOIR_FILTER_ALL = "all";
+/** Sentinel for registrations whose choir is not one of the configured choirs. */
+export const ADMIN_CHOIR_FILTER_OTHER = "other";
+
+const adminChoirFilterSchema = z.union([
+  z.literal(ADMIN_CHOIR_FILTER_ALL),
+  z.literal(ADMIN_CHOIR_FILTER_OTHER),
+  z.string().uuid(),
+]);
+
+const adminMusicalProfileFilterSchema = z.union([
+  z.literal("all"),
+  musicalProfileSchema,
+]);
+
 export const adminRegistrationQuerySchema = z.object({
   search: z.string().trim().max(100).default(""),
   paymentStatus: adminPaymentStatusSchema.default("all"),
+  choirId: adminChoirFilterSchema.default(ADMIN_CHOIR_FILTER_ALL),
+  musicalProfile: adminMusicalProfileFilterSchema.default("all"),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
@@ -34,6 +52,8 @@ export const adminRegistrationQuerySchema = z.object({
 export const adminRegistrationExportSchema = adminRegistrationQuerySchema.pick({
   search: true,
   paymentStatus: true,
+  choirId: true,
+  musicalProfile: true,
 });
 
 export const MAX_MANUAL_PAYMENT_RECEIPT_BYTES = 10 * 1024 * 1024;
