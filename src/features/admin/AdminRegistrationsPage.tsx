@@ -1566,6 +1566,20 @@ export function AdminRegistrationsPage({
       active = false;
     };
   }, [gate, roleRowIds, rolesRetry, loadRoles]);
+  useEffect(() => {
+    if (gate !== "authorized" || editChoirs.length > 0) return;
+    let active = true;
+    loadChoirs()
+      .then((configuration) => {
+        if (active) setEditChoirs(configuration.choirs);
+      })
+      .catch(() => {
+        if (active) setEditChoirs([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [gate, editChoirs.length, loadChoirs]);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
