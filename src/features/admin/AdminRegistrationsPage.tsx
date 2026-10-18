@@ -121,7 +121,7 @@ import {
   type ManualPaymentReceipt,
 } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
-import { getAdminRafflePending, formatAdminRafflePending } from "./admin-raffle.domain";
+import { getAdminRafflePending, getAdminRegistrationPendingCents, formatAdminRafflePending } from "./admin-raffle.domain";
 
 type Props = {
   deleteRegistration?: (input: {
@@ -344,7 +344,7 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
             )}
             {pending !== null && (!raffle || state.status === "pending") && (
               <p>
-                Pendente na inscrição: <span className="font-medium text-foreground">{money(raffle && state.status === "pending" ? pending - raffle.cents : pending)}</span>
+                Pendente na inscrição: <span className="font-medium text-foreground">{money(getAdminRegistrationPendingCents(row, state))}</span>
               </p>
             )}
             {received === null && pending === null && <p>Valores não informados</p>}
@@ -533,7 +533,7 @@ function RegistrationDetailsDialog({
             <DetailItem label="Valor da inscrição">{money(row.registrationPriceCents)}</DetailItem>
             <DetailItem label="Valor do pedido">{money(row.amountCents)}</DetailItem>
             <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
-            <DetailItem label="Pendente na inscrição">{money(financial.pendingCents)}</DetailItem>
+            <DetailItem label="Pendente na inscrição">{money(getAdminRegistrationPendingCents(row, financial))}</DetailItem>
             {getAdminRafflePending(row, financial) && (
               <DetailItem label="Pendente em rifas">
                 {formatAdminRafflePending(getAdminRafflePending(row, financial) ?? { cents: 0, tickets: 0 })}

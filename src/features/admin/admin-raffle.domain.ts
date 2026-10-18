@@ -20,6 +20,16 @@ export function getAdminRafflePending(
 }
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+export function getAdminRegistrationPendingCents(
+  row: Parameters<typeof getAdminRafflePending>[0],
+  financial: RegistrationFinancialState,
+): number | null {
+  const raffle = getAdminRafflePending(row, financial);
+  if (financial.pendingCents === null) return null;
+  if (!raffle || row.isFreeRegistration) return financial.pendingCents;
+  return Math.max(0, financial.pendingCents - raffle.cents);
+}
+
 export function formatAdminRafflePending(pending: { cents: number; tickets: number | null }): string {
   const amount = currency.format(pending.cents / 100);
   return pending.tickets === null ? amount : `${pending.tickets} ${pending.tickets === 1 ? "rifa" : "rifas"} · ${amount}`;

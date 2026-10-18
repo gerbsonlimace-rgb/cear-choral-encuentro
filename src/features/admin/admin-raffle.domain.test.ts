@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAdminRafflePending } from "./admin-raffle.domain";
+import { getAdminRafflePending, getAdminRegistrationPendingCents } from "./admin-raffle.domain";
 import { summarizeAdminRegistrations, type AdminRegistrationRow } from "./admin.domain";
 
 const row: AdminRegistrationRow = {
@@ -33,6 +33,7 @@ describe("admin raffle tracking", () => {
   });
   it("does not count an unpaid R$ 100 entry as raffle tickets", () => {
     expect(getAdminRafflePending(promotional, { status: "pending", pendingCents: 30_000, confirmedPrincipalCents: 0 })).toEqual({ cents: 20_000, tickets: 20 });
+    expect(getAdminRegistrationPendingCents(promotional, { status: "pending", pendingCents: 30_000, confirmedPrincipalCents: 0 })).toBe(10_000);
   });
   it("reduces the raffle balance by confirmed complements", () => {
     expect(getAdminRafflePending(promotional, { status: "partially_paid", pendingCents: 12_000, confirmedPrincipalCents: 18_000 })).toEqual({ cents: 12_000, tickets: 12 });
