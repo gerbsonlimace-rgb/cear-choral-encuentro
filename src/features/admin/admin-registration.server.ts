@@ -705,7 +705,12 @@ export function createAdminRegistrationService(
   };
 
   async function listAllEnriched(
-    query: AdminRegistrationExportQuery = { search: "", paymentStatus: "all" },
+    query: AdminRegistrationExportQuery = {
+      search: "",
+      paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
+    },
   ) {
     const candidates = await repository.listCandidates!(query.search);
     const complementIds = candidates
@@ -736,9 +741,12 @@ export function createAdminRegistrationService(
         reviews.get(candidate.row.id) ?? null,
       ),
     );
-    return query.paymentStatus === "all"
-      ? rows
-      : rows.filter((row) => row.financialState?.status === query.paymentStatus);
+    return rows.filter(
+      (row) =>
+        matchesAdminRegistrationFilters(row, query) &&
+        (query.paymentStatus === "all" ||
+          row.financialState?.status === query.paymentStatus),
+    );
   }
 }
 
