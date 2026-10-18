@@ -571,6 +571,8 @@ describe("derived registration listing", () => {
     const page = await service.list({
       search: "Maria",
       paymentStatus: "partially_paid",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 1,
     });
@@ -828,6 +830,8 @@ describe("registration repository list", () => {
     await createSupabaseAdminRegistrationRepository().list({
       search: "529.982.247-25",
       paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
@@ -842,6 +846,8 @@ describe("registration repository list", () => {
     const page = await createSupabaseAdminRegistrationRepository().list({
       search: "Maria",
       paymentStatus: "paid",
+      choirId: "all",
+      musicalProfile: "all",
       page: 2,
       pageSize: 25,
     });
@@ -882,6 +888,8 @@ describe("registration repository list", () => {
           shirtSize: null,
           shirtPriceCents: null,
           paymentStatus: "paid",
+          choirId: "all",
+          musicalProfile: "all",
           amountCents: 3000,
           paidAmountCents: 3000,
           paymentMethod: "pix",
@@ -913,6 +921,8 @@ describe("registration repository list", () => {
     await createSupabaseAdminRegistrationRepository().list({
       search: String.raw`"),payment_status.eq.paid\%_`,
       paymentStatus: "all",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
@@ -929,6 +939,8 @@ describe("registration repository list", () => {
       createSupabaseAdminRegistrationRepository().list({
         search: "",
         paymentStatus: "all",
+        choirId: "all",
+        musicalProfile: "all",
         page: 1,
         pageSize: 25,
       }),
@@ -988,6 +1000,8 @@ describe("registration repository list", () => {
       createSupabaseAdminRegistrationRepository().list({
         search: "",
         paymentStatus: "all",
+        choirId: "all",
+        musicalProfile: "all",
         page: 1,
         pageSize: 25,
       }),
