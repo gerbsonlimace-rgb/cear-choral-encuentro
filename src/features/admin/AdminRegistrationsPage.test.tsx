@@ -792,6 +792,65 @@ describe("AdminRegistrationsPage access and interactions", () => {
     expect(window.location.href).not.toContain("Clara");
   }, 15000);
 
+  it("filters by choir and role, resets to the first page, and keeps both filters", async () => {
+    const loadRegistrations = vi
+      .fn()
+      .mockImplementation(async ({ data }) => ({ ...page, total: 60, page: data.page }));
+    const { user } = setup({ loadRegistrations });
+    await screen.findByText("60 inscrições encontradas");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    await screen.findByText("Página 2 de 3");
+
+    screen.getByRole("combobox", { name: "Coro" }).focus();
+    await user.keyboard("{ArrowDown}");
+    await user.click(await screen.findByRole("option", { name: "Outro coro (fora da lista)" }));
+    await waitFor(() =>
+      expect(loadRegistrations).toHaveBeenLastCalledWith({
+        data: {
+          search: "",
+          paymentStatus: "all",
+          choirId: "other",
+          musicalProfile: "all",
+          page: 1,
+          pageSize: 25,
+        },
+      }),
+    );
+    expect(screen.getByText("Página 1 de 3")).toBeInTheDocument();
+
+    screen.getByRole("combobox", { name: "Coro" }).focus();
+    await user.keyboard("{ArrowDown}");
+    await user.click(await screen.findByRole("option", { name: "Coro Diocesano de Quixadá" }));
+    await waitFor(() =>
+      expect(loadRegistrations).toHaveBeenLastCalledWith({
+        data: {
+          search: "",
+          paymentStatus: "all",
+          choirId: "choir-1",
+          musicalProfile: "all",
+          page: 1,
+          pageSize: 25,
+        },
+      }),
+    );
+
+    screen.getByRole("combobox", { name: "Função" }).focus();
+    await user.keyboard("{ArrowDown}");
+    await user.click(await screen.findByRole("option", { name: "Coralista" }));
+    await waitFor(() =>
+      expect(loadRegistrations).toHaveBeenLastCalledWith({
+        data: {
+          search: "",
+          paymentStatus: "all",
+          choirId: "choir-1",
+          musicalProfile: "coralista",
+          page: 1,
+          pageSize: 25,
+        },
+      }),
+    );
+  });
+
   it("exports server CSV with active filters and releases the temporary download", async () => {
     const createObjectURL = vi.fn().mockReturnValue("blob:test-download");
     const revokeObjectURL = vi.fn();
