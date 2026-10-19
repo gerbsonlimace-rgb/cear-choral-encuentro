@@ -253,7 +253,7 @@ describe("landing page access", () => {
     ).toBeVisible();
     expect(
       within(registration!).getByText(
-        "Escolha o formato que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro.",
+        "Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro.",
       ),
     ).toBeVisible();
 
@@ -430,13 +430,13 @@ describe("landing page access", () => {
       name: "Inscrição + hospedagem e alimentação",
     });
     expect(completeCard).toHaveClass("p-5");
-    expect(completeCard).toHaveTextContent("Acesso a todas as formações");
-    expect(completeCard).toHaveTextContent("Kit de participação");
+    expect(completeCard).toHaveTextContent("Acesso integral a todas as formações litúrgicas");
+    expect(completeCard).toHaveTextContent("Kit oficial do participante com partituras impressas");
     expect(completeCard).toHaveTextContent("Certificado de participação");
-    expect(completeCard).toHaveTextContent("Alimentação em todos os dias do evento");
     expect(completeCard).toHaveTextContent(
-      "Hospedagem no Centro Diocesano de Pastoral durante todos os dias do evento",
+      "Alimentação completa durante todos os dias (pensão total)",
     );
+    expect(completeCard).toHaveTextContent("Hospedagem no Centro Diocesano de Pastoral");
     expect(completeCard).not.toHaveTextContent("R$ 100 agora");
     expect(within(registration!).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();
     const primaryActionLink = registration!.querySelector<HTMLElement>(

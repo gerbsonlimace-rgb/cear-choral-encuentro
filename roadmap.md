@@ -27,6 +27,7 @@
 - Fix administrator promotion and removal by restoring service-only write privileges; verify public roles remain denied.
 - Show pending raffle amounts in the admin panel; each exempt-group participant has 20 raffle tickets equivalent to R$ 200, without changing participant or regent pages or checkouts.
 - Add choir and musical-role filters to the admin registrations list, applied in the database query and kept in the CSV export.
+- Publish the official contact (Pe. Lucas Soares, +55 85 9727-8622) on the home footer, the home registration section, and the registration page, from one shared module.
 
 ## Open
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
