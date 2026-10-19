@@ -42,6 +42,7 @@ const adminMusicalProfileFilterSchema = z.union([
 
 export const adminRegistrationQuerySchema = z.object({
   search: z.string().trim().max(100).default(""),
+  loginStatus: z.enum(["all", "never", "has"]).optional(),
   paymentStatus: adminPaymentStatusSchema.default("all"),
   choirId: adminChoirFilterSchema.default(ADMIN_CHOIR_FILTER_ALL),
   musicalProfile: adminMusicalProfileFilterSchema.default("all"),
@@ -51,6 +52,7 @@ export const adminRegistrationQuerySchema = z.object({
 
 export const adminRegistrationExportSchema = adminRegistrationQuerySchema.pick({
   search: true,
+  loginStatus: true,
   paymentStatus: true,
   choirId: true,
   musicalProfile: true,

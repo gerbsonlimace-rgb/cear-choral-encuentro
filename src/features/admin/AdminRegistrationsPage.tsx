@@ -200,6 +200,7 @@ const initialQuery: AdminRegistrationQuery = {
   paymentStatus: "all",
   choirId: "all",
   musicalProfile: "all",
+  loginStatus: "all",
   page: 1,
   pageSize: 25,
 };
@@ -1759,6 +1760,7 @@ export function AdminRegistrationsPage({
           paymentStatus: query.paymentStatus,
           choirId: query.choirId,
           musicalProfile: query.musicalProfile,
+          loginStatus: query.loginStatus,
         },
       });
       if (current !== revision.current) return;
@@ -2196,6 +2198,24 @@ export function AdminRegistrationsPage({
                         {option.label}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:w-48">
+                <Label htmlFor="registration-login">Acesso ao app</Label>
+                <Select
+                  value={query.loginStatus ?? "all"}
+                  disabled={loading || exporting}
+                  onValueChange={(value: NonNullable<AdminRegistrationQuery["loginStatus"]>) => {
+                    setAnnouncement("");
+                    setQuery((previous) => ({ ...previous, loginStatus: value, page: 1 }));
+                  }}
+                >
+                  <SelectTrigger id="registration-login"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="never">Nunca fez login</SelectItem>
+                    <SelectItem value="has">Já fez login</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
