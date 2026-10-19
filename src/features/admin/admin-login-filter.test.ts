@@ -89,16 +89,19 @@ describe("admin login history filter", () => {
   it("paginates Auth users and links by user id rather than email", async () => {
     boundary.auth.admin.listUsers.mockReset().mockResolvedValueOnce({
       data: { users: Array.from({ length: 1000 }, (_, i) => ({ id: `u${i}`, last_sign_in_at: null })) }, error: null,
-    }).mockResolvedValueOnce({ data: { users: [{ id: "staff", last_sign_in_at: "2026-10-18T12:00:00Z" }] }, error: null });
+    }).mockResolvedValueOnce({ data: { users: [{ id: "staff", last_sign_in_at: "2026-10-18T12:00:00Z" }] }, error: null })
+      .mockResolvedValueOnce({ data: { users: [{ id: "later", last_sign_in_at: "2026-10-19T12:00:00Z" }] }, error: null })
+      .mockResolvedValueOnce({ data: { users: [] }, error: null });
     const chain = { select: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: [
       { id: "a", registration_id: "linked-staff", user_id: "staff" },
       { id: "b", registration_id: "new", user_id: "u0" },
       { id: "c", registration_id: "unlinked", user_id: null },
+      { id: "d", registration_id: "later-page", user_id: "later" },
     ], error: null }) };
     boundary.from.mockReturnValue(chain);
     const repository = createSupabaseAdminRegistrationRepository();
     const ids = await repository.listLoggedInRegistrationIds?.();
-    expect([...ids ?? []]).toEqual(["linked-staff"]);
+    expect([...ids ?? []]).toEqual(["linked-staff", "later-page"]);
     expect(boundary.auth.admin.listUsers).toHaveBeenNthCalledWith(2, { page: 2, perPage: 1000 });
   });
 });

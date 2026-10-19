@@ -192,7 +192,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
         for (const user of data.users) {
           if (user.last_sign_in_at) loggedInUsers.add(user.id);
         }
-        if (data.users.length < 1000) break;
+        if (data.users.length === 0) break;
       }
       const loggedInRegistrations = new Set<string>();
       for (let start = 0; ; start += 1000) {
