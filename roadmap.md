@@ -31,6 +31,7 @@
 - Adapt the Instagram access card to a white background and vertical 9:16 mobile/Reels format.
 - Add an admin registrations filter identifying participants who have never logged in, preserving existing filters and CSV export.
 - Open participant PDFs (scores and documents) full screen from "Abrir", with a dark header holding the title plus new-tab, download and close commands.
+- Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
 
 ## Open
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
