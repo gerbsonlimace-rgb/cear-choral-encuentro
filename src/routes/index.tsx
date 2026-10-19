@@ -31,10 +31,16 @@ import { RegistrationCallout } from "@/features/registration/RegistrationCallout
 import { PublicProgramme } from "@/features/event-activities/PublicProgramme";
 import { getPublicEventProgramme } from "@/lib/event-activity.functions";
 import {
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PERSON_NAME,
+  CONTACT_WHATSAPP_HREF,
+} from "@/features/contact/event-contact";
+import {
   ArrowRight,
   BookOpen,
   Calendar,
   Church,
+  Headset,
   MapPin,
   Menu,
   Mic2,
@@ -751,6 +757,25 @@ function Footer() {
               </li>
             </ul>
           </div>
+        </div>
+        <div className="mt-8 flex flex-col items-start gap-4 rounded-2xl bg-background/5 p-4 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="flex items-start gap-3">
+            <Headset className="mt-0.5 size-5 shrink-0 text-amber" aria-hidden="true" />
+            <p className="max-w-xl text-sm leading-relaxed text-background/75">
+              <span className="font-bold text-background">
+                Problemas ou informações sobre a inscrição?
+              </span>{" "}
+              Fale com {CONTACT_PERSON_NAME} pelo WhatsApp {CONTACT_PHONE_DISPLAY}.
+            </p>
+          </div>
+          <a
+            href={CONTACT_WHATSAPP_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-amber px-4 text-sm font-bold text-amber-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+          >
+            Falar no WhatsApp
+          </a>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 pb-[env(safe-area-inset-bottom)] text-center text-sm text-white/60 sm:mt-12 sm:flex-row sm:gap-4 sm:pt-8 sm:text-left">
           <p>© 2026 II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB.</p>

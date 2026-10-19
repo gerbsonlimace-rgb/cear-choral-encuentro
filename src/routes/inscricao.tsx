@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import logo from "@/assets/logo-coros-preto.png";
+import { EventContactCard } from "@/features/contact/EventContactCard";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
 import "@/features/registration/registration-page.css";
 
@@ -42,6 +43,9 @@ function RegistrationPage() {
       <main>
         <h1 className="sr-only">Inscrição no II Encontro de Coros</h1>
         <RegistrationSection />
+        <div className="mx-auto w-full max-w-5xl px-4 pb-12 sm:px-6">
+          <EventContactCard />
+        </div>
       </main>
     </div>
   );

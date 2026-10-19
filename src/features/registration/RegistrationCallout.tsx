@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EventContactCard } from "@/features/contact/EventContactCard";
 import { RegistrationInstallments } from "./RegistrationInstallments";
 import { RafflePrizeHighlight } from "./RafflePrizeHighlight";
 
@@ -268,6 +269,8 @@ export function RegistrationCallout() {
               </div>
             </div>
         </section>
+
+        <EventContactCard className="mt-6" />
       </div>
     </section>
   );
