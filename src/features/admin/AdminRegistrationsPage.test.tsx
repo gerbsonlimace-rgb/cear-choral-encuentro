@@ -9,6 +9,7 @@ vi.mock("@/lib/admin.functions", () => ({
   getAdminRegistrationSummary: vi.fn(),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
+  exportAdminRegistrationsPdf: vi.fn(),
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
   markAdminRegistrationExempt: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/lib/admin.functions", () => ({
   grantAdminFromRegistration: vi.fn(),
   revokeAdminFromRegistration: vi.fn(),
 }));
+vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 vi.mock("@/lib/choir-pricing.functions", () => ({
   getPublicRegistrationConfiguration: vi.fn(async () => ({
@@ -642,6 +644,22 @@ describe("AdminRegistrationsPage read-only views", () => {
 });
 
 describe("AdminRegistrationsPage access and interactions", () => {
+  it("prepares PDF from the current filters and discards the prepared file when filters change", async () => {
+    const exportPdfRegistrations = vi.fn().mockResolvedValue({ fileName: "inscricoes.pdf", base64: "JVBERi0xLjQK" });
+    const { user } = setup({ exportPdfRegistrations });
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("combobox", { name: "Acesso ao app" }));
+    await user.click(await screen.findByRole("option", { name: "Nunca fez login" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Exportar PDF" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    await screen.findByRole("button", { name: "Baixar PDF" });
+    expect(exportPdfRegistrations).toHaveBeenCalledWith({ data: {
+      search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "never",
+    } });
+    await user.click(screen.getByRole("combobox", { name: "Acesso ao app" }));
+    await user.click(await screen.findByRole("option", { name: "Já fez login" }));
+    expect(screen.queryByRole("button", { name: "Baixar PDF" })).not.toBeInTheDocument();
+  });
   it("resets pagination for the login filter and forwards it to CSV", async () => {
     const loadRegistrations = vi.fn().mockImplementation(async ({ data }) => ({ ...page, total: 60, page: data.page }));
     const exportRegistrations = vi.fn().mockRejectedValue(new Error("download unavailable"));
