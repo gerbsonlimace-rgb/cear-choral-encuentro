@@ -35,4 +35,5 @@
 - Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
 
 ## Open
+- Add explicit total-registration and pending-registration-fee counters, plus a PDF export of all registrations matching the active admin filters (awaiting consolidated plan approval).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
