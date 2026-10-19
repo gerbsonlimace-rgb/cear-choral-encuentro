@@ -823,10 +823,100 @@ export function createSupabaseRegentAuthAdmin(): RegentAuthAdminPort {
   };
 }
 
+const candidateUserLimit = 8;
+
+function sanitizeCandidatePattern(query: string) {
+  // PostgREST or-syntax breaks on commas; LIKE wildcards must be escaped so a
+  // search never widens beyond what the administrator typed.
+  return query
+    .trim()
+    .replace(/\\/g, "\\\\")
+    .replace(/[%_]/g, (char) => `\\${char}`)
+    .replace(/,/g, " ");
+}
+
+export function createSupabaseRegentCandidateSearch(): RegentCandidateSearch {
+  function toCandidates(
+    rows: Array<{ user_id: string | null; email: string | null; name: string | null }>,
+  ): RegentCandidateUser[] {
+    return rows
+      .filter((candidate) => candidate.user_id && candidate.email)
+      .map((candidate) => ({
+        userId: candidate.user_id as string,
+        email: candidate.email as string,
+        name: candidate.name?.trim() || (candidate.email as string),
+      }));
+  }
+
+  async function searchAuthUsersByEmail(query: string): Promise<RegentCandidateUser[]> {
+    const needle = query.toLowerCase();
+    const matches: RegentCandidateUser[] = [];
+    let page = 1;
+    while (matches.length < candidateUserLimit) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      checkError(error);
+      for (const user of data.users) {
+        const email = user.email ?? "";
+        const metadata = user.user_metadata as Record<string, unknown> | null;
+        const fullName =
+          typeof metadata?.full_name === "string" && metadata.full_name.trim()
+            ? metadata.full_name.trim()
+            : "";
+        if (email.toLowerCase().includes(needle)) {
+          matches.push({ userId: user.id, email, name: fullName || email });
+          if (matches.length >= candidateUserLimit) break;
+        }
+      }
+      if (!("nextPage" in data) || !data.nextPage) break;
+      page = data.nextPage;
+    }
+    return matches;
+  }
+
+  return {
+    async search(query) {
+      const pattern = `%${sanitizeCandidatePattern(query)}%`;
+      const filter = `name.ilike.${pattern},email.ilike.${pattern}`;
+      const [registrants, regents] = await Promise.all([
+        supabaseAdmin
+          .from("registrations")
+          .select("name,email,participant_accounts(user_id)")
+          .or(filter)
+          .not("participant_accounts.user_id", "is", null)
+          .limit(candidateUserLimit * 2),
+        supabaseAdmin
+          .from("choir_regents")
+          .select("name,email,user_id")
+          .or(filter)
+          .limit(candidateUserLimit * 2),
+      ]);
+      checkError(registrants.error);
+      checkError(regents.error);
+
+      const byUserId = new Map<string, RegentCandidateUser>();
+      for (const candidate of [
+        ...toCandidates(registrants.data as never),
+        ...toCandidates(
+          (regents.data ?? []).map((regent) => ({ ...regent, user_id: regent.user_id })),
+        ),
+      ]) {
+        byUserId.set(candidate.userId, candidate);
+      }
+
+      let candidates = [...byUserId.values()].slice(0, candidateUserLimit);
+      if (!candidates.length && query.includes("@")) {
+        candidates = await searchAuthUsersByEmail(query.trim().toLowerCase());
+      }
+      return candidates;
+    },
+  };
+}
+
 export function getRegentAdminService() {
   return createRegentAdminService({
     repository: createSupabaseRegentAdminRepository(),
     auth: createSupabaseRegentAuthAdmin(),
+    candidateSearch: createSupabaseRegentCandidateSearch(),
     proofs: {
       async createOperation(id, userId, password) {
         return {
