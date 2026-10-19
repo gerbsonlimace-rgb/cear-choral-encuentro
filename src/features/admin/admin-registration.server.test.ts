@@ -16,6 +16,7 @@ import {
   createSupabaseAdminRegistrationRepository,
   getAdminRegistrationService,
 } from "./admin-registration.server";
+import { PDFDocument } from "pdf-lib";
 
 const expectedColumns =
   "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
@@ -426,6 +427,21 @@ describe("registration exemption", () => {
 });
 
 describe("registration summary", () => {
+  it("counts 4 registrations but only 1 unpaid initial fee, excluding partial and exempt raffle obligations", async () => {
+    const { mapAdminRegistrationRow } = await import("./admin.domain");
+    const states = [
+      { status: "pending", pendingCents: 20000, confirmedPrincipalCents: 0 },
+      { status: "paid", pendingCents: 0, confirmedPrincipalCents: 20000 },
+      { status: "partially_paid", pendingCents: 20000, confirmedPrincipalCents: 10000 },
+      { status: "exempt", pendingCents: 0, confirmedPrincipalCents: 0 },
+    ] as const;
+    const rows = states.map((financialState, i) => ({
+      ...mapAdminRegistrationRow({ ...selectedRow, id: `count-${i}` } as RegistrationDatabaseRow),
+      financialState,
+    }));
+    const service = createAdminRegistrationService({ list: vi.fn(), listAll: vi.fn().mockResolvedValue(rows), recordExport: vi.fn() }, () => new Date());
+    expect(await service.summary()).toMatchObject({ total: 4, pending: 1, paid: 1, partiallyPaid: 1, exempt: 1 });
+  });
   // Detects a production mutation that applies the table's active filters to the top-level totals.
   it("summarizes the complete unfiltered registration collection", async () => {
     const repository = {
@@ -482,6 +498,36 @@ describe("registration summary", () => {
 });
 
 describe("derived registration listing", () => {
+  it("exports 30 matching PDF registrations with all active filters and audits the PDF format", async () => {
+    const choirId = "11111111-1111-4111-8111-111111111111";
+    const candidates = Array.from({ length: 30 }, (_, i) => ({
+      row: { ...selectedRow, id: `pdf-${i}`, choir_id: choirId }, accountStatus: null, regentName: null,
+    }));
+    candidates.push({ row: { ...selectedRow, id: "wrong-choir", choir_id: "other" }, accountStatus: null, regentName: null });
+    const repository = {
+      listCandidates: vi.fn().mockResolvedValue(candidates),
+      listComplementPayments: vi.fn().mockResolvedValue([]),
+      listLoggedInRegistrationIds: vi.fn().mockResolvedValue(new Set(["wrong-choir"])),
+      list: vi.fn(), listAll: vi.fn(), recordExport: vi.fn(),
+    };
+    const query = { search: "Maria", choirId, musicalProfile: "coralista", paymentStatus: "paid", loginStatus: "never" } as const;
+    const file = await createAdminRegistrationService(repository, () => new Date("2026-10-19T22:00:00Z")).exportPdf(query, "admin-1");
+    expect(repository.listCandidates).toHaveBeenCalledWith("Maria");
+    expect(repository.list).not.toHaveBeenCalled();
+    expect(repository.recordExport).toHaveBeenCalledWith({ format: "pdf", adminUserId: "admin-1", paymentStatusFilter: "paid", searchUsed: true, resultCount: 30 });
+    expect((await PDFDocument.load(file.base64)).getPageCount()).toBeGreaterThan(1);
+  });
+
+  it("does not return a PDF when retrieval or auditing fails", async () => {
+    const repository = { list: vi.fn(), listAll: vi.fn().mockRejectedValue(new Error("read failed")), recordExport: vi.fn() };
+    const query = { search: "", choirId: "all", musicalProfile: "all", paymentStatus: "all" } as const;
+    const service = createAdminRegistrationService(repository, () => new Date());
+    await expect(service.exportPdf(query, "admin-1")).rejects.toThrow("read failed");
+    expect(repository.recordExport).not.toHaveBeenCalled();
+    repository.listAll.mockResolvedValue([]);
+    repository.recordExport.mockRejectedValue(new Error("audit failed"));
+    await expect(service.exportPdf(query, "admin-1")).rejects.toThrow("audit failed");
+  });
   it("exports partial registrations while recording a database-compatible audit filter", async () => {
     const base = {
       ...selectedRow,

@@ -23,7 +23,12 @@ import {
   CircleOff,
   ShieldCheck,
   ShieldOff,
+  Users,
+  FileDown,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { deliverFile } from "@/lib/file-download";
+import type { AdminPdfFile } from "./admin-registration-pdf";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +81,7 @@ import { startComplementCheckout } from "@/lib/regent.functions";
 import {
   createAdminRegistrationCheckoutLink,
   exportAdminRegistrations,
+  exportAdminRegistrationsPdf,
   getAdminAccess,
   getAdminRegistrationReceipt,
   getAdminRegistrationSummary,
@@ -134,6 +140,7 @@ type Props = {
   loadRegistrations?: (input: { data: AdminRegistrationQuery }) => Promise<AdminRegistrationPage>;
   loadSummary?: () => Promise<AdminRegistrationSummary>;
   exportRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminExportFile>;
+  exportPdfRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminPdfFile>;
   reprocessAccess?: (input: { data: { registrationId: string } }) => Promise<unknown>;
   resetInitialPassword?: (input: { data: { registrationId: string } }) => Promise<{
     status: "success";
@@ -1462,6 +1469,18 @@ function EditRegistrationForm({
 function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
   const financial = [
     {
+      label: "Total de inscrições",
+      value: String(summary.total),
+      hint: "Todas as inscrições cadastradas",
+      icon: Users,
+    },
+    {
+      label: "Inscrições aguardando pagamento",
+      value: String(summary.pending),
+      hint: "Taxa inicial de inscrição pendente",
+      icon: Clock3,
+    },
+    {
       label: "Recebido",
       value: money(summary.receivedCents),
       hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
@@ -1487,7 +1506,7 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
     },
   ];
   return (
-    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {financial.map((metric) => (
         <InternalMetricCard
           key={metric.label}
@@ -1509,6 +1528,7 @@ export function AdminRegistrationsPage({
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
   exportRegistrations = exportAdminRegistrations,
+  exportPdfRegistrations,
   createPaymentLink = createAdminRegistrationCheckoutLink,
   markPaid = markAdminRegistrationPaid,
   markExempt = markAdminRegistrationExempt,
@@ -1530,6 +1550,10 @@ export function AdminRegistrationsPage({
   grantAdmin = grantAdminFromRegistration,
   revokeAdmin = revokeAdminFromRegistration,
 }: Props) {
+  const exportPdfFn = useServerFn(exportAdminRegistrationsPdf);
+  const preparePdf = exportPdfRegistrations ?? exportPdfFn;
+  const [pdfFile, setPdfFile] = useState<{ blob: Blob; fileName: string; filterKey: string } | null>(null);
+  const pdfRevision = useRef(0);
   const openBalanceCheckout = startBalanceCheckout ?? startCheckout ?? startComplementCheckout;
   const [gate, setGate] = useState<
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
@@ -1537,6 +1561,7 @@ export function AdminRegistrationsPage({
   const [result, setResult] = useState<AdminRegistrationPage | null>(null);
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
+  const filterKey = JSON.stringify([query.search, query.paymentStatus, query.choirId, query.musicalProfile, query.loginStatus]);
   const [searchDraft, setSearchDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState("");
@@ -1552,6 +1577,10 @@ export function AdminRegistrationsPage({
   const [roles, setRoles] = useState<Record<string, RegistrationAdminRole>>({});
   const [rolesRetry, setRolesRetry] = useState(0);
   const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    pdfRevision.current += 1;
+    setPdfFile(null);
+  }, [filterKey, gate, retry]);
   const roleRowIds = result?.rows.map((row) => row.id).join(",") ?? "";
   useEffect(() => {
     if (gate !== "authorized" || !roleRowIds) return;
@@ -1744,6 +1773,30 @@ export function AdminRegistrationsPage({
     if (loading || actionBusy.current) return;
     setAnnouncement("");
     setQuery((previous) => ({ ...previous, search: searchDraft.trim(), page: 1 }));
+  }
+
+  async function exportPdf() {
+    if (actionBusy.current || loading || gate !== "authorized") return;
+    actionBusy.current = true;
+    const current = pdfRevision.current;
+    setExporting(true);
+    setActionError("");
+    setPdfFile(null);
+    try {
+      const file = await preparePdf({ data: {
+        search: query.search, paymentStatus: query.paymentStatus,
+        choirId: query.choirId, musicalProfile: query.musicalProfile, loginStatus: query.loginStatus,
+      } });
+      if (current !== pdfRevision.current) return;
+      const bytes = Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0));
+      setPdfFile({ blob: new Blob([bytes], { type: "application/pdf" }), fileName: file.fileName, filterKey });
+      setAnnouncement("PDF pronto para baixar.");
+    } catch {
+      if (current === pdfRevision.current) setActionError("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+      actionBusy.current = false;
+      setExporting(false);
+    }
   }
 
   async function exportCsv() {
@@ -2035,7 +2088,18 @@ export function AdminRegistrationsPage({
             <h1 className="mt-2 font-display text-2xl">Inscrições</h1>
           </div>
           {["authorized", "forbidden", "error"].includes(gate) && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {gate === "authorized" && (
+                <Button size="sm" variant="outline" disabled={loading || exporting}
+                  onClick={() => {
+                    if (pdfFile && pdfFile.filterKey === filterKey) {
+                      void deliverFile(pdfFile.blob, pdfFile.fileName).catch(() => setActionError("Não foi possível baixar o PDF. Tente novamente."));
+                    } else void exportPdf();
+                  }}>
+                  <FileDown className="size-4" aria-hidden="true" />
+                  {pdfFile && pdfFile.filterKey === filterKey ? "Baixar PDF" : "Exportar PDF"}
+                </Button>
+              )}
               {gate === "authorized" && (
                 <Button
                   size="sm"

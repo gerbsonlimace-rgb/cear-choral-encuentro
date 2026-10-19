@@ -147,6 +147,7 @@ function registrationSearchFilter(search: string): string {
 }
 
 export type AdminExportAuditEvent = {
+  format?: "csv" | "pdf";
   adminUserId: string;
   paymentStatusFilter: "pending" | "paid" | "legacy" | null;
   searchUsed: boolean;
@@ -413,7 +414,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
     async recordExport(event) {
       const { error } = await supabaseAdmin.from("admin_access_events").insert({
         admin_user_id: event.adminUserId,
-        event_type: "registrations.export_csv",
+        event_type: event.format === "pdf" ? "registrations.export_pdf" : "registrations.export_csv",
         payment_status_filter: event.paymentStatusFilter,
         search_used: event.searchUsed,
         result_count: event.resultCount,
@@ -723,6 +724,19 @@ export function createAdminRegistrationService(
               : query.paymentStatus,
         searchUsed: query.search.length > 0,
         resultCount: rows.length,
+      });
+      return file;
+    },
+    async exportPdf(query: AdminRegistrationExportQuery, adminUserId: string) {
+      const rows = repository.listCandidates && repository.listComplementPayments
+        ? await listAllEnriched(query) : await repository.listAll(query);
+      const { buildRegistrationsPdf } = await import("./admin-registration-pdf");
+      const file = await buildRegistrationsPdf(rows, query, now());
+      await repository.recordExport({
+        format: "pdf", adminUserId,
+        paymentStatusFilter: query.paymentStatus === "all" ? null
+          : query.paymentStatus === "partially_paid" || query.paymentStatus === "exempt" ? "paid" : query.paymentStatus,
+        searchUsed: query.search.length > 0, resultCount: rows.length,
       });
       return file;
     },
