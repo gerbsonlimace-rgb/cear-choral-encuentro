@@ -3,6 +3,7 @@ import {
   createRegentAdminService,
   createSupabaseRegentAdminRepository,
   createSupabaseRegentAuthAdmin,
+  createSupabaseRegentCandidateSearch,
   RegentGrantFailure,
   type AdminRegentRow,
   type RegentAdminRepository,
@@ -1137,9 +1138,13 @@ describe("candidate user search", () => {
     await search.search("50%,_a\\b");
 
     expect(registrations.or).toHaveBeenCalledExactlyOnceWith(
-      "name.ilike.%50\\%\\,_a\\b%,email.ilike.%50\\%\\,_a\\b%",
+      "name.ilike.%50\\%\\ \\_a\\\\b%,email.ilike.%50\\%\\ \\_a\\\\b%",
     );
-    expect(registrations.not).toHaveBeenCalledExactlyOnceWith("participant_accounts.user_id", "is", null);
+    expect(registrations.not).toHaveBeenCalledExactlyOnceWith(
+      "participant_accounts.user_id",
+      "is",
+      null,
+    );
   });
 
   it("falls back to the Auth directory when the query is an e-mail with no records", async () => {
@@ -1160,7 +1165,7 @@ describe("candidate user search", () => {
     await expect(search.search("macrina@example.com")).resolves.toEqual([
       { userId: "user-7", email: "Macrina@example.com", name: "Irmã Macrina" },
     ]);
-    expect(authAdmin.listUsers).toHaveBeenCalledExactlyOnceWith({ page: 1, perPage: 200 });
+    expect(authAdmin.listUsers).toHaveBeenCalledExactlyOnceWith({ page: 1, perPage: 1000 });
   });
 
   it("maps search failures to a friendly Portuguese error and skips short queries", async () => {
