@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import { getAdminFinancialState, type AdminRegistrationRow, type AdminRegistrationExportQuery } from "./admin.domain";
+import { getAdminFinancialState, type AdminRegistrationRow, type AdminRegistrationPdfExportQuery } from "./admin.domain";
 
 export type AdminPdfFile = { fileName: string; base64: string };
 const ink = rgb(0.10, 0.10, 0.11);
@@ -31,7 +31,7 @@ function wrap(value: string, width: number, font: PDFFont, size: number): string
   return lines.length ? lines : ["—"];
 }
 
-export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query: AdminRegistrationExportQuery, now: Date): Promise<AdminPdfFile> {
+export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query: AdminRegistrationPdfExportQuery, now: Date): Promise<AdminPdfFile> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -39,7 +39,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   doc.setCreationDate(now);
   const widths = [140, 113, 66, 139, 80, 83, 79, 78];
   const headers = ["Nome", "Coro", "Função", "E-mail", "WhatsApp", "Situação", "Valor pago", "Taxa pendente"];
-  const choir = query.choirId === "all" ? "Todos" : query.choirId === "other" ? "Outros coros" : rows.find((row) => row.choirId === query.choirId)?.choirName ?? "Coro selecionado";
+  const choir = query.choirName ?? (query.choirId === "all" ? "Todos" : query.choirId === "other" ? "Outros coros" : rows.find((row) => row.choirId === query.choirId)?.choirName ?? "Coro selecionado");
   const filters = `Pagamento: ${statusLabels[query.paymentStatus]} · Coro: ${choir} · Função: ${query.musicalProfile === "all" ? "Todas" : roleLabels[query.musicalProfile] ?? query.musicalProfile} · Acesso: ${query.loginStatus === "never" ? "Nunca fez login" : query.loginStatus === "has" ? "Já fez login" : "Todos"}${query.search ? ` · Pesquisa: ${query.search}` : ""}`;
   const filterLines = wrap(filters, 778, font, 8);
   const date = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Fortaleza", dateStyle: "short", timeStyle: "short" }).format(now);
@@ -76,5 +76,6 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   });
   doc.getPages().forEach((p, i) => p.drawText(`Página ${i + 1} de ${doc.getPageCount()}`, { x: 710, y: 24, font, size: 8, color: muted }));
   const stamp = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Fortaleza" }).format(now);
-  return { fileName: `inscricoes-${stamp}.pdf`, base64: await doc.saveAsBase64() };
+  const suffix = query.choirName ? `-${query.choirName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase().slice(0, 80) || "coro"}` : "";
+  return { fileName: `inscricoes${suffix}-${stamp}.pdf`, base64: await doc.saveAsBase64() };
 }

@@ -83,6 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "google-site-verification", content: "_vovBIROG9KA_pvoskgwEU1uSfBflrD-16VrOqzQytg" },
       { title: "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 - CNBB" },
       {
         name: "description",

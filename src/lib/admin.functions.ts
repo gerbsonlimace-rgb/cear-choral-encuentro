@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   adminRegistrationExportSchema,
+  adminRegistrationPdfExportSchema,
   adminMarkExemptSchema,
   adminMarkPaidSchema,
   adminRegistrationQuerySchema,
@@ -173,7 +174,7 @@ export const exportAdminRegistrations = createServerFn({ method: "POST" })
 
 export const exportAdminRegistrationsPdf = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
-  .inputValidator(adminRegistrationExportSchema)
+  .inputValidator(adminRegistrationPdfExportSchema)
   .handler(async ({ data, context }) => {
     const { getAdminRegistrationService } = await import("@/features/admin/admin-registration.server");
     return getAdminRegistrationService().exportPdf(data, context.adminUserId);
