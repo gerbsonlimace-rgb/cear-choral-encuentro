@@ -14,6 +14,7 @@ function fixture() {
       choir_id: id === "other-choir" ? "other" : null,
       choir_name: "Coro", musical_profile: "coralista", cpf: "52998224725",
       email: `${id}@example.com`, phone: "85999999999", birth_date: "1990-01-01",
+      paid_at: "2026-10-19T12:00:00Z",
       diocese: "Diocese de Quixadá", include_shirt: false,
     } as RegistrationDatabaseRow,
     accountStatus: id === "no-account" ? null : "active" as const,
