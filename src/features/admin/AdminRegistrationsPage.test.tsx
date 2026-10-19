@@ -22,7 +22,10 @@ vi.mock("@/lib/admin.functions", () => ({
   grantAdminFromRegistration: vi.fn(),
   revokeAdminFromRegistration: vi.fn(),
 }));
-vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
+vi.mock("@tanstack/react-start", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@tanstack/react-start")>(),
+  useServerFn: (fn: unknown) => fn,
+}));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
 vi.mock("@/lib/choir-pricing.functions", () => ({
   getPublicRegistrationConfiguration: vi.fn(async () => ({
