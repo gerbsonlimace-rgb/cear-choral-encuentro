@@ -737,7 +737,50 @@ describe("ChoristerScoresTab", () => {
     expect(new URL(downloadHref!).pathname).toBe(new URL(renewed.signedUrl).pathname);
     expect(new URL(downloadHref!).searchParams.get("download")).toBe(renewed.title);
   });
+
+  it("opens the PDF across the whole screen when a score is opened", async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={scoreFeed.event} onOpen={vi.fn()} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+
+    const viewer = within(view.container).getByRole("region", {
+      name: "Visualizador de Partitura",
+    });
+    expect(viewer.className).toContain("fixed");
+    expect(viewer.className).toContain("inset-0");
+    expect(within(viewer).getByTitle("PDF Partitura").className).toContain("h-full");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await user.click(within(viewer).getByRole("button", { name: "Fechar visualizador" }));
+    expect(
+      within(view.container).queryByRole("region", { name: "Visualizador de Partitura" }),
+    ).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("leaves the full-screen PDF viewer with the Escape key", async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <ChoristerScoresTab event={scoreFeed.event} onOpen={vi.fn()} onDownload={vi.fn()} />,
+    );
+
+    await user.click(within(view.container).getAllByRole("button", { name: "Abrir" })[0]);
+    expect(
+      within(view.container).getByRole("region", { name: "Visualizador de Partitura" }),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(
+      within(view.container).queryByRole("region", { name: "Visualizador de Partitura" }),
+    ).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
 });
+
 
 describe("ChoristerProfileTab", () => {
   it("offers a return to administration only for a participant who is also an admin", async () => {

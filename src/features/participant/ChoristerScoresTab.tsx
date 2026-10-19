@@ -65,6 +65,8 @@ export function ChoristerScoresTab({
   const renewalAttemptRef = useRef<RenewalAttempt | null>(null);
   const lifecycleAssetIdRef = useRef<string | null>(null);
   const renewalUsedAssetIdsRef = useRef(new Set<string>());
+  const viewerRef = useRef<HTMLElement | null>(null);
+
 
   useEffect(() => {
     mountedRef.current = true;
@@ -153,6 +155,27 @@ export function ChoristerScoresTab({
     // The shell changes the asset id to request a new viewer lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAsset?.id]);
+
+  // The list viewer takes over the whole screen, so the page behind it must
+  // stop scrolling and Escape must be able to leave it.
+  useEffect(() => {
+    if (!viewerAsset || viewerOnly) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    viewerRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeViewer();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerAsset?.id, viewerOnly]);
+
 
   async function download(asset: PdfAsset) {
     const generation = viewerGenerationRef.current;
@@ -255,6 +278,31 @@ export function ChoristerScoresTab({
     setViewerAsset(null);
     setViewerStatus("ready");
   }
+
+  function viewerFrame(asset: PdfAsset, frameClassName: string) {
+    return (
+      <>
+        {viewerStatus === "ready" && (
+          <iframe
+            key={asset.signedUrl}
+            title={`PDF ${asset.title}`}
+            src={asset.signedUrl}
+            className={frameClassName}
+            onErrorCapture={viewerFailed}
+          />
+        )}
+        {viewerStatus === "refreshing" && (
+          <p className="p-4 text-sm text-zinc-600">Atualizando acesso ao PDF…</p>
+        )}
+        {viewerStatus === "error" && (
+          <p role="alert" className="p-4 text-sm text-zinc-700">
+            Não foi possível abrir este PDF. Tente novamente.
+          </p>
+        )}
+      </>
+    );
+  }
+
 
   const songsWithScores = showSongScores && event
     ? orderedSongs(event).filter((song) => song.sheetMusic.length > 0)
@@ -401,63 +449,99 @@ export function ChoristerScoresTab({
 
       {viewerAsset && (
         <section
+          ref={viewerRef}
+          tabIndex={-1}
           aria-label={`Visualizador de ${viewerAsset.title}`}
-          className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm"
+          className={
+            viewerOnly
+              ? "rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm"
+              : "fixed inset-0 z-[100] flex flex-col bg-background outline-none"
+          }
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="truncate text-lg font-semibold text-zinc-950">{viewerAsset.title}</h2>
-            {!viewerOnly && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="min-h-11 min-w-11"
-                aria-label="Fechar visualizador"
-                onClick={closeViewer}
-              >
-                <X aria-hidden="true" className="size-4" />
-              </Button>
+          <header
+            className={
+              viewerOnly
+                ? "mb-3 flex items-center justify-between gap-3"
+                : "flex shrink-0 items-center gap-1 border-b border-background/15 bg-brand-ink px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]"
+            }
+          >
+            <h2
+              className={
+                viewerOnly
+                  ? "truncate text-lg font-semibold text-zinc-950"
+                  : "min-w-0 flex-1 truncate px-1 text-sm font-semibold text-background"
+              }
+            >
+              {viewerAsset.title}
+            </h2>
+            {viewerOnly ? null : (
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-11 min-w-11 text-background hover:bg-background/10 hover:text-brand-gold"
+                  aria-label="Abrir em nova guia"
+                  onClick={() => void openInNewTab()}
+                >
+                  <ExternalLink aria-hidden="true" className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-11 min-w-11 text-background hover:bg-background/10 hover:text-brand-gold"
+                  aria-label="Baixar PDF"
+                  onClick={() => void download(viewerAsset)}
+                >
+                  <Download aria-hidden="true" className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-11 min-w-11 text-background hover:bg-background/10 hover:text-brand-gold"
+                  aria-label="Fechar visualizador"
+                  onClick={closeViewer}
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </Button>
+              </div>
             )}
-          </div>
-          {viewerStatus === "ready" && (
-            <iframe
-              key={viewerAsset.signedUrl}
-              title={`PDF ${viewerAsset.title}`}
-              src={viewerAsset.signedUrl}
-              className="h-[60svh] w-full rounded-lg border border-zinc-200"
-              onErrorCapture={viewerFailed}
-            />
+          </header>
+
+          {viewerOnly ? (
+            <>
+              {viewerFrame(viewerAsset, "h-[60svh] w-full rounded-lg border border-zinc-200")}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => void openInNewTab()}
+                >
+                  <ExternalLink aria-hidden="true" className="size-4" />
+                  Abrir em nova guia
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => void download(viewerAsset)}
+                >
+                  <Download aria-hidden="true" className="size-4" />
+                  Baixar PDF
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="relative min-h-0 flex-1">
+              {viewerFrame(viewerAsset, "h-full w-full")}
+            </div>
           )}
-          {viewerStatus === "refreshing" && (
-            <p className="p-4 text-sm text-zinc-600">Atualizando acesso ao PDF…</p>
-          )}
-          {viewerStatus === "error" && (
-            <p role="alert" className="p-4 text-sm text-zinc-700">
-              Não foi possível abrir este PDF. Tente novamente.
-            </p>
-          )}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              onClick={() => void openInNewTab()}
-            >
-              <ExternalLink aria-hidden="true" className="size-4" />
-              Abrir em nova guia
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              onClick={() => void download(viewerAsset)}
-            >
-              <Download aria-hidden="true" className="size-4" />
-              Baixar PDF
-            </Button>
-          </div>
         </section>
       )}
+
     </section>
   );
 }
