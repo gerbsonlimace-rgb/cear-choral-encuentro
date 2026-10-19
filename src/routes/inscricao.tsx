@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import logo from "@/assets/logo-coros-preto.png";
 import { EventContactCard } from "@/features/contact/EventContactCard";
+import { ParticipantVideoSection } from "@/features/registration/ParticipantVideoSection";
 import { RegistrationSection } from "@/features/registration/RegistrationSection";
 import "@/features/registration/registration-page.css";
 
