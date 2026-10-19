@@ -1138,7 +1138,7 @@ describe("candidate user search", () => {
     await search.search("50%,_a\\b");
 
     expect(registrations.or).toHaveBeenCalledExactlyOnceWith(
-      "name.ilike.%50\\%\\ \\_a\\\\b%,email.ilike.%50\\%\\ \\_a\\\\b%",
+      "name.ilike.%50\\% \\_a\\\\b%,email.ilike.%50\\% \\_a\\\\b%",
     );
     expect(registrations.not).toHaveBeenCalledExactlyOnceWith(
       "participant_accounts.user_id",
