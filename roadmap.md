@@ -31,4 +31,5 @@
 - Adapt the Instagram access card to a white background and vertical 9:16 mobile/Reels format.
 
 ## Open
+- Add an admin registrations filter identifying participants who have never logged in, preserving existing filters and CSV export.
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
