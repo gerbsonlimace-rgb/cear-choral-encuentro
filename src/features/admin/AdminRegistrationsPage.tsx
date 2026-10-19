@@ -1562,10 +1562,6 @@ export function AdminRegistrationsPage({
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const filterKey = JSON.stringify([query.search, query.paymentStatus, query.choirId, query.musicalProfile, query.loginStatus]);
-  useEffect(() => {
-    pdfRevision.current += 1;
-    setPdfFile(null);
-  }, [filterKey, gate, retry]);
   const [searchDraft, setSearchDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState("");
@@ -1581,6 +1577,10 @@ export function AdminRegistrationsPage({
   const [roles, setRoles] = useState<Record<string, RegistrationAdminRole>>({});
   const [rolesRetry, setRolesRetry] = useState(0);
   const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    pdfRevision.current += 1;
+    setPdfFile(null);
+  }, [filterKey, gate, retry]);
   const roleRowIds = result?.rows.map((row) => row.id).join(",") ?? "";
   useEffect(() => {
     if (gate !== "authorized" || !roleRowIds) return;
