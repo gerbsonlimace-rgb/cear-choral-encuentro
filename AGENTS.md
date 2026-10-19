@@ -12,3 +12,4 @@
 - Keep `/euvou` as the public canonical photo-art route and redirect `/participante/minha-foto` to it, so shared links never require participant login.
 - Compute admin raffle tracking separately from registration financial state so administrative obligations never change checkout eligibility or confirmed revenue.
 - Filter administrative registration login history on the server using linked Auth user sign-in records before pagination and CSV export; account provisioning is not evidence of login.
+- Generate administrative registration PDFs on the authorized server from the complete filtered dataset, audit their format separately, and prepare downloads before the final user click so mobile file delivery retains user activation.

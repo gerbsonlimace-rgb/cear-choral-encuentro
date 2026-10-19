@@ -171,6 +171,14 @@ export const exportAdminRegistrations = createServerFn({ method: "POST" })
     );
   });
 
+export const exportAdminRegistrationsPdf = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .inputValidator(adminRegistrationExportSchema)
+  .handler(async ({ data, context }) => {
+    const { getAdminRegistrationService } = await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().exportPdf(data, context.adminUserId);
+  });
+
 export const reprocessParticipantAccess = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(participantRegistrationIdSchema)
