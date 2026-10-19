@@ -58,6 +58,12 @@ export const adminRegistrationExportSchema = adminRegistrationQuerySchema.pick({
   musicalProfile: true,
 });
 
+// Summary cards group by the exact stored name, including unconfigured choirs.
+export const adminRegistrationPdfExportSchema = adminRegistrationExportSchema.extend({
+  choirName: z.string().min(1).max(255).optional(),
+});
+export type AdminRegistrationPdfExportQuery = z.infer<typeof adminRegistrationPdfExportSchema>;
+
 export const MAX_MANUAL_PAYMENT_RECEIPT_BYTES = 10 * 1024 * 1024;
 const MAX_MANUAL_PAYMENT_RECEIPT_BASE64_LENGTH =
   Math.ceil(MAX_MANUAL_PAYMENT_RECEIPT_BYTES / 3) * 4;

@@ -8,6 +8,7 @@ import {
   summarizeAdminRegistrations,
   type AdminExportFile,
   type AdminRegistrationExportQuery,
+  type AdminRegistrationPdfExportQuery,
   type AdminRegistrationCandidate,
   type AdminComplementPaymentRow,
   type AdminRegistrationPage,
@@ -727,9 +728,11 @@ export function createAdminRegistrationService(
       });
       return file;
     },
-    async exportPdf(query: AdminRegistrationExportQuery, adminUserId: string) {
-      const rows = repository.listCandidates && repository.listComplementPayments
+    async exportPdf(query: AdminRegistrationPdfExportQuery, adminUserId: string) {
+      const matchingRows = repository.listCandidates && repository.listComplementPayments
         ? await listAllEnriched(query) : await repository.listAll(query);
+      const rows = query.choirName === undefined ? matchingRows
+        : matchingRows.filter((row) => row.choirName === query.choirName);
       const { buildRegistrationsPdf } = await import("./admin-registration-pdf");
       const file = await buildRegistrationsPdf(rows, query, now());
       await repository.recordExport({
