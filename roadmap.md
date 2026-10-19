@@ -30,6 +30,7 @@
 - Publish the official contact (Pe. Lucas Soares, +55 85 9727-8622) on the home footer, the home registration section, and the registration page, from one shared module.
 - Adapt the Instagram access card to a white background and vertical 9:16 mobile/Reels format.
 - Add an admin registrations filter identifying participants who have never logged in, preserving existing filters and CSV export.
+- Open participant PDFs (scores and documents) full screen from "Abrir", with a dark header holding the title plus new-tab, download and close commands.
 
 ## Open
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
