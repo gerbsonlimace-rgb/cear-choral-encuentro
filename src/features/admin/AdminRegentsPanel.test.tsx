@@ -155,4 +155,36 @@ describe("AdminRegentsPanel", () => {
     );
     expect(await screen.findByText("Troca de senha obrigatória")).toBeInTheDocument();
   });
+  it("searches existing users and fills the identity draft from a result", async () => {
+    const searchCandidates = vi.fn(async () => [
+      { userId: "user-9", email: "macrina@example.com", name: "Irmã Macrina" },
+    ]);
+    const linkExistingRegent = vi.fn(async () => ({
+      status: "success" as const,
+      regent: { ...row, passwordChangeRequired: false },
+    }));
+    const { user } = setup({
+      searchCandidates,
+      linkExistingRegent,
+    } as Partial<AdminRegentsPanelProps>);
+    await screen.findByText("Maria");
+
+    await user.click(screen.getByRole("button", { name: "Vincular usuário existente" }));
+    await user.type(screen.getByLabelText("Buscar usuário"), "macrina");
+    await waitFor(() =>
+      expect(searchCandidates).toHaveBeenCalledWith({ data: { query: "macrina" } }),
+    );
+    const results = screen.getByRole("list", { name: "Usuários encontrados" });
+    await user.click(within(results).getByRole("button", { name: /Irmã Macrina/ }));
+
+    expect(screen.getByLabelText("Nome")).toHaveValue("Irmã Macrina");
+    expect(screen.getByLabelText("E-mail")).toHaveValue("macrina@example.com");
+    await user.selectOptions(screen.getByLabelText("Coro"), choirId);
+    await user.click(screen.getByRole("button", { name: "Vincular regente" }));
+    await waitFor(() =>
+      expect(linkExistingRegent).toHaveBeenCalledWith({
+        data: { choirId, name: "Irmã Macrina", email: "macrina@example.com" },
+      }),
+    );
+  });
 });

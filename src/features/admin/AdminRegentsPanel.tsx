@@ -28,11 +28,13 @@ import {
   replaceAdminRegentWithExistingUser,
   resetAdminRegentPassword,
   revokeAdminRegent,
+  searchAdminRegentCandidates,
 } from "@/lib/regent.functions";
 import { regentMutationSchema, type RegentMutation } from "@/features/regent/regent.domain";
 import type {
   AdminRegentRow,
   RegentAdminResult,
+  RegentCandidateUser,
   RegentCreation,
 } from "@/features/regent/regent-admin.server";
 
@@ -41,6 +43,7 @@ export type AdminRegentsPanelProps = {
   choirs: { id: string; name: string }[];
   choirId?: string;
   loadRegents?: () => Promise<AdminRegentRow[]>;
+  searchCandidates?: (input: { data: { query: string } }) => Promise<RegentCandidateUser[]>;
   createRegent?: Mutation<RegentCreation>;
   replaceRegent?: Mutation<RegentCreation>;
   linkExistingRegent?: Mutation<RegentMutation>;
@@ -59,6 +62,7 @@ export function AdminRegentsPanel({
   choirs,
   choirId,
   loadRegents = listAdminRegents,
+  searchCandidates = searchAdminRegentCandidates,
   createRegent = createAdminRegent,
   replaceRegent = replaceAdminRegent,
   linkExistingRegent = linkExistingAdminRegent,
@@ -77,6 +81,10 @@ export function AdminRegentsPanel({
   const [resetting, setResetting] = useState<AdminRegentRow | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetError, setResetError] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidates, setCandidates] = useState<RegentCandidateUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -94,6 +102,34 @@ export function AdminRegentsPanel({
   useEffect(() => {
     if (choirId) setDraft((current) => ({ ...current, choirId }));
   }, [choirId]);
+  useEffect(() => {
+    if (mode !== "existing") {
+      setCandidates([]);
+      setSearchError("");
+      return;
+    }
+    const query = candidateQuery.trim();
+    if (query.length < 2) {
+      setCandidates([]);
+      setSearchError("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCandidates([]);
+      setSearchError("");
+      setSearching(true);
+      searchCandidates({ data: { query } })
+        .then((rows) => setCandidates(rows))
+        .catch(() => setSearchError("Não foi possível buscar usuários."))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [candidateQuery, mode, searchCandidates]);
+  function useCandidate(found: RegentCandidateUser) {
+    setDraft((current) => ({ ...current, name: found.name, email: found.email }));
+    setCandidates([]);
+    setMessage("Usuário selecionado. Confirme o coro e clique em Vincular regente.");
+  }
   const visibleRegents = choirId ? regents.filter((regent) => regent.choirId === choirId) : regents;
 
   async function mutate(
@@ -209,7 +245,7 @@ export function AdminRegentsPanel({
         <p className="mt-1 text-sm text-muted-foreground">
           {mode === "new"
             ? "Nenhum e-mail será enviado. Entregue o acesso e a senha temporária ao regente por um canal seguro. A troca de senha será obrigatória no primeiro acesso."
-            : "A conta será vinculada sem alterar sua senha. O regente usará a senha que já possui e não precisará trocá-la."}
+            : "Busque pelo nome ou e-mail de quem já tem conta no app, ou preencha os dados manualmente. A conta será vinculada sem alterar sua senha: o regente usará a senha que já possui e não precisará trocá-la."}
         </p>
       </div>
       <form onSubmit={submit} className="space-y-3">
@@ -235,6 +271,52 @@ export function AdminRegentsPanel({
             Vincular usuário existente
           </Button>
         </div>
+        {mode === "existing" && (
+          <div className="space-y-2">
+            <Label htmlFor="regent-user-search">Buscar usuário</Label>
+            <Input
+              id="regent-user-search"
+              type="search"
+              placeholder="Nome ou e-mail de quem já usa o app"
+              maxLength={100}
+              autoComplete="off"
+              value={candidateQuery}
+              onChange={(event) => setCandidateQuery(event.target.value)}
+            />
+            {searching && (
+              <p role="status" className="text-xs text-muted-foreground">
+                Buscando…
+              </p>
+            )}
+            {searchError && (
+              <p role="alert" className="text-xs text-destructive">
+                {searchError}
+              </p>
+            )}
+            {candidates.length > 0 && (
+              <ul aria-label="Usuários encontrados" className="space-y-1">
+                {candidates.map((found) => (
+                  <li key={found.userId}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto w-full justify-start py-2 text-left"
+                      onClick={() => useCandidate(found)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{found.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {found.email}
+                        </span>
+                      </span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="regent-name">Nome</Label>

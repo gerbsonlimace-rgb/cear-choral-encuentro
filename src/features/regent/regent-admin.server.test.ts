@@ -3,6 +3,7 @@ import {
   createRegentAdminService,
   createSupabaseRegentAdminRepository,
   createSupabaseRegentAuthAdmin,
+  createSupabaseRegentCandidateSearch,
   RegentGrantFailure,
   type AdminRegentRow,
   type RegentAdminRepository,
@@ -1071,5 +1072,119 @@ describe("Supabase administrative adapters", () => {
     expect(authAdmin.updateUserById).toHaveBeenCalledWith(row.userId, {
       app_metadata: metadata,
     });
+  });
+});
+
+describe("candidate user search", () => {
+  const row = {
+    id: "22222222-2222-4222-8222-222222222222",
+    userId: "user-1",
+    email: "regent@example.com",
+    name: "Maria",
+    passwordChangeRequired: false,
+    revokedAt: null,
+  };
+
+  function stubbedQuery(result: { data: unknown; error: unknown }) {
+    return {
+      select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      limit: vi.fn(async () => result),
+    };
+  }
+
+  it("searches registrations and regents, deduplicating by user account", async () => {
+    from.mockImplementation((table: string) =>
+      table === "registrations"
+        ? stubbedQuery({
+            data: [
+              {
+                name: "Irmã Macrina",
+                email: "macrina@example.com",
+                participant_accounts: [{ user_id: "user-1" }],
+              },
+              { name: "Sem conta", email: "ghost@example.com", participant_accounts: [{ user_id: null }] },
+            ],
+            error: null,
+          })
+        : stubbedQuery({
+            data: [
+              { name: "Irmã Macrina", email: "macrina@example.com", user_id: "user-1" },
+              { name: "Pe. Lucas", email: "lucas@example.com", user_id: "user-2" },
+            ],
+            error: null,
+          }),
+    );
+
+    const search = createSupabaseRegentCandidateSearch();
+
+    await expect(search.search("macrina")).resolves.toEqual([
+      { userId: "user-1", email: "macrina@example.com", name: "Irmã Macrina" },
+      { userId: "user-2", email: "lucas@example.com", name: "Pe. Lucas" },
+    ]);
+    expect(from).toHaveBeenCalledWith("registrations");
+    expect(from).toHaveBeenCalledWith("choir_regents");
+  });
+
+  it("escapes LIKE special characters in the search pattern", async () => {
+    const registrations = stubbedQuery({ data: [], error: null });
+    const regents = stubbedQuery({ data: [], error: null });
+    from.mockImplementation((table: string) =>
+      table === "registrations" ? registrations : regents,
+    );
+
+    const search = createSupabaseRegentCandidateSearch();
+    await search.search("50%,_a\\b");
+
+    expect(registrations.or).toHaveBeenCalledExactlyOnceWith(
+      "name.ilike.%50\\% \\_a\\\\b%,email.ilike.%50\\% \\_a\\\\b%",
+    );
+    expect(registrations.not).toHaveBeenCalledExactlyOnceWith(
+      "participant_accounts.user_id",
+      "is",
+      null,
+    );
+  });
+
+  it("falls back to the Auth directory when the query is an e-mail with no records", async () => {
+    from.mockImplementation(() => stubbedQuery({ data: [], error: null }));
+    authAdmin.listUsers.mockResolvedValue({
+      data: {
+        users: [
+          { id: "user-7", email: "Macrina@example.com", user_metadata: { full_name: "Irmã Macrina" } },
+          { id: "user-8", email: "other@example.com", user_metadata: {} },
+        ],
+        nextPage: null,
+      },
+      error: null,
+    });
+
+    const search = createSupabaseRegentCandidateSearch();
+
+    await expect(search.search("macrina@example.com")).resolves.toEqual([
+      { userId: "user-7", email: "Macrina@example.com", name: "Irmã Macrina" },
+    ]);
+    expect(authAdmin.listUsers).toHaveBeenCalledExactlyOnceWith({ page: 1, perPage: 1000 });
+  });
+
+  it("maps search failures to a friendly Portuguese error and skips short queries", async () => {
+    const { repository, auth, proofs } = setup();
+    const failing = {
+      search: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+    };
+    const service = createRegentAdminService({
+      repository,
+      auth,
+      proofs,
+      candidateSearch: failing,
+    });
+
+    await expect(service.searchCandidates("a")).resolves.toEqual([]);
+    await expect(service.searchCandidates("macrina")).rejects.toThrow(
+      "Não foi possível buscar usuários.",
+    );
   });
 });

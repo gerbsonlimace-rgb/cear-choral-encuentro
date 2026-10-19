@@ -3,6 +3,11 @@ import type { Database } from "@/integrations/supabase/types";
 import { createAdminPasswordCandidateFingerprint } from "./regent-password-candidate.server";
 import type { RegentMutation } from "./regent.domain";
 
+export type RegentCandidateUser = { userId: string; email: string; name: string };
+export type RegentCandidateSearch = {
+  search(query: string): Promise<RegentCandidateUser[]>;
+};
+
 export type AdminRegentRow = RegentMutation & {
   id: string;
   userId: string;
@@ -146,10 +151,12 @@ export function createRegentAdminService({
   repository,
   auth,
   proofs,
+  candidateSearch,
 }: {
   repository: RegentAdminRepository;
   auth: RegentAuthAdminPort;
   proofs: RegentAdminPasswordProofs;
+  candidateSearch?: RegentCandidateSearch;
 }) {
   async function provision(
     input: RegentCreation,
@@ -273,6 +280,16 @@ export function createRegentAdminService({
         return await repository.list();
       } catch {
         throw new Error("Não foi possível carregar os regentes.");
+      }
+    },
+    async searchCandidates(query: string): Promise<RegentCandidateUser[]> {
+      const trimmed = query.trim();
+      if (trimmed.length < 2) return [];
+      if (!candidateSearch) throw new Error("Não foi possível buscar usuários.");
+      try {
+        return await candidateSearch.search(trimmed);
+      } catch {
+        throw new Error("Não foi possível buscar usuários.");
       }
     },
     create: (input: RegentCreation, actorId: string) => provision(input, actorId, false),
@@ -806,10 +823,98 @@ export function createSupabaseRegentAuthAdmin(): RegentAuthAdminPort {
   };
 }
 
+const candidateUserLimit = 8;
+
+function sanitizeCandidatePattern(query: string) {
+  // PostgREST or-syntax breaks on commas; LIKE wildcards must be escaped so a
+  // search never widens beyond what the administrator typed.
+  return query
+    .trim()
+    .replace(/\\/g, "\\\\")
+    .replace(/[%_]/g, (char) => `\\${char}`)
+    .replace(/,/g, " ");
+}
+
+export function createSupabaseRegentCandidateSearch(): RegentCandidateSearch {
+  function candidate(
+    user_id: string | null | undefined,
+    email: string | null | undefined,
+    name: string | null | undefined,
+  ): RegentCandidateUser | null {
+    if (!user_id || !email) return null;
+    return { userId: user_id, email, name: name?.trim() || email };
+  }
+
+  async function searchAuthUsersByEmail(query: string): Promise<RegentCandidateUser[]> {
+    const needle = query.toLowerCase();
+    const matches: RegentCandidateUser[] = [];
+    let page = 1;
+    while (matches.length < candidateUserLimit) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      checkError(error);
+      for (const user of data.users) {
+        const email = user.email ?? "";
+        const metadata = user.user_metadata as Record<string, unknown> | null;
+        const fullName =
+          typeof metadata?.full_name === "string" && metadata.full_name.trim()
+            ? metadata.full_name.trim()
+            : "";
+        if (email.toLowerCase().includes(needle)) {
+          matches.push({ userId: user.id, email, name: fullName || email });
+          if (matches.length >= candidateUserLimit) break;
+        }
+      }
+      if (!("nextPage" in data) || !data.nextPage) break;
+      page = data.nextPage;
+    }
+    return matches;
+  }
+
+  return {
+    async search(query) {
+      const pattern = `%${sanitizeCandidatePattern(query)}%`;
+      const filter = `name.ilike.${pattern},email.ilike.${pattern}`;
+      const [registrants, regents] = await Promise.all([
+        supabaseAdmin
+          .from("registrations")
+          .select("name,email,participant_accounts(user_id)")
+          .or(filter)
+          .not("participant_accounts.user_id", "is", null)
+          .limit(candidateUserLimit * 2),
+        supabaseAdmin
+          .from("choir_regents")
+          .select("name,email,user_id")
+          .or(filter)
+          .limit(candidateUserLimit * 2),
+      ]);
+      checkError(registrants.error);
+      checkError(regents.error);
+
+      const byUserId = new Map<string, RegentCandidateUser>();
+      for (const row of registrants.data ?? []) {
+        const accountId = row.participant_accounts?.[0]?.user_id ?? null;
+        const candidateUser = candidate(accountId, row.email, row.name);
+        if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
+      }
+      for (const row of regents.data ?? []) {
+        const candidateUser = candidate(row.user_id, row.email, row.name);
+        if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
+      }
+
+      let candidates = [...byUserId.values()].slice(0, candidateUserLimit);
+      if (!candidates.length && query.includes("@")) {
+        candidates = await searchAuthUsersByEmail(query.trim().toLowerCase());
+      }
+      return candidates;
+    },
+  };
+}
+
 export function getRegentAdminService() {
   return createRegentAdminService({
     repository: createSupabaseRegentAdminRepository(),
     auth: createSupabaseRegentAuthAdmin(),
+    candidateSearch: createSupabaseRegentCandidateSearch(),
     proofs: {
       async createOperation(id, userId, password) {
         return {

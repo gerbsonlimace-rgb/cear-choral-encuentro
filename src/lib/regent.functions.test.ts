@@ -22,6 +22,7 @@ import {
   replaceAdminRegent,
   revokeAdminRegent,
   resetAdminRegentPassword,
+  searchAdminRegentCandidates,
   startComplementCheckout,
   verifyComplementPayment,
   type RegentPasswordChangeRepository,
@@ -114,6 +115,7 @@ beforeEach(() => {
 describe("admin regent server function boundaries", () => {
   it.each([
     ["list", () => listAdminRegents, "GET"],
+    ["search candidates", () => searchAdminRegentCandidates, "GET"],
     ["create", () => createAdminRegent, "POST"],
     ["replace", () => replaceAdminRegent, "POST"],
     ["revoke", () => revokeAdminRegent, "POST"],
