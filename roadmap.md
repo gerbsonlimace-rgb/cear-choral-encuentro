@@ -36,5 +36,6 @@
 - Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
 
 ## Open
+- Compact the administrative summary and add per-choir PDF exports containing the choir's registrations and payment state (awaiting consolidated plan approval).
 - Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
