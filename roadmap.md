@@ -34,9 +34,9 @@
 - Open participant PDFs (scores and documents) full screen from "Abrir", with a dark header holding the title plus new-tab, download and close commands.
 - Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
 - Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
+- Compact the summary and add audited PDF export by exact choir group; 64 tests passed, layouts and a three-page sample download checked; real-account verification remains blocked below.
 
 ## Open
 - Complete Google Search Console setup for the published site: verify connection/property access, finish verification and submit a valid sitemap; request approval before any required publication.
-- Compact the administrative summary and add per-choir PDF exports containing the choir's registrations and payment state.
 - Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
