@@ -47,6 +47,7 @@ function RegistrationPage() {
         <div className="mx-auto w-full max-w-5xl px-4 pb-12 sm:px-6">
           <EventContactCard />
         </div>
+        <ParticipantVideoSection />
       </main>
     </div>
   );
