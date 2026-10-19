@@ -33,5 +33,5 @@
 - Open participant PDFs (scores and documents) full screen from "Abrir", with a dark header holding the title plus new-tab, download and close commands.
 
 ## Open
-- Include an invitation in the participant video to share the EuVou photo and tag the choir's Instagram, preserving real application captures and the narrated cheerful style.
+- Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
