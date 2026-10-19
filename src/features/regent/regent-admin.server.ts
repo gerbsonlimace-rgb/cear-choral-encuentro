@@ -3,6 +3,11 @@ import type { Database } from "@/integrations/supabase/types";
 import { createAdminPasswordCandidateFingerprint } from "./regent-password-candidate.server";
 import type { RegentMutation } from "./regent.domain";
 
+export type RegentCandidateUser = { userId: string; email: string; name: string };
+export type RegentCandidateSearch = {
+  search(query: string): Promise<RegentCandidateUser[]>;
+};
+
 export type AdminRegentRow = RegentMutation & {
   id: string;
   userId: string;
