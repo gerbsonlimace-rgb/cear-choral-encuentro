@@ -642,6 +642,24 @@ describe("AdminRegistrationsPage read-only views", () => {
 });
 
 describe("AdminRegistrationsPage access and interactions", () => {
+  it("resets pagination for the login filter and forwards it to CSV", async () => {
+    const loadRegistrations = vi.fn().mockImplementation(async ({ data }) => ({ ...page, total: 60, page: data.page }));
+    const exportRegistrations = vi.fn().mockRejectedValue(new Error("download unavailable"));
+    const { user } = setup({ loadRegistrations, exportRegistrations });
+    await screen.findByText("60 inscrições encontradas");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    await screen.findByText("Página 2 de 3");
+    await user.click(screen.getByRole("combobox", { name: "Acesso ao app" }));
+    await user.click(await screen.findByRole("option", { name: "Nunca fez login" }));
+    await waitFor(() => expect(loadRegistrations).toHaveBeenLastCalledWith({ data: {
+      search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "never", page: 1, pageSize: 25,
+    } }));
+    await user.click(screen.getByRole("button", { name: "Exportar CSV" }));
+    await waitFor(() => expect(exportRegistrations).toHaveBeenCalledWith({ data: {
+      search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "never",
+    } }));
+  });
+
   it("shows only server-authorized participant recovery actions and refreshes the current list", async () => {
     const paidPending = {
       ...paid,
