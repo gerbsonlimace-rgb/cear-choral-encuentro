@@ -498,6 +498,21 @@ describe("registration summary", () => {
 });
 
 describe("derived registration listing", () => {
+  it("exports all 35 members of the exact summary group across IDs and payment states, excluding similarly named choirs", async () => {
+    const states = ["paid", "pending", "legacy", "partial", "exempt"];
+    const candidates = Array.from({ length: 35 }, (_, i) => {
+      const state = states[i % states.length];
+      return { row: { ...selectedRow, id: `group-${i}`, choir_name: "Coro de Quixadá", choir_id: i % 2 ? null : "11111111-1111-4111-8111-111111111111", payment_status: state === "pending" || state === "legacy" ? state : "paid", payment_origin: state === "exempt" ? "exemption" : "infinitepay", pricing_type: state === "partial" ? "promotional" : "standard", amount_cents: 10000, registration_price_cents: 10000, standard_price_cents: state === "partial" ? 30000 : 10000 } as RegistrationDatabaseRow, accountStatus: null, regentName: null };
+    });
+    candidates.push({ row: { ...candidates[0]?.row, id: "excluded", choir_name: "Coro de Quixadá Jovem" } as RegistrationDatabaseRow, accountStatus: null, regentName: null });
+    const repository = { listCandidates: vi.fn().mockResolvedValue(candidates), listComplementPayments: vi.fn().mockResolvedValue([]), list: vi.fn(), listAll: vi.fn(), recordExport: vi.fn() };
+    const service = createAdminRegistrationService(repository, () => new Date("2026-10-19T22:00:00Z"));
+    const file = await service.exportPdf({ search: "", choirId: "all", musicalProfile: "all", paymentStatus: "all", choirName: "Coro de Quixadá" }, "admin-1");
+    expect(repository.recordExport).toHaveBeenCalledWith({ format: "pdf", adminUserId: "admin-1", paymentStatusFilter: null, searchUsed: false, resultCount: 35 });
+    expect(file.fileName).toBe("inscricoes-coro-de-quixada-2026-10-19.pdf");
+    expect((await PDFDocument.load(file.base64)).getPageCount()).toBeGreaterThan(1);
+  });
+
   it("exports 30 matching PDF registrations with all active filters and audits the PDF format", async () => {
     const choirId = "11111111-1111-4111-8111-111111111111";
     const candidates = Array.from({ length: 30 }, (_, i) => ({

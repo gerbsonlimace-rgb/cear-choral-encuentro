@@ -32,7 +32,7 @@ describe("AdminSummaryPage", () => {
 
     expect((await screen.findAllByText("R$ 1.500,00")).length).toBeGreaterThan(0);
     const receivedTotal = screen.getByText("Total recebido").closest("article");
-    const pendingTotal = screen.getByText("Pendente taxa de inscrição").closest("article");
+    const pendingTotal = within(screen.getByRole("region", { name: "Indicadores do encontro" })).getByText("Pendente taxa de inscrição").closest("article");
     expect(receivedTotal).toHaveTextContent("R$ 1.500,00");
     expect(pendingTotal).toHaveTextContent("R$ 500,00");
     expect(pendingTotal).not.toHaveTextContent("de regentes");
