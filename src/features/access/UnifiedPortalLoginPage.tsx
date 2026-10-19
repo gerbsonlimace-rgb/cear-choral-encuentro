@@ -352,7 +352,8 @@ export function UnifiedPortalLoginPage({
                   className="mt-0.5 size-4 shrink-0 text-amber-foreground"
                 />
                 <p>
-                  Primeiro acesso do participante: CPF sem pontuação + ano de nascimento (AAAA).
+                  Primeiro acesso do participante: sua senha inicial são os 6 primeiros dígitos do
+                  seu CPF.
                 </p>
               </div>
               <Button

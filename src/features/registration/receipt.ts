@@ -264,7 +264,7 @@ export async function downloadReceiptPdf(receipt: ReceiptData, options?: { siteU
     /* link annotation is best-effort */
   }
 
-  page.drawText("Acesse com o e-mail da inscrição e a senha inicial: CPF + ano de nascimento (AAAA).", {
+  page.drawText("Acesse com o e-mail da inscrição e a senha inicial: os 6 primeiros dígitos do seu CPF.", {
     x: MARGIN_X,
     y: y - 42,
     size: 9,
