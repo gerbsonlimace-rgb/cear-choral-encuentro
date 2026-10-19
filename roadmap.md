@@ -33,7 +33,8 @@
 - Add an admin registrations filter identifying participants who have never logged in, preserving existing filters and CSV export.
 - Open participant PDFs (scores and documents) full screen from "Abrir", with a dark header holding the title plus new-tab, download and close commands.
 - Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
+- Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
 
 ## Open
-- Add explicit total-registration and pending-registration-fee counters, plus a PDF export of all registrations matching the active admin filters (implementation done; verification in progress).
+- Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
