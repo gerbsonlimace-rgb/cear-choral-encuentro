@@ -10,7 +10,7 @@ import {
   CONTACT_WHATSAPP_HREF,
 } from "./event-contact";
 
-describe("event contact", "the official contact number and name are used everywhere", () => {
+describe("event contact", () => {
   it("keeps the published number and responsible person", () => {
     expect(CONTACT_PERSON_NAME).toBe("Pe. Lucas Soares");
     expect(CONTACT_PHONE_DISPLAY).toBe("+55 85 9727-8622");
