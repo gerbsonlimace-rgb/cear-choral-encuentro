@@ -196,6 +196,13 @@ Controles e superfícies usam cantos moderadamente curvos de 8 a 16px. Navegaç�
 
 Métricas usam ícone dourado em bloco de 40px, rótulo de 12px, valor tabular forte e detalhe opcional. O ícone reforça significado, nunca substitui o rótulo.
 
+### PDF Viewer
+
+- Partituras e documentos abrem em tela cheia: o visualizador cobre todo o ecrã, inclusive a topbar e a barra de navegação inferior.
+- Barra de topo em tinta de partitura com o nome do material à esquerda (truncado com reticências) e três ícones claros à direita: abrir em nova guia, baixar e fechar.
+- O documento ocupa toda a altura restante; a página atrás não rola e Esc fecha o visualizador.
+- Dentro do player expandido de um canto, a partitura permanece embutida, pois o player já é tela cheia.
+
 ## Do's and Don'ts
 
 ### Do:
