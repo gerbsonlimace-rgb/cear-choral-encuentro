@@ -1,0 +1,2 @@
+ALTER TABLE public.admin_access_events DROP CONSTRAINT IF EXISTS admin_access_events_type_check;
+ALTER TABLE public.admin_access_events ADD CONSTRAINT admin_access_events_type_check CHECK (event_type IN ('registrations.export_csv', 'registrations.export_pdf'));
