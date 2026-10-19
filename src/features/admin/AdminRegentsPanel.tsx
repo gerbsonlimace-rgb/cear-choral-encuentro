@@ -28,11 +28,13 @@ import {
   replaceAdminRegentWithExistingUser,
   resetAdminRegentPassword,
   revokeAdminRegent,
+  searchAdminRegentCandidates,
 } from "@/lib/regent.functions";
 import { regentMutationSchema, type RegentMutation } from "@/features/regent/regent.domain";
 import type {
   AdminRegentRow,
   RegentAdminResult,
+  RegentCandidateUser,
   RegentCreation,
 } from "@/features/regent/regent-admin.server";
 
@@ -41,6 +43,7 @@ export type AdminRegentsPanelProps = {
   choirs: { id: string; name: string }[];
   choirId?: string;
   loadRegents?: () => Promise<AdminRegentRow[]>;
+  searchCandidates?: (input: { data: { query: string } }) => Promise<RegentCandidateUser[]>;
   createRegent?: Mutation<RegentCreation>;
   replaceRegent?: Mutation<RegentCreation>;
   linkExistingRegent?: Mutation<RegentMutation>;
@@ -59,6 +62,7 @@ export function AdminRegentsPanel({
   choirs,
   choirId,
   loadRegents = listAdminRegents,
+  searchCandidates = searchAdminRegentCandidates,
   createRegent = createAdminRegent,
   replaceRegent = replaceAdminRegent,
   linkExistingRegent = linkExistingAdminRegent,
@@ -77,6 +81,10 @@ export function AdminRegentsPanel({
   const [resetting, setResetting] = useState<AdminRegentRow | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetError, setResetError] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidates, setCandidates] = useState<RegentCandidateUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
