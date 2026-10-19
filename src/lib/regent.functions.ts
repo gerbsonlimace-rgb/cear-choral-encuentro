@@ -780,6 +780,13 @@ export const listAdminRegents = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => (await loadAdminService()).list());
 
+const candidateSearchSchema = z.object({ query: z.string().trim().min(2).max(100) }).strict();
+
+export const searchAdminRegentCandidates = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .validator(candidateSearchSchema)
+  .handler(async ({ data }) => (await loadAdminService()).searchCandidates(data.query));
+
 export const createAdminRegent = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(createRegentSchema)
