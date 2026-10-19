@@ -179,6 +179,7 @@ describe("AdminRegentsPanel", () => {
 
     expect(screen.getByLabelText("Nome")).toHaveValue("Irmã Macrina");
     expect(screen.getByLabelText("E-mail")).toHaveValue("macrina@example.com");
+    await user.selectOptions(screen.getByLabelText("Coro"), choirId);
     await user.click(screen.getByRole("button", { name: "Vincular regente" }));
     await waitFor(() =>
       expect(linkExistingRegent).toHaveBeenCalledWith({
