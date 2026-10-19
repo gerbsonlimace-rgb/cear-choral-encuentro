@@ -891,13 +891,14 @@ export function createSupabaseRegentCandidateSearch(): RegentCandidateSearch {
       checkError(regents.error);
 
       const byUserId = new Map<string, RegentCandidateUser>();
-      for (const candidate of [
-        ...toCandidates(registrants.data as never),
-        ...toCandidates(
-          (regents.data ?? []).map((regent) => ({ ...regent, user_id: regent.user_id })),
-        ),
-      ]) {
-        byUserId.set(candidate.userId, candidate);
+      for (const row of registrants.data ?? []) {
+        const accountId = row.participant_accounts?.[0]?.user_id ?? null;
+        const candidateUser = candidate(accountId, row.email, row.name);
+        if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
+      }
+      for (const row of regents.data ?? []) {
+        const candidateUser = candidate(row.user_id, row.email, row.name);
+        if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
       }
 
       let candidates = [...byUserId.values()].slice(0, candidateUserLimit);
