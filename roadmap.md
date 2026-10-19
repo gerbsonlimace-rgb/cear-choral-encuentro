@@ -36,6 +36,7 @@
 - Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
 
 ## Open
+- Complete Google Search Console setup for the published site: verify connection/property access, finish verification and submit a valid sitemap; request approval before any required publication.
 - Compact the administrative summary and add per-choir PDF exports containing the choir's registrations and payment state.
 - Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
