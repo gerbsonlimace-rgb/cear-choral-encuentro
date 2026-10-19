@@ -151,10 +151,12 @@ export function createRegentAdminService({
   repository,
   auth,
   proofs,
+  candidateSearch,
 }: {
   repository: RegentAdminRepository;
   auth: RegentAuthAdminPort;
   proofs: RegentAdminPasswordProofs;
+  candidateSearch?: RegentCandidateSearch;
 }) {
   async function provision(
     input: RegentCreation,
