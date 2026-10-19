@@ -282,6 +282,16 @@ export function createRegentAdminService({
         throw new Error("Não foi possível carregar os regentes.");
       }
     },
+    async searchCandidates(query: string): Promise<RegentCandidateUser[]> {
+      const trimmed = query.trim();
+      if (trimmed.length < 2) return [];
+      if (!candidateSearch) throw new Error("Não foi possível buscar usuários.");
+      try {
+        return await candidateSearch.search(trimmed);
+      } catch {
+        throw new Error("Não foi possível buscar usuários.");
+      }
+    },
     create: (input: RegentCreation, actorId: string) => provision(input, actorId, false),
     replace: (input: RegentCreation, actorId: string) => provision(input, actorId, true),
     linkExisting: (input: RegentMutation, actorId: string) => linkExisting(input, actorId, false),
