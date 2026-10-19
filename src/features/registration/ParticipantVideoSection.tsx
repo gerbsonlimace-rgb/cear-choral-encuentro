@@ -19,7 +19,7 @@ export function ParticipantVideoSection() {
           sua foto do encontro direto do celular.
         </p>
         <video
-          className="mt-2 w-full max-w-sm rounded-xl border border-border bg-background shadow-md"
+          className="mt-2 aspect-9/16 w-full max-w-sm rounded-xl border border-border bg-background object-contain shadow-md"
           src={videoPointer.url}
           controls
           playsInline
