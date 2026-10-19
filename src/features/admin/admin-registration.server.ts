@@ -154,6 +154,7 @@ export type AdminExportAuditEvent = {
 };
 
 export type AdminRegistrationRepository = {
+  listLoggedInRegistrationIds?(): Promise<Set<string>>;
   listCandidates?(search: string): Promise<AdminRegistrationCandidate[]>;
   listComplementPayments?(registrationIds: string[]): Promise<AdminComplementPaymentRow[]>;
   listSupersededCheckoutReviews?(
@@ -183,6 +184,32 @@ export type AdminRegistrationRepository = {
 
 export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
   const repository: AdminRegistrationRepository = {
+    async listLoggedInRegistrationIds() {
+      const loggedInUsers = new Set<string>();
+      for (let page = 1; ; page += 1) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error || !data) throw new Error("Não foi possível consultar os acessos ao app. Tente novamente.");
+        for (const user of data.users) {
+          if (user.last_sign_in_at) loggedInUsers.add(user.id);
+        }
+        if (data.users.length === 0) break;
+      }
+      const loggedInRegistrations = new Set<string>();
+      for (let start = 0; ; start += 1000) {
+        const { data, error } = await supabaseAdmin
+          .from("participant_accounts")
+          .select("id,registration_id,user_id")
+          .order("id", { ascending: true })
+          .range(start, start + 999);
+        if (error || !data) throw new Error("Não foi possível consultar os acessos ao app. Tente novamente.");
+        for (const account of data) {
+          if (account.user_id && loggedInUsers.has(account.user_id)) {
+            loggedInRegistrations.add(account.registration_id);
+          }
+        }
+        if (data.length < 1000) return loggedInRegistrations;
+      }
+    },
     async listCandidates(search) {
       const candidates: AdminRegistrationCandidate[] = [];
       for (let start = 0; ; start += 1000) {
@@ -321,6 +348,9 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       );
     },
     async list(query: AdminRegistrationQuery, options = {}): Promise<AdminRegistrationPage> {
+      if (query.loginStatus && query.loginStatus !== "all") {
+        return createAdminRegistrationService(repository, () => new Date()).list(query, options.includePhotos ?? true);
+      }
       let request = supabaseAdmin
         .from("registrations")
         .select(adminRegistrationColumns, { count: "exact" });
@@ -589,11 +619,26 @@ export function createAdminRegistrationService(
     registrationId: string,
   ) => Promise<{ status: "active" | "pending" | "conflict" }>,
 ) {
+  async function loadLoginFilter(query: AdminRegistrationExportQuery) {
+    if (!query.loginStatus || query.loginStatus === "all") return null;
+    if (!repository.listLoggedInRegistrationIds) {
+      throw new Error("Não foi possível consultar os acessos ao app. Tente novamente.");
+    }
+    return repository.listLoggedInRegistrationIds();
+  }
+
+  function matchesLoginFilter(row: AdminRegistrationRow, query: AdminRegistrationExportQuery, ids: Set<string> | null) {
+    return ids === null || ids.has(row.id) === (query.loginStatus === "has");
+  }
+
   async function listEnriched(query: AdminRegistrationQuery, includePhotos: boolean) {
     if (!repository.listCandidates || !repository.listComplementPayments) {
       return repository.list(query, { includePhotos });
     }
-    const candidates = await repository.listCandidates(query.search);
+    const [candidates, loggedInIds] = await Promise.all([
+      repository.listCandidates(query.search),
+      loadLoginFilter(query),
+    ]);
     // Only paid promotional registrations can have a meaningful complement.
     // This also avoids unnecessary ledger reads for pending, standard, and legacy rows.
     const complementIds = candidates
@@ -632,6 +677,7 @@ export function createAdminRegistrationService(
     const filtered = enriched.filter(
       (row) =>
         matchesAdminRegistrationFilters(row, query) &&
+        matchesLoginFilter(row, query, loggedInIds) &&
         (query.paymentStatus === "all" ||
           row.financialState?.status === query.paymentStatus),
     );
@@ -643,7 +689,7 @@ export function createAdminRegistrationService(
   }
 
   return {
-    list: (query: AdminRegistrationQuery) => listEnriched(query, true),
+    list: (query: AdminRegistrationQuery, includePhotos = true) => listEnriched(query, includePhotos),
     async summary(): Promise<AdminRegistrationSummary> {
       const completeRows =
         repository.listCandidates && repository.listComplementPayments
@@ -712,12 +758,18 @@ export function createAdminRegistrationService(
       musicalProfile: "all",
     },
   ) {
-    const candidates = await repository.listCandidates!(query.search);
+    if (!repository.listCandidates || !repository.listComplementPayments) {
+      throw new Error("Não foi possível consultar as inscrições.");
+    }
+    const [candidates, loggedInIds] = await Promise.all([
+      repository.listCandidates(query.search),
+      loadLoginFilter(query),
+    ]);
     const complementIds = candidates
       .filter(({ row }) => row.payment_status === "paid" && row.pricing_type === "promotional")
       .map(({ row }) => row.id);
     const [payments, reviews] = await Promise.all([
-      repository.listComplementPayments!(complementIds),
+      repository.listComplementPayments(complementIds),
       repository.listSupersededCheckoutReviews?.(candidates.map(({ row }) => row.id)) ??
         Promise.resolve(new Map<string, AdminSupersededCheckoutReview>()),
     ]);
@@ -744,6 +796,7 @@ export function createAdminRegistrationService(
     return rows.filter(
       (row) =>
         matchesAdminRegistrationFilters(row, query) &&
+        matchesLoginFilter(row, query, loggedInIds) &&
         (query.paymentStatus === "all" ||
           row.financialState?.status === query.paymentStatus),
     );

@@ -459,7 +459,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     await user.click(await screen.findByRole("option", { name: "Parcialmente pagas" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "", paymentStatus: "partially_paid", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
+        data: { search: "", paymentStatus: "partially_paid", choirId: "all", musicalProfile: "all", loginStatus: "all", page: 1, pageSize: 25 },
       }),
     );
   });
@@ -642,6 +642,24 @@ describe("AdminRegistrationsPage read-only views", () => {
 });
 
 describe("AdminRegistrationsPage access and interactions", () => {
+  it("resets pagination for the login filter and forwards it to CSV", async () => {
+    const loadRegistrations = vi.fn().mockImplementation(async ({ data }) => ({ ...page, total: 60, page: data.page }));
+    const exportRegistrations = vi.fn().mockRejectedValue(new Error("download unavailable"));
+    const { user } = setup({ loadRegistrations, exportRegistrations });
+    await screen.findByText("60 inscrições encontradas");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    await screen.findByText("Página 2 de 3");
+    await user.click(screen.getByRole("combobox", { name: "Acesso ao app" }));
+    await user.click(await screen.findByRole("option", { name: "Nunca fez login" }));
+    await waitFor(() => expect(loadRegistrations).toHaveBeenLastCalledWith({ data: {
+      search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "never", page: 1, pageSize: 25,
+    } }));
+    await user.click(screen.getByRole("button", { name: "Exportar CSV" }));
+    await waitFor(() => expect(exportRegistrations).toHaveBeenCalledWith({ data: {
+      search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "never",
+    } }));
+  });
+
   it("shows only server-authorized participant recovery actions and refreshes the current list", async () => {
     const paidPending = {
       ...paid,
@@ -770,7 +788,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "Clara", paymentStatus: "all", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
+        data: { search: "Clara", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "all", page: 1, pageSize: 25 },
       }),
     );
     expect(screen.getByText("Página 1 de 3")).toBeInTheDocument();
@@ -781,13 +799,13 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await user.click(await screen.findByRole("option", { name: "Pagas" }));
     await waitFor(() =>
       expect(loadRegistrations).toHaveBeenLastCalledWith({
-        data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", page: 1, pageSize: 25 },
+        data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", loginStatus: "all", page: 1, pageSize: 25 },
       }),
     );
     await user.click(screen.getByRole("button", { name: "Próxima" }));
     await screen.findByText("Página 2 de 3");
     expect(loadRegistrations).toHaveBeenLastCalledWith({
-      data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", page: 2, pageSize: 25 },
+      data: { search: "Clara", paymentStatus: "paid", choirId: "all", musicalProfile: "all", loginStatus: "all", page: 2, pageSize: 25 },
     });
     expect(window.location.href).not.toContain("Clara");
   }, 15000);
@@ -811,6 +829,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
           paymentStatus: "all",
           choirId: "other",
           musicalProfile: "all",
+          loginStatus: "all",
           page: 1,
           pageSize: 25,
         },
@@ -828,6 +847,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
           paymentStatus: "all",
           choirId: "choir-1",
           musicalProfile: "all",
+          loginStatus: "all",
           page: 1,
           pageSize: 25,
         },
@@ -844,6 +864,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
           paymentStatus: "all",
           choirId: "choir-1",
           musicalProfile: "coralista",
+          loginStatus: "all",
           page: 1,
           pageSize: 25,
         },
@@ -868,7 +889,7 @@ describe("AdminRegistrationsPage access and interactions", () => {
     await screen.findByRole("table");
     await user.click(screen.getByRole("button", { name: "Exportar CSV" }));
     expect(exportRegistrations).toHaveBeenCalledWith({
-      data: { search: "Ana", paymentStatus: "all", choirId: "all", musicalProfile: "all" },
+      data: { search: "Ana", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "all" },
     });
     const blob = createObjectURL.mock.calls[0][0] as Blob;
     expect(blob.type).toBe("text/csv;charset=utf-8");
