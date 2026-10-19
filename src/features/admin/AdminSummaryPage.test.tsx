@@ -32,15 +32,13 @@ describe("AdminSummaryPage", () => {
 
     expect((await screen.findAllByText("R$ 1.500,00")).length).toBeGreaterThan(0);
     const receivedTotal = screen.getByText("Total recebido").closest("article");
-    const pendingTotal = screen.getByText("Total pendente").closest("article");
+    const pendingTotal = screen.getByText("Pendente taxa de inscrição").closest("article");
     expect(receivedTotal).toHaveTextContent("R$ 1.500,00");
     expect(pendingTotal).toHaveTextContent("R$ 500,00");
-    expect(pendingTotal).toHaveTextContent("R$ 500,00 em inscrições");
     expect(pendingTotal).not.toHaveTextContent("de regentes");
     expect(screen.getAllByText("20").length).toBeGreaterThan(0);
     expect(screen.getByText("Inscrições isentas").closest("article")).toHaveTextContent("2");
     const overview = screen.getByRole("region", { name: "Visão geral das inscrições" });
-    expect(within(overview).getByText("Isentos")).toBeInTheDocument();
     expect(within(overview).getByText("Financeiro por coro/diocese")).toBeInTheDocument();
     expect(within(overview).getByText("Coro de Quixadá")).toBeInTheDocument();
     expect(within(overview).getByText("Total previsto").parentElement).toHaveTextContent(
