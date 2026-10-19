@@ -124,6 +124,8 @@ describe("admin registration handlers", () => {
     expect(list).toHaveBeenCalledWith({
       search: "",
       paymentStatus: "partially_paid",
+      choirId: "all",
+      musicalProfile: "all",
       page: 1,
       pageSize: 25,
     });
