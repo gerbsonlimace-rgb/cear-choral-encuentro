@@ -836,16 +836,13 @@ function sanitizeCandidatePattern(query: string) {
 }
 
 export function createSupabaseRegentCandidateSearch(): RegentCandidateSearch {
-  function toCandidates(
-    rows: Array<{ user_id: string | null; email: string | null; name: string | null }>,
-  ): RegentCandidateUser[] {
-    return rows
-      .filter((candidate) => candidate.user_id && candidate.email)
-      .map((candidate) => ({
-        userId: candidate.user_id as string,
-        email: candidate.email as string,
-        name: candidate.name?.trim() || (candidate.email as string),
-      }));
+  function candidate(
+    user_id: string | null | undefined,
+    email: string | null | undefined,
+    name: string | null | undefined,
+  ): RegentCandidateUser | null {
+    if (!user_id || !email) return null;
+    return { userId: user_id, email, name: name?.trim() || email };
   }
 
   async function searchAuthUsersByEmail(query: string): Promise<RegentCandidateUser[]> {
