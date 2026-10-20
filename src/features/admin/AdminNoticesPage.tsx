@@ -93,7 +93,7 @@ export function AdminNoticesPage({
 
   function openEditor(notice?: EventNotice) {
     setEditing(notice ?? null);
-    setEventId(notice?.eventId ?? data?.events[0]?.eventId ?? "");
+    setEventId(notice?.eventId ?? "");
     setTitle(notice?.title ?? "");
     setBody(notice?.body ?? "");
     setDialogError("");
@@ -119,7 +119,7 @@ export function AdminNoticesPage({
     event.preventDefault();
     if (saving) return;
     const parsed = eventNoticeCreateSchema.safeParse({
-      eventId,
+      eventId: eventId || null,
       title,
       body,
       isPublished: editing?.isPublished ?? true,
@@ -204,13 +204,13 @@ export function AdminNoticesPage({
               <p className="text-sm text-muted-foreground">
                 {data.notices.filter((notice) => notice.isPublished).length} aviso(s) publicado(s)
               </p>
-              <Button onClick={() => openEditor()} disabled={!data.events.length || !!busyId}>
+              <Button onClick={() => openEditor()} disabled={!!busyId}>
                 <Plus aria-hidden="true" /> Novo aviso
               </Button>
             </div>
             {!data.events.length && (
               <p role="alert" className="rounded-xl border border-dashed p-4 text-sm">
-                Configure primeiro um evento em Configurações.
+                Sem eventos configurados. Você ainda pode publicar avisos gerais.
               </p>
             )}
             {data.notices.length === 0 ? (
@@ -302,10 +302,9 @@ export function AdminNoticesPage({
                   id="notice-event"
                   value={eventId}
                   onChange={(event) => setEventId(event.target.value)}
-                  required
                   className="flex min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">Selecione um evento</option>
+                  <option value="">Aviso geral (sem evento)</option>
                   {data?.events.map((source) => (
                     <option key={source.eventId} value={source.eventId}>
                       {source.eventName}

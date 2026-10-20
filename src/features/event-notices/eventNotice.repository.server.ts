@@ -5,7 +5,7 @@ import type { EventNoticeRepository } from "./eventNotice.server";
 const columns = "id,event_id,title,body,is_published,created_at,updated_at";
 type NoticeRow = {
   id: string;
-  event_id: string;
+  event_id: string | null;
   title: string;
   body: string;
   is_published: boolean;
@@ -48,6 +48,16 @@ export function createSupabaseEventNoticeRepository(): EventNoticeRepository {
       const { data, error } = await supabaseAdmin
         .from("event_notices" as never)
         .select(columns)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error("Não foi possível carregar os avisos.");
+      return ((data ?? []) as unknown as NoticeRow[]).map(mapRow);
+    },
+    async listPublishedGeneral() {
+      const { data, error } = await supabaseAdmin
+        .from("event_notices" as never)
+        .select(columns)
+        .is("event_id", null)
+        .eq("is_published", true as never)
         .order("created_at", { ascending: false });
       if (error) throw new Error("Não foi possível carregar os avisos.");
       return ((data ?? []) as unknown as NoticeRow[]).map(mapRow);

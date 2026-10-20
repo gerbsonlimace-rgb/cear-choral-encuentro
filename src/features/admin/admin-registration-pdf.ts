@@ -85,8 +85,8 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   const summary = summarizePdfRegistrations(rows);
   doc.setTitle("Lista de inscritos | II Encontro de Coros");
   doc.setCreationDate(now);
-  const widths = [125, 90, 125, 77, 77, 78, 76, 65, 65];
-  const headers = ["Nome", "Coro", "E-mail", "WhatsApp", "Situação", "Valor inscrição", "Valor rifas", "Valor pago", "Taxa pendente"];
+  const widths = [150, 120, 165, 95, 95, 80, 73];
+  const headers = ["Nome", "Coro", "E-mail", "WhatsApp", "Situação", "Valor inscrição", "Valor rifas"];
   const choir = query.choirName ?? (query.choirId === "all" ? "Todos" : query.choirId === "other" ? "Outros coros" : rows.find((row) => row.choirId === query.choirId)?.choirName ?? "Coro selecionado");
   const headerDetails = getPdfHeaderDetails(rows, query);
   const headerDetailLines = wrap(`Coro: ${headerDetails.choir} · Regente: ${headerDetails.regent}`, 662, font, 9);
@@ -136,8 +136,6 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
       { value: statusLabels[state.status], indicator: "none" },
       financial.registration,
       financial.raffles,
-      { value: state.status === "legacy" ? "Não informado" : money(state.confirmedPrincipalCents), indicator: "none" },
-      { value: state.status === "legacy" ? "Não informado" : money(getAdminRegistrationPendingCents(row, state) ?? 0), indicator: "none" },
     ];
     const lines = cells.map((cell, i) => wrap(cell.value, (widths[i] ?? 80) - (cell.indicator === "none" ? 10 : 22), font, 8));
     const height = Math.max(...lines.map((cell) => cell.length)) * 11 + 14;

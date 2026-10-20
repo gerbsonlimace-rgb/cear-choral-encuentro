@@ -32,8 +32,11 @@ function setup() {
     async find(noticeId) {
       return rows.find((row) => row.id === noticeId) ?? null;
     },
+    async listPublishedGeneral() {
+      return rows.filter((row) => row.eventId === null && row.isPublished);
+    },
     async listPublished(eventIds) {
-      return rows.filter((row) => eventIds.includes(row.eventId) && row.isPublished);
+      return rows.filter((row) => row.eventId !== null && eventIds.includes(row.eventId) && row.isPublished);
     },
     async create(input) {
       const row = { ...input, id, eventName: "", createdAt: now, updatedAt: now };
@@ -48,9 +51,13 @@ function setup() {
     },
   };
   let published = true;
+  let sourceListUnavailable = false;
   const service = createEventNoticeService({
     repository,
-    listSources: async () => sources,
+    listSources: async () => {
+      if (sourceListUnavailable) throw new Error("Eventos indisponíveis");
+      return sources;
+    },
     isEventPublished: async (sourceId) => {
       if (sourceId === otherEventId) throw new Error("Evento indisponível");
       return published;
@@ -63,10 +70,35 @@ function setup() {
     unpublishEvent: () => {
       published = false;
     },
+    disableSourceList: () => {
+      sourceListUnavailable = true;
+    },
   };
 }
 
 describe("event notice publication", () => {
+  it("publishes, lists, edits and withdraws a general notice without configured events", async () => {
+    const { service, sources } = setup();
+    sources.length = 0;
+    const saved = await service.create({ ...draft, eventId: null, adminUserId });
+    expect(saved).toMatchObject({ eventId: null, eventName: "Aviso geral" });
+    expect(await service.listParticipant()).toMatchObject([{ id, eventName: "Aviso geral" }]);
+    await service.update({ ...draft, id, eventId: null, body: "Mensagem atualizada.", adminUserId });
+    expect(await service.listParticipant()).toMatchObject([{ body: "Mensagem atualizada." }]);
+    await service.update({ ...draft, id, eventId: null, isPublished: false, adminUserId });
+    expect(await service.listParticipant()).toEqual([]);
+  });
+
+  it("keeps general notices visible when event publication checks fail", async () => {
+    const { service, rows, sources, disableSourceList } = setup();
+    rows.push({ ...draft, id, eventId: null, eventName: "", createdAt: now, updatedAt: now });
+    sources.splice(0, sources.length, { ...sources[0], eventId: otherEventId });
+    expect(await service.listParticipant()).toMatchObject([{ eventName: "Aviso geral" }]);
+    disableSourceList();
+    expect(await service.listParticipant()).toMatchObject([{ eventName: "Aviso geral" }]);
+    await service.update({ ...draft, id, eventId: null, body: "Atualizado", adminUserId });
+  });
+
   it("keeps notices from healthy events when another source is unavailable", async () => {
     const { service, sources } = setup();
     await service.create({ ...draft, adminUserId });

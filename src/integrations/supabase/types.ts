@@ -370,7 +370,7 @@ export type Database = {
           body: string
           created_at: string
           created_by: string | null
-          event_id: string
+          event_id: string | null
           id: string
           is_published: boolean
           title: string
@@ -381,7 +381,7 @@ export type Database = {
           body: string
           created_at?: string
           created_by?: string | null
-          event_id: string
+          event_id?: string | null
           id?: string
           is_published?: boolean
           title: string
@@ -392,7 +392,7 @@ export type Database = {
           body?: string
           created_at?: string
           created_by?: string | null
-          event_id?: string
+          event_id?: string | null
           id?: string
           is_published?: boolean
           title?: string
