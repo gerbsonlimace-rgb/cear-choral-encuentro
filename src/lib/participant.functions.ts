@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireParticipantAccess } from "@/features/participant/participant-auth.middleware";
 import { loginParticipantWithCredentials } from "@/features/registration/participant-area.server";
+import { brazilianMobilePhoneSchema } from "@/features/registration/registration.domain";
 
 const participantLoginSchema = z
   .object({
@@ -27,4 +28,16 @@ export const getParticipantRegistration = createServerFn({ method: "GET" })
     const { getParticipantRegistrationLoader } =
       await import("@/features/participant/participant-auth.server");
     return getParticipantRegistrationLoader().load(context.participantAccess);
+  });
+
+export const updateParticipantPhone = createServerFn({ method: "POST" })
+  .middleware([requireParticipantAccess])
+  .validator(z.object({ phone: brazilianMobilePhoneSchema }).strict())
+  .handler(async ({ data, context }) => {
+    const { createParticipantPhoneUpdater, createSupabaseParticipantRepository } =
+      await import("@/features/participant/participant-auth.server");
+    return createParticipantPhoneUpdater(createSupabaseParticipantRepository())(
+      context.participantAccess,
+      data.phone,
+    );
   });

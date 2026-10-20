@@ -20,6 +20,7 @@ import {
   type RegistrationCheckoutContract,
 } from "./registration-checkout-contract";
 import {
+  brazilianMobilePhoneSchema,
   buildCheckoutItems,
   dioceseSchema,
   MAX_REGISTRATION_PHOTO_BYTES,
@@ -185,6 +186,18 @@ export type RegistrationRepository = {
       remainingPriceCents: number | null;
     },
   ): Promise<boolean>;
+  rotatePendingCheckout(input: {
+    registrationId: string;
+    expectedOrderNsu: string;
+    expectedCheckoutUrl: string | null;
+    expectedPhone: string;
+    expectedCpf: string | null;
+    expectedBirthDate: string | null;
+    orderNsu: string;
+    checkoutClaim: string;
+    phone: string;
+  }): Promise<boolean>;
+  releaseCheckoutClaim(orderNsu: string, checkoutClaim: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   findSupersededPayment(orderNsu: string): Promise<SupersededCheckoutPaymentRecord | null>;
   markSupersededPaid(
@@ -234,6 +247,50 @@ export function createRegistrationPaymentService(deps: {
     registrationId: string,
   ) => Promise<ParticipantInitialCredentials | null>;
 }) {
+  const replaceCheckoutLink = async (
+    registration: RegistrationCheckoutLinkRecord,
+    phone: string,
+    identity?: { cpf: string; birthDate: string },
+  ) => {
+    if (!registration.orderNsu || !Number.isSafeInteger(registration.amountCents) || registration.amountCents <= 0) {
+      throw new Error("Não foi possível preparar o pagamento desta inscrição.");
+    }
+    const previousUrl = registration.checkoutUrl;
+    if (previousUrl && !isSafeInfinitePayCheckoutUrl(previousUrl)) {
+      if (!isCheckoutClaim(previousUrl) || !isCheckoutClaimStale(previousUrl, deps.now())) {
+        throw new Error("O checkout já está sendo preparado. Tente novamente em instantes.");
+      }
+    }
+    const orderNsu = deps.randomUUID();
+    const checkoutClaim = createCheckoutClaim(orderNsu, deps.now());
+    const reserved = await deps.repository.rotatePendingCheckout({
+      registrationId: registration.id,
+      expectedOrderNsu: registration.orderNsu,
+      expectedCheckoutUrl: previousUrl,
+      expectedPhone: registration.phone,
+      expectedCpf: identity?.cpf ?? null,
+      expectedBirthDate: identity?.birthDate ?? null,
+      orderNsu,
+      checkoutClaim,
+      phone,
+    });
+    if (!reserved) throw new Error("A inscrição mudou. Atualize os dados e tente novamente.");
+
+    try {
+      const checkout = await deps.infinitePay.createCheckout({
+        orderNsu,
+        items: [{ quantity: 1, price: registration.amountCents, description: "Inscrição — II Encontro de Coros" }],
+        customer: { name: registration.name, email: registration.email, phoneNumber: phone },
+      });
+      const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
+      if (!saved) throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
+      return { checkoutUrl: checkout.url, orderNsu };
+    } catch (error) {
+      await deps.repository.releaseCheckoutClaim(orderNsu, checkoutClaim).catch(() => undefined);
+      throw error;
+    }
+  };
+
   const toPaidPublicStatus = async (
     registration: RegistrationPaymentRecord,
     includeCredentials = true,
@@ -615,8 +672,9 @@ export function createRegistrationPaymentService(deps: {
       if (registration.paymentStatus !== "pending") {
         throw new Error("A inscrição não está pendente.");
       }
-      if (registration.checkoutUrl && isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
-        return { checkoutUrl: registration.checkoutUrl, reused: true as const };
+      if (registration.checkoutUrl) {
+        const result = await replaceCheckoutLink(registration, registration.phone);
+        return { checkoutUrl: result.checkoutUrl, reused: false as const };
       }
       if (
         !registration.orderNsu ||
@@ -654,6 +712,23 @@ export function createRegistrationPaymentService(deps: {
         }
       }
       throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
+    },
+
+    updatePendingPhoneAndCheckout: async (input: { cpf: string; birthDate: string; phone: string }) => {
+      const phone = brazilianMobilePhoneSchema.parse(input.phone);
+      const identity = await deps.repository.findByCpf?.(input.cpf);
+      if (!identity || identity.birthDate !== input.birthDate || identity.paymentStatus !== "pending") {
+        throw new Error("Não foi possível localizar uma inscrição pendente com os dados informados.");
+      }
+      const registration = await deps.repository.findForCheckoutLink?.(identity.id);
+      if (!registration || registration.paymentStatus !== "pending") {
+        throw new Error("A inscrição não está pendente.");
+      }
+      if (normalizeInfinitePayPhoneNumber(registration.phone) === normalizeInfinitePayPhoneNumber(phone) &&
+          registration.checkoutUrl && isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
+        throw new Error("Informe um novo WhatsApp para atualizar a inscrição.");
+      }
+      return replaceCheckoutLink(registration, phone, { cpf: input.cpf, birthDate: input.birthDate });
     },
 
     reconcilePayment,
@@ -1075,7 +1150,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     const { data, error } = await supabaseAdmin
       .from("registrations")
       .select(
-        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,musical_profile,voice_part,photo_path,payment_status",
+        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,musical_profile,voice_part,photo_path,payment_status,order_nsu,amount_cents,checkout_url",
       )
       .eq("cpf", cpf)
       .eq("birth_date", birthDate)
@@ -1111,6 +1186,9 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
         : null,
       hasPhoto: typeof data.photo_path === "string" && data.photo_path.length > 0,
       paymentStatus: data.payment_status as "legacy" | "pending" | "paid",
+      hasPayableCheckout: typeof data.order_nsu === "string" &&
+        typeof data.amount_cents === "number" && data.amount_cents > 0,
+      hasUsableCheckout: typeof data.checkout_url === "string" && isSafeInfinitePayCheckoutUrl(data.checkout_url),
     };
   };
 
@@ -1281,6 +1359,32 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
 
       if (error) throw new Error("Não foi possível atualizar a inscrição.");
       return data === true;
+    },
+
+    rotatePendingCheckout: async (input) => {
+      const { data, error } = await supabaseAdmin.rpc("rotate_pending_registration_checkout", {
+        p_registration_id: input.registrationId,
+        p_expected_order_nsu: input.expectedOrderNsu,
+        p_expected_checkout_url: input.expectedCheckoutUrl,
+        p_expected_phone: input.expectedPhone,
+        p_expected_cpf: input.expectedCpf,
+        p_expected_birth_date: input.expectedBirthDate,
+        p_new_order_nsu: input.orderNsu,
+        p_checkout_claim: input.checkoutClaim,
+        p_phone: input.phone,
+      });
+      if (error) throw new Error("Não foi possível gerar um novo link de pagamento.");
+      return data === true;
+    },
+
+    releaseCheckoutClaim: async (orderNsu, checkoutClaim) => {
+      const { error } = await supabaseAdmin
+        .from("registrations")
+        .update({ checkout_url: null })
+        .eq("order_nsu", orderNsu)
+        .eq("checkout_url", checkoutClaim)
+        .eq("payment_status", "pending");
+      if (error) throw new Error("Não foi possível liberar o checkout pendente.");
     },
 
     findPayment,

@@ -153,6 +153,8 @@ export type RegistrationLookupResult =
       voicePart: VoicePart | null;
       hasPhoto: boolean;
       paymentStatus: "legacy" | "pending" | "paid";
+      hasPayableCheckout?: boolean;
+      hasUsableCheckout?: boolean;
     }
   | { status: "not_found" };
 

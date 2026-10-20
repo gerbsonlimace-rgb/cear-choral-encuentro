@@ -6,7 +6,7 @@ import {
   type ParticipantAccessStatus,
   type ParticipantRegistrationView,
 } from "@/features/participant/participant.domain";
-import { voicePartSchema } from "@/features/registration/registration.domain";
+import { brazilianMobilePhoneSchema, voicePartSchema } from "@/features/registration/registration.domain";
 import { deriveRegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
@@ -64,6 +64,7 @@ export type ParticipantAccessRepository = {
   createPhotoUrl(photoPath: string): Promise<string | null>;
   loadActiveRegentNames(choirId: string | null): Promise<string[]>;
   loadConfirmedComplementCents(registrationId: string): Promise<number>;
+  updatePaidPhone(registrationId: string, phone: string): Promise<string>;
 };
 
 type ParticipantAuthorizer = {
@@ -98,6 +99,16 @@ export function createParticipantAuthorizer(repository: ParticipantAccessReposit
       if (access.status !== "authorized") throw new Error("Acesso não autorizado.");
       return access;
     },
+  };
+}
+
+export function createParticipantPhoneUpdater(repository: ParticipantAccessRepository) {
+  return async (
+    access: Extract<ParticipantAccess, { status: "authorized" }>,
+    input: string,
+  ) => {
+    const phone = brazilianMobilePhoneSchema.parse(input);
+    return { phone: await repository.updatePaidPhone(access.registrationId, phone) };
   };
 }
 
@@ -245,6 +256,18 @@ export function createSupabaseParticipantRepository(): ParticipantAccessReposito
         .maybeSingle();
       checkParticipantQuery(error);
       return data;
+    },
+
+    async updatePaidPhone(registrationId, phone) {
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({ phone })
+        .eq("id", registrationId)
+        .eq("payment_status", "paid")
+        .select("phone")
+        .maybeSingle();
+      if (error || !data) throw new Error("Não foi possível salvar o telefone.");
+      return data.phone;
     },
 
     async loadActiveRegentNames(choirId) {

@@ -40,6 +40,7 @@ export type ChoristerAppShellProps = {
   feed: ChoristerPortalFeed;
   events?: ChoristerPortalCollection["events"];
   onChangePassword: () => void;
+  onUpdatePhone?: (phone: string) => Promise<void>;
   onDownloadReceipt: () => void;
   onLogout: () => void;
   onOpenAdmin?: () => void;
@@ -88,6 +89,7 @@ export function ChoristerAppShell({
   feed,
   events,
   onChangePassword: _onChangePassword,
+  onUpdatePhone,
   onDownloadReceipt: _onDownloadReceipt,
   onLogout: _onLogout,
   onOpenAdmin,
@@ -707,6 +709,7 @@ export function ChoristerAppShell({
             <ChoristerProfileTab
               participant={participant}
               onChangePassword={_onChangePassword}
+              onUpdatePhone={onUpdatePhone}
               onDownloadReceipt={() => _onDownloadReceipt()}
               onLogout={handleLogout}
             />

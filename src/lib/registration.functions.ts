@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+  brazilianMobilePhoneSchema,
   paymentLookupSchema,
   registrationAvailabilitySchema,
   registrationLookupSchema,
@@ -117,6 +118,14 @@ export const resumeRegistrationCheckout = createServerFn({ method: "POST" })
         resumeCheckout: (input: unknown) => Promise<RegistrationResumeResult>;
       },
     )(data);
+  });
+
+export const updatePendingRegistrationPhone = createServerFn({ method: "POST" })
+  .validator(registrationResumeSchema.extend({ phone: brazilianMobilePhoneSchema }).strict())
+  .handler(async ({ data }) => {
+    const { getRegistrationPaymentService } =
+      await import("@/features/registration/registration-payment.server");
+    return getRegistrationPaymentService().updatePendingPhoneAndCheckout(data);
   });
 
 export const verifyRegistrationPayment = createServerFn({ method: "POST" })

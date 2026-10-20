@@ -1,8 +1,11 @@
-import { Download, KeyRound, LayoutDashboard, LogOut } from "lucide-react";
+import { Download, KeyRound, LayoutDashboard, LogOut, Pencil } from "lucide-react";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { isValidBrazilianMobilePhone } from "@/features/registration/registration.domain";
 
 import type { ParticipantRegistrationView } from "./participant.domain";
 
@@ -11,6 +14,7 @@ type Action = () => void | Promise<void>;
 type ChoristerProfileTabProps = {
   participant: ParticipantRegistrationView;
   onChangePassword: Action;
+  onUpdatePhone?: (phone: string) => Promise<void>;
   onDownloadReceipt: (participant: ParticipantRegistrationView) => void | Promise<void>;
   onLogout: Action;
   onOpenAdmin?: Action;
@@ -75,6 +79,7 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
 export function ChoristerProfileTab({
   participant,
   onChangePassword,
+  onUpdatePhone,
   onDownloadReceipt,
   onLogout,
   onOpenAdmin,
@@ -82,6 +87,11 @@ export function ChoristerProfileTab({
   const [receiptState, setReceiptState] = useState<"idle" | "working" | "error">("idle");
   const [leaving, setLeaving] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState(participant.identity.phone ?? "");
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
   const { identity, registration, payment } = participant;
   const canDownloadReceipt =
     Boolean(payment.orderNsu?.trim()) && payment.paidAmountCents != null && Boolean(payment.paidAt);
@@ -101,6 +111,26 @@ export function ChoristerProfileTab({
     if (leaving) return;
     setLeaving(true);
     void onLogout();
+  }
+
+  async function savePhone(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (phoneBusy || !onUpdatePhone) return;
+    setPhoneError("");
+    if (!isValidBrazilianMobilePhone(phoneDraft)) {
+      setPhoneError("Informe um WhatsApp brasileiro válido.");
+      return;
+    }
+    setPhoneBusy(true);
+    try {
+      await onUpdatePhone(phoneDraft.trim());
+      setEditingPhone(false);
+      setPhoneSaved(true);
+    } catch {
+      setPhoneError("Não foi possível salvar o telefone. Tente novamente.");
+    } finally {
+      setPhoneBusy(false);
+    }
   }
 
   if (leaving) {
@@ -155,6 +185,47 @@ export function ChoristerProfileTab({
           {identity.email != null && <Detail label="E-mail">{identity.email}</Detail>}
           {identity.phone != null && <Detail label="Telefone">{identity.phone}</Detail>}
         </dl>
+        {editingPhone && onUpdatePhone ? (
+          <form onSubmit={(event) => void savePhone(event)} className="mt-4 space-y-3 border-t border-zinc-100 pt-4">
+            <div className="max-w-sm space-y-2">
+              <Label htmlFor="participant-phone">Novo WhatsApp</Label>
+              <Input
+                id="participant-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={30}
+                value={phoneDraft}
+                disabled={phoneBusy}
+                onChange={(event) => setPhoneDraft(event.target.value)}
+                aria-invalid={Boolean(phoneError)}
+                className="min-h-11"
+              />
+            </div>
+            {phoneError && <p role="alert" className="text-sm text-red-700">{phoneError}</p>}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" className="min-h-11" disabled={phoneBusy}>
+                {phoneBusy ? "Salvando…" : "Salvar telefone"}
+              </Button>
+              <Button type="button" variant="outline" className="min-h-11" disabled={phoneBusy}
+                onClick={() => { setEditingPhone(false); setPhoneError(""); }}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        ) : onUpdatePhone ? (
+          <div className="mt-3 border-t border-zinc-100 pt-4">
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => {
+              setPhoneDraft(identity.phone ?? "");
+              setPhoneError("");
+              setPhoneSaved(false);
+              setEditingPhone(true);
+            }}>
+              <Pencil aria-hidden="true" className="size-4" /> Editar telefone
+            </Button>
+            {phoneSaved && <p role="status" className="mt-2 text-sm text-zinc-700">Telefone atualizado.</p>}
+          </div>
+        ) : null}
       </article>
 
       <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">

@@ -21,6 +21,7 @@ import * as participantAuth from "./participant-auth.server";
 import {
   createParticipantAuthorizer,
   createParticipantRegistrationLoader,
+  createParticipantPhoneUpdater,
   createSupabaseParticipantRepository,
   findParticipantAccessForAuthorization,
   type ParticipantAccessRepository,
@@ -77,6 +78,7 @@ function repository(
     createPhotoUrl: vi.fn(async () => null),
     loadActiveRegentNames: vi.fn(async () => ["João de Souza"]),
     loadConfirmedComplementCents: vi.fn(async () => 2000),
+    updatePaidPhone: vi.fn(async (_registrationId, phone) => phone),
   };
 }
 
@@ -128,6 +130,29 @@ describe("participant authorizer", () => {
       status: "authorized",
       registrationId: activePaidAccount.registrationId,
     });
+  });
+});
+
+describe("participant phone update", () => {
+  it("updates only the registration selected by verified participant access", async () => {
+    const data = repository(activePaidAccount, completeRegistration);
+    const update = createParticipantPhoneUpdater(data);
+
+    await expect(update({ ...activePaidAccount, status: "authorized" }, " (85) 98888-7777 "))
+      .resolves.toEqual({ phone: "(85) 98888-7777" });
+    expect(data.updatePaidPhone).toHaveBeenCalledExactlyOnceWith(
+      activePaidAccount.registrationId,
+      "(85) 98888-7777",
+    );
+  });
+
+  it("rejects an invalid phone before writing participant data", async () => {
+    const data = repository(activePaidAccount, completeRegistration);
+    const update = createParticipantPhoneUpdater(data);
+
+    await expect(update({ ...activePaidAccount, status: "authorized" }, "123"))
+      .rejects.toThrow("Informe um WhatsApp brasileiro válido.");
+    expect(data.updatePaidPhone).not.toHaveBeenCalled();
   });
 });
 

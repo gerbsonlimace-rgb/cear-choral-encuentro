@@ -45,6 +45,7 @@ import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.function
 import {
   lookupRegistration,
   startRegistrationCheckout,
+  updatePendingRegistrationPhone,
   type StartRegistrationCheckoutResult,
 } from "@/lib/registration.functions";
 import {
@@ -76,6 +77,10 @@ type RegistrationSectionProps = {
     cpf: string;
     birthDate: string;
   }) => Promise<RegistrationLookupResult>;
+  updatePendingPhone?: (input: { cpf: string; birthDate: string; phone: string }) => Promise<{
+    checkoutUrl: string;
+    orderNsu: string;
+  }>;
   navigateToCheckout?: (url: string) => void;
   /** Kept for compatibility with callers using the previous prop. */
   checkAvailability?: (input: { cpf: string; email: string }) => Promise<unknown>;
@@ -297,6 +302,7 @@ export function RegistrationSection({
   loadConfiguration = defaultLoadConfiguration,
   startCheckout = (input) => startRegistrationCheckout({ data: input }),
   lookupRegistration: lookupSavedRegistration = (input) => lookupRegistration({ data: input }),
+  updatePendingPhone = (input) => updatePendingRegistrationPhone({ data: input }),
   navigateToCheckout = (url) => window.location.assign(url),
 }: RegistrationSectionProps) {
   const [configuration, setConfiguration] = useState<PublicRegistrationConfiguration | null>(null);
@@ -316,6 +322,9 @@ export function RegistrationSection({
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found">(
     "idle",
   );
+  const [pendingSavedPhone, setPendingSavedPhone] = useState<string | null>(null);
+  const [pendingNeedsCheckout, setPendingNeedsCheckout] = useState(false);
+  const [phoneUpdateError, setPhoneUpdateError] = useState("");
   const lookupKey = useRef("");
   const mounted = useRef(false);
   const paymentButtonClick = useRef(false);
@@ -547,6 +556,8 @@ export function RegistrationSection({
     if (field === "cpf") {
       lookupKey.current = "";
       setLookupState("idle");
+      setPendingSavedPhone(null);
+      setPendingNeedsCheckout(false);
     }
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
   };
@@ -560,6 +571,8 @@ export function RegistrationSection({
     }));
     lookupKey.current = "";
     setLookupState("idle");
+    setPendingSavedPhone(null);
+    setPendingNeedsCheckout(false);
     if (errors.birthDate) {
       setErrors((previous) => ({ ...previous, birthDate: undefined }));
     }
@@ -579,6 +592,9 @@ export function RegistrationSection({
     try {
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
+        setPendingSavedPhone(result.paymentStatus === "pending" && result.hasPayableCheckout ? result.phone : null);
+        setPendingNeedsCheckout(result.paymentStatus === "pending" &&
+          result.hasPayableCheckout === true && result.hasUsableCheckout === false);
         const savedMusicalProfile =
           result.musicalProfile ?? (result.voicePart ? ("coralista" as const) : null);
         const savedChoirId =
@@ -610,11 +626,32 @@ export function RegistrationSection({
         }));
         setLookupState("found");
       } else {
+        setPendingSavedPhone(null);
+        setPendingNeedsCheckout(false);
         setLookupState("not_found");
       }
     } catch {
       lookupKey.current = "";
       setLookupState("idle");
+    }
+  };
+
+  const updatePhoneAndGoToPayment = async () => {
+    if (isSubmitting || lookupState !== "found" || pendingSavedPhone === null) return;
+    const parsed = registrationLookupSchema.safeParse({ cpf: form.cpf, birthDate: form.birthDate });
+    if (!parsed.success || !isValidBrazilianMobilePhone(form.phone)) {
+      setErrors((previous) => ({ ...previous, phone: "Informe um WhatsApp brasileiro válido." }));
+      return;
+    }
+    setPhoneUpdateError("");
+    setIsSubmitting(true);
+    try {
+      const result = await updatePendingPhone({ ...parsed.data, phone: form.phone });
+      navigateToCheckout(result.checkoutUrl);
+    } catch {
+      setPhoneUpdateError("Não foi possível atualizar o WhatsApp e gerar o link. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1161,9 +1198,33 @@ export function RegistrationSection({
                     </p>
                   )}
                   {lookupState === "found" && (
-                    <p role="status" className="text-sm text-emerald-foreground">
-                      Encontramos seus dados salvos e preenchemos o formulário.
-                    </p>
+                    <div className="space-y-3">
+                      <p role="status" className="text-sm text-emerald-foreground">
+                        Encontramos seus dados salvos e preenchemos o formulário.
+                      </p>
+                      {pendingSavedPhone !== null &&
+                        (pendingNeedsCheckout || form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")) && (
+                          <div className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-sm text-registration-ink">
+                              {form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                                ? "Já existe uma inscrição pendente. Salve o novo WhatsApp para receber um novo link de pagamento."
+                                : "O link de pagamento ainda não está disponível. Tente gerá-lo novamente."}
+                            </p>
+                            <Button
+                              type="button"
+                              className="mt-3 min-h-11"
+                              disabled={isSubmitting}
+                              onClick={() => void updatePhoneAndGoToPayment()}
+                            >
+                              {isSubmitting ? "Preparando pagamento…" :
+                                form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                                  ? "Atualizar WhatsApp e ir para pagamento"
+                                  : "Tentar gerar link de pagamento"}
+                            </Button>
+                            {phoneUpdateError && <p role="alert" className="mt-2 text-sm text-destructive">{phoneUpdateError}</p>}
+                          </div>
+                        )}
+                    </div>
                   )}
                 </div>
               )}
