@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 vi.mock("@/lib/participant.functions", () => ({
   getParticipantAccess: vi.fn(),
   getParticipantRegistration: vi.fn(),
+  updateParticipantPhone: vi.fn(),
 }));
 vi.mock("@/lib/chorister-app.functions", () => ({ getChoristerPortalFeed: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: {} } }));
@@ -94,6 +95,7 @@ type PortalOverrides = Partial<{
     password: string;
   }) => Promise<{ error: unknown }>;
   updatePassword: (password: string) => Promise<{ error: unknown }>;
+  updatePhone: (phone: string) => Promise<{ phone: string }>;
   getSignedInEmail: () => Promise<{ email: string | null; error: unknown }>;
   downloadReceipt: (view: ParticipantRegistrationView) => Promise<void>;
 }>;
@@ -108,6 +110,7 @@ function setup(overrides: PortalOverrides = {}) {
     onSignedOut: vi.fn(),
     reauthenticateForPasswordChange: vi.fn().mockResolvedValue({ error: null }),
     updatePassword: vi.fn().mockResolvedValue({ error: null }),
+    updatePhone: vi.fn(async (phone: string) => ({ phone })),
     getSignedInEmail: vi
       .fn()
       .mockResolvedValue({ email: "sessao-verificada@example.com", error: null }),
@@ -505,6 +508,24 @@ describe("ParticipantPortalPage", () => {
     expect(screen.getByRole("heading", { name: "Guia do evento" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
     expect(screen.getByRole("heading", { name: "Meu Perfil" })).toBeInTheDocument();
+  });
+
+  it("lets the signed-in participant update the phone shown in My Profile", async () => {
+    const updatePhone = vi.fn(async () => ({ phone: "(85) 98888-7777" }));
+    const { user } = setup({ updatePhone });
+    await screen.findByRole("heading", { name: "Maria da Silva" });
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    await user.click(screen.getByRole("button", { name: "Editar telefone" }));
+    const phone = screen.getByRole("textbox", { name: "Novo WhatsApp" });
+    await user.clear(phone);
+    await user.type(phone, "(85) 98888-7777");
+    await user.click(screen.getByRole("button", { name: "Salvar telefone" }));
+
+    await waitFor(() => expect(updatePhone).toHaveBeenCalledExactlyOnceWith("(85) 98888-7777"));
+    expect(screen.getByText("(85) 98888-7777")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Meu Perfil" }));
+    expect(screen.getByText("(85) 98888-7777")).toBeInTheDocument();
   });
 
   it("opens a functional voluntary password-change dialog from the header", async () => {

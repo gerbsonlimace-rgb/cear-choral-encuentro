@@ -1118,6 +1118,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      rotate_pending_registration_checkout: {
+        Args: {
+          p_registration_id: string
+          p_expected_order_nsu: string
+          p_expected_checkout_url: string | null
+          p_expected_phone: string
+          p_expected_cpf: string | null
+          p_expected_birth_date: string | null
+          p_new_order_nsu: string
+          p_checkout_claim: string
+          p_phone: string
+        }
+        Returns: boolean
+      }
       verify_choir_regent_password_operation_candidate: {
         Args: {
           p_candidate_fingerprint: string

@@ -343,6 +343,7 @@ function createFixture() {
     }),
     updatePendingDetails: vi.fn(async () => true),
     replacePendingCheckout: vi.fn(async () => true),
+    rotatePendingCheckout: vi.fn(async () => true),
     findPayment: vi.fn(async () => record),
     findSupersededPayment: vi.fn(async () => archivedRecord),
     markSupersededPaid: vi.fn(async (_orderNsu, confirmation) => {
@@ -911,13 +912,13 @@ describe("registration payment service", () => {
     );
   });
 
-  it("reuses a safe checkout URL when an administrator requests a payment link", async () => {
+  it("replaces an existing checkout when an administrator regenerates the payment link", async () => {
     fixture.setCheckoutLinkRecord({
       id: "registration-1",
-      orderNsu: fixedOrderNsu,
+      orderNsu: previousOrderNsu,
       amountCents: 10000,
       paymentStatus: "pending",
-      checkoutUrl: checkoutUrl,
+      checkoutUrl: existingCheckoutUrl,
       name: "Maria",
       email: "maria@example.com",
       phone: "85999999999",
@@ -925,8 +926,67 @@ describe("registration payment service", () => {
 
     await expect(fixture.service.createCheckoutLink("registration-1")).resolves.toEqual({
       checkoutUrl,
-      reused: true,
+      reused: false,
     });
+    expect(fixture.repository.rotatePendingCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      registrationId: "registration-1",
+      expectedOrderNsu: previousOrderNsu,
+      expectedCheckoutUrl: existingCheckoutUrl,
+      orderNsu: fixedOrderNsu,
+      phone: "85999999999",
+    }));
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      orderNsu: fixedOrderNsu,
+      customer: { name: "Maria", email: "maria@example.com", phoneNumber: "85999999999" },
+    }));
+    expect(fixture.repository.saveCheckoutUrl).toHaveBeenCalledWith(
+      fixedOrderNsu,
+      checkoutUrl,
+      expect.stringMatching(/^https:\/\/pending\.invalid\/creating\//),
+    );
+  });
+
+  it("lets the pending participant update the phone before creating a replacement checkout", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: previousOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: existingCheckoutUrl,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+
+    await expect(fixture.service.updatePendingPhoneAndCheckout({
+      cpf,
+      birthDate: "1990-05-20",
+      phone: "(85) 98888-7777",
+    })).resolves.toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
+
+    expect(fixture.repository.rotatePendingCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      registrationId: "registration-1",
+      expectedPhone: "85999999999",
+      expectedCpf: cpf,
+      expectedBirthDate: "1990-05-20",
+      phone: "(85) 98888-7777",
+    }));
+    expect(fixture.infinitePay.createCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      customer: { name: "Maria", email: "maria@example.com", phoneNumber: "(85) 98888-7777" },
+    }));
+  });
+
+  it("does not edit a pending phone when the birth date does not match", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+
+    await expect(fixture.service.updatePendingPhoneAndCheckout({
+      cpf,
+      birthDate: "1991-05-20",
+      phone: "(85) 98888-7777",
+    })).rejects.toThrow("Não foi possível localizar uma inscrição");
+
+    expect(fixture.repository.rotatePendingCheckout).not.toHaveBeenCalled();
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
@@ -2106,6 +2166,39 @@ describe("Supabase registration repository", () => {
         p_amount_cents: 30000,
         p_remaining_price_cents: null,
       }),
+    );
+  });
+
+  it("rotates a pending checkout and updates only the phone through the atomic RPC", async () => {
+    supabaseAdminMock.rpc.mockResolvedValueOnce({ data: true, error: null });
+    const repository = createSupabaseRegistrationRepository();
+    const checkoutClaim = `https://pending.invalid/creating/${fixedOrderNsu}/1780000000000`;
+
+    await expect(repository.rotatePendingCheckout({
+      registrationId: "registration-1",
+      expectedOrderNsu: previousOrderNsu,
+      expectedCheckoutUrl: existingCheckoutUrl,
+      expectedPhone: "85999999999",
+      expectedCpf: cpf,
+      expectedBirthDate: "1990-05-20",
+      orderNsu: fixedOrderNsu,
+      checkoutClaim,
+      phone: "(85) 98888-7777",
+    })).resolves.toBe(true);
+
+    expect(supabaseAdminMock.rpc).toHaveBeenCalledWith(
+      "rotate_pending_registration_checkout",
+      {
+        p_registration_id: "registration-1",
+        p_expected_order_nsu: previousOrderNsu,
+        p_expected_checkout_url: existingCheckoutUrl,
+        p_expected_phone: "85999999999",
+        p_expected_cpf: cpf,
+        p_expected_birth_date: "1990-05-20",
+        p_new_order_nsu: fixedOrderNsu,
+        p_checkout_claim: checkoutClaim,
+        p_phone: "(85) 98888-7777",
+      },
     );
   });
 

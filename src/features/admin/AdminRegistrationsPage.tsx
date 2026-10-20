@@ -880,7 +880,7 @@ function RegistrationActions({
           {state.status === "pending" && !row.isFreeRegistration && (
             <>
               <DropdownMenuItem onSelect={() => onPaymentLink(row)}>
-                <Link2 aria-hidden="true" /> Gerar link de pagamento
+                <Link2 aria-hidden="true" /> Gerar novo link de pagamento
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={openMarkPaid}>
                 <BadgeCheck aria-hidden="true" /> Marcar como pago
@@ -2006,7 +2006,11 @@ export function AdminRegistrationsPage({
     setAnnouncement("");
     try {
       await updateRegistration({ data: input });
-      setAnnouncement("Dados da inscrição atualizados.");
+      const phoneChanged = editTarget?.paymentStatus === "pending" && !editTarget.isFreeRegistration &&
+        editTarget.phone.replace(/\D/g, "") !== input.phone.replace(/\D/g, "");
+      setAnnouncement(phoneChanged
+        ? "WhatsApp atualizado. Gere um novo link de pagamento para usar o número novo."
+        : "Dados da inscrição atualizados.");
       setRetry((value) => value + 1);
       setSummaryRetry((value) => value + 1);
       return null;

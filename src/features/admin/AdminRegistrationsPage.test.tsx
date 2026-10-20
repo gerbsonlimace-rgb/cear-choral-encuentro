@@ -225,7 +225,7 @@ describe("AdminRegistrationsPage read-only views", () => {
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Gerar link de pagamento" }));
+    await user.click(screen.getByRole("menuitem", { name: "Gerar novo link de pagamento" }));
     await waitFor(() =>
       expect(copyToClipboard).toHaveBeenCalledWith(
         "https://checkout.infinitepay.com.br/registration-pending",
@@ -305,7 +305,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     const table = await screen.findByRole("table", { name: "Inscrições" });
     expect(within(table).getAllByText("Aguardando aprovação").length).toBeGreaterThan(0);
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    expect(screen.queryByRole("menuitem", { name: "Gerar link de pagamento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Gerar novo link de pagamento" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Marcar como pago" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("menuitem", { name: "Aprovar como isento" }));
     await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Aprovar isenção" }));
@@ -1010,13 +1010,17 @@ describe("AdminRegistrationsPage edit registration", () => {
     expect(within(dialog).getByLabelText("E-mail")).toHaveValue("ana@example.com");
     await user.clear(within(dialog).getByLabelText("Nome completo"));
     await user.type(within(dialog).getByLabelText("Nome completo"), "Bruno Corrigido");
+    await user.clear(within(dialog).getByLabelText("WhatsApp"));
+    await user.type(within(dialog).getByLabelText("WhatsApp"), "85988887777");
     await user.click(within(dialog).getByRole("button", { name: "Salvar alterações" }));
     await waitFor(() => expect(updateRegistration).toHaveBeenCalledOnce());
     expect(updateRegistration.mock.calls[0][0].data).toMatchObject({
       registrationId: "pending",
       name: "Bruno Corrigido",
+      phone: "85988887777",
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("WhatsApp atualizado. Gere um novo link de pagamento para usar o número novo.")).toBeVisible();
   });
 
   it("keeps the dialog open and shows the error when saving fails", async () => {

@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { getParticipantRequestAccess, loadRegistration, loginParticipantWithCredentials } = vi.hoisted(() => ({
+const { getParticipantRequestAccess, loadRegistration, loginParticipantWithCredentials, updatePhone } = vi.hoisted(() => ({
   getParticipantRequestAccess: vi.fn(),
   loadRegistration: vi.fn(),
   loginParticipantWithCredentials: vi.fn(),
+  updatePhone: vi.fn(),
 }));
 
 vi.mock("@/features/participant/participant-auth.server", () => ({
   getParticipantRequestAccess,
   getParticipantRegistrationLoader: () => ({ load: loadRegistration }),
+  createSupabaseParticipantRepository: () => ({}),
+  createParticipantPhoneUpdater: () => updatePhone,
 }));
 
 vi.mock("@/features/registration/participant-area.server", () => ({
@@ -39,7 +42,7 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
 });
 
 import { requireParticipantAccess } from "@/features/participant/participant-auth.middleware";
-import { getParticipantAccess, getParticipantRegistration, loginParticipant } from "./participant.functions";
+import { getParticipantAccess, getParticipantRegistration, loginParticipant, updateParticipantPhone } from "./participant.functions";
 
 const ownAccess = {
   status: "authorized" as const,
@@ -97,5 +100,18 @@ describe("participant server-function boundaries", () => {
     expect(serverFunction.method).toBe("GET");
     expect(serverFunction.middlewares).toContain(requireParticipantAccess);
     expect(loadRegistration).toHaveBeenCalledExactlyOnceWith(ownAccess);
+  });
+
+  it("updates the phone using the authorized registration rather than a client-supplied ID", async () => {
+    updatePhone.mockResolvedValue({ phone: "(85) 98888-7777" });
+    const serverFunction = updateParticipantPhone as unknown as ServerFunction;
+
+    await expect(serverFunction({
+      data: { registrationId: "victim", phone: "(85) 98888-7777" },
+      context: { participantAccess: ownAccess },
+    })).resolves.toEqual({ phone: "(85) 98888-7777" });
+    expect(serverFunction.method).toBe("POST");
+    expect(serverFunction.middlewares).toContain(requireParticipantAccess);
+    expect(updatePhone).toHaveBeenCalledExactlyOnceWith(ownAccess, "(85) 98888-7777");
   });
 });

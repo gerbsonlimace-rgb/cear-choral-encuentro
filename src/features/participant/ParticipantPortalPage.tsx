@@ -13,7 +13,7 @@ import type {
 } from "@/features/chorister-app/choristerApp.domain";
 import { supabase } from "@/integrations/supabase/client";
 import { getChoristerPortalCollection } from "@/lib/chorister-event-collection.functions";
-import { getParticipantAccess, getParticipantRegistration } from "@/lib/participant.functions";
+import { getParticipantAccess, getParticipantRegistration, updateParticipantPhone } from "@/lib/participant.functions";
 
 import type { ParticipantAccess } from "./participant-auth.server";
 import { ChoristerAppShell } from "./ChoristerAppShell";
@@ -36,6 +36,7 @@ type Props = {
     password: string;
   }) => Promise<{ error: unknown }>;
   updatePassword?: (password: string) => Promise<{ error: unknown }>;
+  updatePhone?: (phone: string) => Promise<{ phone: string }>;
   getSignedInEmail?: () => Promise<{ email: string | null; error: unknown }>;
   downloadReceipt?: (view: ParticipantRegistrationView) => Promise<void>;
   initialTab?: ChoristerTab;
@@ -103,6 +104,7 @@ export function ParticipantPortalPage({
   signOut = defaultSignOut,
   reauthenticateForPasswordChange,
   updatePassword,
+  updatePhone = (phone) => updateParticipantPhone({ data: { phone } }),
   getSignedInEmail,
   downloadReceipt = downloadParticipantReceipt,
   initialTab,
@@ -256,6 +258,14 @@ export function ParticipantPortalPage({
     }
   }
 
+  async function savePhone(phone: string) {
+    const result = await updatePhone(phone);
+    if (!mounted.current) return;
+    setView((previous) => previous
+      ? { ...previous, identity: { ...previous.identity, phone: result.phone } }
+      : previous);
+  }
+
   if (gate === "ready" && view && feed) {
     return (
       <>
@@ -264,6 +274,7 @@ export function ParticipantPortalPage({
           feed={feed}
           events={events}
           onChangePassword={() => setPasswordDialogOpen(true)}
+          onUpdatePhone={savePhone}
           onDownloadReceipt={() => downloadReceipt(view)}
           onLogout={logout}
           onOpenAdmin={onOpenAdmin}
