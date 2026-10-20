@@ -344,6 +344,7 @@ function createFixture() {
     updatePendingDetails: vi.fn(async () => true),
     replacePendingCheckout: vi.fn(async () => true),
     rotatePendingCheckout: vi.fn(async () => true),
+    releaseCheckoutClaim: vi.fn(async () => undefined),
     findPayment: vi.fn(async () => record),
     findSupersededPayment: vi.fn(async () => archivedRecord),
     markSupersededPaid: vi.fn(async (_orderNsu, confirmation) => {
@@ -988,6 +989,55 @@ describe("registration payment service", () => {
 
     expect(fixture.repository.rotatePendingCheckout).not.toHaveBeenCalled();
     expect(fixture.infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("lets a participant retry with the same phone after checkout creation fails", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: previousOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: null,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+    vi.mocked(fixture.infinitePay.createCheckout).mockRejectedValueOnce(new Error("InfinitePay indisponível"));
+
+    await expect(fixture.service.updatePendingPhoneAndCheckout({
+      cpf,
+      birthDate: "1990-05-20",
+      phone: "85999999999",
+    })).rejects.toThrow("InfinitePay indisponível");
+    expect(fixture.repository.releaseCheckoutClaim).toHaveBeenCalledOnce();
+
+    await expect(fixture.service.updatePendingPhoneAndCheckout({
+      cpf,
+      birthDate: "1990-05-20",
+      phone: "85999999999",
+    })).resolves.toEqual({ checkoutUrl, orderNsu: fixedOrderNsu });
+  });
+
+  it("does not rotate a usable checkout when the saved phone is unchanged", async () => {
+    fixture.setIdentityRecord(pendingIdentity());
+    fixture.setCheckoutLinkRecord({
+      id: "registration-1",
+      orderNsu: previousOrderNsu,
+      amountCents: 10000,
+      paymentStatus: "pending",
+      checkoutUrl: existingCheckoutUrl,
+      name: "Maria",
+      email: "maria@example.com",
+      phone: "85999999999",
+    });
+
+    await expect(fixture.service.updatePendingPhoneAndCheckout({
+      cpf,
+      birthDate: "1990-05-20",
+      phone: "85999999999",
+    })).rejects.toThrow("Informe um novo WhatsApp");
+    expect(fixture.repository.rotatePendingCheckout).not.toHaveBeenCalled();
   });
 
   it("generates and persists a checkout URL when the pending registration has none", async () => {
@@ -2200,6 +2250,23 @@ describe("Supabase registration repository", () => {
         p_phone: "(85) 98888-7777",
       },
     );
+  });
+
+  it("releases only the reserved pending checkout after a provider failure", async () => {
+    const database = createSupabaseHarness();
+    const repository = createSupabaseRegistrationRepository();
+    const checkoutClaim = `https://pending.invalid/creating/${fixedOrderNsu}/1780000000000`;
+
+    await repository.releaseCheckoutClaim(fixedOrderNsu, checkoutClaim);
+
+    expect(database.trace).toEqual([
+      ["from", "registrations"],
+      ["update", { checkout_url: null }],
+      ["eq", "order_nsu", fixedOrderNsu],
+      ["eq", "checkout_url", checkoutClaim],
+      ["eq", "payment_status", "pending"],
+      ["execute"],
+    ]);
   });
 
   it("translates an atomic replacement database error without logging participant data", async () => {

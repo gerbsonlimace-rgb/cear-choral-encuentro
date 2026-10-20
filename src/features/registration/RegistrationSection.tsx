@@ -323,6 +323,7 @@ export function RegistrationSection({
     "idle",
   );
   const [pendingSavedPhone, setPendingSavedPhone] = useState<string | null>(null);
+  const [pendingNeedsCheckout, setPendingNeedsCheckout] = useState(false);
   const [phoneUpdateError, setPhoneUpdateError] = useState("");
   const lookupKey = useRef("");
   const mounted = useRef(false);
@@ -556,6 +557,7 @@ export function RegistrationSection({
       lookupKey.current = "";
       setLookupState("idle");
       setPendingSavedPhone(null);
+      setPendingNeedsCheckout(false);
     }
     if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }));
   };
@@ -570,6 +572,7 @@ export function RegistrationSection({
     lookupKey.current = "";
     setLookupState("idle");
     setPendingSavedPhone(null);
+    setPendingNeedsCheckout(false);
     if (errors.birthDate) {
       setErrors((previous) => ({ ...previous, birthDate: undefined }));
     }
@@ -590,6 +593,8 @@ export function RegistrationSection({
       const result = await lookupSavedRegistration(parsed.data);
       if (result.status === "found") {
         setPendingSavedPhone(result.paymentStatus === "pending" && result.hasPayableCheckout ? result.phone : null);
+        setPendingNeedsCheckout(result.paymentStatus === "pending" &&
+          result.hasPayableCheckout === true && result.hasUsableCheckout === false);
         const savedMusicalProfile =
           result.musicalProfile ?? (result.voicePart ? ("coralista" as const) : null);
         const savedChoirId =
@@ -622,6 +627,7 @@ export function RegistrationSection({
         setLookupState("found");
       } else {
         setPendingSavedPhone(null);
+        setPendingNeedsCheckout(false);
         setLookupState("not_found");
       }
     } catch {
@@ -1197,10 +1203,12 @@ export function RegistrationSection({
                         Encontramos seus dados salvos e preenchemos o formulário.
                       </p>
                       {pendingSavedPhone !== null &&
-                        form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "") && (
+                        (pendingNeedsCheckout || form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")) && (
                           <div className="rounded-xl border border-border bg-card p-4">
                             <p className="text-sm text-registration-ink">
-                              Já existe uma inscrição pendente. Salve o novo WhatsApp para receber um novo link de pagamento.
+                              {form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                                ? "Já existe uma inscrição pendente. Salve o novo WhatsApp para receber um novo link de pagamento."
+                                : "O link de pagamento ainda não está disponível. Tente gerá-lo novamente."}
                             </p>
                             <Button
                               type="button"
@@ -1208,7 +1216,10 @@ export function RegistrationSection({
                               disabled={isSubmitting}
                               onClick={() => void updatePhoneAndGoToPayment()}
                             >
-                              {isSubmitting ? "Preparando pagamento…" : "Atualizar WhatsApp e ir para pagamento"}
+                              {isSubmitting ? "Preparando pagamento…" :
+                                form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                                  ? "Atualizar WhatsApp e ir para pagamento"
+                                  : "Tentar gerar link de pagamento"}
                             </Button>
                             {phoneUpdateError && <p role="alert" className="mt-2 text-sm text-destructive">{phoneUpdateError}</p>}
                           </div>

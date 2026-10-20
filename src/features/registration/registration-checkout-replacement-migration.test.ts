@@ -15,6 +15,10 @@ const normalized = sql
   .replace(/--[^\n]*/g, "")
   .replace(/\s+/g, " ")
   .toLowerCase();
+const phoneRotationSql = readFileSync(
+  path.join(migrations, "20261020220109_rotate_pending_registration_checkout.sql"),
+  "utf8",
+).replace(/--[^\n]*/g, "").replace(/\s+/g, " ").toLowerCase();
 
 describe("registration checkout replacement migration contract", () => {
   it("creates one private immutable superseded-checkout ledger", () => {
@@ -106,5 +110,19 @@ describe("registration checkout replacement migration contract", () => {
     expect(generatedTypes).toContain("p_expected_checkout_url: string");
     expect(generatedTypes).toContain("p_remaining_price_cents: number");
     expect(generatedTypes).toContain("Returns: boolean");
+  });
+});
+
+describe("pending phone checkout rotation migration contract", () => {
+  it("archives uncertain old orders as well as known checkout URLs", () => {
+    expect(phoneRotationSql).toContain("alter column checkout_url drop not null");
+    expect(phoneRotationSql).toContain("v_archived_checkout_url := null");
+    expect(phoneRotationSql).toContain("create trigger archive_unknown_pending_checkout_order_before_update");
+    expect(phoneRotationSql).toContain("before update of order_nsu on public.registrations");
+    expect(phoneRotationSql).toMatch(
+      /insert into public\.registration_superseded_checkouts[\s\S]*v_registration\.order_nsu,[\s\S]*v_archived_checkout_url,[\s\S]*update public\.registrations/,
+    );
+    expect(phoneRotationSql).toContain("v_registration.cpf is distinct from p_expected_cpf");
+    expect(phoneRotationSql).toContain("v_registration.birth_date is distinct from p_expected_birth_date");
   });
 });

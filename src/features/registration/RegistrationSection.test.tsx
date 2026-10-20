@@ -504,6 +504,38 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.queryByRole("button", { name: "Atualizar WhatsApp e ir para pagamento" })).not.toBeInTheDocument();
   });
 
+  it("offers checkout recovery without changing the saved phone", async () => {
+    const user = userEvent.setup();
+    const updatePendingPhone = vi.fn(async () => ({ checkoutUrl: safeUrl, orderNsu: fixedOrderNsu }));
+    const navigateToCheckout = vi.fn();
+    render(<RegistrationSection
+      lookupRegistration={async () => ({
+        status: "found",
+        name: "Maria da Silva",
+        email: "maria@example.com",
+        phone: "85999999999",
+        choirId: sobralId,
+        musicalProfile: "coralista",
+        voicePart: "soprano",
+        hasPhoto: true,
+        paymentStatus: "pending",
+        hasPayableCheckout: true,
+        hasUsableCheckout: false,
+      })}
+      updatePendingPhone={updatePendingPhone}
+      navigateToCheckout={navigateToCheckout}
+      loadConfiguration={loadConfiguration}
+    />);
+    await fillPersonalData(user);
+    await user.click(await screen.findByRole("button", { name: "Tentar gerar link de pagamento" }));
+    expect(updatePendingPhone).toHaveBeenCalledWith({
+      cpf: "52998224725",
+      birthDate: "1990-05-20",
+      phone: "85999999999",
+    });
+    expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
+  });
+
   it("keeps the choir selected while a slower saved-registration lookup finishes", async () => {
     const user = userEvent.setup();
     let resolveLookup!: (value: {

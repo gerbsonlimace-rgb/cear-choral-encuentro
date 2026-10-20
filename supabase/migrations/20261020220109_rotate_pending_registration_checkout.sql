@@ -1,3 +1,57 @@
+alter table public.registration_superseded_checkouts
+  alter column checkout_url drop not null;
+
+create function public.archive_unknown_pending_checkout_order()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if old.payment_status = 'pending'
+    and old.order_nsu is not null
+    and new.order_nsu is distinct from old.order_nsu
+    and (old.checkout_url is null or old.checkout_url like 'https://pending.invalid/creating/%')
+    and not exists (
+      select 1 from public.registration_superseded_checkouts as archived
+      where archived.order_nsu = old.order_nsu
+    ) then
+    if old.amount_cents is null then
+      raise exception 'Existing checkout amount is missing' using errcode = '23514';
+    end if;
+
+    insert into public.registration_superseded_checkouts (
+      registration_id,
+      order_nsu,
+      checkout_url,
+      amount_cents,
+      pricing_type,
+      standard_price_cents,
+      registration_price_cents,
+      remaining_price_cents
+    ) values (
+      old.id,
+      old.order_nsu,
+      null,
+      old.amount_cents,
+      old.pricing_type,
+      old.standard_price_cents,
+      old.registration_price_cents,
+      old.remaining_price_cents
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.archive_unknown_pending_checkout_order()
+  from public, anon, authenticated;
+
+create trigger archive_unknown_pending_checkout_order_before_update
+before update of order_nsu on public.registrations
+for each row execute function public.archive_unknown_pending_checkout_order();
+
 create function public.rotate_pending_registration_checkout(
   p_registration_id uuid,
   p_expected_order_nsu uuid,
@@ -15,6 +69,7 @@ set search_path = ''
 as $$
 declare
   v_registration public.registrations;
+  v_archived_checkout_url text;
 begin
   if p_registration_id is null
     or p_expected_order_nsu is null
@@ -50,35 +105,37 @@ begin
   end if;
 
   if v_registration.checkout_url ~ '^https://checkout[.]infinitepay[.](io|com[.]br)(/|$)' then
-    if v_registration.amount_cents is null then
-      raise exception 'Existing checkout amount is missing' using errcode = '23514';
-    end if;
-
-    insert into public.registration_superseded_checkouts (
-      registration_id,
-      order_nsu,
-      checkout_url,
-      amount_cents,
-      pricing_type,
-      standard_price_cents,
-      registration_price_cents,
-      remaining_price_cents
-    ) values (
-      v_registration.id,
-      v_registration.order_nsu,
-      v_registration.checkout_url,
-      v_registration.amount_cents,
-      v_registration.pricing_type,
-      v_registration.standard_price_cents,
-      v_registration.registration_price_cents,
-      v_registration.remaining_price_cents
-    );
+    v_archived_checkout_url := v_registration.checkout_url;
   elsif v_registration.checkout_url is null
     or v_registration.checkout_url like 'https://pending.invalid/creating/%' then
-    null;
+    v_archived_checkout_url := null;
   else
     raise exception 'Existing checkout URL cannot be superseded' using errcode = '23514';
   end if;
+
+  if v_registration.amount_cents is null then
+    raise exception 'Existing checkout amount is missing' using errcode = '23514';
+  end if;
+
+  insert into public.registration_superseded_checkouts (
+    registration_id,
+    order_nsu,
+    checkout_url,
+    amount_cents,
+    pricing_type,
+    standard_price_cents,
+    registration_price_cents,
+    remaining_price_cents
+  ) values (
+    v_registration.id,
+    v_registration.order_nsu,
+    v_archived_checkout_url,
+    v_registration.amount_cents,
+    v_registration.pricing_type,
+    v_registration.standard_price_cents,
+    v_registration.registration_price_cents,
+    v_registration.remaining_price_cents
+  );
 
   update public.registrations
   set phone = btrim(p_phone),

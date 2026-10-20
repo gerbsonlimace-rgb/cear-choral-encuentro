@@ -607,7 +607,7 @@ export type Database = {
       registration_superseded_checkouts: {
         Row: {
           amount_cents: number
-          checkout_url: string
+          checkout_url: string | null
           id: string
           infinitepay_invoice_slug: string | null
           infinitepay_transaction_nsu: string | null
@@ -627,7 +627,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
-          checkout_url: string
+          checkout_url: string | null
           id?: string
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
@@ -647,7 +647,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
-          checkout_url?: string
+          checkout_url?: string | null
           id?: string
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null

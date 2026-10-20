@@ -197,6 +197,7 @@ export type RegistrationRepository = {
     checkoutClaim: string;
     phone: string;
   }): Promise<boolean>;
+  releaseCheckoutClaim(orderNsu: string, checkoutClaim: string): Promise<void>;
   findPayment(orderNsu: string): Promise<RegistrationPaymentRecord | null>;
   findSupersededPayment(orderNsu: string): Promise<SupersededCheckoutPaymentRecord | null>;
   markSupersededPaid(
@@ -275,14 +276,19 @@ export function createRegistrationPaymentService(deps: {
     });
     if (!reserved) throw new Error("A inscrição mudou. Atualize os dados e tente novamente.");
 
-    const checkout = await deps.infinitePay.createCheckout({
-      orderNsu,
-      items: [{ quantity: 1, price: registration.amountCents, description: "Inscrição — II Encontro de Coros" }],
-      customer: { name: registration.name, email: registration.email, phoneNumber: phone },
-    });
-    const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
-    if (!saved) throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
-    return { checkoutUrl: checkout.url, orderNsu };
+    try {
+      const checkout = await deps.infinitePay.createCheckout({
+        orderNsu,
+        items: [{ quantity: 1, price: registration.amountCents, description: "Inscrição — II Encontro de Coros" }],
+        customer: { name: registration.name, email: registration.email, phoneNumber: phone },
+      });
+      const saved = await deps.repository.saveCheckoutUrl(orderNsu, checkout.url, checkoutClaim);
+      if (!saved) throw new Error("A inscrição foi confirmada antes de salvar o checkout.");
+      return { checkoutUrl: checkout.url, orderNsu };
+    } catch (error) {
+      await deps.repository.releaseCheckoutClaim(orderNsu, checkoutClaim).catch(() => undefined);
+      throw error;
+    }
   };
 
   const toPaidPublicStatus = async (
@@ -718,7 +724,8 @@ export function createRegistrationPaymentService(deps: {
       if (!registration || registration.paymentStatus !== "pending") {
         throw new Error("A inscrição não está pendente.");
       }
-      if (normalizeInfinitePayPhoneNumber(registration.phone) === normalizeInfinitePayPhoneNumber(phone)) {
+      if (normalizeInfinitePayPhoneNumber(registration.phone) === normalizeInfinitePayPhoneNumber(phone) &&
+          registration.checkoutUrl && isSafeInfinitePayCheckoutUrl(registration.checkoutUrl)) {
         throw new Error("Informe um novo WhatsApp para atualizar a inscrição.");
       }
       return replaceCheckoutLink(registration, phone, { cpf: input.cpf, birthDate: input.birthDate });
@@ -1143,7 +1150,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
     const { data, error } = await supabaseAdmin
       .from("registrations")
       .select(
-        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,musical_profile,voice_part,photo_path,payment_status,order_nsu,amount_cents",
+        "name,badge_name,email,phone,birth_date,diocese,choir_id,other_choir_name,musical_profile,voice_part,photo_path,payment_status,order_nsu,amount_cents,checkout_url",
       )
       .eq("cpf", cpf)
       .eq("birth_date", birthDate)
@@ -1181,6 +1188,7 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       paymentStatus: data.payment_status as "legacy" | "pending" | "paid",
       hasPayableCheckout: typeof data.order_nsu === "string" &&
         typeof data.amount_cents === "number" && data.amount_cents > 0,
+      hasUsableCheckout: typeof data.checkout_url === "string" && isSafeInfinitePayCheckoutUrl(data.checkout_url),
     };
   };
 
@@ -1367,6 +1375,16 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       });
       if (error) throw new Error("Não foi possível gerar um novo link de pagamento.");
       return data === true;
+    },
+
+    releaseCheckoutClaim: async (orderNsu, checkoutClaim) => {
+      const { error } = await supabaseAdmin
+        .from("registrations")
+        .update({ checkout_url: null })
+        .eq("order_nsu", orderNsu)
+        .eq("checkout_url", checkoutClaim)
+        .eq("payment_status", "pending");
+      if (error) throw new Error("Não foi possível liberar o checkout pendente.");
     },
 
     findPayment,
