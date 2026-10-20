@@ -70,7 +70,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
     const summaryY = 482 - filterLines.length * 11;
     const metrics = [
       ["Total de inscritos", String(summary.total)],
-      ["Total pendente em dinheiro", money(summary.pendingMoneyCents)],
+      ["Total pendente taxa de inscrição", money(summary.pendingMoneyCents)],
       ["Total pendente em rifas", formatAdminRafflePending({ cents: summary.raffleCents, tickets: summary.raffleTickets })],
     ];
     metrics.forEach(([label, value], i) => {
