@@ -395,7 +395,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.getByRole("heading", { name: "Conte-nos quem é você" })).toBeInTheDocument();
   });
 
-  it("prevents advancing with an invalid Brazilian mobile number", async () => {
+  it("shows the country code separately and formats a pasted Brazilian mobile number", async () => {
     const user = userEvent.setup();
     render(
       <RegistrationSection checkAvailability={available} loadConfiguration={loadConfiguration} />,
@@ -403,6 +403,11 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
 
     await fillPersonalData(user);
     const phone = screen.getByLabelText("WhatsApp");
+    await user.clear(phone);
+    expect(screen.getByRole("textbox", { name: "Código do país" })).toHaveValue("+55");
+    await user.paste("+55 88 99630-6655");
+    expect(phone).toHaveValue("(88) 99630-6655");
+
     await user.clear(phone);
     await user.type(phone, "55859917823");
     expect(phone).toHaveValue("(55) 85991-7823");
@@ -534,6 +539,30 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
       phone: "85999999999",
     });
     expect(navigateToCheckout).toHaveBeenCalledWith(safeUrl);
+  });
+
+  it("shows a saved international phone without treating its country code as a change", async () => {
+    const user = userEvent.setup();
+    render(<RegistrationSection
+      lookupRegistration={async () => ({
+        status: "found",
+        name: "Maria da Silva",
+        email: "maria@example.com",
+        phone: "+5588996306655",
+        choirId: sobralId,
+        musicalProfile: "coralista",
+        voicePart: "soprano",
+        hasPhoto: true,
+        paymentStatus: "pending",
+        hasPayableCheckout: true,
+        hasUsableCheckout: true,
+      })}
+      loadConfiguration={loadConfiguration}
+    />);
+    await fillPersonalData(user);
+    expect(await screen.findByText("Encontramos seus dados salvos e preenchemos o formulário.")).toBeVisible();
+    expect(screen.getByLabelText("WhatsApp")).toHaveValue("(88) 99630-6655");
+    expect(screen.queryByRole("button", { name: "Atualizar WhatsApp e ir para pagamento" })).not.toBeInTheDocument();
   });
 
   it("keeps the choir selected while a slower saved-registration lookup finishes", async () => {

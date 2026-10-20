@@ -1,9 +1,61 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
-import { buildRegistrationsPdf, summarizePdfRegistrations } from "./admin-registration-pdf";
+import { buildRegistrationsPdf, getPdfFinancialColumns, getPdfHeaderDetails, summarizePdfRegistrations } from "./admin-registration-pdf";
 import type { AdminRegistrationRow } from "./admin.domain";
 
 describe("registration PDF", () => {
+  it("shows the selected choir and its regent in the report header", () => {
+    const query = { search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "all" } as const;
+    const rows = [
+      { choirName: "Coro São José", regentName: "Maria Oliveira" },
+      { choirName: "Coro São José", regentName: "Maria Oliveira" },
+    ] as AdminRegistrationRow[];
+    expect(getPdfHeaderDetails(rows, query)).toEqual({ choir: "Coro São José", regent: "Maria Oliveira" });
+    expect(getPdfHeaderDetails([...rows, { choirName: "Coro Santa Cecília", regentName: "João Silva" } as AdminRegistrationRow], query))
+      .toEqual({ choir: "Vários coros", regent: "Vários regentes" });
+    expect(getPdfHeaderDetails([], { ...query, choirName: "Coro São José" }))
+      .toEqual({ choir: "Coro São José", regent: "Não informado" });
+  });
+
+  it("shows registration and raffle amounts with independent payment indicators", () => {
+    const promotional = {
+      pricingType: "promotional", registrationPriceCents: 10_000,
+      standardPriceCents: 30_000, remainingPriceCents: 20_000,
+    } as AdminRegistrationRow;
+    expect(getPdfFinancialColumns({
+      ...promotional,
+      financialState: { status: "pending", pendingCents: 30_000, confirmedPrincipalCents: 0 },
+    })).toEqual({
+      registration: { value: "R$ 100,00", indicator: "pending" },
+      raffles: { value: "R$ 200,00", indicator: "pending" },
+    });
+    expect(getPdfFinancialColumns({
+      ...promotional,
+      financialState: { status: "partially_paid", pendingCents: 12_000, confirmedPrincipalCents: 18_000 },
+    })).toEqual({
+      registration: { value: "R$ 100,00", indicator: "paid" },
+      raffles: { value: "R$ 120,00", indicator: "pending" },
+    });
+    expect(getPdfFinancialColumns({
+      ...promotional,
+      financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 30_000 },
+    })).toEqual({
+      registration: { value: "R$ 100,00", indicator: "paid" },
+      raffles: { value: "R$ 0,00", indicator: "paid" },
+    });
+  });
+
+  it("marks raffle charges as inapplicable when the registration has no raffle program", () => {
+    expect(getPdfFinancialColumns({
+      registrationPriceCents: 30_000,
+      pricingType: "standard",
+      financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 30_000 },
+    } as AdminRegistrationRow)).toEqual({
+      registration: { value: "R$ 300,00", indicator: "paid" },
+      raffles: { value: "—", indicator: "none" },
+    });
+  });
+
   it("counts only the exported participants and keeps registration money separate from raffles", () => {
     const rows = [
       { pricingType: "promotional", registrationPriceCents: 10000, standardPriceCents: 30000, remainingPriceCents: 20000, financialState: { status: "pending", pendingCents: 30000, confirmedPrincipalCents: 0 } },

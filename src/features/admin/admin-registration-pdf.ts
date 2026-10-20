@@ -8,9 +8,41 @@ const ink = rgb(0.10, 0.10, 0.11);
 const muted = rgb(0.38, 0.38, 0.40);
 const rule = rgb(0.83, 0.83, 0.84);
 const shade = rgb(0.96, 0.96, 0.96);
+const paidColor = rgb(0.08, 0.54, 0.28);
+const pendingColor = rgb(0.77, 0.16, 0.16);
 const statusLabels = { all: "Todos", pending: "Taxa pendente", partially_paid: "Parcialmente pago", paid: "Pago", exempt: "Isento", legacy: "Histórico" };
 const roleLabels: Record<string, string> = { coralista: "Coralista", regente: "Regente", instrumentista: "Instrumentista" };
 const money = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+
+type PaymentIndicator = "paid" | "pending" | "none";
+type FinancialCell = { value: string; indicator: PaymentIndicator };
+
+export function getPdfFinancialColumns(row: AdminRegistrationRow): { registration: FinancialCell; raffles: FinancialCell } {
+  const state = getAdminFinancialState(row);
+  const registrationPending = getAdminRegistrationPendingCents(row, state);
+  const raffle = getAdminRafflePending(row, state);
+  const registrationValue = row.registrationPriceCents ?? row.amountCents;
+  return {
+    registration: {
+      value: registrationValue === null || registrationValue === undefined ? "Não informado" : money(registrationValue),
+      indicator: state.status === "legacy" ? "none" : registrationPending === 0 && state.status !== "pending" ? "paid" : "pending",
+    },
+    raffles: raffle === null
+      ? { value: "—", indicator: "none" }
+      : { value: money(raffle.cents), indicator: raffle.cents === 0 ? "paid" : "pending" },
+  };
+}
+
+export function getPdfHeaderDetails(rows: AdminRegistrationRow[], query: AdminRegistrationPdfExportQuery) {
+  const choirNames = [...new Set(rows.map((row) => row.choirName?.trim()).filter(Boolean))];
+  const regentNames = [...new Set(rows.map((row) => row.regentName?.trim()).filter(Boolean))];
+  const choir = query.choirName
+    ?? (choirNames.length === 1 ? choirNames[0] : query.choirId === "all" ? choirNames.length ? "Vários coros" : "Todos" : query.choirId === "other" ? "Outros coros" : "Coro selecionado");
+  return {
+    choir,
+    regent: regentNames.length === 1 ? regentNames[0] : regentNames.length ? "Vários regentes" : "Não informado",
+  };
+}
 
 export function summarizePdfRegistrations(rows: AdminRegistrationRow[]) {
   return rows.reduce((total, row) => {
@@ -53,11 +85,14 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   const summary = summarizePdfRegistrations(rows);
   doc.setTitle("Lista de inscritos | II Encontro de Coros");
   doc.setCreationDate(now);
-  const widths = [140, 113, 66, 139, 80, 83, 79, 78];
-  const headers = ["Nome", "Coro", "Função", "E-mail", "WhatsApp", "Situação", "Valor pago", "Taxa pendente"];
+  const widths = [125, 90, 125, 77, 77, 78, 76, 65, 65];
+  const headers = ["Nome", "Coro", "E-mail", "WhatsApp", "Situação", "Valor inscrição", "Valor rifas", "Valor pago", "Taxa pendente"];
   const choir = query.choirName ?? (query.choirId === "all" ? "Todos" : query.choirId === "other" ? "Outros coros" : rows.find((row) => row.choirId === query.choirId)?.choirName ?? "Coro selecionado");
+  const headerDetails = getPdfHeaderDetails(rows, query);
+  const headerDetailLines = wrap(`Coro: ${headerDetails.choir} · Regente: ${headerDetails.regent}`, 662, font, 9);
   const filters = `Pagamento: ${statusLabels[query.paymentStatus]} · Coro: ${choir} · Função: ${query.musicalProfile === "all" ? "Todas" : roleLabels[query.musicalProfile] ?? query.musicalProfile} · Acesso: ${query.loginStatus === "never" ? "Nunca fez login" : query.loginStatus === "has" ? "Já fez login" : "Todos"}${query.search ? ` · Pesquisa: ${query.search}` : ""}`;
   const filterLines = wrap(filters, 778, font, 8);
+  const filterStartY = 504 - headerDetailLines.length * 11;
   const date = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Fortaleza", dateStyle: "short", timeStyle: "short" }).format(now);
   let page = doc.addPage([842, 595]);
   let y = 0;
@@ -66,11 +101,12 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
     page.drawImage(logo, { x: 32, y: 520, ...logoSize });
     page.drawText("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", { x: 148, y: 556, font: bold, size: 14, color: ink });
     page.drawText(`Lista de inscritos · Emitido em ${date}`, { x: 148, y: 535, font, size: 9, color: muted });
-    filterLines.forEach((line, i) => page.drawText(line, { x: 32, y: 504 - i * 11, font, size: 8, color: muted }));
-    const summaryY = 482 - filterLines.length * 11;
+    headerDetailLines.forEach((line, i) => page.drawText(line, { x: 148, y: 516 - i * 11, font: bold, size: 9, color: ink }));
+    filterLines.forEach((line, i) => page.drawText(line, { x: 32, y: filterStartY - i * 11, font, size: 8, color: muted }));
+    const summaryY = filterStartY - filterLines.length * 11 - 22;
     const metrics = [
       ["Total de inscritos", String(summary.total)],
-      ["Total pendente em dinheiro", money(summary.pendingMoneyCents)],
+      ["Total pendente taxa de inscrição", money(summary.pendingMoneyCents)],
       ["Total pendente em rifas", formatAdminRafflePending({ cents: summary.raffleCents, tickets: summary.raffleTickets })],
     ];
     metrics.forEach(([label, value], i) => {
@@ -91,13 +127,32 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   if (!rows.length) page.drawText("Nenhuma inscrição encontrada para os filtros selecionados.", { x: 37, y: y - 24, font, size: 10, color: muted });
   rows.forEach((row) => {
     const state = getAdminFinancialState(row);
-    const cells = [row.name, row.choirName, roleLabels[row.musicalProfile ?? ""] ?? row.musicalProfile ?? row.role, row.email, row.phone, statusLabels[state.status], state.status === "legacy" ? "Não informado" : money(state.confirmedPrincipalCents), state.status === "legacy" ? "Não informado" : money(getAdminRegistrationPendingCents(row, state) ?? 0)];
-    const lines = cells.map((cell, i) => wrap(cell, (widths[i] ?? 80) - 10, font, 8));
+    const financial = getPdfFinancialColumns(row);
+    const cells: FinancialCell[] = [
+      { value: row.name, indicator: "none" },
+      { value: row.choirName, indicator: "none" },
+      { value: row.email, indicator: "none" },
+      { value: row.phone, indicator: "none" },
+      { value: statusLabels[state.status], indicator: "none" },
+      financial.registration,
+      financial.raffles,
+      { value: state.status === "legacy" ? "Não informado" : money(state.confirmedPrincipalCents), indicator: "none" },
+      { value: state.status === "legacy" ? "Não informado" : money(getAdminRegistrationPendingCents(row, state) ?? 0), indicator: "none" },
+    ];
+    const lines = cells.map((cell, i) => wrap(cell.value, (widths[i] ?? 80) - (cell.indicator === "none" ? 10 : 22), font, 8));
     const height = Math.max(...lines.map((cell) => cell.length)) * 11 + 14;
     if (y - height < 44) { page = doc.addPage([842, 595]); header(); }
     let x = 32;
     lines.forEach((cell, i) => {
-      cell.forEach((line, j) => page.drawText(line, { x: x + 5, y: y - 16 - j * 11, font, size: 8, color: ink }));
+      const indicator = cells[i]?.indicator;
+      if (indicator === "paid") {
+        page.drawLine({ start: { x: x + 5, y: y - 12 }, end: { x: x + 8, y: y - 15 }, thickness: 1.5, color: paidColor });
+        page.drawLine({ start: { x: x + 8, y: y - 15 }, end: { x: x + 15, y: y - 7 }, thickness: 1.5, color: paidColor });
+      } else if (indicator === "pending") {
+        page.drawLine({ start: { x: x + 5, y: y - 15 }, end: { x: x + 13, y: y - 7 }, thickness: 1.5, color: pendingColor });
+        page.drawLine({ start: { x: x + 5, y: y - 7 }, end: { x: x + 13, y: y - 15 }, thickness: 1.5, color: pendingColor });
+      }
+      cell.forEach((line, j) => page.drawText(line, { x: x + (indicator === "none" ? 5 : 20), y: y - 16 - j * 11, font, size: 8, color: ink }));
       x += widths[i] ?? 0;
     });
     y -= height;

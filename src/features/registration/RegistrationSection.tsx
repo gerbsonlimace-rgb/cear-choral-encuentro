@@ -121,8 +121,15 @@ function formatCpf(value: string): string {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
+function nationalPhoneDigits(value: string): string {
+  const enteredDigits = value.replace(/\D/g, "");
+  return enteredDigits.length > 11 && enteredDigits.startsWith("55")
+    ? enteredDigits.slice(2)
+    : enteredDigits;
+}
+
 function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
+  const digits = nationalPhoneDigits(value).slice(0, 11);
   if (digits.length <= 2) return digits.replace(/^(\d{1,2})/, "($1");
   if (digits.length <= 6) return digits.replace(/^(\d{2})(\d+)/, "($1) $2");
   if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d+)/, "($1) $2-$3");
@@ -844,6 +851,9 @@ export function RegistrationSection({
     );
   }
 
+  const pendingPhoneChanged = pendingSavedPhone !== null &&
+    nationalPhoneDigits(form.phone) !== nationalPhoneDigits(pendingSavedPhone);
+
   return (
     <section
       id="inscricao"
@@ -1067,26 +1077,37 @@ export function RegistrationSection({
                         <Label htmlFor="phone" className="font-semibold">
                           WhatsApp
                         </Label>
-                        <div className="relative">
-                          <Phone
-                            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                            aria-hidden="true"
-                          />
+                        <div className="flex gap-2">
                           <Input
-                            id="phone"
+                            aria-label="Código do país"
                             type="tel"
-                            required
-                            autoComplete="tel"
-                            value={form.phone}
-                            onChange={(event) =>
-                              handleChange("phone", formatPhone(event.target.value))
-                            }
-                            placeholder="(88) 99999-9999"
-                            inputMode="numeric"
-                            maxLength={15}
-                            className={inputClassName}
+                            value="+55"
+                            readOnly
+                            tabIndex={-1}
+                            className="min-h-11 w-16 shrink-0 rounded-lg border-border bg-muted text-center text-base font-semibold"
                           />
+                          <div className="relative min-w-0 flex-1">
+                            <Phone
+                              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            <Input
+                              id="phone"
+                              type="tel"
+                              required
+                              autoComplete="tel-national"
+                              value={formatPhone(form.phone)}
+                              onChange={(event) =>
+                                handleChange("phone", formatPhone(event.target.value))
+                              }
+                              placeholder="(88) 99999-9999"
+                              inputMode="numeric"
+                              maxLength={30}
+                              className={inputClassName}
+                            />
+                          </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">Digite o DDD e o número. O +55 já está incluído.</p>
                         {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
                       </div>
 
@@ -1203,10 +1224,10 @@ export function RegistrationSection({
                         Encontramos seus dados salvos e preenchemos o formulário.
                       </p>
                       {pendingSavedPhone !== null &&
-                        (pendingNeedsCheckout || form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")) && (
+                        (pendingNeedsCheckout || pendingPhoneChanged) && (
                           <div className="rounded-xl border border-border bg-card p-4">
                             <p className="text-sm text-registration-ink">
-                              {form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                              {pendingPhoneChanged
                                 ? "Já existe uma inscrição pendente. Salve o novo WhatsApp para receber um novo link de pagamento."
                                 : "O link de pagamento ainda não está disponível. Tente gerá-lo novamente."}
                             </p>
@@ -1217,7 +1238,7 @@ export function RegistrationSection({
                               onClick={() => void updatePhoneAndGoToPayment()}
                             >
                               {isSubmitting ? "Preparando pagamento…" :
-                                form.phone.replace(/\D/g, "") !== pendingSavedPhone.replace(/\D/g, "")
+                                pendingPhoneChanged
                                   ? "Atualizar WhatsApp e ir para pagamento"
                                   : "Tentar gerar link de pagamento"}
                             </Button>
