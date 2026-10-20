@@ -35,8 +35,8 @@
 - Include an invitation in the participant video to share the EuVou photo and tag both the participant's choir Instagram and @corodiocesanoqxd (Coro de Quixadá), preserving real application captures and the narrated cheerful style.
 - Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
 - Compact the summary and add audited PDF export by exact choir group; 64 tests passed, layouts and a three-page sample download checked; real-account verification remains blocked below.
+- Complete Google Search Console setup using Gerbson's linked connection: live META verification succeeded, root property confirmed as siteOwner, and existing sitemap submitted successfully; 97 affected tests passed before final delivery.
 
 ## Open
-- Complete Google Search Console setup for the published site: verify connection/property access, finish verification and submit a valid sitemap; request approval before any required publication.
 - Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
