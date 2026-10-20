@@ -27,7 +27,7 @@ import {
   FileDown,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { deliverFile } from "@/lib/file-download";
+import { deliverFile, openPreparedPdf } from "@/lib/file-download";
 import type { AdminPdfFile } from "./admin-registration-pdf";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
@@ -2098,6 +2098,11 @@ export function AdminRegistrationsPage({
                   }}>
                   <FileDown className="size-4" aria-hidden="true" />
                   {pdfFile && pdfFile.filterKey === filterKey ? "Baixar PDF" : "Exportar PDF"}
+                </Button>
+              )}
+              {gate === "authorized" && pdfFile?.filterKey === filterKey && (
+                <Button size="sm" variant="outline" onClick={() => openPreparedPdf(pdfFile.blob)}>
+                  <ExternalLink className="size-4" aria-hidden="true" />Abrir PDF
                 </Button>
               )}
               {gate === "authorized" && (

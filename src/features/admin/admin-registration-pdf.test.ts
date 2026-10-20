@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
-import { buildRegistrationsPdf } from "./admin-registration-pdf";
+import { buildRegistrationsPdf, summarizePdfRegistrations } from "./admin-registration-pdf";
 import type { AdminRegistrationRow } from "./admin.domain";
 
 describe("registration PDF", () => {
+  it("counts only the exported participants and keeps registration money separate from raffles", () => {
+    const rows = [
+      { pricingType: "promotional", registrationPriceCents: 10000, standardPriceCents: 30000, remainingPriceCents: 20000, financialState: { status: "pending", pendingCents: 30000, confirmedPrincipalCents: 0 } },
+      { pricingType: "standard", financialState: { status: "pending", pendingCents: 30000, confirmedPrincipalCents: 0 } },
+    ] as AdminRegistrationRow[];
+    expect(summarizePdfRegistrations(rows)).toEqual({ total: 2, pendingMoneyCents: 40000, raffleCents: 20000, raffleTickets: 20 });
+  });
+  it("includes twenty raffles worth R$200 for each exempt-group participant without adding registration debt", () => {
+    const row = { isFreeRegistration: true, financialState: { status: "exempt", pendingCents: 0, confirmedPrincipalCents: 0 } } as AdminRegistrationRow;
+    expect(summarizePdfRegistrations([row, row])).toEqual({ total: 2, pendingMoneyCents: 0, raffleCents: 40000, raffleTickets: 40 });
+  });
   it("creates a complete landscape multi-page PDF from all 105 supplied registrations", async () => {
     const rows = Array.from({ length: 105 }, (_, i) => ({
       name: `José da Conceição ${i}`, choirName: "Coro Diocesano de Quixadá", choirId: "all",
