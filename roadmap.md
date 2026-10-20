@@ -38,5 +38,7 @@
 - Complete Google Search Console setup using Gerbson's linked connection: live META verification succeeded, root property confirmed as siteOwner, and existing sitemap submitted successfully; 97 affected tests passed before final delivery.
 
 ## Open
+- Fix reported PDF downloads in administrative summary and registrations; add filtered financial/raffle totals, registration count, and event logo above the PDF table.
+- Finish SEO review: refreshed foundations all pass; verify and resolve stale Search Console and subpage sharing findings.
 - Verify administrative PDF export end-to-end with real registrations (external Supabase session is unavailable to automated checks).
 - Verify participant login and administrator promotion end-to-end (external Supabase session is unavailable to automated checks).
