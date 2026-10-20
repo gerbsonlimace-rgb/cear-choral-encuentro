@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, FileDown, LoaderCircle } from "lucide-react";
+import { Download, FileDown, LoaderCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { deliverFile } from "@/lib/file-download";
+import { deliverFile, openPreparedPdf } from "@/lib/file-download";
 import type { AdminChoirFinancials, AdminRegistrationPdfExportQuery } from "./admin.domain";
 import type { AdminPdfFile } from "./admin-registration-pdf";
 import { formatAdminRafflePending } from "./admin-raffle.domain";
@@ -58,7 +58,8 @@ export function AdminChoirSummaryCard({ item, preparePdf }: { item: AdminChoirFi
           </div>
         ))}
       </dl>
-      <div className="mt-2 flex justify-end border-t pt-2">
+      <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
+        {file && <Button size="sm" variant="ghost" aria-label={`Abrir PDF de ${item.choirName}`} onClick={() => openPreparedPdf(file.blob)}><ExternalLink aria-hidden="true" className="size-4" />Abrir PDF</Button>}
         <Button size="sm" variant="outline" disabled={busy}
           aria-label={`${file ? "Baixar PDF" : "Exportar PDF"} de ${item.choirName}`}
           onClick={() => {
@@ -73,7 +74,7 @@ export function AdminChoirSummaryCard({ item, preparePdf }: { item: AdminChoirFi
           {busy ? "Gerando…" : file ? "Baixar PDF" : "Exportar PDF"}
         </Button>
       </div>
-      {file && <span role="status" className="sr-only">PDF de {item.choirName} pronto para baixar.</span>}
+      {file && <p role="status" className="mt-2 text-xs text-muted-foreground">PDF pronto. Baixar PDF</p>}
       {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
     </li>
   );
