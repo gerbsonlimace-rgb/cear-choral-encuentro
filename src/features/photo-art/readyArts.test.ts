@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { READY_ARTS } from "./readyArts";
 
 describe("READY_ARTS", () => {
-  it("exposes the seven approved Story compositions with fixed copy", () => {
-    expect(READY_ARTS).toHaveLength(7);
+  it("exposes nine Story compositions with fixed copy", () => {
+    expect(READY_ARTS).toHaveLength(9);
     expect(READY_ARTS.map((art) => art.phrase)).toEqual([
       "#EuVou!",
       "Cantai para o Senhor Deus um canto novo, com arte sustentai a louvação!",
@@ -13,6 +13,8 @@ describe("READY_ARTS", () => {
       "Minha voz é oração.",
       "Com Jesus, a vida tem melodia.",
       "Música que Une, Igreja que Caminha",
+      "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 – CNBB — Eu vou!",
+      "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 – CNBB — Eu vou!",
     ]);
   });
 
