@@ -1365,10 +1365,10 @@ export function createSupabaseRegistrationRepository(): SupabaseRegistrationRepo
       const { data, error } = await supabaseAdmin.rpc("rotate_pending_registration_checkout", {
         p_registration_id: input.registrationId,
         p_expected_order_nsu: input.expectedOrderNsu,
-        p_expected_checkout_url: input.expectedCheckoutUrl,
+        p_expected_checkout_url: input.expectedCheckoutUrl as string,
         p_expected_phone: input.expectedPhone,
-        p_expected_cpf: input.expectedCpf,
-        p_expected_birth_date: input.expectedBirthDate,
+        p_expected_cpf: input.expectedCpf as string,
+        p_expected_birth_date: input.expectedBirthDate as string,
         p_new_order_nsu: input.orderNsu,
         p_checkout_claim: input.checkoutClaim,
         p_phone: input.phone,
