@@ -72,6 +72,11 @@ export function AdminSummaryPage({
           value: money.format((summary.rafflePendingCents ?? 0) / 100),
           icon: Clock3,
         },
+        {
+          label: "Total previsto",
+          value: money.format(summary.expectedCents / 100),
+          icon: Banknote,
+        },
       ]
     : [];
 
@@ -108,7 +113,7 @@ export function AdminSummaryPage({
                   </article>
                 ))}
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 {financialMetrics.map(({ label, value, icon: Icon }) => (
                   <article key={label} className="flex min-w-0 items-center gap-2 rounded-lg border bg-card p-3">
                     <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
