@@ -627,7 +627,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
-          checkout_url: string | null
+          checkout_url?: string | null
           id?: string
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
@@ -1120,15 +1120,15 @@ export type Database = {
       }
       rotate_pending_registration_checkout: {
         Args: {
-          p_registration_id: string
-          p_expected_order_nsu: string
-          p_expected_checkout_url: string | null
-          p_expected_phone: string
-          p_expected_cpf: string | null
-          p_expected_birth_date: string | null
-          p_new_order_nsu: string
           p_checkout_claim: string
+          p_expected_birth_date: string
+          p_expected_checkout_url: string
+          p_expected_cpf: string
+          p_expected_order_nsu: string
+          p_expected_phone: string
+          p_new_order_nsu: string
           p_phone: string
+          p_registration_id: string
         }
         Returns: boolean
       }
