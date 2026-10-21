@@ -40,6 +40,7 @@ describe("AdminNoticesPage", () => {
   it("publishes an event notice and displays the persisted result", async () => {
     const { user } = setup();
     await user.click(await screen.findByRole("button", { name: "Novo aviso" }));
+    await user.selectOptions(screen.getByLabelText("Evento"), eventId);
     await user.type(screen.getByLabelText("Título"), "Ensaio geral");
     await user.type(screen.getByLabelText("Mensagem"), "Chegue às 18h.");
     await user.click(screen.getByRole("button", { name: "Publicar aviso" }));
@@ -89,8 +90,21 @@ describe("AdminNoticesPage", () => {
     expect(screen.queryByRole("button", { name: "Novo aviso" })).not.toBeInTheDocument();
   });
 
-  it("disables publication until an event is configured", async () => {
-    setup({ loadBootstrap: async () => ({ notices: [], events: [] }) });
-    expect(await screen.findByRole("button", { name: "Novo aviso" })).toBeDisabled();
+  it("publishes a general notice when no event is configured", async () => {
+    const createNotice = vi.fn(async ({ data }: { data: { eventId: string | null; title: string; body: string; isPublished: boolean } }) => ({
+      ...notice,
+      ...data,
+      eventName: "Aviso geral",
+    }));
+    const { user } = setup({ loadBootstrap: async () => ({ notices: [], events: [] }), createNotice });
+    await user.click(await screen.findByRole("button", { name: "Novo aviso" }));
+    expect(screen.getByLabelText("Evento")).toHaveValue("");
+    await user.type(screen.getByLabelText("Título"), "Falta um mês");
+    await user.type(screen.getByLabelText("Mensagem"), "Estudem as partituras.");
+    await user.click(screen.getByRole("button", { name: "Publicar aviso" }));
+    await waitFor(() => expect(createNotice).toHaveBeenCalledWith({
+      data: { eventId: null, title: "Falta um mês", body: "Estudem as partituras.", isPublished: true },
+    }));
+    expect(await screen.findByText("Aviso geral")).toBeInTheDocument();
   });
 });

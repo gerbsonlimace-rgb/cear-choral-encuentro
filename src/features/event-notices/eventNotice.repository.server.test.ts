@@ -30,6 +30,29 @@ const response = (value: unknown) =>
 beforeEach(() => fetchMock.mockReset());
 
 describe("notice persistence through Supabase client", () => {
+  it("loads published general notices even when no event is available", async () => {
+    fetchMock.mockResolvedValueOnce(response([{ ...row, event_id: null }]));
+    const result = await createSupabaseEventNoticeRepository().listPublishedGeneral();
+    expect(result).toMatchObject([{ eventId: null, title: "Ensaio geral" }]);
+    const url = new URL(fetchMock.mock.calls[0][0]);
+    expect(url.searchParams.get("event_id")).toBe("is.null");
+    expect(url.searchParams.get("is_published")).toBe("eq.true");
+  });
+
+  it("persists a general notice with a null event id", async () => {
+    fetchMock.mockResolvedValueOnce(response({ ...row, event_id: null }));
+    const saved = await createSupabaseEventNoticeRepository().create({
+      eventId: null,
+      title: "Aviso geral",
+      body: "Mensagem para todos.",
+      isPublished: true,
+      adminUserId: "trusted-admin",
+    });
+    expect(saved.eventId).toBeNull();
+    const [, request] = fetchMock.mock.calls[0];
+    expect(JSON.parse(request.body)).toMatchObject({ event_id: null, created_by: "trusted-admin" });
+  });
+
   it("finds the existing notice required for edit and withdrawal", async () => {
     fetchMock.mockResolvedValueOnce(response([row]));
     const result = await createSupabaseEventNoticeRepository().find(row.id);

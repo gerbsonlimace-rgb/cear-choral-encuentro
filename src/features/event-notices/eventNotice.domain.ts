@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const eventNoticeCreateSchema = z
   .object({
-    eventId: z.string().uuid(),
+    eventId: z.string().uuid().nullable().default(null),
     title: z.string().trim().min(2, "Informe um título com pelo menos 2 caracteres.").max(160),
     body: z.string().trim().min(1, "Escreva a mensagem do aviso.").max(5000),
     isPublished: z.boolean(),

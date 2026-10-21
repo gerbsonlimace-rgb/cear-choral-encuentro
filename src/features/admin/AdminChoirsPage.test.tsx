@@ -7,6 +7,7 @@ import type { AdminChoirPricing } from "@/features/choirs/choir-pricing.server";
 
 vi.mock("@/lib/regent.functions", () => ({
   listAdminRegents: vi.fn(async () => []),
+  searchAdminRegentCandidates: vi.fn(async () => []),
   createAdminRegent: vi.fn(),
   replaceAdminRegent: vi.fn(),
   linkExistingAdminRegent: vi.fn(),
