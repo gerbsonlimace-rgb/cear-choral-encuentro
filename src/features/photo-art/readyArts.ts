@@ -8,7 +8,9 @@ export type ReadyArtId =
   | "juntos-louvor"
   | "minha-voz"
   | "vida-melodia"
-  | "quixada";
+  | "quixada"
+  | "quixada-eu-vou"
+  | "quixada-eu-vou-azul";
 
 export type ReadyArt = {
   id: ReadyArtId;
@@ -48,6 +50,18 @@ export const READY_ARTS = [
   art("minha-voz", "Minha voz", "Minha voz é oração.", "mulher"),
   art("vida-melodia", "Vida e melodia", "Com Jesus, a vida tem melodia.", "homem pardo"),
   art("quixada", "Quixadá", "Música que Une, Igreja que Caminha", "mulher parda"),
+  art(
+    "quixada-eu-vou",
+    "Quixadá: eu vou (dourado)",
+    "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 – CNBB — Eu vou!",
+    "mulher parda",
+  ),
+  art(
+    "quixada-eu-vou-azul",
+    "Quixadá: eu vou (azul)",
+    "II Encontro de Coros Diocesanos e Litúrgicos do Regional Nordeste 1 – CNBB — Eu vou!",
+    "mulher parda",
+  ),
 ] as const satisfies readonly ReadyArt[];
 
 export function getReadyArt(id: ReadyArtId): ReadyArt {

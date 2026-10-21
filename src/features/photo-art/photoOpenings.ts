@@ -4,9 +4,24 @@ import type { ReadyArtId } from "./readyArts";
 type Curve = readonly [number, number, number, number, number, number];
 type Opening = { start: readonly [number, number]; curves: readonly Curve[]; bounds: PhotoRect };
 
-// Traced along the inner white borders of the approved 941 × 1672 artwork.
-// The original WebP alpha masks leave strips of the sample portraits behind.
-// Use one contour for both the photo and the overlay, including the Quixadá foreground.
+const QUIXADA_EU_VOU_OPENING: Opening = {
+  start: [288, 356],
+  curves: [
+    [396, 355, 560, 355, 665, 356],
+    [697, 357, 719, 382, 721, 415],
+    [728, 555, 730, 802, 733, 921],
+    [733, 957, 713, 981, 675, 983],
+    [563, 986, 365, 985, 270, 983],
+    [237, 981, 219, 957, 220, 925],
+    [219, 766, 224, 530, 231, 411],
+    [233, 380, 254, 357, 288, 356],
+  ],
+  bounds: { x: 219, y: 355, width: 515, height: 631 },
+};
+
+// Traced along the inner white borders of the 941 × 1672 artwork.
+// Use one contour for both the photo and the overlay. The new Quixadá frames
+// fully enclose the photo; the original Quixadá art keeps its rock foreground.
 const OPENINGS: Record<ReadyArtId, Opening> = {
   "eu-vou": {
     start: [247, 380],
@@ -108,6 +123,8 @@ const OPENINGS: Record<ReadyArtId, Opening> = {
     ],
     bounds: { x: 182, y: 317, width: 594, height: 699 },
   },
+  "quixada-eu-vou": QUIXADA_EU_VOU_OPENING,
+  "quixada-eu-vou-azul": QUIXADA_EU_VOU_OPENING,
 };
 
 export function getReadyArtPhotoFrame(id: ReadyArtId): PhotoRect {

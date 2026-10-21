@@ -56,7 +56,8 @@ export function renderReadyArt(canvas: HTMLCanvasElement, options: RenderReadyAr
   context.beginPath();
   appendPhotoOpening(context, options.art.id);
   context.strokeStyle = "#ffffff";
-  context.lineWidth = options.art.id === "quixada" ? 4 : 10;
+  context.lineWidth =
+    options.art.id === "quixada" ? 4 : options.art.id.startsWith("quixada-eu-vou") ? 8 : 10;
   context.stroke();
   context.restore();
 }

@@ -36,12 +36,14 @@ describe("PhotoArtEditor", () => {
     mocks.detectFaceAdjustment.mockResolvedValue({ zoom: 1, x: 0.35, y: -0.2 });
   });
 
-  it("starts a three-step mobile wizard with the seven approved Story arts", async () => {
+  it("starts a three-step mobile wizard with nine Story arts", async () => {
     render(<PhotoArtEditor />);
 
     expect(screen.getByText("Etapa 1 de 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Escolha uma arte" })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(7);
+    expect(screen.getAllByRole("radio")).toHaveLength(9);
+    expect(screen.getByRole("radio", { name: /Quixadá: eu vou \(dourado\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Quixadá: eu vou \(azul\)/i })).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /homem pardo/i })).not.toHaveLength(0);
     expect(screen.getAllByRole("img", { name: /mulher parda/i })).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Baixar imagem" })).not.toBeInTheDocument();
