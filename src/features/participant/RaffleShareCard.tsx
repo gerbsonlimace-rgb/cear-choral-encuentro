@@ -113,7 +113,7 @@ export function RaffleShareCard({ participant, renderArt = createRaffleShareImag
         </div>
         <div className="flex flex-col justify-center p-4 sm:p-6">
           <h2 className="text-xl font-bold text-zinc-950">Divulgue suas rifas com seu QR Code Pix</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-700">Basta informar sua chave Pix e gerar o card.</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-700">Basta informar sua chave Pix e gerar o card. Depois, é só compartilhar com seus grupos e amigos!</p>
           {error ? <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
           {previewUrl && file ? (
             <div className="mt-5 flex flex-wrap gap-2">
