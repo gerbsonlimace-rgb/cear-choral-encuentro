@@ -141,6 +141,7 @@ export type Database = {
           is_active: boolean
           is_free: boolean
           name: string
+          raffle_online_payments_enabled: boolean
           updated_at: string
           uses_promotional_price: boolean
         }
@@ -151,6 +152,7 @@ export type Database = {
           is_active?: boolean
           is_free?: boolean
           name: string
+          raffle_online_payments_enabled?: boolean
           updated_at?: string
           uses_promotional_price?: boolean
         }
@@ -161,6 +163,7 @@ export type Database = {
           is_active?: boolean
           is_free?: boolean
           name?: string
+          raffle_online_payments_enabled?: boolean
           updated_at?: string
           uses_promotional_price?: boolean
         }

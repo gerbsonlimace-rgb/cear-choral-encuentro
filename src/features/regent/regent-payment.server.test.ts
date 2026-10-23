@@ -60,6 +60,7 @@ const registration = {
 function setup() {
   const repository: RegentPaymentRepository = {
     findRegistration: vi.fn().mockResolvedValue(registration),
+    isRaffleOnlinePaymentEnabled: vi.fn().mockResolvedValue(true),
     listAccountingPayments: vi.fn().mockResolvedValue([]),
     reserve: vi.fn().mockResolvedValue(undefined),
     findByOrderNsu: vi.fn().mockResolvedValue(null),
@@ -122,6 +123,15 @@ describe("regent complement checkout service", () => {
     expect(infinitePay.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({ items: [{ quantity: 3, price: 1_000, description: expect.stringContaining("rifa") }] }),
     );
+  });
+
+  it("rejects a participant raffle checkout when the choir has not enabled online payments", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.isRaffleOnlinePaymentEnabled).mockResolvedValue(false);
+    await expect(service.startCheckout({ registrationId, raffleTickets: 3 }, participant))
+      .rejects.toThrow("O pagamento online das rifas não está disponível para este coro.");
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(infinitePay.createCheckout).not.toHaveBeenCalled();
   });
 
   it("lets an approved free registration pay sold raffles without charging its registration", async () => {

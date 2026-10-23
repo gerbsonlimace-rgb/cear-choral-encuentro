@@ -1,76 +1,133 @@
-import { useState } from "react";
-import { Download, MessageCircle, Share2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Download, LoaderCircle, Share2 } from "lucide-react";
 
-import { deliverFile } from "@/lib/file-download";
+import { isValidPixKey } from "./pixBrCode";
+import { createRaffleShareImage, createRaffleSharePreviewImage, type RaffleShareArtInput } from "./raffleShareArt";
+import type { ParticipantRegistrationView } from "./participant.domain";
 
-const cardPath = "/raffle-share-card.svg";
-const cardFileName = "rifa-encontro-de-coros.png";
-const whatsappMessage =
-  "Oi! Estou vendendo rifas para apoiar o II Encontro de Coros Diocesanos e Litúrgicos do Ceará. Cada rifa custa R$ 10,00 e o prêmio é de R$ 1.000,00. Quer participar? Me responda por aqui! 🎶";
+type Props = {
+  participant: ParticipantRegistrationView;
+  renderArt?: (input: RaffleShareArtInput) => Promise<File>;
+};
 
-export const raffleWhatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+export function RaffleShareCard({ participant, renderArt = createRaffleShareImage }: Props) {
+  const [pixKey, setPixKey] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [illustrationUrl, setIllustrationUrl] = useState("");
+  const [error, setError] = useState("");
 
-async function createCardPng(): Promise<Blob> {
-  const response = await fetch(cardPath);
-  if (!response.ok) throw new Error("Não foi possível carregar o card.");
-  const svg = await response.blob();
-  const url = URL.createObjectURL(svg);
-  try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = 1080;
-    canvas.height = 1350;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Não foi possível preparar o card.");
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Não foi possível criar a imagem.")), "image/png");
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+  useEffect(() => {
+    let active = true;
+    void createRaffleSharePreviewImage(participant.registration.choirName)
+      .then((url) => { if (active) setIllustrationUrl(url); })
+      .catch(() => { if (active) setIllustrationUrl(""); });
+    return () => { active = false; };
+  }, [participant.registration.choirName]);
 
-export function RaffleShareCard() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
-  const shareCard = async () => {
-    setBusy(true);
-    setError(null);
+  const canGenerate = Boolean(
+    !creating &&
+    participant.registration.choirName &&
+    participant.identity.name.trim() &&
+    isValidPixKey(pixKey),
+  );
+
+  const generate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canGenerate) return;
+    setCreating(true);
+    setError("");
+    setFile(null);
+    setPreviewUrl("");
     try {
-      await deliverFile(await createCardPng(), cardFileName);
-    } catch {
-      setError("Não foi possível preparar o card agora. Tente novamente.");
+      const image = await renderArt({
+        choirName: participant.registration.choirName,
+        displayName: participant.identity.name.trim(),
+        pixKey: pixKey.trim(),
+        city: participant.registration.city?.trim() || "Quixadá",
+      });
+      setFile(image);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível gerar o card. Tente novamente.");
     } finally {
-      setBusy(false);
+      setCreating(false);
+    }
+  };
+
+  const share = async () => {
+    if (!file) return;
+    try {
+      if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+        await navigator.share({ files: [file], title: "Rifa beneficente do nosso coro", text: `Ajude o ${participant.registration.choirName} a participar do encontro de coros!` });
+      } else {
+        setError("Seu navegador não permite compartilhar diretamente. Baixe a imagem e envie pelo aplicativo que preferir.");
+      }
+    } catch (cause) {
+      if (cause instanceof Error && cause.name !== "AbortError") setError("Não foi possível compartilhar. Baixe a imagem e tente novamente.");
     }
   };
 
   return (
     <section aria-label="Compartilhe a rifa" className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
-      <div className="grid gap-0 sm:grid-cols-[minmax(0,220px)_1fr]">
-        <div className="bg-zinc-950 p-3 sm:p-4">
-          <img src={cardPath} alt="Card da rifa: concorra a R$ 1.000,00 por R$ 10,00 cada rifa" className="mx-auto max-h-64 w-auto rounded-lg sm:max-h-none sm:w-full" loading="lazy" />
+      <div className="grid gap-0 sm:grid-cols-[minmax(0,300px)_1fr]">
+        <div className="mx-auto w-full max-w-[340px] bg-[#fff8e6] p-3 sm:max-w-none sm:p-4">
+          {previewUrl ? (
+            <img src={previewUrl} alt="Seu card da rifa com QR Code Pix" className="w-full rounded-lg" />
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-amber-300 bg-white">
+              <div aria-label={`Prévia da rifa do ${participant.registration.choirName}`} className="aspect-[9/13] overflow-hidden bg-amber-50">
+                {illustrationUrl ? (
+                  <img src={illustrationUrl} alt={`Card da rifa do ${participant.registration.choirName}`} className="w-full" />
+                ) : (
+                  <div className="flex size-full items-center justify-center p-5 text-center text-sm font-semibold text-amber-950">
+                    Preparando o card do {participant.registration.choirName}…
+                  </div>
+                )}
+              </div>
+              <form onSubmit={(event) => void generate(event)} className="space-y-2 p-3">
+                <label htmlFor="home-raffle-pix-key" className="block text-sm font-bold text-zinc-900">Sua chave Pix</label>
+                <input
+                  id="home-raffle-pix-key"
+                  autoComplete="off"
+                  value={pixKey}
+                  maxLength={77}
+                  onChange={(event) => setPixKey(event.target.value)}
+                  placeholder="E-mail, CPF ou chave Pix"
+                  className="min-h-11 w-full rounded-lg border border-zinc-400 bg-white px-3 text-sm text-zinc-950 outline-none placeholder:text-zinc-600 focus-visible:border-amber-700 focus-visible:ring-2 focus-visible:ring-amber-300"
+                />
+                <button type="submit" disabled={!canGenerate} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-bold text-white hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  {creating ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
+                  {creating ? "Gerando…" : "Gerar card"}
+                </button>
+              </form>
+            </div>
+          )}
         </div>
         <div className="flex flex-col justify-center p-4 sm:p-6">
-          <span className="text-xs font-bold uppercase tracking-widest text-amber-800">Espalhe essa ideia</span>
-          <h2 className="mt-1 text-xl font-bold text-zinc-950">Compartilhe a rifa e convide seus amigos</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-700">
-            Cada rifa custa <strong>R$ 10,00</strong> e concorre a <strong>R$ 1.000,00</strong>. Envie o card ou uma mensagem para quem queira ajudar nosso encontro.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void shareCard()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60">
-              <Share2 aria-hidden="true" className="size-4" />{busy ? "Preparando card…" : "Compartilhar card"}
-            </button>
-            <a href={raffleWhatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">
-              <MessageCircle aria-hidden="true" className="size-4" />Mensagem no WhatsApp
-            </a>
-          </div>
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-600"><Download aria-hidden="true" className="size-3.5" />No celular, escolha o WhatsApp para enviar o card. No computador, ele será baixado.</p>
-          {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+          <h2 className="text-xl font-bold text-zinc-950">Divulgue suas rifas com seu QR Code Pix</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-700">Basta informar sua chave Pix e gerar o card.</p>
+          {error ? <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
+          {previewUrl && file ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <a href={previewUrl} download={file.name} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 text-sm font-bold text-zinc-950 hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700">
+                <Download aria-hidden="true" className="size-4" /> Baixar imagem
+              </a>
+              <button type="button" onClick={() => void share()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-300 px-4 text-sm font-bold text-zinc-900 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700">
+                <Share2 aria-hidden="true" className="size-4" /> Compartilhar
+              </button>
+              <button type="button" onClick={() => { setFile(null); setPreviewUrl(""); }} className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-zinc-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700">
+                Alterar chave Pix
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

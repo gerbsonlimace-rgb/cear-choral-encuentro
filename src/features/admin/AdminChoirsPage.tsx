@@ -82,6 +82,7 @@ const emptyChoirDraft: ChoirDraft = {
   diocese: "",
   usesPromotionalPrice: false,
   isFree: false,
+  raffleOnlinePaymentsEnabled: false,
   isActive: true,
 };
 
@@ -260,6 +261,7 @@ export function AdminChoirsPage({
       diocese: choir.diocese ?? "",
       usesPromotionalPrice: choir.usesPromotionalPrice,
       isFree: choir.isFree ?? false,
+      raffleOnlinePaymentsEnabled: choir.raffleOnlinePaymentsEnabled ?? false,
       isActive: choir.isActive,
     });
     setError("");
@@ -398,6 +400,7 @@ export function AdminChoirsPage({
                             <Badge variant="outline">Promocional</Badge>
                           )}
                           {choir.isFree && <Badge variant="outline">Gratuito</Badge>}
+                          <Badge variant="outline">Rifas online: {choir.raffleOnlinePaymentsEnabled ? "sim" : "não"}</Badge>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
                           {choir.diocese ?? "Diocese não informada"}
@@ -560,6 +563,19 @@ export function AdminChoirsPage({
                     usesPromotionalPrice: event.target.checked ? false : previous.usesPromotionalPrice,
                   }))
                 }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+              <div>
+                <Label htmlFor="choir-raffle-online">Permitir pagamento online de rifas</Label>
+                <p className="mt-1 text-xs text-muted-foreground">Desativado por padrão. Participantes deste coro poderão pagar via Pix ou cartão quando ativado.</p>
+              </div>
+              <input
+                id="choir-raffle-online"
+                type="checkbox"
+                className="size-5 accent-primary"
+                checked={choirDraft.raffleOnlinePaymentsEnabled ?? false}
+                onChange={(event) => setChoirDraft((previous) => ({ ...previous, raffleOnlinePaymentsEnabled: event.target.checked }))}
               />
             </div>
             <DialogFooter>

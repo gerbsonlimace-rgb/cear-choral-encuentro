@@ -37,6 +37,7 @@ const choirMutationObjectSchema = z
     diocese: dioceseSchema,
     usesPromotionalPrice: z.boolean(),
     isFree: z.boolean().optional(),
+    raffleOnlinePaymentsEnabled: z.boolean().optional(),
     isActive: z.boolean(),
   })
   .strict();

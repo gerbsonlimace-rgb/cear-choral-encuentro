@@ -30,6 +30,7 @@ import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocin
 import { Route as AdminResumoRouteImport } from './routes/admin.resumo'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as ParticipanteIndexRouteImport } from './routes/participante.index'
+import { Route as ParticipanteDivulgarRifaRouteImport } from './routes/participante.divulgar-rifa'
 import { Route as ParticipanteLoginRouteImport } from './routes/participante.login'
 import { Route as ParticipanteMinhaFotoRouteImport } from './routes/participante.minha-foto'
 import { Route as ParticipantePagamentoRouteImport } from './routes/participante.pagamento'
@@ -145,6 +146,12 @@ const ParticipanteIndexRoute = ParticipanteIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ParticipanteRoute,
 } as any)
+const ParticipanteDivulgarRifaRoute =
+  ParticipanteDivulgarRifaRouteImport.update({
+    id: '/divulgar-rifa',
+    path: '/divulgar-rifa',
+    getParentRoute: () => ParticipanteRoute,
+  } as any)
 const ParticipanteLoginRoute = ParticipanteLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
@@ -241,6 +249,7 @@ export interface FileRoutesByTo {
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
@@ -274,6 +283,7 @@ export interface FileRoutesById {
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
+  '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin/patrocinadores'
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
+    | '/participante/divulgar-rifa'
     | '/participante/login'
     | '/participante/minha-foto'
     | '/participante/pagamento'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/admin/patrocinadores'
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
+    | '/participante/divulgar-rifa'
     | '/participante/login'
     | '/participante/minha-foto'
     | '/participante/pagamento'
@@ -370,6 +382,7 @@ export interface FileRouteTypes {
     | '/admin/patrocinadores'
     | '/admin/resumo'
     | '/api/infinitepay-webhook'
+    | '/participante/divulgar-rifa'
     | '/participante/login'
     | '/participante/minha-foto'
     | '/participante/pagamento'
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParticipanteIndexRouteImport
       parentRoute: typeof ParticipanteRoute
     }
+    '/participante/divulgar-rifa': {
+      id: '/participante/divulgar-rifa'
+      path: '/divulgar-rifa'
+      fullPath: '/participante/divulgar-rifa'
+      preLoaderRoute: typeof ParticipanteDivulgarRifaRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
     '/participante/login': {
       id: '/participante/login'
       path: '/login'
@@ -622,6 +642,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface ParticipanteRouteChildren {
+  ParticipanteDivulgarRifaRoute: typeof ParticipanteDivulgarRifaRoute
   ParticipanteLoginRoute: typeof ParticipanteLoginRoute
   ParticipanteMinhaFotoRoute: typeof ParticipanteMinhaFotoRoute
   ParticipantePagamentoRoute: typeof ParticipantePagamentoRoute
@@ -631,6 +652,7 @@ interface ParticipanteRouteChildren {
 }
 
 const ParticipanteRouteChildren: ParticipanteRouteChildren = {
+  ParticipanteDivulgarRifaRoute: ParticipanteDivulgarRifaRoute,
   ParticipanteLoginRoute: ParticipanteLoginRoute,
   ParticipanteMinhaFotoRoute: ParticipanteMinhaFotoRoute,
   ParticipantePagamentoRoute: ParticipantePagamentoRoute,

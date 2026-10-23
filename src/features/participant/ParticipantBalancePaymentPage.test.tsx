@@ -13,7 +13,7 @@ import { ParticipantBalancePaymentPage } from "./ParticipantBalancePaymentPage";
 import type { ParticipantRegistrationView } from "./participant.domain";
 const view = {
   identity: { name: "Maria" },
-  registration: { choirName: "Coral" },
+  registration: { choirName: "Coral", raffleOnlinePaymentEnabled: true },
   payment: {
     status: "paid",
     financialState: {
@@ -61,6 +61,17 @@ describe("ParticipantBalancePaymentPage", () => {
     render(<ParticipantBalancePaymentPage loadRegistration={vi.fn().mockResolvedValue({ ...view, raffles: null })} />);
     await screen.findByText("Saldo indisponível");
     expect(screen.queryByRole("button", { name: /Pagar .* rifas/ })).not.toBeInTheDocument();
+  });
+  it("shows the balance without payment controls for a choir with online payments disabled", async () => {
+    const start = vi.fn();
+    render(<ParticipantBalancePaymentPage
+      loadRegistration={vi.fn().mockResolvedValue({ ...view, registration: { ...view.registration, raffleOnlinePaymentEnabled: false } })}
+      startCheckout={start}
+    />);
+    expect(await screen.findByText(/pagamento online das rifas ainda não está disponível/)).toBeInTheDocument();
+    expect(screen.getAllByText(/80,00/).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(start).not.toHaveBeenCalled();
   });
   it("lets a participant register extra raffles after reaching the original target", async () => {
     const start = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: "https://checkout.infinitepay.com.br/extra", orderNsu: "extra" });

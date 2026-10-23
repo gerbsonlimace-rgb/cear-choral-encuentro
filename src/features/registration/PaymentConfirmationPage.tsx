@@ -5,6 +5,7 @@ import eventLogo from "@/assets/logo-coros-branco.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyRegistrationPayment } from "@/lib/registration.functions";
+import { ParticipantVideoSection } from "./ParticipantVideoSection";
 import { buildReceiptRows, downloadReceiptPdf } from "./receipt";
 import { clearRegistrationDraft } from "./registration-draft";
 import type { PublicPaymentStatus } from "./registration-payment.server";
@@ -419,6 +420,11 @@ function ConfirmedPayment({
             </div>
           </CardContent>
         </Card>
+        {!isPreRegistration && payment.participantAccessStatus === "active" && (
+          <div className="mt-8">
+            <ParticipantVideoSection />
+          </div>
+        )}
     </div>
   );
 }

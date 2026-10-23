@@ -73,7 +73,8 @@ export function ParticipantBalancePaymentPage({
   const known = raffles && raffles.totalTickets !== null;
   const settled = known && raffles.pendingCents === 0;
   const count = /^\d+$/.test(selectedTickets) ? Number(selectedTickets) : 0;
-  const canPay = Boolean(known && Number.isSafeInteger(count) && count > 0 && count <= 2_147_483);
+  const onlinePaymentEnabled = participant?.registration.raffleOnlinePaymentEnabled === true;
+  const canPay = Boolean(onlinePaymentEnabled && known && Number.isSafeInteger(count) && count > 0 && count <= 2_147_483);
 
   const pay = async () => {
     if (!canPay || loading || submitting.current) return;
@@ -158,7 +159,9 @@ export function ParticipantBalancePaymentPage({
                     Rifas quitadas
                   </p>
                 )}
-                {openPayment ? (
+                {!onlinePaymentEnabled ? (
+                  <p role="status" className="text-sm text-zinc-600">O pagamento online das rifas ainda não está disponível para seu coro. Combine o pagamento com seu regente.</p>
+                ) : openPayment ? (
                   <div role="status" className="space-y-3 text-sm text-zinc-600">
                     <p>{existingCheckout
                       ? `Você já tem um pagamento de ${existingCheckout.tickets} rifas em andamento.`

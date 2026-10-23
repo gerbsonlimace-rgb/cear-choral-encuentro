@@ -228,6 +228,8 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     expect(screen.queryByRole("heading", { name: "Pagamento de hoje" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Enviar inscrição gratuita" }));
     expect(await screen.findByRole("heading", { name: "Inscrição enviada" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Inscrição enviada" }).closest("section"))
+      .toHaveClass("registration-success");
     expect(startCheckout).toHaveBeenCalledWith(expect.objectContaining({
       choirId: quixadaId, raffleChoice: "full_price",
       displayedQuote: { pricingType: "free", standardPriceCents: 0, registrationPriceCents: 0 },

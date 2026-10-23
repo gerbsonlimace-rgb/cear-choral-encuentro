@@ -5,7 +5,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   Link: ({ to, ...props }: ComponentProps<"a"> & { to: string }) => <a href={to} {...props} />,
 }));
 
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ChoristerHomeTab } from "./ChoristerHomeTab";
 import type { ParticipantRegistrationView } from "./participant.domain";
@@ -18,6 +19,7 @@ const participant: ParticipantRegistrationView = {
   },
   registration: {
     choirName: "Coral Santa Cecília",
+    raffleOnlinePaymentEnabled: true,
     diocese: "Quixadá",
     voicePart: "soprano",
     pricingType: "promotional",
@@ -46,6 +48,12 @@ describe("ChoristerHomeTab welcome", () => {
     expect(within(raffle).getByRole("link", { name: "Pagar agora via Pix ou cartão de crédito" })).toHaveAttribute("href", "/participante/pagamento");
   });
 
+  it("hides the balance card but keeps the sharing card visible when online payment is disabled", () => {
+    render(<ChoristerHomeTab participant={{ ...participant, registration: { ...participant.registration, raffleOnlinePaymentEnabled: false } }} />);
+    expect(screen.queryByRole("region", { name: "Suas rifas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Sua chave Pix" })).toBeInTheDocument();
+  });
+
   it("celebrates raffle sales beyond the initial target", () => {
     render(<ChoristerHomeTab participant={{ ...participant, raffles: {
       totalCents: 10_000, paidCents: 12_000, pendingCents: 0,
@@ -54,17 +62,34 @@ describe("ChoristerHomeTab welcome", () => {
     expect(screen.getByText(/2 rifas além da meta/)).toBeInTheDocument();
   });
 
-  it("shows a raffle card and a buyer invitation for WhatsApp", () => {
+  it("shows the raffle card with its Pix field and generation action", () => {
     render(<ChoristerHomeTab participant={participant} />);
     const sharing = screen.getByRole("region", { name: "Compartilhe a rifa" });
-    expect(within(sharing).getByRole("img", { name: /concorra a R\$ 1\.000,00 por R\$ 10,00/ })).toHaveAttribute("src", "/raffle-share-card.svg");
-    expect(within(sharing).getByRole("button", { name: "Compartilhar card" })).toBeInTheDocument();
-    const whatsapp = within(sharing).getByRole("link", { name: "Mensagem no WhatsApp" });
-    const message = new URL(whatsapp.getAttribute("href") ?? "").searchParams.get("text");
-    expect(message).toContain("R$ 10,00");
-    expect(message).toContain("R$ 1.000,00");
-    expect(message).toContain("Me responda por aqui");
-    expect(message).not.toContain("R$ 500,00");
+    expect(within(sharing).getByLabelText("Prévia da rifa do Coral Santa Cecília")).toBeInTheDocument();
+    expect(within(sharing).queryByText(/Coro Santa Cecília/i)).not.toBeInTheDocument();
+    expect(within(sharing).queryByText(/chave Pix da prévia/i)).not.toBeInTheDocument();
+    expect(within(sharing).getByRole("textbox", { name: "Sua chave Pix" })).toBeInTheDocument();
+    expect(within(sharing).getByRole("button", { name: "Gerar card" })).toBeDisabled();
+    expect(within(sharing).queryByRole("link", { name: "Mensagem no WhatsApp" })).not.toBeInTheDocument();
+  });
+
+  it("generates a raffle card from the Pix key on Home", async () => {
+    const user = userEvent.setup();
+    const renderArt = vi.fn().mockResolvedValue(new File(["image"], "rifa.png", { type: "image/png" }));
+    render(<ChoristerHomeTab participant={participant} renderRaffleArt={renderArt} />);
+    const sharing = screen.getByRole("region", { name: "Compartilhe a rifa" });
+
+    await user.type(within(sharing).getByRole("textbox", { name: "Sua chave Pix" }), "pix@exemplo.com");
+    await user.click(within(sharing).getByRole("button", { name: "Gerar card" }));
+
+    await waitFor(() => expect(renderArt).toHaveBeenCalledWith({
+      choirName: "Coral Santa Cecília",
+      displayName: "Maria da Silva",
+      pixKey: "pix@exemplo.com",
+      city: "Quixadá",
+    }));
+    expect(within(sharing).getByRole("img", { name: "Seu card da rifa com QR Code Pix" })).toBeInTheDocument();
+    expect(within(sharing).getByRole("link", { name: "Baixar imagem" })).toBeInTheDocument();
   });
 
   it("renders compact shortcut cards on Home", () => {
@@ -136,6 +161,12 @@ describe("ChoristerHomeTab welcome", () => {
     );
     expect(screen.queryByText("Inscrição integral")).not.toBeInTheDocument();
     expect(screen.queryByText("Programa de rifas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Compartilhe a rifa" })).not.toBeInTheDocument();
+  });
+  it("does not offer raffle sharing without an assigned raffle target", () => {
+    render(<ChoristerHomeTab participant={{ ...participant, raffles: {
+      totalCents: 0, paidCents: 0, pendingCents: 0, totalTickets: 0, paidTickets: 0, pendingTickets: 0,
+    } }} />);
     expect(screen.queryByRole("region", { name: "Compartilhe a rifa" })).not.toBeInTheDocument();
   });
   it("does not invent missing financial or profile data", () => {

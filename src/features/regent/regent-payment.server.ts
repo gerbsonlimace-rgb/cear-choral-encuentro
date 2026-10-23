@@ -84,6 +84,7 @@ export type ComplementPaymentPublicStatus =
 
 export type RegentPaymentRepository = {
   findRegistration(registrationId: string): Promise<RegentPaymentRegistration | null>;
+  isRaffleOnlinePaymentEnabled(choirId: string): Promise<boolean>;
   listAccountingPayments(registrationId: string): Promise<RegentAccountingPayment[]>;
   reserve(input: RegentPaymentReservation): Promise<void>;
   findByOrderNsu(orderNsu: string): Promise<RegentPaymentRecord | null>;
@@ -256,6 +257,10 @@ export function createRegentPaymentService({
         throw new Error(CHOIR_MESSAGE);
       }
       const authorizedChoirId = registration.choirId;
+      if (access.role === "participant" && input.raffleTickets !== undefined &&
+        !(await repository.isRaffleOnlinePaymentEnabled(authorizedChoirId))) {
+        throw new Error("O pagamento online das rifas não está disponível para este coro.");
+      }
 
       // This is deliberately the final application-side read before reserve.
       // The database trigger repeats the calculation under the registration lock.
@@ -584,6 +589,16 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
         isFreeRegistration: data.is_free_registration,
         paymentOrigin: data.payment_origin as RegentPaymentRegistration["paymentOrigin"],
       };
+    },
+
+    async isRaffleOnlinePaymentEnabled(choirId) {
+      const { data, error } = await supabaseAdmin
+        .from("choirs")
+        .select("raffle_online_payments_enabled")
+        .eq("id", choirId)
+        .maybeSingle();
+      if (error) throw new Error("Não foi possível consultar a configuração do coro.");
+      return data?.raffle_online_payments_enabled === true;
     },
 
     async listAccountingPayments(registrationId) {

@@ -120,6 +120,7 @@ describe("PaymentConfirmationPage", () => {
 
     expect(await screen.findByText("Pré-inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Acesso ao app liberado")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Veja como funciona o app do participante" })).not.toBeInTheDocument();
     expect(screen.getByText(/Meta das rifas \(20 rifas\): R\$\s*200,00/)).toBeVisible();
     expect(screen.getByText(/vaga será confirmada após a conclusão do programa de rifas/i)).toBeVisible();
     expect(screen.queryByText("Vaga confirmada")).not.toBeInTheDocument();
@@ -140,6 +141,7 @@ describe("PaymentConfirmationPage", () => {
 
     expect(await screen.findByText("Inscrição confirmada")).toBeVisible();
     expect(screen.getByText("Vaga confirmada")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Veja como funciona o app do participante" })).toBeVisible();
     expect(screen.queryByText(/Meta das rifas/)).not.toBeInTheDocument();
   });
 

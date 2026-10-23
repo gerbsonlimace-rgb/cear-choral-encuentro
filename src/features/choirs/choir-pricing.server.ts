@@ -112,7 +112,7 @@ export function createChoirPricingService(repository: ChoirPricingRepository) {
 const settingsColumns =
   "standard_price_cents,promotional_price_cents,promotional_remaining_price_cents" as const;
 const choirColumns =
-  "id,name,diocese,uses_promotional_price,is_free,is_active,created_at,updated_at" as const;
+  "id,name,diocese,uses_promotional_price,is_free,is_active,raffle_online_payments_enabled,created_at,updated_at" as const;
 
 function mapSettings(row: {
   standard_price_cents: number | null;
@@ -133,6 +133,7 @@ function mapChoir(row: {
   uses_promotional_price: boolean;
   is_free: boolean;
   is_active: boolean;
+  raffle_online_payments_enabled: boolean;
   created_at: string;
   updated_at: string;
 }): AdminChoir {
@@ -143,6 +144,7 @@ function mapChoir(row: {
     usesPromotionalPrice: row.uses_promotional_price,
     isFree: row.is_free,
     isActive: row.is_active,
+    raffleOnlinePaymentsEnabled: row.raffle_online_payments_enabled,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -219,6 +221,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
             uses_promotional_price: input.usesPromotionalPrice,
             is_free: input.isFree ?? false,
             is_active: input.isActive,
+            raffle_online_payments_enabled: input.raffleOnlinePaymentsEnabled ?? false,
           })
           .select(choirColumns)
           .single(),
@@ -235,6 +238,7 @@ export function createSupabaseChoirPricingRepository(): ChoirPricingRepository {
             uses_promotional_price: input.usesPromotionalPrice,
             is_free: input.isFree ?? false,
             is_active: input.isActive,
+            raffle_online_payments_enabled: input.raffleOnlinePaymentsEnabled ?? false,
             updated_at: new Date().toISOString(),
           })
           .eq("id", id)

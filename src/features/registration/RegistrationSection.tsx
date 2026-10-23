@@ -838,7 +838,7 @@ export function RegistrationSection({
 
   if (freeSubmissionComplete) {
     return (
-      <section id="inscricao" className="registration-shell bg-registration-surface px-4 py-12">
+      <section id="inscricao" className="registration-shell registration-success bg-registration-surface px-4 py-12">
         <div role="status" className="registration-surface mx-auto max-w-2xl p-6 text-center">
           <BadgeCheck className="mx-auto size-12 text-amber-600" aria-hidden="true" />
           <h2 className="mt-4 font-display text-2xl font-bold">Inscrição enviada</h2>

@@ -145,6 +145,7 @@ describe("AdminChoirsPage", () => {
           diocese: "Diocese de Sobral",
           usesPromotionalPrice: true,
           isFree: false,
+          raffleOnlinePaymentsEnabled: false,
           isActive: true,
         },
       }),
@@ -200,6 +201,7 @@ describe("AdminChoirsPage", () => {
     expect(screen.getByLabelText("Diocese")).toHaveValue("Diocese de Quixadá");
 
     await user.selectOptions(screen.getByLabelText("Diocese"), "Diocese de Sobral");
+    await user.click(screen.getByRole("checkbox", { name: "Permitir pagamento online de rifas" }));
     await user.click(screen.getByRole("button", { name: "Salvar coro" }));
 
     await waitFor(() =>
@@ -210,6 +212,7 @@ describe("AdminChoirsPage", () => {
           diocese: "Diocese de Sobral",
           usesPromotionalPrice: true,
           isFree: false,
+          raffleOnlinePaymentsEnabled: true,
           isActive: true,
         },
       }),

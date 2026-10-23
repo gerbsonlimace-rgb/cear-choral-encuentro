@@ -67,6 +67,7 @@ export type ParticipantAccessRepository = {
   loadPaidRegistration(registrationId: string): Promise<ParticipantRegistrationSource | null>;
   createPhotoUrl(photoPath: string): Promise<string | null>;
   loadActiveRegentNames(choirId: string | null): Promise<string[]>;
+  loadChoirRaffleOnlinePaymentEnabled(choirId: string | null): Promise<boolean>;
   loadConfirmedComplementCents(registrationId: string): Promise<number>;
   updatePaidPhone(registrationId: string, phone: string): Promise<string>;
 };
@@ -136,9 +137,10 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
         throw new Error("Não foi possível carregar os dados da inscrição.");
       }
 
-      const [regentsResult, complementResult] = await Promise.allSettled([
+      const [regentsResult, complementResult, rafflePaymentResult] = await Promise.allSettled([
         repository.loadActiveRegentNames(row.choir_id),
         repository.loadConfirmedComplementCents(row.id),
+        repository.loadChoirRaffleOnlinePaymentEnabled(row.choir_id),
       ]);
       const regentNames = regentsResult.status === "fulfilled" ? regentsResult.value : [];
       const financialState =
@@ -195,6 +197,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
           },
           registration: {
             choirName: row.choir_name,
+            raffleOnlinePaymentEnabled: rafflePaymentResult.status === "fulfilled" && rafflePaymentResult.value === true,
             regentNames,
             diocese: row.diocese,
             ...(row.city === null ? {} : { city: row.city }),
@@ -303,6 +306,17 @@ export function createSupabaseParticipantRepository(): ParticipantAccessReposito
         .order("name");
       checkParticipantQuery(error);
       return [...new Set((data ?? []).map((row) => row.name.trim()).filter(Boolean))];
+    },
+
+    async loadChoirRaffleOnlinePaymentEnabled(choirId) {
+      if (!choirId) return false;
+      const { data, error } = await supabaseAdmin
+        .from("choirs")
+        .select("raffle_online_payments_enabled")
+        .eq("id", choirId)
+        .maybeSingle();
+      checkParticipantQuery(error);
+      return data?.raffle_online_payments_enabled === true;
     },
 
     async loadConfirmedComplementCents(registrationId) {

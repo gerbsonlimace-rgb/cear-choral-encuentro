@@ -80,6 +80,7 @@ function repository(
     loadPaidRegistration: vi.fn(async () => registration),
     createPhotoUrl: vi.fn(async () => null),
     loadActiveRegentNames: vi.fn(async () => ["João de Souza"]),
+    loadChoirRaffleOnlinePaymentEnabled: vi.fn(async () => true),
     loadConfirmedComplementCents: vi.fn(async () => 2000),
     updatePaidPhone: vi.fn(async (_registrationId, phone) => phone),
   };
@@ -292,6 +293,7 @@ describe("participant registration loader", () => {
       },
       registration: {
         choirName: "Coro Diocesano",
+        raffleOnlinePaymentEnabled: true,
         regentNames: ["João de Souza"],
         diocese: "Diocese de Quixadá",
         city: "Quixadá",

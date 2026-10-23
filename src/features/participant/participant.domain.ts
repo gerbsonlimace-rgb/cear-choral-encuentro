@@ -32,6 +32,7 @@ export type ParticipantRegistrationView = {
   };
   registration: {
     choirName: string;
+    raffleOnlinePaymentEnabled?: boolean;
     regentNames?: string[];
     diocese: string;
     city?: string | null;
@@ -59,6 +60,10 @@ export type ParticipantRegistrationView = {
 export type ParticipantRegistrationViewInput = Omit<ParticipantRegistrationView, "identity"> & {
   identity: Omit<ParticipantRegistrationView["identity"], "cpf"> & { cpf: string };
 };
+
+export function hasRafflesToSell(participant: Pick<ParticipantRegistrationView, "raffles">): boolean {
+  return Boolean(participant.raffles && Number.isSafeInteger(participant.raffles.totalCents) && participant.raffles.totalCents > 0);
+}
 
 export function buildInitialParticipantPassword(cpf: string, birthDate: string): string {
   const digits = cpfSchema.parse(cpf);

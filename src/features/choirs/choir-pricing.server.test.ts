@@ -220,6 +220,7 @@ describe("Supabase choir pricing repository", () => {
       diocese: "Diocese de Sobral",
       uses_promotional_price: false,
       is_free: false,
+      raffle_online_payments_enabled: false,
       is_active: true,
     });
   });

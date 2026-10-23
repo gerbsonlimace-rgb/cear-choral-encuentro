@@ -19,6 +19,10 @@
     var(--registration-surface);
 }
 
+.registration-shell.registration-success {
+  min-height: 0;
+}
+
 .registration-shell .shadow-registration-card {
   box-shadow: 0 20px 60px rgb(44 36 20 / 9%), 0 3px 12px rgb(44 36 20 / 5%);
 }
