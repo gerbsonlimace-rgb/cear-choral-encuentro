@@ -28,6 +28,7 @@ describe("admin raffle tracking", () => {
       rafflePendingCents: 15_000,
       rafflePendingTickets: 15,
       receivedCents: 0,
+      expectedCents: 15_000,
     });
   });
   it("does not create negative raffle debt after extra sales", () => {
@@ -40,8 +41,8 @@ describe("admin raffle tracking", () => {
   });
   it("totals two exempt participants as 40 tickets and R$ 400 without counting revenue", () => {
     const summary = summarizeAdminRegistrations([row, { ...row, id: "outro" }]);
-    expect(summary).toMatchObject({ rafflePendingCents: 40_000, rafflePendingTickets: 40, receivedCents: 0, pendingCents: 0 });
-    expect(summary.byChoir[0]).toMatchObject({ rafflePendingCents: 40_000, rafflePendingTickets: 40 });
+    expect(summary).toMatchObject({ rafflePendingCents: 40_000, rafflePendingTickets: 40, receivedCents: 0, pendingCents: 0, expectedCents: 40_000 });
+    expect(summary.byChoir[0]).toMatchObject({ rafflePendingCents: 40_000, rafflePendingTickets: 40, expectedCents: 40_000 });
   });
   it("does not count an unpaid R$ 100 entry as raffle tickets", () => {
     expect(getAdminRafflePending(promotional, { status: "pending", pendingCents: 30_000, confirmedPrincipalCents: 0 })).toEqual({ cents: 20_000, tickets: 20 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getAdminRafflePending } from "./admin-raffle.domain";
+import { getAdminRafflePending, getAdminRegistrationPendingCents } from "./admin-raffle.domain";
 import {
   birthDateSchema,
   brazilianMobilePhoneSchema,
@@ -516,7 +516,7 @@ export function summarizeAdminRegistrations(
       choir.receivedCents += receivedCents;
       choir.pendingRegentCents += pendingRegentCents;
     } else if (financialState.status === "pending") {
-      const pendingCents = financialState.pendingCents;
+      const pendingCents = getAdminRegistrationPendingCents(row as AdminRegistrationRow, financialState) ?? 0;
       summary.pendingCents += pendingCents;
       choir.pendingCents += pendingCents;
     }
@@ -524,12 +524,12 @@ export function summarizeAdminRegistrations(
     choirs.set(row.choirName, choir);
   }
 
-  summary.expectedCents = summary.receivedCents + summary.pendingCents;
+  summary.expectedCents = summary.receivedCents + summary.pendingCents + (summary.rafflePendingCents ?? 0);
   summary.byChoir = [...choirs.entries()]
     .map(([choirName, financials]) => ({
       choirName,
       ...financials,
-      expectedCents: financials.receivedCents + financials.pendingCents,
+      expectedCents: financials.receivedCents + financials.pendingCents + financials.rafflePendingCents,
     }))
     .sort(
       (left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName),

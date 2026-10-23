@@ -1501,7 +1501,7 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
     {
       label: "Total previsto",
       value: money(summary.expectedCents),
-      hint: "Recebido + pendente",
+      hint: "Recebido + taxas + rifas pendentes",
       icon: ChartNoAxesCombined,
     },
   ];
