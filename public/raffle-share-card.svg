@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-labelledby="title desc">
+  <title id="title">Rifa do II Encontro de Coros</title>
+  <desc id="desc">Concorra a mil reais por dez reais cada rifa. Fale com quem enviou este card para participar.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#20170e"/>
+      <stop offset="1" stop-color="#0e0b09"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f9db7e"/>
+      <stop offset="1" stop-color="#dca920"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#night)"/>
+  <circle cx="920" cy="155" r="300" fill="#c49018" opacity=".08"/>
+  <circle cx="90" cy="1110" r="330" fill="#c49018" opacity=".06"/>
+  <rect x="30" y="30" width="1020" height="1290" rx="42" fill="none" stroke="#b78624" stroke-width="2" opacity=".6"/>
+  <rect x="51" y="51" width="978" height="1248" rx="28" fill="none" stroke="#f9e3a6" opacity=".15"/>
+
+  <g fill="none" stroke="#d6aa4b" stroke-width="3" opacity=".38">
+    <path d="M85 225H995M85 245H995M85 265H995M85 285H995M85 305H995"/>
+  </g>
+  <g fill="url(#gold)" opacity=".9">
+    <ellipse cx="190" cy="281" rx="26" ry="17" transform="rotate(-20 190 281)"/>
+    <path d="M212 275V184h7v91z"/>
+    <ellipse cx="890" cy="225" rx="24" ry="15" transform="rotate(-20 890 225)"/>
+    <path d="M911 219V132h7v87z"/>
+  </g>
+
+  <text x="540" y="139" fill="#f7edcf" text-anchor="middle" font-family="Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="7">II ENCONTRO DE COROS</text>
+  <text x="540" y="188" fill="#d9b35e" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" letter-spacing="5">DIOCESANOS E LITÚRGICOS DO CEARÁ</text>
+
+  <text x="540" y="439" fill="#f9e9bc" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="700" letter-spacing="8">PARTICIPE DA NOSSA</text>
+  <text x="540" y="565" fill="url(#gold)" text-anchor="middle" font-family="Arial, sans-serif" font-size="138" font-weight="900" letter-spacing="5">RIFA</text>
+  <path d="M323 604H757" stroke="#cfa546" stroke-width="3"/>
+
+  <text x="540" y="715" fill="#f7edcf" text-anchor="middle" font-family="Arial, sans-serif" font-size="36">Concorra a</text>
+  <text x="540" y="837" fill="url(#gold)" text-anchor="middle" font-family="Arial, sans-serif" font-size="117" font-weight="900">R$ 1.000,00</text>
+  <text x="540" y="894" fill="#f7edcf" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" letter-spacing="5">EM PRÊMIO</text>
+
+  <rect x="197" y="970" width="686" height="107" rx="53" fill="url(#gold)"/>
+  <text x="540" y="1038" fill="#271b0a" text-anchor="middle" font-family="Arial, sans-serif" font-size="45" font-weight="800">R$ 10,00 por rifa</text>
+
+  <text x="540" y="1160" fill="#f7edcf" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700">Quer participar?</text>
+  <text x="540" y="1207" fill="#e5d5ae" text-anchor="middle" font-family="Arial, sans-serif" font-size="27">Fale com quem enviou este card!</text>
+  <text x="540" y="1270" fill="#b89b5f" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" letter-spacing="2">CADA RIFA APOIA O NOSSO ENCONTRO</text>
+</svg>

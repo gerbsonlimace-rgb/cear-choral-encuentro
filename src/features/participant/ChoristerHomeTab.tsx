@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { ParticipantRegistrationView } from "./participant.domain";
 import { ChoristerWelcomeCard } from "./ChoristerWelcomeCard";
 import { ChoristerNotices } from "./ChoristerNotices";
+import { RaffleShareCard } from "./RaffleShareCard";
 import type { EventNotice } from "@/features/event-notices/eventNotice.domain";
 
 type ChoristerHomeTabProps = {
@@ -85,6 +86,7 @@ export function ChoristerHomeTab({
       <ChoristerWelcomeCard participant={participant} />
 
       {participant.raffles && (
+        <>
         <section aria-label="Suas rifas" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900">
@@ -137,12 +139,14 @@ export function ChoristerHomeTab({
               to="/participante/pagamento"
               className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800"
             >
-              Informar rifas vendidas e pagar <ChevronRight aria-hidden="true" className="size-4" />
+              Pagar agora via Pix ou cartão de crédito <ChevronRight aria-hidden="true" className="size-4" />
             </Link>
           ) : (
             <p className="mt-4 text-sm text-zinc-700">Consulte seu regente para conferir o saldo das rifas.</p>
           )}
         </section>
+        <RaffleShareCard />
+        </>
       )}
 
       <a

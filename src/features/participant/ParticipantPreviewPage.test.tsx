@@ -37,4 +37,23 @@ describe("ParticipantPreviewPage", () => {
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalledOnce());
     expect(screen.queryByText("Participante Exemplo")).not.toBeInTheDocument();
   });
+
+  it("previews partial raffle payments and sales beyond the initial target without charging", async () => {
+    const user = userEvent.setup();
+    render(
+      <ParticipantPreviewPage
+        checkAccess={vi.fn().mockResolvedValue({ status: "authorized", userId: "admin-1", email: null })}
+        onUnauthorized={vi.fn()}
+        onReturnAdmin={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Rifas" }));
+    expect(screen.getByText("20 rifas")).toBeInTheDocument();
+    expect(screen.getByText("R$ 150,00")).toBeInTheDocument();
+    await user.clear(screen.getByRole("spinbutton", { name: "Quantas rifas você vendeu?" }));
+    await user.type(screen.getByRole("spinbutton", { name: "Quantas rifas você vendeu?" }), "23");
+    expect(screen.getByText("R$ 230,00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pagamento indisponível na prévia/ })).toBeDisabled();
+  });
 });

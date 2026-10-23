@@ -43,7 +43,7 @@ describe("ChoristerHomeTab welcome", () => {
     expect(within(raffle).getByText("2 já pagas")).toBeInTheDocument();
     expect(within(raffle).getByText("8 pendentes")).toBeInTheDocument();
     expect(within(raffle).getByText(/80,00/)).toBeInTheDocument();
-    expect(within(raffle).getByRole("link", { name: /Informar rifas vendidas e pagar/ })).toHaveAttribute("href", "/participante/pagamento");
+    expect(within(raffle).getByRole("link", { name: "Pagar agora via Pix ou cartão de crédito" })).toHaveAttribute("href", "/participante/pagamento");
   });
 
   it("celebrates raffle sales beyond the initial target", () => {
@@ -52,6 +52,19 @@ describe("ChoristerHomeTab welcome", () => {
       totalTickets: 10, paidTickets: 12, pendingTickets: 0, extraTickets: 2,
     } }} />);
     expect(screen.getByText(/2 rifas além da meta/)).toBeInTheDocument();
+  });
+
+  it("shows a raffle card and a buyer invitation for WhatsApp", () => {
+    render(<ChoristerHomeTab participant={participant} />);
+    const sharing = screen.getByRole("region", { name: "Compartilhe a rifa" });
+    expect(within(sharing).getByRole("img", { name: /concorra a R\$ 1\.000,00 por R\$ 10,00/ })).toHaveAttribute("src", "/raffle-share-card.svg");
+    expect(within(sharing).getByRole("button", { name: "Compartilhar card" })).toBeInTheDocument();
+    const whatsapp = within(sharing).getByRole("link", { name: "Mensagem no WhatsApp" });
+    const message = new URL(whatsapp.getAttribute("href") ?? "").searchParams.get("text");
+    expect(message).toContain("R$ 10,00");
+    expect(message).toContain("R$ 1.000,00");
+    expect(message).toContain("Me responda por aqui");
+    expect(message).not.toContain("R$ 500,00");
   });
 
   it("renders compact shortcut cards on Home", () => {
@@ -123,6 +136,7 @@ describe("ChoristerHomeTab welcome", () => {
     );
     expect(screen.queryByText("Inscrição integral")).not.toBeInTheDocument();
     expect(screen.queryByText("Programa de rifas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Compartilhe a rifa" })).not.toBeInTheDocument();
   });
   it("does not invent missing financial or profile data", () => {
     render(

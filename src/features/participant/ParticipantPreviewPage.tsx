@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
 import { getAdminAccess, type AdminAccessState } from "@/lib/admin.functions";
 
-type PreviewTab = "home" | "guia" | "cantos" | "documentos" | "perfil";
+type PreviewTab = "home" | "guia" | "cantos" | "rifas" | "documentos" | "perfil";
+
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 type Props = {
   checkAccess?: () => Promise<AdminAccessState>;
@@ -17,6 +19,7 @@ const tabs = [
   { id: "home", label: "Home", icon: Home },
   { id: "guia", label: "Agenda", icon: CalendarDays },
   { id: "cantos", label: "Áudios", icon: FileMusic },
+  { id: "rifas", label: "Rifas", icon: Ticket },
   { id: "documentos", label: "Partituras", icon: Files },
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ] as const;
@@ -28,6 +31,9 @@ export function ParticipantPreviewPage({
 }: Props) {
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<PreviewTab>("home");
+  const [soldTickets, setSoldTickets] = useState("1");
+  const soldCount = /^\d+$/.test(soldTickets) ? Number(soldTickets) : 0;
+  const validSoldCount = Number.isSafeInteger(soldCount) && soldCount > 0 && soldCount <= 2_147_483;
 
   useEffect(() => {
     let active = true;
@@ -94,9 +100,9 @@ export function ParticipantPreviewPage({
                 <Ticket aria-hidden="true" className="size-5 text-amber-800" />
                 <h2 className="font-semibold">Suas rifas</h2>
               </div>
-              <p className="mt-2 text-sm text-zinc-700">Exemplo: 20 rifas no total · 0 vendidas · R$ 200,00 pendentes.</p>
-              <Button type="button" className="mt-3 min-h-11" disabled>
-                Pagamento indisponível na prévia
+              <p className="mt-2 text-sm text-zinc-700">Exemplo: 20 rifas na meta · 5 já pagas · R$ 150,00 pendentes.</p>
+              <Button type="button" className="mt-3 min-h-11" onClick={() => setTab("rifas")}>
+                Ver pagamento de rifas
               </Button>
             </section>
           </section>
@@ -104,6 +110,46 @@ export function ParticipantPreviewPage({
 
         {tab === "guia" && <PreviewSection title="Agenda" description="A programação aparecerá aqui para quem estiver inscrito no encontro." />}
         {tab === "cantos" && <PreviewSection title="Áudios" description="Os cantos e áudios publicados aparecerão aqui para os participantes." />}
+        {tab === "rifas" && (
+          <section className="mx-auto max-w-lg space-y-5" aria-label="Prévia do pagamento de rifas">
+            <header>
+              <h1 className="text-2xl font-bold tracking-tight">Suas rifas</h1>
+              <p className="mt-1 text-sm text-zinc-600">Conte suas vendas e dê mais um passo para realizar o encontro.</p>
+            </header>
+            <div className="space-y-5 rounded-2xl border border-zinc-200 bg-white p-5">
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-4"><dt>Meta de rifas</dt><dd>20 rifas</dd></div>
+                <div className="flex justify-between gap-4 text-zinc-600"><dt>Já pagas</dt><dd>5 rifas</dd></div>
+                <div className="border-t border-zinc-100 pt-4">
+                  <dt className="text-xs text-zinc-600">Valor pendente da meta</dt>
+                  <dd className="app-metric mt-1 text-2xl font-semibold">{money.format(150)}</dd>
+                </div>
+              </dl>
+              <div className="space-y-2">
+                <label htmlFor="preview-raffle-count" className="block text-sm font-semibold">Quantas rifas você vendeu?</label>
+                <input
+                  id="preview-raffle-count"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  step="1"
+                  value={soldTickets}
+                  onChange={(event) => setSoldTickets(event.target.value)}
+                  className="min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                />
+                <p className="text-sm text-zinc-600">Você pode pagar algumas rifas agora e continuar vendendo além da meta. Cada rifa vale {money.format(10)}.</p>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+                <span>Pagamento de agora</span>
+                <strong>{validSoldCount ? money.format(soldCount * 10) : "Informe uma quantidade válida"}</strong>
+              </div>
+              <Button type="button" disabled className="min-h-12 w-full rounded-xl">
+                Pagamento indisponível na prévia
+              </Button>
+              <p className="text-xs text-zinc-500">Na conta real, o pagamento é aberto pela InfinitePay após a confirmação da quantidade.</p>
+            </div>
+          </section>
+        )}
         {tab === "documentos" && <PreviewSection title="Partituras" description="As partituras e os materiais publicados aparecerão aqui." />}
         {tab === "perfil" && (
           <section className="space-y-4" aria-label="Perfil de demonstração">

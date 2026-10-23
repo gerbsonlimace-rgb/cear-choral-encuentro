@@ -18,6 +18,7 @@ const searchSchema = z.object({
 const verifyPayment = (lookup: PaymentLookup) => verifyParticipantBalancePayment({ data: lookup });
 
 export const Route = createFileRoute("/participante/pagamento")({
+  ssr: false,
   validateSearch: searchSchema,
   beforeLoad: async () => {
     const access = await getParticipantAccess();
