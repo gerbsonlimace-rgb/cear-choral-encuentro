@@ -113,6 +113,59 @@ describe("regent complement checkout service", () => {
     );
   });
 
+  it("charges the number of promotional raffles selected by the participant", async () => {
+    const { service, repository, infinitePay } = setup();
+    await service.startCheckout({ registrationId, raffleTickets: 3 }, participant);
+    expect(repository.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 3_000, initiatedAs: "participant" }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [{ quantity: 3, price: 1_000, description: expect.stringContaining("rifa") }] }),
+    );
+  });
+
+  it("lets an approved free registration pay sold raffles without charging its registration", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.findRegistration).mockResolvedValue({
+      ...registration,
+      pricingType: "standard",
+      standardPriceCents: 0,
+      registrationPriceCents: 0,
+      remainingPriceCents: 0,
+      isFreeRegistration: true,
+      paymentOrigin: "exemption",
+    });
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      { id: "paid", orderNsu: "previous", amountCents: 5_000, status: "paid", checkoutUrl: null },
+    ]);
+    await service.startCheckout({ registrationId, raffleTickets: 4 }, participant);
+    expect(repository.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 4_000, initiatedAs: "participant" }),
+    );
+    expect(infinitePay.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [{ quantity: 4, price: 1_000, description: expect.stringContaining("rifa") }] }),
+    );
+  });
+
+  it("allows sold raffles above the initial target", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      { id: "paid", orderNsu: "previous", amountCents: 9_000, status: "paid", checkoutUrl: null },
+    ]);
+    await service.startCheckout({ registrationId, raffleTickets: 2 }, participant);
+    expect(repository.reserve).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 2_000 }));
+    expect(infinitePay.createCheckout).toHaveBeenCalled();
+  });
+
+  it("allows more raffle sales after the original target is fully paid", async () => {
+    const { service, repository } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([
+      { id: "paid", orderNsu: "previous", amountCents: 10_000, status: "paid", checkoutUrl: null },
+    ]);
+    await service.startCheckout({ registrationId, raffleTickets: 5 }, participant);
+    expect(repository.reserve).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 5_000 }));
+  });
+
   it("charges the configured promotional balance instead of deriving a discount difference", async () => {
     const { service, repository, infinitePay } = setup();
     vi.mocked(repository.findRegistration).mockResolvedValue({
@@ -162,6 +215,25 @@ describe("regent complement checkout service", () => {
     await expect(service.startCheckout({ registrationId }, participant)).resolves.toEqual({
       orderNsu,
       checkoutUrl,
+    });
+    expect(repository.reserve).not.toHaveBeenCalled();
+    expect(infinitePay.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("reports an existing partial checkout when the participant selects another quantity", async () => {
+    const { service, repository, infinitePay } = setup();
+    vi.mocked(repository.listAccountingPayments).mockResolvedValue([{
+      id: "open",
+      orderNsu,
+      amountCents: 3_000,
+      status: "pending",
+      checkoutUrl,
+      initiatedAs: "participant",
+    }]);
+    await expect(service.startCheckout({ registrationId, raffleTickets: 5 }, participant)).resolves.toEqual({
+      orderNsu,
+      checkoutUrl,
+      existingRaffleTickets: 3,
     });
     expect(repository.reserve).not.toHaveBeenCalled();
     expect(infinitePay.createCheckout).not.toHaveBeenCalled();

@@ -21,6 +21,18 @@ describe("admin raffle tracking", () => {
   it("assigns 20 tickets worth R$ 200 per exempt-group participant", () => {
     expect(getAdminRafflePending(row, exempt)).toEqual({ cents: 20_000, tickets: 20 });
   });
+  it("reduces free-group raffles only after confirmed payments", () => {
+    expect(getAdminRafflePending({ ...row, rafflePaidCents: 5_000 }, exempt)).toEqual({ cents: 15_000, tickets: 15 });
+    const enriched = { ...row, rafflePaidCents: 5_000 };
+    expect(summarizeAdminRegistrations([enriched])).toMatchObject({
+      rafflePendingCents: 15_000,
+      rafflePendingTickets: 15,
+      receivedCents: 0,
+    });
+  });
+  it("does not create negative raffle debt after extra sales", () => {
+    expect(getAdminRafflePending({ ...row, rafflePaidCents: 25_000 }, exempt)).toEqual({ cents: 0, tickets: 0 });
+  });
   it("assigns the same obligation before approval without granting paid access", () => {
     const pendingRow = { ...row, paymentStatus: "pending" as const };
     expect(getAdminRafflePending(pendingRow, { status: "pending", pendingCents: 0, confirmedPrincipalCents: 0 })).toEqual({ cents: 20_000, tickets: 20 });

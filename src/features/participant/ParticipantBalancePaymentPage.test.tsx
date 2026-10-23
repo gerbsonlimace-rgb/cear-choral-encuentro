@@ -22,6 +22,7 @@ const view = {
       confirmedPrincipalCents: 32000,
     },
   },
+  raffles: { totalCents: 10_000, paidCents: 2_000, pendingCents: 8_000, totalTickets: 10, paidTickets: 2, pendingTickets: 8 },
 } as ParticipantRegistrationView;
 
 describe("ParticipantBalancePaymentPage", () => {
@@ -41,34 +42,38 @@ describe("ParticipantBalancePaymentPage", () => {
         openCheckout={open}
       />,
     );
-    const pay = await screen.findByRole("button", { name: "Pagar saldo restante" });
-    expect(screen.getByText(/80,00/)).toBeInTheDocument();
-    expect(screen.getByText(/320,00/)).toBeInTheDocument();
+    const pay = await screen.findByRole("button", { name: "Pagar 1 rifa" });
+    expect(screen.getAllByText(/80,00/).length).toBeGreaterThan(0);
+    expect(screen.getByText("10 rifas")).toBeInTheDocument();
     expect(screen.getByText(/Pix ou cartão/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantas rifas você vendeu?" }), { target: { value: "3" } });
+    expect(screen.getByRole("button", { name: "Pagar 3 rifas" })).toBeInTheDocument();
     fireEvent.click(pay);
     fireEvent.click(pay);
     expect(start).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledWith(3);
     finish({ ok: true, checkoutUrl: "https://checkout.infinitepay.com.br/pay", orderNsu: "order" });
     await waitFor(() =>
       expect(open).toHaveBeenCalledWith("https://checkout.infinitepay.com.br/pay"),
     );
   });
-  it.each([null, { status: "paid", pendingCents: 0, confirmedPrincipalCents: 40000 }])(
-    "does not offer a charge for unavailable or settled balances",
-    async (financialState) => {
-      render(
-        <ParticipantBalancePaymentPage
-          loadRegistration={vi
-            .fn()
-            .mockResolvedValue({ ...view, payment: { ...view.payment, financialState } })}
-        />,
-      );
-      await screen.findByText(financialState ? "Inscrição quitada" : "Saldo indisponível");
-      expect(
-        screen.queryByRole("button", { name: "Pagar saldo restante" }),
-      ).not.toBeInTheDocument();
-    },
-  );
+  it("does not offer a charge when the raffle balance cannot be verified", async () => {
+    render(<ParticipantBalancePaymentPage loadRegistration={vi.fn().mockResolvedValue({ ...view, raffles: null })} />);
+    await screen.findByText("Saldo indisponível");
+    expect(screen.queryByRole("button", { name: /Pagar .* rifas/ })).not.toBeInTheDocument();
+  });
+  it("lets a participant register extra raffles after reaching the original target", async () => {
+    const start = vi.fn().mockResolvedValue({ ok: true, checkoutUrl: "https://checkout.infinitepay.com.br/extra", orderNsu: "extra" });
+    render(<ParticipantBalancePaymentPage
+      loadRegistration={vi.fn().mockResolvedValue({ ...view, raffles: { ...view.raffles!, paidCents: 10_000, pendingCents: 0, paidTickets: 10, pendingTickets: 0 } })}
+      startCheckout={start}
+      openCheckout={vi.fn()}
+    />);
+    expect(await screen.findByText("Rifas quitadas")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantas rifas você vendeu?" }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Pagar 5 rifas" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith(5));
+  });
   it("shows a recoverable checkout error without navigating", async () => {
     const open = vi.fn();
     render(
@@ -82,10 +87,23 @@ describe("ParticipantBalancePaymentPage", () => {
         openCheckout={open}
       />,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Pagar saldo restante" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pagar 1 rifa" }));
     expect(await screen.findByRole("status")).toHaveTextContent("pagamento em andamento");
-    expect(screen.queryByRole("button", { name: "Pagar saldo restante" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pagar .* rifas/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(open).not.toHaveBeenCalled();
+  });
+  it("offers to continue a different quantity already awaiting payment", async () => {
+    const open = vi.fn();
+    render(<ParticipantBalancePaymentPage
+      loadRegistration={vi.fn().mockResolvedValue(view)}
+      startCheckout={vi.fn().mockResolvedValue({ ok: true, checkoutUrl: "https://checkout.infinitepay.com.br/three", orderNsu: "open", existingRaffleTickets: 3 })}
+      openCheckout={open}
+    />);
+    fireEvent.click(await screen.findByRole("button", { name: "Pagar 1 rifa" }));
+    expect(await screen.findByText(/pagamento de 3 rifas em andamento/)).toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar pagamento" }));
+    expect(open).toHaveBeenCalledWith("https://checkout.infinitepay.com.br/three");
   });
 });

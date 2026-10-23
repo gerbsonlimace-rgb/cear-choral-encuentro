@@ -148,7 +148,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,name,cpf,phone,photo_path,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents",
+        "id,name,cpf,phone,photo_path,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
         { count: "exact" },
       ],
       ["eq", "choir_id", authorizedChoirId],
@@ -213,7 +213,7 @@ describe("Supabase regent portal repository", () => {
       ["from", "registrations"],
       [
         "select",
-        "id,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents",
+        "id,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents",
         undefined,
       ],
       ["eq", "choir_id", authorizedChoirId],
@@ -415,6 +415,49 @@ describe("regent portal service", () => {
     expect(repository.listSummaryPaidComplements).toHaveBeenCalledExactlyOnceWith(
       authorizedChoirId,
     );
+  });
+
+  it("keeps extra participant raffle sales out of registration principal", async () => {
+    const repository = setupRepository({
+      listParticipantPayments: vi.fn().mockResolvedValue([paidInstallment("extra", 25_000)]),
+      listSummaryPaidComplements: vi.fn().mockResolvedValue([{ registrationId, amountCents: 25_000 }]),
+    });
+    const service = createRegentPortalService(repository);
+    const page = await service.list(authorizedChoirId, { search: "", page: 1, pageSize: 2 });
+    expect(page.rows[0].financialState).toEqual({ status: "paid", pendingCents: 0, confirmedPrincipalCents: 30_000 });
+    expect(page.rows[0].complement).toEqual({ eligible: false, reason: "settled" });
+    await expect(service.summary(authorizedChoirId)).resolves.toMatchObject({
+      eligibleComplementCents: 20_000,
+      confirmedComplementCents: 20_000,
+      outstandingComplementCents: 0,
+    });
+  });
+
+  it("keeps free-registration raffle sales separate from exempt registration principal", async () => {
+    const freeRegistration = {
+      ...registration,
+      isExempt: true,
+      initialAmountCents: 0,
+      pricingType: "standard" as const,
+      standardPriceCents: 0,
+      registrationPriceCents: 0,
+      remainingPriceCents: 0,
+    };
+    const repository = setupRepository({
+      listParticipants: vi.fn().mockResolvedValue({ rows: [freeRegistration], total: 1 }),
+      listParticipantPayments: vi.fn().mockResolvedValue([paidInstallment("extra-free", 25_000)]),
+      listSummaryRegistrations: vi.fn().mockResolvedValue([freeRegistration]),
+      listSummaryPaidComplements: vi.fn().mockResolvedValue([{ registrationId, amountCents: 25_000 }]),
+    });
+    const service = createRegentPortalService(repository);
+    const page = await service.list(authorizedChoirId, { search: "", page: 1, pageSize: 2 });
+    expect(page.rows[0].financialState).toEqual({ status: "exempt", pendingCents: 0, confirmedPrincipalCents: 0 });
+    await expect(service.summary(authorizedChoirId)).resolves.toEqual({
+      totalParticipants: 1,
+      eligibleComplementCents: 0,
+      confirmedComplementCents: 0,
+      outstandingComplementCents: 0,
+    });
   });
 
   it("excludes a financially incoherent initial checkout from the derived summary", async () => {

@@ -1,15 +1,20 @@
 import type { AdminRegistrationRow } from "./admin.domain";
 import type { RegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
+import { FREE_GROUP_RAFFLE_TICKETS, RAFFLE_TICKET_PRICE_CENTS } from "@/features/registration/raffle-balance.domain";
 
-export const RAFFLE_TICKET_PRICE_CENTS = 1_000;
-export const EXEMPT_GROUP_RAFFLE_TICKETS = 20;
+export { RAFFLE_TICKET_PRICE_CENTS } from "@/features/registration/raffle-balance.domain";
+export const EXEMPT_GROUP_RAFFLE_TICKETS = FREE_GROUP_RAFFLE_TICKETS;
 
 export function getAdminRafflePending(
-  row: Pick<AdminRegistrationRow, "isFreeRegistration" | "pricingType" | "registrationPriceCents" | "standardPriceCents" | "remainingPriceCents">,
+  row: Pick<AdminRegistrationRow, "isFreeRegistration" | "pricingType" | "registrationPriceCents" | "standardPriceCents" | "remainingPriceCents" | "rafflePaidCents">,
   financial: RegistrationFinancialState,
 ): { cents: number; tickets: number | null } | null {
   if (row.isFreeRegistration) {
-    return { cents: EXEMPT_GROUP_RAFFLE_TICKETS * RAFFLE_TICKET_PRICE_CENTS, tickets: EXEMPT_GROUP_RAFFLE_TICKETS };
+    const paid = row.rafflePaidCents ?? 0;
+    const total = EXEMPT_GROUP_RAFFLE_TICKETS * RAFFLE_TICKET_PRICE_CENTS;
+    if (!Number.isSafeInteger(paid) || paid < 0) return null;
+    const cents = Math.max(0, total - paid);
+    return { cents, tickets: cents % RAFFLE_TICKET_PRICE_CENTS === 0 ? cents / RAFFLE_TICKET_PRICE_CENTS : null };
   }
   if (row.pricingType !== "promotional" || financial.status === "legacy" || financial.status === "exempt") return null;
   const cents = financial.status === "pending"

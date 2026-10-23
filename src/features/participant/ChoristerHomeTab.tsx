@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Music2,
   Play,
+  Ticket,
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -67,6 +68,7 @@ function ShortcutIllustration({ icon: Icon }: { icon: LucideIcon }) {
 }
 
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/DMasqDLthuP1HmhJzHxqxw";
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 const shortcutClassName =
   "group relative flex min-h-28 min-w-0 flex-col items-start rounded-2xl p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 sm:p-3";
@@ -81,6 +83,67 @@ export function ChoristerHomeTab({
   return (
     <section aria-labelledby="chorister-home-title" className="space-y-4">
       <ChoristerWelcomeCard participant={participant} />
+
+      {participant.raffles && (
+        <section aria-label="Suas rifas" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900">
+              <Ticket aria-hidden="true" className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-bold text-zinc-950">Suas rifas</h2>
+              <p className="mt-1 text-sm text-zinc-700">
+                Cada rifa vendida ajuda a fazer este encontro acontecer. Vamos juntos!
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+            <div className="rounded-xl bg-white/80 p-3">
+              <p className="text-xs text-zinc-600">Meta inicial</p>
+              <p className="mt-1 font-bold text-zinc-950">
+                {participant.raffles.totalTickets === null
+                  ? money.format(participant.raffles.totalCents / 100)
+                  : `${participant.raffles.totalTickets} rifas no total`}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/80 p-3">
+              <p className="text-xs text-zinc-600">Já pagas</p>
+              <p className="mt-1 font-bold text-emerald-700">
+                {participant.raffles.paidTickets === null
+                  ? money.format(participant.raffles.paidCents / 100)
+                  : `${participant.raffles.paidTickets} já pagas`}
+              </p>
+            </div>
+            <div className="col-span-2 rounded-xl bg-white/80 p-3 sm:col-span-1">
+              <p className="text-xs text-zinc-600">Pendentes</p>
+              <p className="mt-1 font-bold text-zinc-950">
+                {participant.raffles.pendingTickets === null
+                  ? "Saldo pendente"
+                  : `${participant.raffles.pendingTickets} pendentes`}
+              </p>
+              <p className="text-xs text-zinc-700">{money.format(participant.raffles.pendingCents / 100)}</p>
+            </div>
+          </div>
+          {participant.raffles.extraTickets ? (
+            <p className="mt-4 text-sm font-semibold text-emerald-800">
+              Incrível! Você já vendeu {participant.raffles.extraTickets} {participant.raffles.extraTickets === 1 ? "rifa" : "rifas"} além da meta.
+            </p>
+          ) : null}
+          {participant.raffles.pendingCents === 0 && (
+            <p className="mt-4 text-sm font-semibold text-emerald-800">Rifas quitadas. Obrigado por fazer parte! Você pode continuar vendendo.</p>
+          )}
+          {participant.raffles.totalTickets !== null ? (
+            <Link
+              to="/participante/pagamento"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800"
+            >
+              Informar rifas vendidas e pagar <ChevronRight aria-hidden="true" className="size-4" />
+            </Link>
+          ) : (
+            <p className="mt-4 text-sm text-zinc-700">Consulte seu regente para conferir o saldo das rifas.</p>
+          )}
+        </section>
+      )}
 
       <a
         href={WHATSAPP_GROUP_URL}

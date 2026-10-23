@@ -13,9 +13,9 @@ const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const PHOTO_URL_EXPIRY_SECONDS = 300;
 const INTERNAL_BATCH_SIZE = 1_000;
 const registrationColumns =
-  "id,name,cpf,phone,photo_path,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,name,cpf,phone,photo_path,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const summaryRegistrationColumns =
-  "id,payment_status,amount_cents,pricing_type,standard_price_cents,registration_price_cents" as const;
+  "id,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const paymentColumns =
   "id,registration_id,amount_cents,status,checkout_url,created_at,paid_at,initiated_by_name,initiated_as" as const;
 const summaryPaymentColumns = "registration_id,amount_cents" as const;
@@ -35,6 +35,7 @@ export type PortalRegistrationRow = {
   phone: string;
   photoPath: string | null;
   paymentStatus: "legacy" | "pending" | "paid";
+  isExempt?: boolean;
   initialAmountCents: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -46,6 +47,7 @@ export type PortalSummaryRegistrationRow = Pick<
   PortalRegistrationRow,
   | "id"
   | "paymentStatus"
+  | "isExempt"
   | "pricingType"
   | "standardPriceCents"
   | "registrationPriceCents"
@@ -88,6 +90,7 @@ type RegistrationDatabaseRow = {
   phone: string;
   photo_path: string | null;
   payment_status: string;
+  payment_origin?: string | null;
   amount_cents: number | null;
   pricing_type: string | null;
   standard_price_cents: number | null;
@@ -136,6 +139,7 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     phone: row.phone,
     photoPath: row.photo_path,
     paymentStatus: row.payment_status,
+    isExempt: row.payment_origin === "exemption",
     initialAmountCents: row.amount_cents,
     pricingType: row.pricing_type,
     standardPriceCents: row.standard_price_cents,
@@ -265,6 +269,7 @@ export function createSupabaseRegentPortalRepository(): RegentPortalRepository {
         return {
           id: mapped.id,
           paymentStatus: mapped.paymentStatus,
+          isExempt: mapped.isExempt,
           pricingType: mapped.pricingType,
           initialAmountCents: mapped.initialAmountCents,
           standardPriceCents: mapped.standardPriceCents,
@@ -324,6 +329,12 @@ function confirmedPrincipal(rows: PortalComplementLedgerRow[]): number {
   return rows.reduce((sum, row) => sum + (row.status === "paid" ? row.amountCents : 0), 0);
 }
 
+function assignedComplementCents(row: Pick<PortalRegistrationRow, "pricingType" | "remainingPriceCents" | "standardPriceCents" | "registrationPriceCents">): number {
+  if (row.pricingType !== "promotional") return 0;
+  return Math.max(0, row.remainingPriceCents ??
+    (row.standardPriceCents ?? 0) - (row.registrationPriceCents ?? 0));
+}
+
 export function createRegentPortalService(repository: RegentPortalRepository) {
   return {
     async list(
@@ -355,6 +366,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
             row.photoPath && PRIVATE_PHOTO_PATH_PATTERN.exec(row.photoPath)?.[1] === row.id
               ? await signPhoto(row.id, row.photoPath)
               : null;
+          const confirmed = Math.min(confirmedPrincipal(participantPayments), assignedComplementCents(row));
           return {
             id: row.id,
             name: row.name,
@@ -369,11 +381,13 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
             registrationPriceCents: row.registrationPriceCents,
             financialState: deriveRegistrationFinancialState({
               paymentStatus: row.paymentStatus,
+              isExempt: row.isExempt,
               initialAmountCents: row.initialAmountCents,
               pricingType: row.pricingType,
               standardPriceCents: row.standardPriceCents,
               registrationPriceCents: row.registrationPriceCents,
-              confirmedComplementCents: confirmedPrincipal(participantPayments),
+              remainingPriceCents: row.remainingPriceCents,
+              confirmedComplementCents: confirmed,
             }),
             complement: calculateComplementState({
               paymentStatus: row.paymentStatus,
@@ -381,7 +395,7 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
               standardPriceCents: row.standardPriceCents,
               registrationPriceCents: row.registrationPriceCents,
               remainingPriceCents: row.remainingPriceCents,
-              confirmedComplementCents: confirmedPrincipal(participantPayments),
+              confirmedComplementCents: confirmed,
               openPayment,
             }),
             payments: participantPayments,
@@ -409,14 +423,17 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
       let outstandingComplementCents = 0;
       for (const registration of registrations) {
         const confirmed = paidByRegistration.get(registration.id) ?? 0;
+        const assigned = assignedComplementCents(registration);
+        const confirmedPrincipalCents = Math.min(confirmed, assigned);
         const financialState = deriveRegistrationFinancialState({
           paymentStatus: registration.paymentStatus,
+          isExempt: registration.isExempt,
           initialAmountCents: registration.initialAmountCents,
           pricingType: registration.pricingType,
           standardPriceCents: registration.standardPriceCents,
           registrationPriceCents: registration.registrationPriceCents,
           remainingPriceCents: registration.remainingPriceCents,
-          confirmedComplementCents: confirmed,
+          confirmedComplementCents: confirmedPrincipalCents,
         });
         if (
           financialState.status === "legacy" ||
@@ -427,9 +444,8 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
         ) {
           continue;
         }
-        eligibleComplementCents +=
-          registration.standardPriceCents - registration.registrationPriceCents;
-        confirmedComplementCents += confirmed;
+        eligibleComplementCents += assigned;
+        confirmedComplementCents += confirmedPrincipalCents;
         outstandingComplementCents += financialState.pendingCents;
       }
 

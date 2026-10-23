@@ -65,7 +65,10 @@ export interface PortalSummary {
   outstandingComplementCents: number;
 }
 
-export const complementCheckoutSchema = z.object({ registrationId: z.string().uuid() }).strict();
+export const complementCheckoutSchema = z.object({
+  registrationId: z.string().uuid(),
+  raffleTickets: z.number().int().positive().optional(),
+}).strict();
 
 export type ComplementCheckoutInput = z.infer<typeof complementCheckoutSchema>;
 

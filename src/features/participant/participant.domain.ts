@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { RegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
+import type { RaffleBalance } from "@/features/registration/raffle-balance.domain";
 
 import {
   birthDateSchema,
@@ -52,6 +53,7 @@ export type ParticipantRegistrationView = {
     orderNsu?: string | null;
     receiptUrl?: string | null;
   };
+  raffles?: RaffleBalance | null;
 };
 
 export type ParticipantRegistrationViewInput = Omit<ParticipantRegistrationView, "identity"> & {

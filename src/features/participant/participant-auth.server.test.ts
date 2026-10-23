@@ -51,18 +51,21 @@ const completeRegistration = {
   infinitepay_transaction_nsu: "private-transaction",
   installments: 2,
   institution: "Paróquia São José",
+  is_free_registration: false,
   name: "Maria da Silva",
   observations: "Observação interna",
   order_nsu: "33333333-3333-4333-8333-333333333333",
   paid_amount_cents: 35000,
   paid_at: "2026-09-11T12:00:00Z",
   payment_method: "credit_card",
+  payment_origin: "infinitepay",
   payment_status: "paid",
   phone: "85999999999",
   photo_path: "private/user-1/photo.jpg",
   pricing_type: "promotional",
   receipt_url: "https://receipt.example/paid",
   registration_price_cents: 30000,
+  remaining_price_cents: 10000,
   role: "Regente",
   standard_price_cents: 40000,
   voice_part: "soprano",
@@ -217,6 +220,10 @@ describe("participant registration loader", () => {
         pendingCents,
         confirmedPrincipalCents: 30000 + complement,
       });
+      expect(view.raffles).toMatchObject({
+        totalTickets: 10,
+        pendingTickets: status === "paid" ? 0 : 8,
+      });
       expect(data.loadConfirmedComplementCents).toHaveBeenCalledExactlyOnceWith(
         activePaidAccount.registrationId,
       );
@@ -225,6 +232,32 @@ describe("participant registration loader", () => {
       );
     },
   );
+  it("shows the approved free participant's twenty raffles and confirmed sales", async () => {
+    const data = repository(activePaidAccount, {
+      ...completeRegistration,
+      amount_cents: 0,
+      is_free_registration: true,
+      payment_origin: "exemption",
+      pricing_type: "standard",
+      standard_price_cents: 0,
+      registration_price_cents: 0,
+      remaining_price_cents: 0,
+    });
+    vi.mocked(data.loadConfirmedComplementCents).mockResolvedValue(5_000);
+    const view = await createParticipantRegistrationLoader(data).load({
+      ...activePaidAccount,
+      status: "authorized",
+    });
+    expect(view.raffles).toMatchObject({ totalTickets: 20, paidTickets: 5, pendingTickets: 15, pendingCents: 15_000 });
+    expect(view.payment.financialState).toMatchObject({ status: "exempt", pendingCents: 0 });
+  });
+  it("shows extra promotional raffle sales without inflating registration principal", async () => {
+    const data = repository(activePaidAccount, { ...completeRegistration, amount_cents: 30_000 });
+    vi.mocked(data.loadConfirmedComplementCents).mockResolvedValue(15_000);
+    const view = await createParticipantRegistrationLoader(data).load({ ...activePaidAccount, status: "authorized" });
+    expect(view.raffles).toMatchObject({ totalTickets: 10, paidTickets: 15, pendingTickets: 0, extraTickets: 5 });
+    expect(view.payment.financialState).toEqual({ status: "paid", pendingCents: 0, confirmedPrincipalCents: 40_000 });
+  });
   it("keeps the portal usable without inventing a balance when the ledger fails", async () => {
     const data = repository(activePaidAccount, completeRegistration);
     vi.mocked(data.loadConfirmedComplementCents).mockRejectedValue(
@@ -279,6 +312,14 @@ describe("participant registration loader", () => {
         paidAt: "2026-09-11T12:00:00Z",
         orderNsu: "33333333-3333-4333-8333-333333333333",
         receiptUrl: "https://receipt.example/paid",
+      },
+      raffles: {
+        totalCents: 10000,
+        paidCents: 2000,
+        pendingCents: 8000,
+        totalTickets: 10,
+        paidTickets: 2,
+        pendingTickets: 8,
       },
     });
     expect(data.loadPaidRegistration).toHaveBeenCalledExactlyOnceWith(

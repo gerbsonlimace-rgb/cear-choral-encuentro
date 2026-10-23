@@ -9,6 +9,7 @@ import type { PaymentLookup } from "@/features/registration/registration.domain"
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { ComplementCheckoutInput, ComplementPaymentStatus } from "./regent-payments.domain";
 import { calculateComplementState } from "./regent-payments.domain";
+import { FREE_GROUP_RAFFLE_TICKETS, RAFFLE_TICKET_PRICE_CENTS } from "@/features/registration/raffle-balance.domain";
 import type { PortalAccess } from "./regent.domain";
 
 // Participant access is derived from the authenticated account, never request IDs.
@@ -38,6 +39,8 @@ export type RegentPaymentRegistration = {
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
   remainingPriceCents?: number | null;
+  isFreeRegistration?: boolean;
+  paymentOrigin?: "exemption" | "manual" | "infinitepay" | null;
 };
 
 export type RegentAccountingPayment = {
@@ -263,26 +266,65 @@ export function createRegentPaymentService({
       if (openPayment && access.role !== "participant") {
         throw new Error(OPEN_PAYMENT_MESSAGE);
       }
-      const state = calculateComplementState({
-        paymentStatus: registration.paymentStatus,
-        pricingType: registration.pricingType,
-        standardPriceCents: registration.standardPriceCents,
-        registrationPriceCents: registration.registrationPriceCents,
-        remainingPriceCents: registration.remainingPriceCents,
-        confirmedComplementCents: safePaidTotal(payments),
-        openPayment: null,
-      });
-      if (!state.eligible) throw new Error(eligibilityMessage(state.reason));
-      const amountCents = state.balanceCents;
+      const paidCents = safePaidTotal(payments);
+      const freeRaffles = registration.isFreeRegistration === true &&
+        registration.paymentOrigin === "exemption" &&
+        registration.paymentStatus === "paid" &&
+        registration.pricingType === "standard" &&
+        registration.standardPriceCents === 0 &&
+        registration.registrationPriceCents === 0 &&
+        registration.remainingPriceCents === 0;
+      let balanceCents: number;
+      if (freeRaffles) {
+        if (access.role !== "participant") throw new Error("Esta inscrição não permite pagamento complementar.");
+        balanceCents = Math.max(0, FREE_GROUP_RAFFLE_TICKETS * RAFFLE_TICKET_PRICE_CENTS - paidCents);
+        if (!Number.isSafeInteger(balanceCents)) {
+          throw new Error("Não foi possível calcular o saldo das rifas.");
+        }
+      } else {
+        const baseInput = {
+          paymentStatus: registration.paymentStatus,
+          pricingType: registration.pricingType,
+          standardPriceCents: registration.standardPriceCents,
+          registrationPriceCents: registration.registrationPriceCents,
+          remainingPriceCents: registration.remainingPriceCents,
+          openPayment: null,
+        };
+        const original = calculateComplementState({ ...baseInput, confirmedComplementCents: 0 });
+        if (!original.eligible) throw new Error(eligibilityMessage(original.reason));
+        balanceCents = Math.max(0, original.totalCents - paidCents);
+        if (!Number.isSafeInteger(balanceCents)) {
+          throw new Error("Não foi possível calcular o saldo complementar.");
+        }
+      }
+      if (input.raffleTickets !== undefined && access.role !== "participant") {
+        throw new Error("Acesso não autorizado.");
+      }
+      if (input.raffleTickets === undefined && balanceCents === 0) {
+        throw new Error("O complemento desta inscrição já está quitado.");
+      }
+      const selectedCents = input.raffleTickets === undefined
+        ? balanceCents
+        : input.raffleTickets * RAFFLE_TICKET_PRICE_CENTS;
+      if (!Number.isSafeInteger(selectedCents) || selectedCents <= 0 || selectedCents > 2_147_483_647) {
+        throw new Error("Número de rifas inválido.");
+      }
+      const amountCents = selectedCents;
 
       if (openPayment) {
-        if (
-          openPayment.status === "pending" &&
-          openPayment.amountCents === amountCents &&
-          openPayment.checkoutUrl &&
-          isSafeInfinitePayCheckoutUrl(openPayment.checkoutUrl)
-        ) {
-          return { checkoutUrl: openPayment.checkoutUrl, orderNsu: openPayment.orderNsu };
+        if (openPayment.status === "pending" && openPayment.checkoutUrl &&
+          isSafeInfinitePayCheckoutUrl(openPayment.checkoutUrl)) {
+          if (openPayment.amountCents === amountCents) {
+            return { checkoutUrl: openPayment.checkoutUrl, orderNsu: openPayment.orderNsu };
+          }
+          if (access.role === "participant" && input.raffleTickets !== undefined &&
+            openPayment.amountCents % RAFFLE_TICKET_PRICE_CENTS === 0) {
+            return {
+              checkoutUrl: openPayment.checkoutUrl,
+              orderNsu: openPayment.orderNsu,
+              existingRaffleTickets: openPayment.amountCents / RAFFLE_TICKET_PRICE_CENTS,
+            };
+          }
         }
         throw new Error(OPEN_PAYMENT_MESSAGE);
       }
@@ -314,13 +356,9 @@ export function createRegentPaymentService({
       try {
         checkout = await infinitePay.createCheckout({
           orderNsu,
-          items: [
-            {
-              quantity: 1,
-              price: amountCents,
-              description: "Saldo da inscrição — II Encontro de Coros",
-            },
-          ],
+          items: input.raffleTickets === undefined
+            ? [{ quantity: 1, price: amountCents, description: "Saldo da inscrição — II Encontro de Coros" }]
+            : [{ quantity: input.raffleTickets, price: RAFFLE_TICKET_PRICE_CENTS, description: "Pagamento de rifas — II Encontro de Coros" }],
           redirectPath:
             access.role === "participant"
               ? "/participante/pagamento"
@@ -398,7 +436,7 @@ function toComplementPaymentPublicStatus(
 }
 
 const registrationColumns =
-  "id,choir_id,payment_status,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
+  "id,choir_id,payment_status,payment_origin,is_free_registration,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const paymentColumns =
   "id,registration_id,choir_id,amount_cents,status,order_nsu,checkout_url,infinitepay_invoice_slug,infinitepay_transaction_nsu,payment_method,installments,paid_amount_cents,receipt_url,paid_at,initiated_by,initiated_by_name,initiated_as" as const;
 
@@ -543,6 +581,8 @@ export function createSupabaseRegentPaymentRepository(): RegentPaymentRepository
         standardPriceCents: data.standard_price_cents,
         registrationPriceCents: data.registration_price_cents,
         remainingPriceCents: data.remaining_price_cents,
+        isFreeRegistration: data.is_free_registration,
+        paymentOrigin: data.payment_origin as RegentPaymentRegistration["paymentOrigin"],
       };
     },
 

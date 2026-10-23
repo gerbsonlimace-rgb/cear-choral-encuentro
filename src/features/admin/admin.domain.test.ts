@@ -607,6 +607,32 @@ describe("admin derived financial state", () => {
     });
   });
 
+  it("keeps extra raffle sales separate from registration revenue", () => {
+    const row = enrichAdminRegistrationRow({
+      row: {
+        ...paidRow,
+        amount_cents: 10_000,
+        paid_amount_cents: 10_000,
+        payment_origin: "infinitepay",
+        remaining_price_cents: 20_000,
+      },
+      accountStatus: "active",
+      regentName: "Regente",
+    }, [{
+      id: "extra-sale",
+      registrationId: paidRow.id,
+      amountCents: 25_000,
+      status: "paid",
+      checkoutUrl: null,
+      createdAt: "2026-09-20T12:00:00Z",
+      paidAt: "2026-09-20T12:01:00Z",
+      initiatedByName: "Participante",
+      initiatedAs: "participant",
+    }]);
+    expect(row.financialState).toEqual({ status: "paid", pendingCents: 0, confirmedPrincipalCents: 30_000 });
+    expect(summarizeAdminRegistrations([row])).toMatchObject({ receivedCents: 30_000, rafflePendingCents: 0 });
+  });
+
   it("shows the configured initial payment plus remaining balance for an unpaid registration", () => {
     const row = enrichAdminRegistrationRow(
       {

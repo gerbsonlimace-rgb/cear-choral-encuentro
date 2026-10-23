@@ -4,7 +4,7 @@ import { requireParticipantAccess } from "@/features/participant/participant-aut
 import { paymentLookupSchema } from "@/features/registration/registration.domain";
 
 export type ParticipantBalanceCheckoutResult =
-  | { ok: true; checkoutUrl: string; orderNsu: string }
+  | { ok: true; checkoutUrl: string; orderNsu: string; existingRaffleTickets?: number }
   | {
       ok: false;
       code: "open_payment" | "already_paid" | "unavailable";
@@ -13,8 +13,8 @@ export type ParticipantBalanceCheckoutResult =
 
 export const startParticipantBalanceCheckout = createServerFn({ method: "POST" })
   .middleware([requireParticipantAccess])
-  .validator(z.object({}).strict())
-  .handler(async ({ context }): Promise<ParticipantBalanceCheckoutResult> => {
+  .validator(z.object({ raffleTickets: z.number().int().positive().max(2_147_483) }).strict())
+  .handler(async ({ context, data }): Promise<ParticipantBalanceCheckoutResult> => {
     const { getParticipantRegistrationLoader } =
       await import("@/features/participant/participant-auth.server");
     const { getRegentPaymentService } = await import("@/features/regent/regent-payment.server");
@@ -22,7 +22,7 @@ export const startParticipantBalanceCheckout = createServerFn({ method: "POST" }
     const participant = await getParticipantRegistrationLoader().load(access);
     try {
       const checkout = await getRegentPaymentService().startCheckout(
-        { registrationId: access.registrationId },
+        { registrationId: access.registrationId, raffleTickets: data.raffleTickets },
         {
           role: "participant",
           userId: access.userId,

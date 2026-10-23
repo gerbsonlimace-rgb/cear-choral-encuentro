@@ -252,7 +252,7 @@ export const registrationSchema = z
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type RegistrationPhotoInput = z.infer<typeof registrationPhotoSchema>;
-export type CheckoutItem = { quantity: 1; price: number; description: string };
+export type CheckoutItem = { quantity: number; price: number; description: string };
 
 export function buildCheckoutItems(
   _input: RegistrationInput,

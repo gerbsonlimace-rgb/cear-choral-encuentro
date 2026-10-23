@@ -8,12 +8,13 @@ import {
 } from "@/features/participant/participant.domain";
 import { brazilianMobilePhoneSchema, voicePartSchema } from "@/features/registration/registration.domain";
 import { deriveRegistrationFinancialState } from "@/features/registration/registration-financial-state.domain";
+import { deriveRaffleBalance } from "@/features/registration/raffle-balance.domain";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const registrationPhotoBucket = "registration-photos";
 const participantRegistrationColumns =
-  "id,amount_cents,birth_date,choir_id,choir_name,city,cpf,diocese,email,installments,institution,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,role,standard_price_cents,voice_part" as const;
+  "id,amount_cents,birth_date,choir_id,choir_name,city,cpf,diocese,email,installments,institution,is_free_registration,name,order_nsu,paid_amount_cents,paid_at,payment_method,payment_origin,payment_status,phone,photo_path,pricing_type,receipt_url,registration_price_cents,remaining_price_cents,role,standard_price_cents,voice_part" as const;
 
 type RegistrationRow = Database["public"]["Tables"]["registrations"]["Row"];
 type ParticipantRegistrationSource = Pick<
@@ -29,17 +30,20 @@ type ParticipantRegistrationSource = Pick<
   | "email"
   | "installments"
   | "institution"
+  | "is_free_registration"
   | "name"
   | "order_nsu"
   | "paid_amount_cents"
   | "paid_at"
   | "payment_method"
+  | "payment_origin"
   | "payment_status"
   | "phone"
   | "photo_path"
   | "pricing_type"
   | "receipt_url"
   | "registration_price_cents"
+  | "remaining_price_cents"
   | "role"
   | "standard_price_cents"
   | "voice_part"
@@ -141,6 +145,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
         complementResult.status === "fulfilled"
           ? deriveRegistrationFinancialState({
               paymentStatus: "paid",
+              isExempt: row.payment_origin === "exemption",
               initialAmountCents: row.amount_cents,
               pricingType:
                 row.pricing_type === "standard" || row.pricing_type === "promotional"
@@ -148,9 +153,26 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
                   : null,
               standardPriceCents: row.standard_price_cents,
               registrationPriceCents: row.registration_price_cents,
-              confirmedComplementCents: complementResult.value,
+              remainingPriceCents: row.remaining_price_cents,
+              confirmedComplementCents: Math.min(
+                complementResult.value,
+                Math.max(0, row.remaining_price_cents ??
+                  (row.standard_price_cents ?? 0) - (row.registration_price_cents ?? 0)),
+              ),
             })
           : null;
+      const raffles = complementResult.status === "fulfilled"
+        ? deriveRaffleBalance({
+            isFreeRegistration: row.is_free_registration,
+            paymentStatus: row.payment_status,
+            pricingType: row.pricing_type,
+            remainingPriceCents: row.remaining_price_cents ??
+              (row.standard_price_cents !== null && row.registration_price_cents !== null
+                ? row.standard_price_cents - row.registration_price_cents
+                : null),
+            confirmedRaffleCents: complementResult.value,
+          })
+        : null;
 
       let photoUrl: string | null | undefined;
       if (row.photo_path) {
@@ -205,6 +227,7 @@ export function createParticipantRegistrationLoader(repository: ParticipantAcces
             ...(row.order_nsu === null ? {} : { orderNsu: row.order_nsu }),
             ...(row.receipt_url === null ? {} : { receiptUrl: row.receipt_url }),
           },
+          raffles,
         });
       } catch {
         throw new Error("Não foi possível carregar os dados da inscrição.");

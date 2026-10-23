@@ -31,15 +31,27 @@ const participant: ParticipantRegistrationView = {
       confirmedPrincipalCents: 32000,
     },
   },
+  raffles: { totalCents: 10_000, paidCents: 2_000, pendingCents: 8_000, totalTickets: 10, paidTickets: 2, pendingTickets: 8 },
 };
 
 describe("ChoristerHomeTab welcome", () => {
-  it("does not show the outstanding balance or payment action on Home", () => {
+  it("shows sold raffle progress, outstanding balance, and the payment action on Home", () => {
     render(<ChoristerHomeTab participant={participant} />);
-    expect(screen.queryByRole("region", { name: "Situação da inscrição" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Valor pendente")).not.toBeInTheDocument();
-    expect(screen.queryByText("R$ 80,00")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Pagar" })).not.toBeInTheDocument();
+    const raffle = screen.getByRole("region", { name: "Suas rifas" });
+    expect(within(raffle).getByText("Meta inicial")).toBeInTheDocument();
+    expect(within(raffle).getByText("10 rifas no total")).toBeInTheDocument();
+    expect(within(raffle).getByText("2 já pagas")).toBeInTheDocument();
+    expect(within(raffle).getByText("8 pendentes")).toBeInTheDocument();
+    expect(within(raffle).getByText(/80,00/)).toBeInTheDocument();
+    expect(within(raffle).getByRole("link", { name: /Informar rifas vendidas e pagar/ })).toHaveAttribute("href", "/participante/pagamento");
+  });
+
+  it("celebrates raffle sales beyond the initial target", () => {
+    render(<ChoristerHomeTab participant={{ ...participant, raffles: {
+      totalCents: 10_000, paidCents: 12_000, pendingCents: 0,
+      totalTickets: 10, paidTickets: 12, pendingTickets: 0, extraTickets: 2,
+    } }} />);
+    expect(screen.getByText(/2 rifas além da meta/)).toBeInTheDocument();
   });
 
   it("renders compact shortcut cards on Home", () => {
@@ -85,13 +97,14 @@ describe("ChoristerHomeTab welcome", () => {
             status: "paid",
             financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 40000 },
           },
+          raffles: { totalCents: 10_000, paidCents: 10_000, pendingCents: 0, totalTickets: 10, paidTickets: 10, pendingTickets: 0 },
         }}
       />,
     );
     expect(
       within(screen.getByRole("region", { name: "Boas-vindas e inscrição" })).queryByRole("status"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Rifas quitadas")).not.toBeInTheDocument();
+    expect(screen.getByText(/Rifas quitadas/)).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
   it("does not label standard registrations as raffles", () => {
@@ -104,6 +117,7 @@ describe("ChoristerHomeTab welcome", () => {
             status: "paid",
             financialState: { status: "paid", pendingCents: 0, confirmedPrincipalCents: 40000 },
           },
+          raffles: null,
         }}
       />,
     );
@@ -117,6 +131,7 @@ describe("ChoristerHomeTab welcome", () => {
           ...participant,
           registration: { choirName: "Coral", diocese: "Quixadá" },
           payment: { status: "paid" },
+          raffles: null,
         }}
       />,
     );

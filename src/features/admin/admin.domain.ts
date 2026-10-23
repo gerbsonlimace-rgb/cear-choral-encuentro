@@ -232,6 +232,7 @@ export type AdminRegistrationRow = {
   paidAt: string | null;
   paymentOrigin?: "infinitepay" | "manual" | "exemption" | null;
   isFreeRegistration?: boolean;
+  rafflePaidCents?: number;
   hasManualReceipt?: boolean;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -385,7 +386,11 @@ export function enrichAdminRegistrationRow(
     standardPriceCents: candidate.row.standard_price_cents,
     registrationPriceCents: candidate.row.registration_price_cents,
     remainingPriceCents: candidate.row.remaining_price_cents,
-    confirmedComplementCents,
+    confirmedComplementCents: Math.min(
+      confirmedComplementCents,
+      Math.max(0, candidate.row.remaining_price_cents ??
+        (candidate.row.standard_price_cents ?? 0) - (candidate.row.registration_price_cents ?? 0)),
+    ),
   });
   const openComplementPayment =
     payments
@@ -405,7 +410,13 @@ export function enrichAdminRegistrationRow(
   if (mapped.participantAccess && financialState.status === "partially_paid") {
     mapped.participantAccess = resolveParticipantAccess("paid", candidate.accountStatus);
   }
-  return { ...mapped, financialState, openComplementPayment, supersededCheckoutReview };
+  return {
+    ...mapped,
+    financialState,
+    ...(mapped.isFreeRegistration ? { rafflePaidCents: confirmedComplementCents } : {}),
+    openComplementPayment,
+    supersededCheckoutReview,
+  };
 }
 
 export function getAdminFinancialState(row: AdminRegistrationRow): RegistrationFinancialState {
