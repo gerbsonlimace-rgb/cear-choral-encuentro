@@ -58,6 +58,16 @@ function setup(
 }
 
 describe("RegentPortalPage", () => {
+  it("lets the signed-in regent open password change from their profile", async () => {
+    const { user } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Meu perfil" }));
+    await user.click(screen.getByRole("button", { name: "Alterar senha" }));
+
+    expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
+  });
+
   it("uses the shared black-and-gold shell across desktop and mobile navigation", async () => {
     const { user } = setup({
       initialData: {

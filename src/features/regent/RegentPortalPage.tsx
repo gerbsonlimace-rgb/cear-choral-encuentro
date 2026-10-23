@@ -1,4 +1,4 @@
-import { Banknote, CircleCheckBig, Home, UserRound, UsersRound, WalletCards } from "lucide-react";
+import { Banknote, CircleCheckBig, Home, KeyRound, UserRound, UsersRound, WalletCards } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AccountPasswordDialog } from "@/features/access/AccountPasswordDialog";
 import type { AdminChoir } from "@/features/choirs/choir-pricing.domain";
 import { getAdminChoirPricing } from "@/lib/choir-pricing.functions";
 import {
@@ -84,6 +85,7 @@ export function RegentPortalPage({
   const [paymentTarget, setPaymentTarget] = useState<BalancePaymentTarget | null>(null);
   const [portalRefresh, setPortalRefresh] = useState(0);
   const [mobileTab, setMobileTab] = useState<RegentMobileTab>("summary");
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const skipInitialSummary = useRef(Boolean(initialData));
   const skipInitialList = useRef(Boolean(initialData));
 
@@ -228,6 +230,15 @@ export function RegentPortalPage({
               <p className="text-muted-foreground">Coro ativo: {activeChoirName}</p>
             )}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 min-h-11"
+            onClick={() => setPasswordDialogOpen(true)}
+          >
+            <KeyRound aria-hidden="true" className="size-4" />
+            Alterar senha
+          </Button>
         </section>
 
         {access.role === "admin" && (
@@ -402,6 +413,7 @@ export function RegentPortalPage({
             if (!open) setPaymentTarget(null);
           }}
         />
+        <AccountPasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
       </div>
     </InternalAppShell>
   );

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
 import { PortalModeSwitch } from "@/features/access/PortalModeSwitch";
+import { AccountMenu } from "@/features/access/AccountMenu";
 
 export type AdminNavigationKey =
   | "summary"
@@ -37,6 +38,7 @@ export type AdminNavigationPath =
   | "/admin/atividades"
   | "/admin/configuracoes"
   | "/participante"
+  | "/participante/previa"
   | "/regente";
 
 const links = [
@@ -72,7 +74,12 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
             }
           : undefined
       }
-      topbarActions={<PortalModeSwitch mode="admin" onNavigate={navigateTo} />}
+      topbarActions={
+        <>
+          <PortalModeSwitch mode="admin" onNavigate={navigateTo} />
+          <AccountMenu />
+        </>
+      }
     />
   );
 }

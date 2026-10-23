@@ -34,6 +34,7 @@ import { Route as ParticipanteLoginRouteImport } from './routes/participante.log
 import { Route as ParticipanteMinhaFotoRouteImport } from './routes/participante.minha-foto'
 import { Route as ParticipantePagamentoRouteImport } from './routes/participante.pagamento'
 import { Route as ParticipantePresencaRouteImport } from './routes/participante.presenca'
+import { Route as ParticipantePreviaRouteImport } from './routes/participante.previa'
 import { Route as RegenteIndexRouteImport } from './routes/regente.index'
 import { Route as RegenteAlterarSenhaRouteImport } from './routes/regente.alterar-senha'
 import { Route as RegenteLoginRouteImport } from './routes/regente.login'
@@ -164,6 +165,11 @@ const ParticipantePresencaRoute = ParticipantePresencaRouteImport.update({
   path: '/presenca',
   getParentRoute: () => ParticipanteRoute,
 } as any)
+const ParticipantePreviaRoute = ParticipantePreviaRouteImport.update({
+  id: '/previa',
+  path: '/previa',
+  getParentRoute: () => ParticipanteRoute,
+} as any)
 const RegenteIndexRoute = RegenteIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
+  '/participante/previa': typeof ParticipantePreviaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
+  '/participante/previa': typeof ParticipantePreviaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/participante/minha-foto': typeof ParticipanteMinhaFotoRoute
   '/participante/pagamento': typeof ParticipantePagamentoRoute
   '/participante/presenca': typeof ParticipantePresencaRoute
+  '/participante/previa': typeof ParticipantePreviaRoute
   '/regente/alterar-senha': typeof RegenteAlterarSenhaRoute
   '/regente/login': typeof RegenteLoginRoute
   '/regente/pagamento': typeof RegentePagamentoRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/participante/minha-foto'
     | '/participante/pagamento'
     | '/participante/presenca'
+    | '/participante/previa'
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/participante/minha-foto'
     | '/participante/pagamento'
     | '/participante/presenca'
+    | '/participante/previa'
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
@@ -363,6 +374,7 @@ export interface FileRouteTypes {
     | '/participante/minha-foto'
     | '/participante/pagamento'
     | '/participante/presenca'
+    | '/participante/previa'
     | '/regente/alterar-senha'
     | '/regente/login'
     | '/regente/pagamento'
@@ -571,6 +583,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParticipantePresencaRouteImport
       parentRoute: typeof ParticipanteRoute
     }
+    '/participante/previa': {
+      id: '/participante/previa'
+      path: '/previa'
+      fullPath: '/participante/previa'
+      preLoaderRoute: typeof ParticipantePreviaRouteImport
+      parentRoute: typeof ParticipanteRoute
+    }
     '/regente/': {
       id: '/regente/'
       path: '/'
@@ -607,6 +626,7 @@ interface ParticipanteRouteChildren {
   ParticipanteMinhaFotoRoute: typeof ParticipanteMinhaFotoRoute
   ParticipantePagamentoRoute: typeof ParticipantePagamentoRoute
   ParticipantePresencaRoute: typeof ParticipantePresencaRoute
+  ParticipantePreviaRoute: typeof ParticipantePreviaRoute
   ParticipanteIndexRoute: typeof ParticipanteIndexRoute
 }
 
@@ -615,6 +635,7 @@ const ParticipanteRouteChildren: ParticipanteRouteChildren = {
   ParticipanteMinhaFotoRoute: ParticipanteMinhaFotoRoute,
   ParticipantePagamentoRoute: ParticipantePagamentoRoute,
   ParticipantePresencaRoute: ParticipantePresencaRoute,
+  ParticipantePreviaRoute: ParticipantePreviaRoute,
   ParticipanteIndexRoute: ParticipanteIndexRoute,
 }
 

@@ -56,9 +56,24 @@ describe("PortalModeSwitch", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("opens a clearly labeled participant preview for an admin without a registration", async () => {
+    const navigate = vi.fn();
+    render(
+      <PortalModeSwitch
+        mode="admin"
+        onNavigate={navigate}
+        loadModes={async () => ({ admin: true, participant: false, regent: false })}
+      />,
+    );
+
+    const link = await screen.findByRole("link", { name: "Prévia do participante" });
+    expect(link).toHaveAttribute("href", "/participante/previa");
+    await userEvent.setup().click(link);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/participante/previa");
+  });
+
   it.each([
     { admin: false, participant: true, regent: false },
-    { admin: true, participant: false, regent: false },
     { admin: false, participant: false, regent: false },
   ])("does not offer switching without another destination: %j", async (modes) => {
     await act(async () => {

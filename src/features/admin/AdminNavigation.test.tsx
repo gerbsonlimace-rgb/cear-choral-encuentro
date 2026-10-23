@@ -8,6 +8,19 @@ import { getPortalModes } from "@/lib/portal-access.functions";
 vi.mock("@/lib/portal-access.functions", () => ({ getPortalModes: vi.fn() }));
 
 describe("AdminNavigation", () => {
+  it("offers the signed-in administrator a profile menu with password change", async () => {
+    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: false, regent: false });
+    const user = userEvent.setup();
+    render(<AdminNavigation current="summary" />);
+
+    await user.click(within(screen.getByTestId("internal-topbar")).getByRole("button", { name: "Meu perfil" }));
+    await user.click(screen.getByRole("menuitem", { name: "Alterar senha" }));
+
+    expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar nova senha")).toBeInTheDocument();
+  });
+
   it("offers participant mode in the shared topbar when both accesses are available", async () => {
     vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true, regent: false });
     const navigateTo = vi.fn();
