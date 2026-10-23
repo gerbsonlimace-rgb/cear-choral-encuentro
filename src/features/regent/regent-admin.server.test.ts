@@ -119,6 +119,7 @@ describe("regent administrative lifecycle", () => {
   it("links an existing Auth account without changing its password or requiring a password change", async () => {
     const { service, auth, repository } = setup();
     vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.list).mockResolvedValue([{ ...row, userId: "existing-user", name: "Irmã Macrina", email: "macrina@example.com", revokedAt: "2026-09-11" }]);
     vi.mocked(repository.grant).mockResolvedValue({ ...row, passwordChangeRequired: false });
 
     await expect(
@@ -145,6 +146,7 @@ describe("regent administrative lifecycle", () => {
   it("replaces a regent with an existing account without changing that account password", async () => {
     const { service, auth, repository } = setup();
     vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.list).mockResolvedValue([{ ...row, userId: "existing-user", name: "Irmã Macrina", email: "macrina@example.com", revokedAt: "2026-09-11" }]);
     vi.mocked(repository.replace).mockResolvedValue({ ...row, passwordChangeRequired: false });
 
     await expect(
@@ -184,6 +186,21 @@ describe("regent administrative lifecycle", () => {
 
     expect(repository.grant).not.toHaveBeenCalled();
     expect(repository.replace).not.toHaveBeenCalled();
+  });
+  it("rejects a registered user who was never a regent", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "participant-user" });
+    await expect(service.linkExisting({ choirId, name: "Participante", email: "participant@example.com" }, "admin-user")).resolves.toEqual({
+      status: "error", message: "Selecione um regente já cadastrado.",
+    });
+    expect(repository.grant).not.toHaveBeenCalled();
+  });
+  it("does not assign a regent who is active in another choir", async () => {
+    const { service, auth, repository } = setup();
+    vi.mocked(auth.findUserByEmail).mockResolvedValue({ id: "existing-user" });
+    vi.mocked(repository.list).mockResolvedValue([{ ...row, userId: "existing-user", email: "macrina@example.com", choirId: "33333333-3333-4333-8333-333333333333" }]);
+    await expect(service.linkExisting({ choirId, name: "Irmã Macrina", email: "macrina@example.com" }, "admin-user")).resolves.toMatchObject({ status: "conflict" });
+    expect(repository.grant).not.toHaveBeenCalled();
   });
   it("rejects an occupied choir before creating Auth data", async () => {
     const { service, auth, repository } = setup();
@@ -1094,28 +1111,15 @@ describe("candidate user search", () => {
     };
   }
 
-  it("searches registrations and regents, deduplicating by user account", async () => {
-    from.mockImplementation((table: string) =>
-      table === "registrations"
-        ? stubbedQuery({
-            data: [
-              {
-                name: "Irmã Macrina",
-                email: "macrina@example.com",
-                participant_accounts: [{ user_id: "user-1" }],
-              },
-              { name: "Sem conta", email: "ghost@example.com", participant_accounts: [{ user_id: null }] },
-            ],
-            error: null,
-          })
-        : stubbedQuery({
-            data: [
-              { name: "Irmã Macrina", email: "macrina@example.com", user_id: "user-1" },
-              { name: "Pe. Lucas", email: "lucas@example.com", user_id: "user-2" },
-            ],
-            error: null,
-          }),
-    );
+  it("searches only registered regents and deduplicates by account", async () => {
+    from.mockImplementation(() => stubbedQuery({
+      data: [
+        { name: "Irmã Macrina", email: "macrina@example.com", user_id: "user-1" },
+        { name: "Pe. Lucas", email: "lucas@example.com", user_id: "user-2" },
+        { name: "Irmã Macrina", email: "macrina@example.com", user_id: "user-1" },
+      ],
+      error: null,
+    }));
 
     const search = createSupabaseRegentCandidateSearch();
 
@@ -1123,31 +1127,22 @@ describe("candidate user search", () => {
       { userId: "user-1", email: "macrina@example.com", name: "Irmã Macrina" },
       { userId: "user-2", email: "lucas@example.com", name: "Pe. Lucas" },
     ]);
-    expect(from).toHaveBeenCalledWith("registrations");
-    expect(from).toHaveBeenCalledWith("choir_regents");
+    expect(from).toHaveBeenCalledExactlyOnceWith("choir_regents");
   });
 
   it("escapes LIKE special characters in the search pattern", async () => {
-    const registrations = stubbedQuery({ data: [], error: null });
     const regents = stubbedQuery({ data: [], error: null });
-    from.mockImplementation((table: string) =>
-      table === "registrations" ? registrations : regents,
-    );
+    from.mockImplementation(() => regents);
 
     const search = createSupabaseRegentCandidateSearch();
     await search.search("50%,_a\\b");
 
-    expect(registrations.or).toHaveBeenCalledExactlyOnceWith(
+    expect(regents.or).toHaveBeenCalledExactlyOnceWith(
       "name.ilike.%50\\% \\_a\\\\b%,email.ilike.%50\\% \\_a\\\\b%",
-    );
-    expect(registrations.not).toHaveBeenCalledExactlyOnceWith(
-      "participant_accounts.user_id",
-      "is",
-      null,
     );
   });
 
-  it("falls back to the Auth directory when the query is an e-mail with no records", async () => {
+  it("does not expose ordinary Auth users when no regent matches", async () => {
     from.mockImplementation(() => stubbedQuery({ data: [], error: null }));
     authAdmin.listUsers.mockResolvedValue({
       data: {
@@ -1162,10 +1157,8 @@ describe("candidate user search", () => {
 
     const search = createSupabaseRegentCandidateSearch();
 
-    await expect(search.search("macrina@example.com")).resolves.toEqual([
-      { userId: "user-7", email: "Macrina@example.com", name: "Irmã Macrina" },
-    ]);
-    expect(authAdmin.listUsers).toHaveBeenCalledExactlyOnceWith({ page: 1, perPage: 1000 });
+    await expect(search.search("macrina@example.com")).resolves.toEqual([]);
+    expect(authAdmin.listUsers).not.toHaveBeenCalled();
   });
 
   it("maps search failures to a friendly Portuguese error and skips short queries", async () => {

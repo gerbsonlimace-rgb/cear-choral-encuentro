@@ -90,7 +90,8 @@ describe("AdminChoirsPage", () => {
     });
     expect(within(dialog).getByText("Coro Diocesano de Quixadá")).toBeInTheDocument();
     expect(within(dialog).queryByLabelText("Coro")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Cadastrar regente" })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Buscar regente existente")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Vincular regente" })).toBeDisabled();
   });
   it("shows unconfigured global prices and an empty choir state", async () => {
     setup({ section: "settings" });

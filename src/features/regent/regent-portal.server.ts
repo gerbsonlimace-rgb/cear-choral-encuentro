@@ -8,14 +8,15 @@ import {
   type PortalSummary,
 } from "./regent-payments.domain";
 import { deriveRegistrationFinancialState } from "../registration/registration-financial-state.domain";
+import { getAdminRafflePending, getAdminRegistrationPendingCents } from "../admin/admin-raffle.domain";
 
 const REGISTRATION_PHOTO_BUCKET = "registration-photos";
 const PHOTO_URL_EXPIRY_SECONDS = 300;
 const INTERNAL_BATCH_SIZE = 1_000;
 const registrationColumns =
-  "id,name,cpf,phone,photo_path,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
+  "id,name,cpf,phone,voice_part,photo_path,payment_status,payment_origin,is_free_registration,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const summaryRegistrationColumns =
-  "id,payment_status,payment_origin,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
+  "id,payment_status,payment_origin,is_free_registration,amount_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents" as const;
 const paymentColumns =
   "id,registration_id,amount_cents,status,checkout_url,created_at,paid_at,initiated_by_name,initiated_as" as const;
 const summaryPaymentColumns = "registration_id,amount_cents" as const;
@@ -34,8 +35,10 @@ export type PortalRegistrationRow = {
   cpf: string;
   phone: string;
   photoPath: string | null;
+  voicePart?: string | null;
   paymentStatus: "legacy" | "pending" | "paid";
   isExempt?: boolean;
+  isFreeRegistration?: boolean;
   initialAmountCents: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
@@ -48,6 +51,7 @@ export type PortalSummaryRegistrationRow = Pick<
   | "id"
   | "paymentStatus"
   | "isExempt"
+  | "isFreeRegistration"
   | "pricingType"
   | "standardPriceCents"
   | "registrationPriceCents"
@@ -89,8 +93,10 @@ type RegistrationDatabaseRow = {
   cpf: string | null;
   phone: string;
   photo_path: string | null;
+  voice_part?: string | null;
   payment_status: string;
   payment_origin?: string | null;
+  is_free_registration?: boolean;
   amount_cents: number | null;
   pricing_type: string | null;
   standard_price_cents: number | null;
@@ -138,8 +144,10 @@ function mapRegistrationRow(row: RegistrationDatabaseRow): PortalRegistrationRow
     cpf: row.cpf ?? "",
     phone: row.phone,
     photoPath: row.photo_path,
+    voicePart: row.voice_part ?? null,
     paymentStatus: row.payment_status,
     isExempt: row.payment_origin === "exemption",
+    isFreeRegistration: row.is_free_registration === true,
     initialAmountCents: row.amount_cents,
     pricingType: row.pricing_type,
     standardPriceCents: row.standard_price_cents,
@@ -270,6 +278,7 @@ export function createSupabaseRegentPortalRepository(): RegentPortalRepository {
           id: mapped.id,
           paymentStatus: mapped.paymentStatus,
           isExempt: mapped.isExempt,
+          isFreeRegistration: mapped.isFreeRegistration,
           pricingType: mapped.pricingType,
           initialAmountCents: mapped.initialAmountCents,
           standardPriceCents: mapped.standardPriceCents,
@@ -335,6 +344,33 @@ function assignedComplementCents(row: Pick<PortalRegistrationRow, "pricingType" 
     (row.standardPriceCents ?? 0) - (row.registrationPriceCents ?? 0));
 }
 
+function pendingAmounts(row: PortalSummaryRegistrationRow, confirmedCents: number) {
+  const confirmed = Math.min(confirmedCents, assignedComplementCents(row));
+  const financial = deriveRegistrationFinancialState({
+    paymentStatus: row.paymentStatus,
+    isExempt: row.isExempt,
+    initialAmountCents: row.initialAmountCents,
+    pricingType: row.pricingType,
+    standardPriceCents: row.standardPriceCents,
+    registrationPriceCents: row.registrationPriceCents,
+    remainingPriceCents: row.remainingPriceCents,
+    confirmedComplementCents: confirmed,
+  });
+  const raffleRow = {
+    isFreeRegistration: row.isFreeRegistration === true,
+    pricingType: row.pricingType,
+    registrationPriceCents: row.registrationPriceCents,
+    standardPriceCents: row.standardPriceCents,
+    remainingPriceCents: row.remainingPriceCents,
+    rafflePaidCents: row.isFreeRegistration ? confirmedCents : undefined,
+  };
+  return {
+    financial,
+    registrationPendingCents: getAdminRegistrationPendingCents(raffleRow, financial),
+    rafflePendingCents: getAdminRafflePending(raffleRow, financial)?.cents ?? 0,
+  };
+}
+
 export function createRegentPortalService(repository: RegentPortalRepository) {
   return {
     async list(
@@ -366,10 +402,11 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
             row.photoPath && PRIVATE_PHOTO_PATH_PATTERN.exec(row.photoPath)?.[1] === row.id
               ? await signPhoto(row.id, row.photoPath)
               : null;
-          const confirmed = Math.min(confirmedPrincipal(participantPayments), assignedComplementCents(row));
+          const amounts = pendingAmounts(row, confirmedPrincipal(participantPayments));
           return {
             id: row.id,
             name: row.name,
+            ...(row.voicePart ? { voicePart: row.voicePart } : {}),
             cpf: row.cpf,
             phone: row.phone,
             whatsappUrl: buildBrazilWhatsAppUrl(row.phone),
@@ -379,23 +416,16 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
             pricingType: row.pricingType,
             standardPriceCents: row.standardPriceCents,
             registrationPriceCents: row.registrationPriceCents,
-            financialState: deriveRegistrationFinancialState({
-              paymentStatus: row.paymentStatus,
-              isExempt: row.isExempt,
-              initialAmountCents: row.initialAmountCents,
-              pricingType: row.pricingType,
-              standardPriceCents: row.standardPriceCents,
-              registrationPriceCents: row.registrationPriceCents,
-              remainingPriceCents: row.remainingPriceCents,
-              confirmedComplementCents: confirmed,
-            }),
+            financialState: amounts.financial,
+            registrationPendingCents: amounts.registrationPendingCents,
+            rafflePendingCents: amounts.rafflePendingCents,
             complement: calculateComplementState({
               paymentStatus: row.paymentStatus,
               pricingType: row.pricingType,
               standardPriceCents: row.standardPriceCents,
               registrationPriceCents: row.registrationPriceCents,
               remainingPriceCents: row.remainingPriceCents,
-              confirmedComplementCents: confirmed,
+              confirmedComplementCents: Math.min(confirmedPrincipal(participantPayments), assignedComplementCents(row)),
               openPayment,
             }),
             payments: participantPayments,
@@ -421,20 +451,16 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
       let eligibleComplementCents = 0;
       let confirmedComplementCents = 0;
       let outstandingComplementCents = 0;
+      let registrationPendingCents = 0;
+      let rafflePendingCents = 0;
       for (const registration of registrations) {
         const confirmed = paidByRegistration.get(registration.id) ?? 0;
         const assigned = assignedComplementCents(registration);
         const confirmedPrincipalCents = Math.min(confirmed, assigned);
-        const financialState = deriveRegistrationFinancialState({
-          paymentStatus: registration.paymentStatus,
-          isExempt: registration.isExempt,
-          initialAmountCents: registration.initialAmountCents,
-          pricingType: registration.pricingType,
-          standardPriceCents: registration.standardPriceCents,
-          registrationPriceCents: registration.registrationPriceCents,
-          remainingPriceCents: registration.remainingPriceCents,
-          confirmedComplementCents: confirmedPrincipalCents,
-        });
+        const amounts = pendingAmounts(registration, confirmed);
+        const financialState = amounts.financial;
+        registrationPendingCents += amounts.registrationPendingCents ?? 0;
+        rafflePendingCents += amounts.rafflePendingCents;
         if (
           financialState.status === "legacy" ||
           financialState.status === "pending" ||
@@ -451,6 +477,8 @@ export function createRegentPortalService(repository: RegentPortalRepository) {
 
       return {
         totalParticipants: registrations.length,
+        registrationPendingCents,
+        rafflePendingCents,
         eligibleComplementCents,
         confirmedComplementCents,
         outstandingComplementCents,

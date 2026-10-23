@@ -4,14 +4,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import {
   formatComplementCents,
@@ -72,7 +64,7 @@ function ParticipantAvatar({ participant }: { participant: PortalParticipant }) 
   useEffect(() => setImageFailed(false), [participant.photoUrl]);
 
   return (
-    <Avatar className="h-11 w-11 border bg-muted">
+    <Avatar className="h-10 w-10 border bg-muted">
       {participant.photoUrl && !imageFailed ? (
         <img
           src={participant.photoUrl}
@@ -93,18 +85,19 @@ function ParticipantAvatar({ participant }: { participant: PortalParticipant }) 
   );
 }
 
-const financialLabels = {
-  legacy: "Histórico",
-  pending: "Pendente",
-  partially_paid: "Parcialmente pago",
-  paid: "Pago",
-  exempt: "Isento",
-} as const;
-
 function RegistrationBadge({ participant }: { participant: PortalParticipant }) {
   const { status } = participant.financialState;
+  const registrationDue = participant.registrationPendingCents ?? participant.financialState.pendingCents;
+  const raffleDue = participant.rafflePendingCents ?? 0;
+  const label = status === "legacy" ? "Histórico" : status === "exempt" && raffleDue === 0
+    ? "Inscrição isenta" : registrationDue === 0 && raffleDue > 0
+      ? "Aguardando rifas" : registrationDue === 0 && raffleDue === 0
+        ? "Pagamento integral" : status === "partially_paid"
+          ? "Pagamento parcial" : "Inscrição pendente";
   return (
-    <Badge variant={status === "paid" ? "default" : "secondary"}>{financialLabels[status]}</Badge>
+    <Badge variant={registrationDue === 0 && raffleDue === 0 ? "default" : "secondary"} className="w-fit text-[11px]">
+      {label}
+    </Badge>
   );
 }
 
@@ -213,18 +206,6 @@ function ComplementAction({
   );
 }
 
-function PendingAmount({ participant }: { participant: PortalParticipant }) {
-  const amount = participant.financialState.pendingCents;
-  return (
-    <div className="space-y-0.5 text-xs">
-      <p className="font-medium text-muted-foreground">Valor pendente</p>
-      <p className="font-semibold">
-        {amount === null ? "Não disponível" : formatComplementCents(amount)}
-      </p>
-    </div>
-  );
-}
-
 function RegistrationPrices({ participant }: { participant: PortalParticipant }) {
   const standard =
     participant.standardPriceCents === null
@@ -245,79 +226,40 @@ function RegistrationPrices({ participant }: { participant: PortalParticipant })
 
 export function RegentParticipantList({ participants, onPay }: Props) {
   return (
-    <>
-      <Card className="hidden overflow-hidden md:block">
-        <CardContent className="p-0">
-          <Table aria-label="Participantes">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Participante</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Situação financeira</TableHead>
-                <TableHead>Valores da inscrição</TableHead>
-                <TableHead>Valor pendente</TableHead>
-                <TableHead>Parcelas</TableHead>
-                <TableHead className="text-right">Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {participants.map((participant) => (
-                <TableRow key={participant.id}>
-                  <TableCell>
-                    <div className="flex min-w-44 items-center gap-3">
-                      <ParticipantAvatar participant={participant} />
-                      <p className="font-semibold">{participant.name}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Contact participant={participant} />
-                  </TableCell>
-                  <TableCell>
-                    <RegistrationBadge participant={participant} />
-                  </TableCell>
-                  <TableCell>
-                    <RegistrationPrices participant={participant} />
-                  </TableCell>
-                  <TableCell>
-                    <PendingAmount participant={participant} />
-                  </TableCell>
-                  <TableCell>
-                    <PaymentHistory participant={participant} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ComplementAction participant={participant} onPay={onPay} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <section aria-label="Cartões de participantes" className="grid gap-3 md:hidden">
+      <section aria-label="Cartões de participantes" className="grid grid-cols-1 gap-2 min-[370px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {participants.map((participant) => (
-          <Card key={participant.id}>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex items-start gap-3">
+          <Card key={participant.id} className="min-w-0 gap-0 overflow-hidden py-0">
+            <CardContent className="min-w-0 space-y-2 p-3">
+              <div className="flex min-w-0 items-start gap-2">
                 <ParticipantAvatar participant={participant} />
                 <div className="min-w-0 flex-1">
-                  <p className="break-words font-semibold">{participant.name}</p>
+                  <p className="line-clamp-2 text-xs font-semibold leading-tight sm:text-sm">{participant.name}</p>
+                  {participant.voicePart && <p className="truncate text-[11px] text-muted-foreground">{participant.voicePart}</p>}
+                  <RegistrationBadge participant={participant} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 divide-x border-t pt-2 text-[11px]">
+                <div className="min-w-0 pr-1.5">
+                  <p className="leading-tight text-muted-foreground">Inscrição pendente</p>
+                  <p className="mt-1 text-xs font-semibold">{participant.registrationPendingCents === null ? "Não disponível" : formatComplementCents(participant.registrationPendingCents ?? participant.financialState.pendingCents ?? 0)}</p>
+                </div>
+                <div className="min-w-0 pl-1.5">
+                  <p className="leading-tight text-muted-foreground">Rifas pendentes</p>
+                  <p className="mt-1 text-xs font-semibold">{participant.rafflePendingCents === null ? "Não disponível" : formatComplementCents(participant.rafflePendingCents ?? 0)}</p>
+                </div>
+              </div>
+              <details className="border-t pt-1 text-xs">
+                <summary className="cursor-pointer font-medium text-muted-foreground">Contato e detalhes</summary>
+                <div className="space-y-2 pt-2">
                   <Contact participant={participant} />
-                </div>
-                <RegistrationBadge participant={participant} />
-              </div>
-              <RegistrationPrices participant={participant} />
-              <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-3">
-                <div className="min-w-0 flex-1">
-                  <PendingAmount participant={participant} />
+                  <RegistrationPrices participant={participant} />
                   <PaymentHistory participant={participant} />
+                  <ComplementAction participant={participant} onPay={onPay} />
                 </div>
-                <ComplementAction participant={participant} onPay={onPay} />
-              </div>
+              </details>
             </CardContent>
           </Card>
         ))}
       </section>
-    </>
   );
 }

@@ -21,10 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  createAdminRegent,
   linkExistingAdminRegent,
   listAdminRegents,
-  replaceAdminRegent,
   replaceAdminRegentWithExistingUser,
   resetAdminRegentPassword,
   revokeAdminRegent,
@@ -35,7 +33,6 @@ import type {
   AdminRegentRow,
   RegentAdminResult,
   RegentCandidateUser,
-  RegentCreation,
 } from "@/features/regent/regent-admin.server";
 
 type Mutation<T> = (input: { data: T }) => Promise<RegentAdminResult>;
@@ -44,27 +41,21 @@ export type AdminRegentsPanelProps = {
   choirId?: string;
   loadRegents?: () => Promise<AdminRegentRow[]>;
   searchCandidates?: (input: { data: { query: string } }) => Promise<RegentCandidateUser[]>;
-  createRegent?: Mutation<RegentCreation>;
-  replaceRegent?: Mutation<RegentCreation>;
   linkExistingRegent?: Mutation<RegentMutation>;
   replaceExistingRegent?: Mutation<RegentMutation>;
   revokeRegent?: Mutation<{ id: string }>;
   resetPassword?: Mutation<{ id: string; password: string }>;
 };
-const emptyDraft: RegentCreation = { choirId: "", name: "", email: "", password: "" };
+const emptyDraft: RegentMutation = { choirId: "", name: "", email: "" };
 type Confirmation =
   | { kind: "revoke"; regent: AdminRegentRow }
-  | { kind: "replace"; mode: "new"; regent: AdminRegentRow; draft: RegentCreation }
-  | { kind: "replace"; mode: "existing"; regent: AdminRegentRow; draft: RegentMutation };
-type RegentMode = "new" | "existing";
+  | { kind: "replace"; regent: AdminRegentRow; draft: RegentMutation };
 
 export function AdminRegentsPanel({
   choirs,
   choirId,
   loadRegents = listAdminRegents,
   searchCandidates = searchAdminRegentCandidates,
-  createRegent = createAdminRegent,
-  replaceRegent = replaceAdminRegent,
   linkExistingRegent = linkExistingAdminRegent,
   replaceExistingRegent = replaceAdminRegentWithExistingUser,
   revokeRegent = revokeAdminRegent,
@@ -72,7 +63,7 @@ export function AdminRegentsPanel({
 }: AdminRegentsPanelProps) {
   const [regents, setRegents] = useState<AdminRegentRow[]>([]);
   const [draft, setDraft] = useState({ ...emptyDraft, choirId: choirId ?? "" });
-  const [mode, setMode] = useState<RegentMode>("new");
+  const [selectedCandidate, setSelectedCandidate] = useState<RegentCandidateUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -103,32 +94,30 @@ export function AdminRegentsPanel({
     if (choirId) setDraft((current) => ({ ...current, choirId }));
   }, [choirId]);
   useEffect(() => {
-    if (mode !== "existing") {
-      setCandidates([]);
-      setSearchError("");
-      return;
-    }
     const query = candidateQuery.trim();
     if (query.length < 2) {
       setCandidates([]);
       setSearchError("");
+      setSearching(false);
       return;
     }
+    setSearching(true);
+    let disposed = false;
     const timer = setTimeout(() => {
       setCandidates([]);
       setSearchError("");
-      setSearching(true);
       searchCandidates({ data: { query } })
-        .then((rows) => setCandidates(rows))
-        .catch(() => setSearchError("Não foi possível buscar usuários."))
-        .finally(() => setSearching(false));
+        .then((rows) => { if (!disposed) setCandidates(rows); })
+        .catch(() => { if (!disposed) setSearchError("Não foi possível buscar regentes."); })
+        .finally(() => { if (!disposed) setSearching(false); });
     }, 300);
-    return () => clearTimeout(timer);
-  }, [candidateQuery, mode, searchCandidates]);
+    return () => { disposed = true; clearTimeout(timer); };
+  }, [candidateQuery, searchCandidates]);
   function useCandidate(found: RegentCandidateUser) {
     setDraft((current) => ({ ...current, name: found.name, email: found.email }));
+    setSelectedCandidate(found);
     setCandidates([]);
-    setMessage("Usuário selecionado. Confirme o coro e clique em Vincular regente.");
+    setMessage("Regente selecionado. Confirme o coro e clique em Vincular regente.");
   }
   const visibleRegents = choirId ? regents.filter((regent) => regent.choirId === choirId) : regents;
 
@@ -159,8 +148,7 @@ export function AdminRegentsPanel({
     }
   }
   function validateIdentity() {
-    const { password, ...identity } = draft;
-    const parsed = regentMutationSchema.safeParse(identity);
+    const parsed = regentMutationSchema.safeParse(draft);
     if (!parsed.success) {
       setError(
         parsed.error.issues[0].message,
@@ -169,24 +157,16 @@ export function AdminRegentsPanel({
     }
     return parsed.data;
   }
-  function validateNewDraft() {
-    const identity = validateIdentity();
-    if (!identity) return null;
-    if (draft.password.length < 8 || draft.password.length > 128) {
-      setError("Use de 8 a 128 caracteres na senha temporária.");
-      return null;
-    }
-    return { ...identity, password: draft.password };
-  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const onSuccess = (regent: AdminRegentRow) => {
       setRegents((rows) => [...rows, regent]);
       setDraft({ ...emptyDraft, choirId: choirId ?? "" });
+      setSelectedCandidate(null);
+      setCandidateQuery("");
     };
-    if (mode === "new") {
-      const data = validateNewDraft();
-      if (data) void mutate(() => createRegent({ data }), onSuccess);
+    if (!selectedCandidate || selectedCandidate.email !== draft.email || selectedCandidate.name !== draft.name) {
+      setError("Busque e selecione um regente já cadastrado.");
       return;
     }
     const data = validateIdentity();
@@ -196,16 +176,15 @@ export function AdminRegentsPanel({
     // Replacement always keeps the selected row's choir; the entered identity is the new user.
     if (draft.choirId !== regent.choirId) {
       setDraft((value) => ({ ...value, choirId: regent.choirId }));
-      setError("Preencha os dados do novo regente para este coro e clique em Substituir.");
+      setError("Confirme este coro e clique em Substituir novamente.");
       return;
     }
-    if (mode === "new") {
-      const data = validateNewDraft();
-      if (data) setConfirmation({ kind: "replace", mode, regent, draft: data });
+    if (!selectedCandidate || selectedCandidate.email !== draft.email || selectedCandidate.name !== draft.name) {
+      setError("Busque e selecione um regente já cadastrado.");
       return;
     }
     const data = validateIdentity();
-    if (data) setConfirmation({ kind: "replace", mode, regent, draft: data });
+    if (data) setConfirmation({ kind: "replace", regent, draft: data });
   }
   function confirm() {
     if (!confirmation) return;
@@ -218,10 +197,7 @@ export function AdminRegentsPanel({
       );
     } else {
       void mutate(
-        () =>
-          action.mode === "new"
-            ? replaceRegent({ data: action.draft })
-            : replaceExistingRegent({ data: action.draft }),
+        () => replaceExistingRegent({ data: action.draft }),
         (regent) => {
           setRegents((rows) => [
             ...rows.filter((row) => row.choirId !== regent.choirId || row.revokedAt !== null),
@@ -229,6 +205,8 @@ export function AdminRegentsPanel({
             regent,
           ]);
           setDraft({ ...emptyDraft, choirId: choirId ?? "" });
+          setSelectedCandidate(null);
+          setCandidateQuery("");
         },
       );
     }
@@ -243,45 +221,24 @@ export function AdminRegentsPanel({
           Regentes
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {mode === "new"
-            ? "Nenhum e-mail será enviado. Entregue o acesso e a senha temporária ao regente por um canal seguro. A troca de senha será obrigatória no primeiro acesso."
-            : "Busque pelo nome ou e-mail de quem já tem conta no app, ou preencha os dados manualmente. A conta será vinculada sem alterar sua senha: o regente usará a senha que já possui e não precisará trocá-la."}
+          Busque pelo nome ou e-mail de um regente já cadastrado. O vínculo usa a senha que ele já possui.
         </p>
       </div>
       <form onSubmit={submit} className="space-y-3">
-        <div aria-label="Modo de cadastro" className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === "new" ? "default" : "outline"}
-            aria-pressed={mode === "new"}
-            disabled={busy}
-            onClick={() => setMode("new")}
-          >
-            Cadastrar novo
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === "existing" ? "default" : "outline"}
-            aria-pressed={mode === "existing"}
-            disabled={busy}
-            onClick={() => setMode("existing")}
-          >
-            Vincular usuário existente
-          </Button>
-        </div>
-        {mode === "existing" && (
           <div className="space-y-2">
-            <Label htmlFor="regent-user-search">Buscar usuário</Label>
+            <Label htmlFor="regent-user-search">Buscar regente existente</Label>
             <Input
               id="regent-user-search"
               type="search"
-              placeholder="Nome ou e-mail de quem já usa o app"
+              placeholder="Nome ou e-mail do regente"
               maxLength={100}
               autoComplete="off"
               value={candidateQuery}
-              onChange={(event) => setCandidateQuery(event.target.value)}
+              onChange={(event) => {
+                setCandidateQuery(event.target.value);
+                setSelectedCandidate(null);
+                setDraft((current) => ({ ...current, name: "", email: "" }));
+              }}
             />
             {searching && (
               <p role="status" className="text-xs text-muted-foreground">
@@ -293,8 +250,11 @@ export function AdminRegentsPanel({
                 {searchError}
               </p>
             )}
+            {!searching && !searchError && candidateQuery.trim().length >= 2 && candidates.length === 0 && !selectedCandidate && (
+              <p className="text-xs text-muted-foreground">Nenhum regente cadastrado encontrado.</p>
+            )}
             {candidates.length > 0 && (
-              <ul aria-label="Usuários encontrados" className="space-y-1">
+              <ul aria-label="Regentes encontrados" className="space-y-1">
                 {candidates.map((found) => (
                   <li key={found.userId}>
                     <Button
@@ -316,7 +276,6 @@ export function AdminRegentsPanel({
               </ul>
             )}
           </div>
-        )}
         <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="regent-name">Nome</Label>
@@ -325,7 +284,7 @@ export function AdminRegentsPanel({
               required
               maxLength={120}
               value={draft.name}
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              readOnly
             />
           </div>
           <div className="space-y-1">
@@ -337,7 +296,7 @@ export function AdminRegentsPanel({
               maxLength={254}
               autoComplete="off"
               value={draft.email}
-              onChange={(event) => setDraft({ ...draft, email: event.target.value })}
+              readOnly
             />
           </div>
           {choirId ? (
@@ -366,27 +325,12 @@ export function AdminRegentsPanel({
             </select>
             </div>
           )}
-          {mode === "new" && (
-            <div className="space-y-1">
-              <Label htmlFor="regent-password">Senha temporária</Label>
-              <Input
-                id="regent-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                maxLength={128}
-                value={draft.password}
-                onChange={(event) => setDraft({ ...draft, password: event.target.value })}
-              />
-            </div>
-          )}
         </fieldset>
-        <Button type="submit" disabled={busy || loading || !choirs.length}>
-          {mode === "new" ? "Cadastrar regente" : "Vincular regente"}
+        <Button type="submit" disabled={busy || loading || !choirs.length || !selectedCandidate}>
+          Vincular regente
         </Button>
         <p className="text-xs text-muted-foreground">
-          Para substituir, preencha os dados do novo regente e use Substituir no vínculo atual.
+          Para substituir, selecione outro regente na busca e use Substituir no vínculo atual.
         </p>
       </form>
       {error && (

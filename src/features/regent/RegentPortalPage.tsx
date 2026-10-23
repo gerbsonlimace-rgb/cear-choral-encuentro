@@ -84,7 +84,7 @@ export function RegentPortalPage({
   const [query, setQuery] = useState({ search: "", page: 1 });
   const [paymentTarget, setPaymentTarget] = useState<BalancePaymentTarget | null>(null);
   const [portalRefresh, setPortalRefresh] = useState(0);
-  const [mobileTab, setMobileTab] = useState<RegentMobileTab>("summary");
+  const [mobileTab, setMobileTab] = useState<RegentMobileTab>("participants");
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const skipInitialSummary = useRef(Boolean(initialData));
   const skipInitialList = useRef(Boolean(initialData));
@@ -194,7 +194,7 @@ export function RegentPortalPage({
       ? access.choirName
       : choirs.find((choir) => choir.id === selectedChoirId)?.name;
   const mobileModuleClass = (tab: RegentMobileTab) =>
-    mobileTab === tab ? "block" : "hidden md:block";
+    mobileTab === tab ? "block" : "hidden";
 
   return (
     <InternalAppShell
@@ -211,8 +211,8 @@ export function RegentPortalPage({
     >
       <div className="mx-auto max-w-7xl space-y-5">
         <InternalPageHeader
-          title="Área do regente"
-          description="Acompanhe participantes e complementos da inscrição."
+          title={mobileTab === "participants" ? "Coralistas do seu coro" : mobileTab === "summary" ? "Resumo do seu coro" : "Meu perfil"}
+          description={mobileTab === "participants" ? "Acompanhe pagamentos e rifas em um só lugar." : mobileTab === "summary" ? "Acompanhe os complementos da inscrição." : "Gerencie seus dados de acesso."}
         />
 
         <section
@@ -242,7 +242,7 @@ export function RegentPortalPage({
         </section>
 
         {access.role === "admin" && (
-          <Card className={mobileModuleClass("summary")}>
+          <Card>
             <CardContent className="space-y-2 p-4 sm:max-w-md">
               <Label htmlFor="regent-choir">Coro</Label>
               <Select
@@ -280,10 +280,15 @@ export function RegentPortalPage({
             {summaryError}
           </p>
         ) : summary ? (
-          <section
-            aria-label="Resumo dos complementos"
-            className={`${mobileModuleClass("summary")} grid-cols-2 gap-3 md:grid lg:grid-cols-4`}
-          >
+          <section aria-label="Resumo financeiro do coro" className={`${mobileTab === "participants" ? "grid" : "hidden"} grid-cols-3 gap-0 overflow-hidden rounded-xl border bg-card`}>
+            <div className="min-w-0 border-r p-2.5 sm:p-3"><p className="text-[11px] text-muted-foreground">Coralistas</p><p className="text-base font-semibold sm:text-lg">{summary.totalParticipants}</p></div>
+            <div className="min-w-0 border-r p-2.5 sm:p-3"><p className="text-[11px] leading-tight text-muted-foreground">Inscrições pendentes</p><p className="text-sm font-semibold sm:text-lg">{formatComplementCents(summary.registrationPendingCents ?? 0)}</p></div>
+            <div className="min-w-0 p-2.5 sm:p-3"><p className="text-[11px] leading-tight text-muted-foreground">Rifas pendentes</p><p className="text-sm font-semibold sm:text-lg">{formatComplementCents(summary.rafflePendingCents ?? 0)}</p></div>
+          </section>
+        ) : null}
+
+        {summary && (
+          <section aria-label="Resumo dos complementos" className={`${mobileTab === "summary" ? "grid" : "hidden"} grid-cols-2 gap-3 lg:grid-cols-4`}>
             <InternalMetricCard
               label="Total de participantes"
               value={String(summary.totalParticipants)}
@@ -305,15 +310,15 @@ export function RegentPortalPage({
               icon={WalletCards}
             />
           </section>
-        ) : null}
+        )}
 
         <section
           aria-label="Participantes do coro"
-          className={`${mobileModuleClass("participants")} space-y-5`}
+          className={`${mobileModuleClass("participants")} space-y-3`}
         >
           <form
             onSubmit={search}
-            className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end"
+            className="flex flex-col gap-2 rounded-xl border bg-card p-3 sm:flex-row sm:items-end"
           >
             <div className="min-w-0 flex-1 space-y-2">
               <Label htmlFor="participant-search">Pesquisar participantes</Label>
@@ -331,6 +336,8 @@ export function RegentPortalPage({
               Pesquisar
             </Button>
           </form>
+
+          {result && <h2 className="text-sm font-semibold">Todos os coralistas <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{result.total} pessoas</span></h2>}
 
           {loading ? (
             <Skeleton className="h-40 w-full" />

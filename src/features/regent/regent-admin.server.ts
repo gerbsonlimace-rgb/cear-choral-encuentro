@@ -237,6 +237,19 @@ export function createRegentAdminService({
         return { status: "error", message: "Nenhuma conta encontrada com esse e-mail." };
       }
       userId = user.id;
+      const knownRegents = await repository.list();
+      const knownRegent = knownRegents.find((regent) =>
+        regent.userId === userId && regent.email.toLowerCase() === input.email.toLowerCase(),
+      );
+      if (!knownRegent) {
+        return { status: "error", message: "Selecione um regente já cadastrado." };
+      }
+      if (knownRegents.some((regent) => regent.userId === userId && regent.revokedAt === null && regent.choirId !== input.choirId)) {
+        return { status: "conflict", message: "Este regente já está ativo em outro coro. Inative o vínculo anterior antes de atribuí-lo." };
+      }
+      if (replace && knownRegents.some((regent) => regent.userId === userId && regent.revokedAt === null && regent.choirId === input.choirId)) {
+        return { status: "conflict", message: "Este regente já está ativo neste coro. Escolha outro regente." };
+      }
       if (!replace && (await repository.findActiveByChoir(input.choirId))) {
         return {
           status: "conflict",
@@ -245,6 +258,8 @@ export function createRegentAdminService({
       }
       const grant: RegentGrant = {
         ...input,
+        name: knownRegent.name,
+        email: knownRegent.email,
         userId,
         grantedBy: actorId,
         passwordChangeRequired: false,
@@ -845,67 +860,23 @@ export function createSupabaseRegentCandidateSearch(): RegentCandidateSearch {
     return { userId: user_id, email, name: name?.trim() || email };
   }
 
-  async function searchAuthUsersByEmail(query: string): Promise<RegentCandidateUser[]> {
-    const needle = query.toLowerCase();
-    const matches: RegentCandidateUser[] = [];
-    let page = 1;
-    while (matches.length < candidateUserLimit) {
-      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-      checkError(error);
-      for (const user of data.users) {
-        const email = user.email ?? "";
-        const metadata = user.user_metadata as Record<string, unknown> | null;
-        const fullName =
-          typeof metadata?.full_name === "string" && metadata.full_name.trim()
-            ? metadata.full_name.trim()
-            : "";
-        if (email.toLowerCase().includes(needle)) {
-          matches.push({ userId: user.id, email, name: fullName || email });
-          if (matches.length >= candidateUserLimit) break;
-        }
-      }
-      if (!("nextPage" in data) || !data.nextPage) break;
-      page = data.nextPage;
-    }
-    return matches;
-  }
-
   return {
     async search(query) {
       const pattern = `%${sanitizeCandidatePattern(query)}%`;
       const filter = `name.ilike.${pattern},email.ilike.${pattern}`;
-      const [registrants, regents] = await Promise.all([
-        supabaseAdmin
-          .from("registrations")
-          .select("name,email,participant_accounts(user_id)")
-          .or(filter)
-          .not("participant_accounts.user_id", "is", null)
-          .limit(candidateUserLimit * 2),
-        supabaseAdmin
-          .from("choir_regents")
-          .select("name,email,user_id")
-          .or(filter)
-          .limit(candidateUserLimit * 2),
-      ]);
-      checkError(registrants.error);
+      const regents = await supabaseAdmin
+        .from("choir_regents")
+        .select("name,email,user_id")
+        .or(filter)
+        .limit(candidateUserLimit * 2);
       checkError(regents.error);
 
       const byUserId = new Map<string, RegentCandidateUser>();
-      for (const row of registrants.data ?? []) {
-        const accountId = row.participant_accounts?.[0]?.user_id ?? null;
-        const candidateUser = candidate(accountId, row.email, row.name);
-        if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
-      }
       for (const row of regents.data ?? []) {
         const candidateUser = candidate(row.user_id, row.email, row.name);
         if (candidateUser) byUserId.set(candidateUser.userId, candidateUser);
       }
-
-      let candidates = [...byUserId.values()].slice(0, candidateUserLimit);
-      if (!candidates.length && query.includes("@")) {
-        candidates = await searchAuthUsersByEmail(query.trim().toLowerCase());
-      }
-      return candidates;
+      return [...byUserId.values()].slice(0, candidateUserLimit);
     },
   };
 }

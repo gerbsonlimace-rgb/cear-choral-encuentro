@@ -45,6 +45,8 @@ export interface PortalParticipant {
   financialState: RegistrationFinancialState;
   complement: ComplementEligibility;
   payments: ComplementPaymentRow[];
+  registrationPendingCents?: number | null;
+  rafflePendingCents?: number | null;
   // Optional presentation snapshots retained for consumers that expose them.
   voicePart?: string | null;
   receiptUrl?: string | null;
@@ -60,6 +62,8 @@ export type BalancePaymentTarget = {
 
 export interface PortalSummary {
   totalParticipants: number;
+  registrationPendingCents?: number;
+  rafflePendingCents?: number;
   eligibleComplementCents: number;
   confirmedComplementCents: number;
   outstandingComplementCents: number;

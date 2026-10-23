@@ -600,7 +600,7 @@ export function AdminChoirsPage({
           <DialogHeader>
             <DialogTitle>Regente de {regentChoir?.name}</DialogTitle>
             <DialogDescription>
-              Cadastre e gerencie o acesso do regente vinculado a este coro.
+              Busque um regente já cadastrado para vincular a este coro.
             </DialogDescription>
           </DialogHeader>
           {regentChoir && data && (

@@ -120,7 +120,7 @@ describe("RegentPortalPage", () => {
       },
     });
 
-    expect(await screen.findByText("23")).toBeInTheDocument();
+    expect((await screen.findAllByText("23")).length).toBeGreaterThan(0);
     expect(loadParticipants).not.toHaveBeenCalled();
     expect(loadSummary).not.toHaveBeenCalled();
     expect(loadAdminChoirs).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("RegentPortalPage", () => {
     setup();
 
     expect(await screen.findByText("Total de participantes")).toBeInTheDocument();
-    expect(screen.getByText("23")).toBeInTheDocument();
+    expect(screen.getAllByText("23").length).toBeGreaterThan(0);
     expect(screen.getByText("Complemento total")).toBeInTheDocument();
     expect(screen.getByText("R$ 460,00")).toBeInTheDocument();
     expect(screen.getByText("Complemento confirmado")).toBeInTheDocument();
