@@ -328,52 +328,52 @@ function HeroSection() {
 
       <div
         data-hero-frame
-        className="relative z-10 mx-auto grid min-h-0 w-full max-w-[75rem] gap-7 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.12fr)_minmax(18rem,0.88fr)] lg:grid-rows-[1fr_auto] lg:items-center lg:gap-x-12 lg:gap-y-4 lg:px-12 lg:py-16"
+        className="relative z-10 mx-auto grid min-h-0 w-full max-w-[75rem] gap-7 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1.12fr)_minmax(18rem,0.88fr)] lg:grid-rows-[auto_1fr_auto] lg:items-center lg:gap-x-12 lg:gap-y-4 lg:px-12 lg:py-16"
       >
+        <Link
+          to="/inscricao"
+          data-registration-extended
+          aria-label="Inscrições prorrogadas até 13 de novembro. Inscreva-se agora"
+          className="group relative order-first mt-2 flex w-full flex-wrap items-center gap-x-4 gap-y-3 rounded-3xl border-2 border-amber-foreground/10 bg-amber px-3 py-3 text-amber-foreground shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] transition-transform hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-foreground motion-reduce:transition-none motion-reduce:hover:scale-100 sm:flex-nowrap sm:gap-5 sm:px-5 lg:col-span-2 lg:row-start-1 lg:px-6"
+        >
+          <span className="absolute -top-3 right-5 rotate-3 rounded-md bg-destructive px-3 py-1 text-[0.6875rem] font-black uppercase tracking-[0.16em] text-destructive-foreground shadow-lg sm:text-xs">
+            Últimos dias
+          </span>
+          <img
+            src={extensionAnnouncementImage}
+            alt=""
+            aria-hidden="true"
+            width={248}
+            height={256}
+            className="registration-extended-megaphone h-16 w-16 shrink-0 object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.35)] sm:h-24 sm:w-24"
+          />
+          <span
+            aria-hidden="true"
+            className="flex w-16 shrink-0 flex-col overflow-hidden rounded-xl bg-card text-center text-card-foreground shadow-lg ring-2 ring-amber-foreground sm:w-20"
+          >
+            <span className="bg-destructive py-0.5 text-xs font-black uppercase tracking-[0.2em] text-destructive-foreground sm:text-sm">
+              Nov
+            </span>
+            <span className="py-1 font-body text-3xl font-black leading-none sm:text-4xl">13</span>
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block font-body text-xl font-black uppercase leading-tight tracking-wide sm:text-3xl">
+              Inscrições prorrogadas!
+            </span>
+            <span className="mt-1 block text-sm font-bold leading-snug sm:text-lg">
+              Garanta sua vaga até <span className="underline decoration-2 underline-offset-4">13 de novembro</span>
+            </span>
+          </span>
+          <span className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-extrabold uppercase tracking-[0.12em] text-amber shadow-md transition-colors group-hover:bg-foreground/85 sm:w-auto sm:text-base">
+            Inscreva-se
+            <ArrowRight aria-hidden="true" className="h-5 w-5" />
+          </span>
+        </Link>
         <div
           data-hero-copy
-          className="order-1 flex min-w-0 flex-col justify-center lg:col-start-1 lg:row-start-1 lg:max-w-[48rem] lg:items-start lg:text-left"
+          className="order-1 flex min-w-0 flex-col justify-center lg:col-start-1 lg:row-start-2 lg:max-w-[48rem] lg:items-start lg:text-left"
         >
           <div>
-            <Link
-              to="/inscricao"
-              data-registration-extended
-              aria-label="Inscrições prorrogadas até 13 de novembro. Inscreva-se agora"
-              className="group relative mb-7 mt-3 flex w-full items-center gap-3 rounded-3xl border-2 border-amber bg-brand-ink/85 py-3 pl-2 pr-4 text-primary-foreground shadow-[0_18px_40px_-14px_rgba(0,0,0,0.75)] backdrop-blur-sm transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-brand-ink motion-reduce:transition-none motion-reduce:hover:scale-100 sm:w-fit sm:gap-4 sm:pr-6"
-            >
-              <span className="absolute -top-3 right-4 rotate-3 rounded-md bg-destructive px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-[0.16em] text-destructive-foreground shadow-md sm:text-[0.6875rem]">
-                Últimos dias
-              </span>
-              <img
-                src={extensionAnnouncementImage}
-                alt=""
-                aria-hidden="true"
-                width={248}
-                height={256}
-                className="registration-extended-megaphone -my-6 h-20 w-20 shrink-0 object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.5)] sm:h-24 sm:w-24"
-              />
-              <span
-                aria-hidden="true"
-                className="flex w-14 shrink-0 flex-col overflow-hidden rounded-xl bg-card text-center text-card-foreground shadow-lg ring-2 ring-amber sm:w-16"
-              >
-                <span className="bg-amber py-0.5 text-[0.625rem] font-black uppercase tracking-[0.2em] text-amber-foreground sm:text-xs">
-                  Nov
-                </span>
-                <span className="font-display text-3xl font-extrabold leading-tight sm:text-4xl">13</span>
-              </span>
-              <span className="min-w-0 text-left leading-tight">
-                <span className="block font-display text-lg font-extrabold uppercase tracking-wide text-amber sm:text-2xl">
-                  Inscrições prorrogadas!
-                </span>
-                <span className="mt-1 block text-sm font-semibold text-primary-foreground/90 sm:text-base">
-                  Garanta sua vaga até <strong className="text-primary-foreground">13 de novembro</strong>
-                </span>
-                <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-[0.14em] text-amber group-hover:underline sm:text-sm">
-                  Inscreva-se
-                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                </span>
-              </span>
-            </Link>
             <div
               aria-label="Informações principais do evento"
               className="grid border-y border-white/20 sm:grid-cols-2"
@@ -445,7 +445,7 @@ function HeroSection() {
 
         <div
           data-hero-visuals
-          className="order-3 min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:min-h-full lg:items-center lg:justify-center lg:pl-10"
+          className="order-3 min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:flex lg:min-h-full lg:items-center lg:justify-center lg:pl-10"
         >
           <div
             data-hero-logo-position="column-right"
