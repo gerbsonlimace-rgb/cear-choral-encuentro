@@ -263,7 +263,7 @@ describe("RegistrationSection", { timeout: 10_000 }, () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/As vendas cobrem integralmente os R\$ 200,00 restantes do retiro\./)).toBeInTheDocument();
     expect(screen.getByText(/Envie os R\$ 200,00 arrecadados até 30\/10\./)).toBeInTheDocument();
-    expect(screen.getByText("Inscrições se encerram em 08/11.")).toBeInTheDocument();
+    expect(screen.getByText("Inscrições prorrogadas até 13/11.")).toBeInTheDocument();
     expect(screen.getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeInTheDocument();
     expect(screen.getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeInTheDocument();
     expect(screen.getByText("20 Rifas Cobrem o Resto")).toBeInTheDocument();

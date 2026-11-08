@@ -334,6 +334,25 @@ function HeroSection() {
           className="order-1 flex min-w-0 flex-col justify-center lg:col-start-1 lg:row-start-1 lg:max-w-[48rem] lg:items-start lg:text-left"
         >
           <div>
+            <Link
+              to="/inscricao"
+              data-registration-extended
+              className="public-gold-action mb-5 inline-flex w-full items-center gap-3 rounded-2xl border-2 border-amber bg-amber px-4 py-3 text-amber-foreground shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none motion-reduce:hover:scale-100 sm:w-auto sm:rounded-full sm:px-5"
+            >
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-foreground/60 motion-reduce:animate-none" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-foreground" />
+              </span>
+              <span className="min-w-0 text-left leading-tight">
+                <span className="block text-[0.6875rem] font-extrabold uppercase tracking-[0.18em]">
+                  Inscrições prorrogadas
+                </span>
+                <span className="block text-base font-extrabold sm:text-lg">
+                  Inscreva-se até 13/11
+                </span>
+              </span>
+              <ArrowRight aria-hidden="true" className="ml-auto h-5 w-5 shrink-0 sm:ml-1" />
+            </Link>
             <div
               aria-label="Informações principais do evento"
               className="grid border-y border-white/20 sm:grid-cols-2"

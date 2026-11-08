@@ -60,7 +60,7 @@ export function RegistrationCallout() {
             você verá a forma de pagamento disponível para o seu coro.
           </p>
           <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-amber-800">
-            Inscrições se encerram em 08/11.
+            Inscrições prorrogadas até 13/11.
           </p>
         </div>
 

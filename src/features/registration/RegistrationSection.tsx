@@ -1275,7 +1275,7 @@ export function RegistrationSection({
                               ? "Sua inscrição será analisada pelo administrador, sem cobrança."
                               : <>
                                   <span>Escolha o tipo de inscrição (modalidade) que combina com a sua participação. No próximo passo, você verá a forma de pagamento disponível para o seu coro.</span>
-                                  <span className="mt-1 block font-semibold text-amber-700">Inscrições se encerram em 08/11.</span>
+                                  <span className="mt-1 block font-semibold text-amber-700">Inscrições prorrogadas até 13/11.</span>
                                 </>
                             : "Escolha seu coro e perfil musical."}
                         </span>

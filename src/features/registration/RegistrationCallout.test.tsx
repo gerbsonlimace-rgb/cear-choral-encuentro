@@ -38,7 +38,7 @@ describe("RegistrationCallout", () => {
 
     expect(within(event).getByText("PARTICIPAÇÃO INDIVIDUAL")).toBeVisible();
     expect(within(event).getByText("Sem custos de hospedagem inclusos")).toBeVisible();
-    expect(within(registration).getByText("Inscrições se encerram em 08/11.")).toBeVisible();
+    expect(within(registration).getByText("Inscrições prorrogadas até 13/11.")).toBeVisible();
     expect(within(event).queryByRole("link", { name: "Selecionar este tipo de inscrição" })).not.toBeInTheDocument();
     expect(within(raffle).getByText("EXPERIÊNCIA COMPLETA SUBSIDIADA")).toBeVisible();
     expect(within(raffle).getByText("20 Rifas Cobrem o Resto")).toBeVisible();
