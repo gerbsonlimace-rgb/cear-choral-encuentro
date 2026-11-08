@@ -1810,3 +1810,14 @@ body:has(:is(.internal-app, .chorister-app, .photo-art-editor))
     line-height: 1.45;
   }
 }
+
+@keyframes registration-extended-wiggle {
+  0%, 100% { transform: rotate(-6deg) scale(1); }
+  50% { transform: rotate(4deg) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .registration-extended-megaphone {
+    animation: registration-extended-wiggle 2.4s ease-in-out infinite;
+  }
+}

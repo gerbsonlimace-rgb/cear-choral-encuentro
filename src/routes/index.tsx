@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import claytonImage from "../assets/clayton-dias.jpg";
 import heroChoirFocusImage from "../assets/hero-choir-focus.jpg";
+import extensionAnnouncementImage from "../assets/anuncio-prorrogacao.png";
 import headerLogoImage from "../assets/logo-coros-diocesanos-regional.png";
 import logoImage from "../assets/logo-coros-preto.png";
 
@@ -337,21 +338,41 @@ function HeroSection() {
             <Link
               to="/inscricao"
               data-registration-extended
-              className="public-gold-action mb-5 inline-flex w-full items-center gap-3 rounded-2xl border-2 border-amber bg-amber px-4 py-3 text-amber-foreground shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none motion-reduce:hover:scale-100 sm:w-auto sm:rounded-full sm:px-5"
+              aria-label="Inscrições prorrogadas até 13 de novembro. Inscreva-se agora"
+              className="group relative mb-7 mt-3 flex w-full items-center gap-3 rounded-3xl border-2 border-amber bg-brand-ink/85 py-3 pl-2 pr-4 text-primary-foreground shadow-[0_18px_40px_-14px_rgba(0,0,0,0.75)] backdrop-blur-sm transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-brand-ink motion-reduce:transition-none motion-reduce:hover:scale-100 sm:w-fit sm:gap-4 sm:pr-6"
             >
-              <span className="relative flex h-3 w-3 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-foreground/60 motion-reduce:animate-none" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-foreground" />
+              <span className="absolute -top-3 right-4 rotate-3 rounded-md bg-destructive px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-[0.16em] text-destructive-foreground shadow-md sm:text-[0.6875rem]">
+                Últimos dias
+              </span>
+              <img
+                src={extensionAnnouncementImage}
+                alt=""
+                aria-hidden="true"
+                width={248}
+                height={256}
+                className="registration-extended-megaphone -my-6 h-20 w-20 shrink-0 object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.5)] sm:h-24 sm:w-24"
+              />
+              <span
+                aria-hidden="true"
+                className="flex w-14 shrink-0 flex-col overflow-hidden rounded-xl bg-card text-center text-card-foreground shadow-lg ring-2 ring-amber sm:w-16"
+              >
+                <span className="bg-amber py-0.5 text-[0.625rem] font-black uppercase tracking-[0.2em] text-amber-foreground sm:text-xs">
+                  Nov
+                </span>
+                <span className="font-display text-3xl font-extrabold leading-tight sm:text-4xl">13</span>
               </span>
               <span className="min-w-0 text-left leading-tight">
-                <span className="block text-[0.6875rem] font-extrabold uppercase tracking-[0.18em]">
-                  Inscrições prorrogadas
+                <span className="block font-display text-lg font-extrabold uppercase tracking-wide text-amber sm:text-2xl">
+                  Inscrições prorrogadas!
                 </span>
-                <span className="block text-base font-extrabold sm:text-lg">
-                  Inscreva-se até 13/11
+                <span className="mt-1 block text-sm font-semibold text-primary-foreground/90 sm:text-base">
+                  Garanta sua vaga até <strong className="text-primary-foreground">13 de novembro</strong>
+                </span>
+                <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-[0.14em] text-amber group-hover:underline sm:text-sm">
+                  Inscreva-se
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 </span>
               </span>
-              <ArrowRight aria-hidden="true" className="ml-auto h-5 w-5 shrink-0 sm:ml-1" />
             </Link>
             <div
               aria-label="Informações principais do evento"
