@@ -82,15 +82,8 @@ describe("RegistrationCallout", () => {
     const complete = within(registration).getByRole("article", {
       name: "Inscrição + hospedagem e alimentação",
     });
-    const giveaway = within(registration).getByRole("region", {
-      name: "Sorteio especial para inscrições até 20 de outubro",
-    });
-
     expect(
       event.compareDocumentPosition(complete) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      complete.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(within(event).getByRole("heading", { name: "Inscrição no Evento" })).toBeVisible();
     expect(within(event).getByText("Acesso integral a todas as formações litúrgicas")).toBeVisible();
@@ -188,7 +181,7 @@ describe("RegistrationCallout", () => {
     expect(within(complete).queryByText(/R\$ 100 agora/)).not.toBeInTheDocument();
   });
 
-  it("separates the primary action and lays out the giveaway as a horizontal card", () => {
+  it("separates the primary action and no longer shows the expired book giveaway", () => {
     render(<RegistrationCallout />);
 
     const registration = getRegistrationSection();
@@ -196,14 +189,8 @@ describe("RegistrationCallout", () => {
     const primaryAction = registration.querySelector<HTMLElement>(
       "[data-registration-primary-action]",
     );
-    const giveaway = registration.querySelector<HTMLElement>(
-      '[aria-label^="Sorteio especial"]',
-    );
 
     expect(options).not.toBeNull();
-    expect(registration.querySelector(".public-registration-title")).not.toBeNull();
-    expect(registration.querySelector(".public-registration-intro")).not.toBeNull();
-    expect(registration.querySelector(".public-registration-option")).not.toBeNull();
     expect(primaryAction).not.toBeNull();
     expect(
       options!.compareDocumentPosition(primaryAction!) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -212,18 +199,8 @@ describe("RegistrationCallout", () => {
       "href",
       "/inscricao",
     );
-    expect(within(primaryAction!).getByRole("link", { name: "Fazer Inscrição" })).toHaveClass("min-h-14", "text-lg");
-    expect(giveaway).not.toBeNull();
-    expect(
-      primaryAction!.compareDocumentPosition(giveaway!) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(within(giveaway!).getByLabelText("Livros do sorteio")).toBeVisible();
-    expect(giveaway!.querySelector(".public-giveaway-books")).not.toBeNull();
-    expect(giveaway!.querySelector(".public-giveaway-action")).not.toBeNull();
-    expect(within(giveaway!).getByRole("link", { name: "Fazer Inscrição" })).toHaveAttribute(
-      "href",
-      "/inscricao",
-    );
+    expect(registration.querySelector('[aria-label^="Sorteio especial"]')).toBeNull();
+    expect(within(registration).queryByText(/livros exclusivos/)).not.toBeInTheDocument();
   });
 
   it("marks the registration prices for the prototype numeric type treatment", () => {
@@ -245,10 +222,7 @@ describe("RegistrationCallout", () => {
     render(<RegistrationCallout />);
 
     const registration = getRegistrationSection();
-    const giveaway = within(registration).getByRole("region", {
-      name: "Sorteio especial para inscrições até 20 de outubro",
-    });
-    const cta = within(giveaway).getByRole("link", { name: "Fazer Inscrição" });
+    const cta = within(registration).getByRole("link", { name: "Fazer Inscrição" });
 
     expect(cta).toHaveAttribute("href", "/inscricao");
     expect(within(registration).queryByRole("region", { name: "Ação de inscrição" })).toBeNull();

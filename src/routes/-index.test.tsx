@@ -208,41 +208,21 @@ describe("landing page access", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("presents the two-book giveaway after the registration choices", () => {
+  it("no longer shows the expired two-book giveaway", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
     const registration = document.querySelector<HTMLElement>("#inscricao");
     expect(registration).not.toBeNull();
-
-    const giveaway = within(registration!).getByRole("region", {
-      name: "Sorteio especial para inscrições até 20 de outubro",
-    });
     expect(
-      within(giveaway).getByRole("heading", {
-        name: "Inscreva-se até 20/10 e concorra aos dois livros exclusivos",
+      within(registration!).queryByRole("region", {
+        name: "Sorteio especial para inscrições até 20 de outubro",
       }),
-    ).toBeVisible();
-    expect(
-      within(giveaway).getByRole("img", {
-        name: "Capa do livro Canto Gregoriano — Teoria e prática na Liturgia",
-      }),
-    ).toBeVisible();
-    expect(
-      within(giveaway).getByRole("img", {
-        name: "Capa do livro Cristo, nossa esperança — Caderno de Partituras",
-      }),
-    ).toBeVisible();
-
-    const completeRegistration = within(registration!).getByRole("article", {
-      name: "Inscrição + hospedagem e alimentação",
-    });
-    expect(
-      completeRegistration.compareDocumentPosition(giveaway) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    ).not.toBeInTheDocument();
+    expect(within(registration!).queryByText(/livros exclusivos/)).not.toBeInTheDocument();
   });
 
-  it("matches the reference registration header and giveaway details", () => {
+  it("matches the reference registration header", () => {
     const IndexPage = Route.options.component!;
     render(<IndexPage />);
 
@@ -257,17 +237,6 @@ describe("landing page access", () => {
       ),
     ).toBeVisible();
 
-    const giveaway = within(registration!).getByRole("region", {
-      name: "Sorteio especial para inscrições até 20 de outubro",
-    });
-    expect(within(giveaway).getByText("Sorteio especial")).toBeVisible();
-    expect(
-      within(giveaway).getByRole("heading", {
-        name: "Inscreva-se até 20/10 e concorra aos dois livros exclusivos",
-      }),
-    ).toBeVisible();
-    expect(within(giveaway).getByText("Válido para todas as modalidades")).toBeVisible();
-    expect(within(giveaway).getByText("Entrega durante o evento")).toBeVisible();
   });
 
   it("keeps the registration cards informational without a selected plan", () => {

@@ -3,9 +3,6 @@ import {
   ArrowRight,
   Award,
   BedDouble,
-  Check,
-  Clock3,
-  Gift,
   Music2,
   ShoppingBag,
   Sparkles,
@@ -188,87 +185,6 @@ export function RegistrationCallout() {
             </Link>
           </Button>
         </div>
-
-        <section
-          aria-label="Sorteio especial para inscrições até 20 de outubro"
-          className="public-registration-benefits public-giveaway relative mt-7 grid grid-cols-1 items-center gap-4 border-t border-amber-200/80 pt-4 sm:mt-8 md:grid-cols-12"
-        >
-            <div className="space-y-2 md:col-span-7">
-              <p className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-200/80 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wider text-amber-900">
-                <Gift className="size-3" aria-hidden="true" />
-                Sorteio especial
-              </p>
-              <h3 className="font-display text-lg font-bold leading-snug text-stone-900 sm:text-xl">
-                Inscreva-se até{" "}
-                <span className="text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-2">
-                  20/10
-                </span>{" "}
-                e concorra aos dois livros exclusivos
-              </h3>
-              <p className="text-xs leading-relaxed text-stone-700">
-                Concorra às edições comemorativas:{" "}
-                <strong className="text-stone-900">
-                  “Canto Gregoriano – Teoria e Prática na Liturgia”
-                </strong>{" "}
-                e{" "}
-                <strong className="text-stone-900">
-                  “Cristo, nossa esperança – Caderno de Partituras”
-                </strong>
-                .
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-stone-600">
-                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/80 bg-white/80 px-2 py-0.5">
-                  <Clock3 className="size-3 text-amber-600" aria-hidden="true" />
-                  Válido para todas as modalidades
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/80 bg-white/80 px-2 py-0.5">
-                  <Check className="size-3 text-amber-600" aria-hidden="true" />
-                  Entrega durante o evento
-                </span>
-              </div>
-            </div>
-            <div className="public-giveaway-books flex items-center justify-center pt-1 md:col-span-3 md:pt-0">
-              <div
-                className="flex items-center justify-center gap-2.5"
-                aria-label="Livros do sorteio"
-              >
-                <img
-                  src="/giveaway/canto-gregoriano.jpg"
-                  alt="Capa do livro Canto Gregoriano — Teoria e prática na Liturgia"
-                  loading="lazy"
-                  decoding="async"
-                  className="h-32 w-24 rounded-lg border border-amber-500/50 bg-white object-contain p-1 shadow-md transition-transform duration-300 hover:-translate-y-1 sm:h-36 sm:w-28"
-                />
-                <img
-                  src="/giveaway/cristo-nossa-esperanca.jpg"
-                  alt="Capa do livro Cristo, nossa esperança — Caderno de Partituras"
-                  loading="lazy"
-                  decoding="async"
-                  className="h-32 w-24 rounded-lg border border-amber-500/50 bg-white object-contain p-1 shadow-md transition-transform duration-300 hover:-translate-y-1 sm:h-36 sm:w-28"
-                />
-              </div>
-            </div>
-            <div className="public-giveaway-action flex flex-col items-center gap-3 text-center md:col-span-2">
-              <div className="w-full max-w-[15rem] space-y-2">
-                <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
-                  Inscreva-se agora
-                </p>
-                <p className="text-xs leading-relaxed text-stone-700">
-                  Garanta sua vaga e participe do sorteio dos dois livros.
-                </p>
-                <Button
-                  asChild
-                  size="sm"
-                  className="min-h-10 w-full rounded-lg bg-amber-500 px-4 font-extrabold text-white shadow-md shadow-amber-500/20 hover:bg-amber-600"
-                >
-                  <Link to="/inscricao">
-                    Fazer Inscrição
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-        </section>
 
         <EventContactCard className="mt-6" />
       </div>
