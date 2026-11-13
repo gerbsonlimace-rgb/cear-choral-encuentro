@@ -100,8 +100,7 @@ describe("registration export", () => {
     const { trace } = databaseHarness([
       success(first, 1005),
       success(last, 1005),
-      success([]),
-      success([]),
+      ...Array.from({ length: 6 }, () => success([])),
       auditSuccess,
     ]);
     const service = createAdminRegistrationService(
@@ -121,10 +120,11 @@ describe("registration export", () => {
       ["order", "id", { ascending: false }],
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
-      ["order", "paid_at", { ascending: false }],
-      ["order", "id", { ascending: false }],
-      ["order", "paid_at", { ascending: false }],
-      ["order", "id", { ascending: false }],
+      // Superseded checkout reviews are read in parallel batches of 200 IDs.
+      ...Array.from({ length: 6 }, () => [
+        ["order", "paid_at", { ascending: false }],
+        ["order", "id", { ascending: false }],
+      ]).flat(),
     ]);
     // Payment filters are derived after candidate retrieval; no raw
     // payment_status predicate may hide partially-paid registrations.
@@ -864,15 +864,15 @@ describe("derived registration listing", () => {
     expect(page.rows.map((row) => row.id)).toEqual(["singer"]);
   });
 
-  it("bounds complement ID batches at 1,000", async () => {
-    const { trace } = databaseHarness([success([]), success([])]);
+  it("bounds complement ID batches at 200", async () => {
+    const { trace } = databaseHarness(Array.from({ length: 6 }, () => success([])));
     await createSupabaseAdminRegistrationRepository().listComplementPayments!(
       Array.from({ length: 1001 }, (_, index) => `registration-${index}`),
     );
     const inCalls = trace.filter(([method]) => method === "in");
-    expect(inCalls).toHaveLength(2);
-    expect((inCalls[0]?.[2] as string[]).length).toBe(1000);
-    expect((inCalls[1]?.[2] as string[]).length).toBe(1);
+    expect(inCalls).toHaveLength(6);
+    expect((inCalls[0]?.[2] as string[]).length).toBe(200);
+    expect((inCalls[5]?.[2] as string[]).length).toBe(1);
   });
 
   it("includes participant-initiated payments in administrative accounting", async () => {

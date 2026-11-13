@@ -1662,6 +1662,8 @@ function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationS
   );
 }
 
+const LIST_CACHE_TTL_MS = 60_000;
+
 export function AdminRegistrationsPage({
   onSignedOut,
   onMissingSession,
@@ -1719,6 +1721,8 @@ export function AdminRegistrationsPage({
   const [roles, setRoles] = useState<Record<string, RegistrationAdminRole>>({});
   const [rolesRetry, setRolesRetry] = useState(0);
   const [retry, setRetry] = useState(0);
+  const listCache = useRef(new Map<string, { at: number; page: AdminRegistrationPage }>());
+  const cacheRetry = useRef(0);
   useEffect(() => {
     pdfRevision.current += 1;
     setPdfFile(null);
@@ -1851,12 +1855,22 @@ export function AdminRegistrationsPage({
     if (gate !== "authorized") return;
     if (loadInitialData && bootstrapDataReady && retry === 0 && query === initialQuery) return;
     let active = true;
-    setLoading(true);
-    setResult(null);
+    if (cacheRetry.current !== retry) {
+      // Any administrative action bumps `retry`; cached pages may be outdated.
+      listCache.current.clear();
+      cacheRetry.current = retry;
+    }
+    const key = JSON.stringify(query);
+    const cached = listCache.current.get(key);
+    const fresh = cached && Date.now() - cached.at < LIST_CACHE_TTL_MS;
+    if (fresh) setResult(cached.page);
+    setLoading(!fresh);
     setListError("");
+    if (fresh) return;
     void (async () => {
       try {
         const next = await loadRegistrations({ data: query });
+        listCache.current.set(key, { at: Date.now(), page: next });
         if (active) setResult(next);
       } catch {
         try {
@@ -2450,7 +2464,10 @@ export function AdminRegistrationsPage({
                 </Select>
               </div>
             </form>
-            {loading ? (
+            {loading && result && (
+              <p role="status" className="text-xs text-muted-foreground">Atualizando…</p>
+            )}
+            {loading && !result ? (
               <Skeleton className="h-32 w-full" />
             ) : listError ? (
               <Card>

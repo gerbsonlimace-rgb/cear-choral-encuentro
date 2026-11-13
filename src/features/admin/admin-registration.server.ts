@@ -94,6 +94,8 @@ function parseManualReceipt(receipt: ManualPaymentReceipt) {
   return { parsed, bytes };
 }
 
+const ID_CHUNK_SIZE = 200;
+
 async function signRegistrationPhoto(photoPath: string | null): Promise<string | null> {
   if (!photoPath) return null;
   const { data, error } = await supabaseAdmin.storage
@@ -246,30 +248,43 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
             participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
           }
         >;
-        const regentNames = await fetchActiveRegentNames(
-          records.map((record) => record.choir_id ?? "").filter(Boolean),
-        );
         candidates.push(
           ...records.map((record) => ({
             row: record,
             accountStatus: record.participant_accounts?.[0]?.access_status ?? null,
-            regentName: (record.choir_id && regentNames.get(record.choir_id)) || null,
+            regentName: null as string | null,
           })),
         );
-        if (records.length < 1000) return candidates;
+        if (records.length < 1000) {
+          const regentNames = await fetchActiveRegentNames(
+            candidates.map(({ row }) => row.choir_id ?? "").filter(Boolean),
+          );
+          for (const candidate of candidates) {
+            candidate.regentName =
+              (candidate.row.choir_id && regentNames.get(candidate.row.choir_id)) || null;
+          }
+          return candidates;
+        }
       }
     },
     async listComplementPayments(registrationIds) {
       if (registrationIds.length === 0) return [];
       const rows: AdminComplementPaymentRow[] = [];
-      for (let offset = 0; offset < registrationIds.length; offset += 1000) {
-        const ids = registrationIds.slice(offset, offset + 1000);
-        const { data, error } = await supabaseAdmin
-          .from("registration_complement_payments")
-          .select(complementPaymentColumns)
-          .in("registration_id", ids)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false });
+      const chunks: string[][] = [];
+      for (let offset = 0; offset < registrationIds.length; offset += ID_CHUNK_SIZE) {
+        chunks.push(registrationIds.slice(offset, offset + ID_CHUNK_SIZE));
+      }
+      const responses = await Promise.all(
+        chunks.map((ids) =>
+          supabaseAdmin
+            .from("registration_complement_payments")
+            .select(complementPaymentColumns)
+            .in("registration_id", ids)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false }),
+        ),
+      );
+      for (const { data, error } of responses) {
         if (error) throw new Error("Não foi possível consultar o histórico financeiro.");
         for (const value of (data ?? []) as Array<Record<string, unknown>>) {
           if (
@@ -303,16 +318,22 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
     },
     async listSupersededCheckoutReviews(registrationIds) {
       const reviews = new Map<string, AdminSupersededCheckoutReview>();
-      for (let offset = 0; offset < registrationIds.length; offset += 1000) {
-        const ids = registrationIds.slice(offset, offset + 1000);
-        if (ids.length === 0) continue;
-        const { data, error } = await supabaseAdmin
-          .from("registration_superseded_checkouts")
-          .select(supersededCheckoutReviewColumns)
-          .in("registration_id", ids)
-          .eq("status", "paid_requires_review")
-          .order("paid_at", { ascending: false })
-          .order("id", { ascending: false });
+      const chunks: string[][] = [];
+      for (let offset = 0; offset < registrationIds.length; offset += ID_CHUNK_SIZE) {
+        chunks.push(registrationIds.slice(offset, offset + ID_CHUNK_SIZE));
+      }
+      const responses = await Promise.all(
+        chunks.map((ids) =>
+          supabaseAdmin
+            .from("registration_superseded_checkouts")
+            .select(supersededCheckoutReviewColumns)
+            .in("registration_id", ids)
+            .eq("status", "paid_requires_review")
+            .order("paid_at", { ascending: false })
+            .order("id", { ascending: false }),
+        ),
+      );
+      for (const { data, error } of responses) {
         if (error) {
           throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
         }
@@ -355,16 +376,23 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       return reviews;
     },
     async signPhotos(rows) {
-      return Promise.all(
-        rows.map(async (row) => {
-          const photoPath = (row as AdminRegistrationRow & { _photoPath?: string | null })
-            ._photoPath;
-          return {
-            ...row,
-            photoUrl: await signRegistrationPhoto(photoPath ?? null),
-          };
-        }),
+      const paths = rows.map(
+        (row) => (row as AdminRegistrationRow & { _photoPath?: string | null })._photoPath ?? null,
       );
+      const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))];
+      const urls = new Map<string, string>();
+      if (unique.length > 0) {
+        const { data } = await supabaseAdmin.storage
+          .from(REGISTRATION_PHOTO_BUCKET)
+          .createSignedUrls(unique, PHOTO_URL_EXPIRY_SECONDS);
+        for (const item of data ?? []) {
+          if (item.path && item.signedUrl && !item.error) urls.set(item.path, item.signedUrl);
+        }
+      }
+      return rows.map((row, index) => ({
+        ...row,
+        photoUrl: (paths[index] && urls.get(paths[index])) || null,
+      }));
     },
     async list(query: AdminRegistrationQuery, options = {}): Promise<AdminRegistrationPage> {
       if (query.loginStatus && query.loginStatus !== "all") {
