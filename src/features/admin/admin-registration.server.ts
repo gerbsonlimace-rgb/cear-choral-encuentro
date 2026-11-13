@@ -96,6 +96,73 @@ function parseManualReceipt(receipt: ManualPaymentReceipt) {
 
 const ID_CHUNK_SIZE = 200;
 
+function parseComplementPayment(value: Record<string, unknown>): AdminComplementPaymentRow {
+  if (
+    typeof value.id !== "string" ||
+    typeof value.registration_id !== "string" ||
+    !["creating", "pending", "paid", "failed", "expired"].includes(String(value.status)) ||
+    !Number.isSafeInteger(value.amount_cents) ||
+    Number(value.amount_cents) <= 0 ||
+    (value.initiated_as !== "regent" &&
+      value.initiated_as !== "admin" &&
+      value.initiated_as !== "participant") ||
+    typeof value.created_at !== "string" ||
+    typeof value.initiated_by_name !== "string"
+  ) {
+    throw new Error("Não foi possível consultar o histórico financeiro.");
+  }
+  return ({
+    id: value.id,
+    registrationId: value.registration_id,
+    amountCents: Number(value.amount_cents),
+    status: value.status as AdminComplementPaymentRow["status"],
+    checkoutUrl: typeof value.checkout_url === "string" ? value.checkout_url : null,
+    createdAt: value.created_at,
+    paidAt: typeof value.paid_at === "string" ? value.paid_at : null,
+    initiatedByName: value.initiated_by_name,
+    initiatedAs: value.initiated_as,
+  });
+}
+
+function addSupersededReview(
+  reviews: Map<string, AdminSupersededCheckoutReview>,
+  value: Record<string, unknown>,
+): void {
+  const validDate =
+    typeof value.paid_at === "string" && Number.isFinite(Date.parse(value.paid_at));
+  if (
+    typeof value.id !== "string" ||
+    typeof value.registration_id !== "string" ||
+    typeof value.order_nsu !== "string" ||
+    value.order_nsu.trim().length === 0 ||
+    !Number.isSafeInteger(value.amount_cents) ||
+    Number(value.amount_cents) <= 0 ||
+    !Number.isSafeInteger(value.paid_amount_cents) ||
+    Number(value.paid_amount_cents) < Number(value.amount_cents) ||
+    (value.payment_method !== "pix" && value.payment_method !== "credit_card") ||
+    !Number.isSafeInteger(value.installments) ||
+    Number(value.installments) <= 0 ||
+    !validDate ||
+    typeof value.infinitepay_transaction_nsu !== "string" ||
+    value.infinitepay_transaction_nsu.trim().length === 0 ||
+    (value.receipt_url !== null && typeof value.receipt_url !== "string")
+  ) {
+    throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
+  }
+  if (!reviews.has(value.registration_id)) {
+    reviews.set(value.registration_id, {
+      orderNsu: value.order_nsu,
+      amountCents: Number(value.amount_cents),
+      paidAmountCents: Number(value.paid_amount_cents),
+      paymentMethod: value.payment_method,
+      installments: Number(value.installments),
+      paidAt: value.paid_at as string,
+      transactionNsu: value.infinitepay_transaction_nsu,
+      receiptUrl: value.receipt_url as string | null,
+    });
+  }
+}
+
 async function signRegistrationPhoto(photoPath: string | null): Promise<string | null> {
   if (!photoPath) return null;
   const { data, error } = await supabaseAdmin.storage
@@ -173,7 +240,15 @@ export type AdminManualPaymentResult = {
   discountCents?: number;
 };
 
+export type AdminRegistrationSnapshot = {
+  candidates: AdminRegistrationCandidate[];
+  payments: AdminComplementPaymentRow[];
+  reviews: Map<string, AdminSupersededCheckoutReview>;
+  loggedInIds: Set<string>;
+};
+
 export type AdminRegistrationRepository = {
+  listSnapshot?(search: string): Promise<AdminRegistrationSnapshot>;
   listLoggedInRegistrationIds?(): Promise<Set<string>>;
   listCandidates?(search: string): Promise<AdminRegistrationCandidate[]>;
   listComplementPayments?(registrationIds: string[]): Promise<AdminComplementPaymentRow[]>;
@@ -203,8 +278,54 @@ export type AdminRegistrationRepository = {
   ): Promise<{ status: "updated"; registrationId: string }>;
 };
 
-export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRepository {
+export function parseAdminRegistrationSnapshot(value: unknown): AdminRegistrationSnapshot {
+  const data = (value ?? {}) as {
+    registrations?: Array<
+      RegistrationDatabaseRow & {
+        participant_accounts?: Array<{ access_status: "active" | "pending" | "conflict" }>;
+        regent_name?: string | null;
+        has_logged_in?: boolean;
+      }
+    >;
+    complements?: Array<Record<string, unknown>>;
+    reviews?: Array<Record<string, unknown>>;
+  };
+  if (!Array.isArray(data.registrations)) throw new Error("Não foi possível consultar as inscrições.");
+  const loggedInIds = new Set<string>();
+  const candidates = data.registrations.map((record) => {
+    if (record.has_logged_in === true) loggedInIds.add(record.id);
+    const { participant_accounts, regent_name, has_logged_in: _login, ...row } = record;
+    return {
+      row: row as RegistrationDatabaseRow,
+      accountStatus: participant_accounts?.[0]?.access_status ?? null,
+      regentName: regent_name || null,
+    };
+  });
+  const reviews = new Map<string, AdminSupersededCheckoutReview>();
+  for (const review of data.reviews ?? []) addSupersededReview(reviews, review);
+  return {
+    candidates,
+    payments: (data.complements ?? []).map(parseComplementPayment),
+    reviews,
+    loggedInIds,
+  };
+}
+
+export function createSupabaseAdminRegistrationRepository(
+  options: { snapshot?: boolean } = {},
+): AdminRegistrationRepository {
   const repository: AdminRegistrationRepository = {
+    ...(options.snapshot
+      ? {
+          async listSnapshot(search: string) {
+            const { data, error } = await supabaseAdmin.rpc("admin_registration_snapshot", {
+              p_search: search,
+            });
+            if (error) throw new Error("Não foi possível consultar as inscrições.");
+            return parseAdminRegistrationSnapshot(data);
+          },
+        }
+      : {}),
     async listLoggedInRegistrationIds() {
       const loggedInUsers = new Set<string>();
       for (let page = 1; ; page += 1) {
@@ -287,31 +408,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       for (const { data, error } of responses) {
         if (error) throw new Error("Não foi possível consultar o histórico financeiro.");
         for (const value of (data ?? []) as Array<Record<string, unknown>>) {
-          if (
-            typeof value.id !== "string" ||
-            typeof value.registration_id !== "string" ||
-            !["creating", "pending", "paid", "failed", "expired"].includes(String(value.status)) ||
-            !Number.isSafeInteger(value.amount_cents) ||
-            Number(value.amount_cents) <= 0 ||
-            (value.initiated_as !== "regent" &&
-              value.initiated_as !== "admin" &&
-              value.initiated_as !== "participant") ||
-            typeof value.created_at !== "string" ||
-            typeof value.initiated_by_name !== "string"
-          ) {
-            throw new Error("Não foi possível consultar o histórico financeiro.");
-          }
-          rows.push({
-            id: value.id,
-            registrationId: value.registration_id,
-            amountCents: Number(value.amount_cents),
-            status: value.status as AdminComplementPaymentRow["status"],
-            checkoutUrl: typeof value.checkout_url === "string" ? value.checkout_url : null,
-            createdAt: value.created_at,
-            paidAt: typeof value.paid_at === "string" ? value.paid_at : null,
-            initiatedByName: value.initiated_by_name,
-            initiatedAs: value.initiated_as,
-          });
+          rows.push(parseComplementPayment(value));
         }
       }
       return rows;
@@ -338,39 +435,7 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
           throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
         }
         for (const value of (data ?? []) as Array<Record<string, unknown>>) {
-          const validDate =
-            typeof value.paid_at === "string" && Number.isFinite(Date.parse(value.paid_at));
-          if (
-            typeof value.id !== "string" ||
-            typeof value.registration_id !== "string" ||
-            typeof value.order_nsu !== "string" ||
-            value.order_nsu.trim().length === 0 ||
-            !Number.isSafeInteger(value.amount_cents) ||
-            Number(value.amount_cents) <= 0 ||
-            !Number.isSafeInteger(value.paid_amount_cents) ||
-            Number(value.paid_amount_cents) < Number(value.amount_cents) ||
-            (value.payment_method !== "pix" && value.payment_method !== "credit_card") ||
-            !Number.isSafeInteger(value.installments) ||
-            Number(value.installments) <= 0 ||
-            !validDate ||
-            typeof value.infinitepay_transaction_nsu !== "string" ||
-            value.infinitepay_transaction_nsu.trim().length === 0 ||
-            (value.receipt_url !== null && typeof value.receipt_url !== "string")
-          ) {
-            throw new Error("Não foi possível consultar pagamentos de checkouts substituídos.");
-          }
-          if (!reviews.has(value.registration_id)) {
-            reviews.set(value.registration_id, {
-              orderNsu: value.order_nsu,
-              amountCents: Number(value.amount_cents),
-              paidAmountCents: Number(value.paid_amount_cents),
-              paymentMethod: value.payment_method,
-              installments: Number(value.installments),
-              paidAt: value.paid_at as string,
-              transactionNsu: value.infinitepay_transaction_nsu,
-              receiptUrl: value.receipt_url as string | null,
-            });
-          }
+          addSupersededReview(reviews, value);
         }
       }
       return reviews;
@@ -700,16 +765,25 @@ export function createAdminRegistrationService(
     return ids === null || ids.has(row.id) === (query.loginStatus === "has");
   }
 
-  async function listEnriched(query: AdminRegistrationQuery, includePhotos: boolean) {
+  /**
+   * Loads every input the derived listing needs. With a snapshot-capable
+   * repository this is a single database round trip (registrations, accounts,
+   * regents, logins, complements and superseded reviews).
+   */
+  async function loadDataset(query: AdminRegistrationExportQuery) {
+    const wantsLogin = Boolean(query.loginStatus && query.loginStatus !== "all");
+    if (repository.listSnapshot) {
+      const snapshot = await repository.listSnapshot(query.search);
+      return { ...snapshot, loggedInIds: wantsLogin ? snapshot.loggedInIds : null };
+    }
     if (!repository.listCandidates || !repository.listComplementPayments) {
-      return repository.list(query, { includePhotos });
+      throw new Error("Não foi possível consultar as inscrições.");
     }
     const [candidates, loggedInIds] = await Promise.all([
       repository.listCandidates(query.search),
       loadLoginFilter(query),
     ]);
     // Only paid promotional registrations can have a meaningful complement.
-    // This also avoids unnecessary ledger reads for pending, standard, and legacy rows.
     const complementIds = candidates
       .filter(({ row }) => row.payment_status === "paid" && row.pricing_type === "promotional")
       .map(({ row }) => row.id);
@@ -718,6 +792,14 @@ export function createAdminRegistrationService(
       repository.listSupersededCheckoutReviews?.(candidates.map(({ row }) => row.id)) ??
         Promise.resolve(new Map<string, AdminSupersededCheckoutReview>()),
     ]);
+    return { candidates, loggedInIds, payments, reviews };
+  }
+
+  async function listEnriched(query: AdminRegistrationQuery, includePhotos: boolean) {
+    if (!repository.listSnapshot && (!repository.listCandidates || !repository.listComplementPayments)) {
+      return repository.list(query, { includePhotos });
+    }
+    const { candidates, loggedInIds, payments, reviews } = await loadDataset(query);
     const paymentsByRegistration = new Map<string, AdminComplementPaymentRow[]>();
     for (const payment of payments) {
       const current = paymentsByRegistration.get(payment.registrationId) ?? [];
@@ -847,21 +929,7 @@ export function createAdminRegistrationService(
       musicalProfile: "all",
     },
   ) {
-    if (!repository.listCandidates || !repository.listComplementPayments) {
-      throw new Error("Não foi possível consultar as inscrições.");
-    }
-    const [candidates, loggedInIds] = await Promise.all([
-      repository.listCandidates(query.search),
-      loadLoginFilter(query),
-    ]);
-    const complementIds = candidates
-      .filter(({ row }) => row.payment_status === "paid" && row.pricing_type === "promotional")
-      .map(({ row }) => row.id);
-    const [payments, reviews] = await Promise.all([
-      repository.listComplementPayments(complementIds),
-      repository.listSupersededCheckoutReviews?.(candidates.map(({ row }) => row.id)) ??
-        Promise.resolve(new Map<string, AdminSupersededCheckoutReview>()),
-    ]);
+    const { candidates, loggedInIds, payments, reviews } = await loadDataset(query);
     const byRegistration = new Map<string, AdminComplementPaymentRow[]>();
     for (const payment of payments) {
       const list = byRegistration.get(payment.registrationId) ?? [];
@@ -897,7 +965,7 @@ let adminRegistrationService: ReturnType<typeof createAdminRegistrationService> 
 export function getAdminRegistrationService() {
   if (!adminRegistrationService) {
     adminRegistrationService = createAdminRegistrationService(
-      createSupabaseAdminRegistrationRepository(),
+      createSupabaseAdminRegistrationRepository({ snapshot: true }),
       () => new Date(),
       async (registrationId) => {
         const { getParticipantProvisioningService } =

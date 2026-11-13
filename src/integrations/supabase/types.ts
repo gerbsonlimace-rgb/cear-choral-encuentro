@@ -871,6 +871,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_registration_snapshot: {
+        Args: { p_search?: string }
+        Returns: Json
+      }
       claim_choir_regent_admin_password_candidate_operation: {
         Args: {
           p_candidate_fingerprint: string
