@@ -86,6 +86,7 @@ import {
   getAdminAccess,
   getAdminRegistrationReceipt,
   getAdminRegistrationSummary,
+  getAdminRegistrationPhotos,
   listAdminRegistrations,
   markAdminRegistrationPaid,
   markAdminRegistrationExempt,
@@ -164,6 +165,7 @@ type Props = {
   loadInitialData?: () => Promise<AdminRegistrationsBootstrap>;
   loadRegistrations?: (input: { data: AdminRegistrationQuery }) => Promise<AdminRegistrationPage>;
   loadSummary?: () => Promise<AdminRegistrationSummary>;
+  loadPhotos?: (input: { data: { registrationIds: string[] } }) => Promise<Record<string, string>>;
   exportRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminExportFile>;
   exportPdfRegistrations?: (input: { data: AdminRegistrationExportQuery }) => Promise<AdminPdfFile>;
   reprocessAccess?: (input: { data: { registrationId: string } }) => Promise<unknown>;
@@ -1683,6 +1685,7 @@ export function AdminRegistrationsPage({
   loadInitialData,
   loadRegistrations = listAdminRegistrations,
   loadSummary = getAdminRegistrationSummary,
+  loadPhotos = getAdminRegistrationPhotos,
   exportRegistrations = exportAdminRegistrations,
   exportPdfRegistrations,
   createPaymentLink = createAdminRegistrationCheckoutLink,
@@ -1735,6 +1738,25 @@ export function AdminRegistrationsPage({
   const [retry, setRetry] = useState(0);
   const listCache = useRef(new Map<string, { at: number; page: AdminRegistrationPage }>());
   const cacheRetry = useRef(0);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const requestedPhotos = useRef(new Set<string>());
+  useEffect(() => {
+    if (!result) return;
+    const missing = result.rows
+      .filter((row) => !row.photoUrl && !requestedPhotos.current.has(row.id))
+      .map((row) => row.id);
+    if (missing.length === 0) return;
+    for (const id of missing) requestedPhotos.current.add(id);
+    // Photos load after the table so signing never delays the list.
+    void Promise.resolve()
+      .then(() => loadPhotos({ data: { registrationIds: missing } }))
+      .then((urls) => {
+        if (urls && Object.keys(urls).length) setPhotoUrls((current) => ({ ...current, ...urls }));
+      })
+      .catch(() => {
+        for (const id of missing) requestedPhotos.current.delete(id);
+      });
+  }, [loadPhotos, result]);
   useEffect(() => {
     pdfRevision.current += 1;
     setPdfFile(null);
@@ -2496,7 +2518,9 @@ export function AdminRegistrationsPage({
               result &&
               (result.rows.length ? (
                 <RegistrationViews
-                  rows={result.rows}
+                  rows={result.rows.map((row) =>
+                    row.photoUrl || !photoUrls[row.id] ? row : { ...row, photoUrl: photoUrls[row.id] },
+                  )}
                   participantActionBusy={participantActionBusy}
                   onReprocess={(row) => void runParticipantAction(row, "reprocess")}
                   onReset={(row) => runParticipantAction(row, "reset")}

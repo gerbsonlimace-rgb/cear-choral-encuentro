@@ -256,6 +256,7 @@ export type AdminRegistrationRepository = {
     registrationIds: string[],
   ): Promise<Map<string, AdminSupersededCheckoutReview>>;
   signPhotos?(rows: AdminRegistrationRow[]): Promise<AdminRegistrationRow[]>;
+  signPhotosForIds?(registrationIds: string[]): Promise<Record<string, string>>;
   list(
     query: AdminRegistrationQuery,
     options?: { includePhotos?: boolean },
@@ -439,6 +440,29 @@ export function createSupabaseAdminRegistrationRepository(
         }
       }
       return reviews;
+    },
+    async signPhotosForIds(registrationIds) {
+      const urls: Record<string, string> = {};
+      if (registrationIds.length === 0) return urls;
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .select("id,photo_path")
+        .in("id", registrationIds);
+      if (error) throw new Error("Não foi possível carregar as fotos.");
+      const byPath = new Map<string, string[]>();
+      for (const row of data ?? []) {
+        if (!row.photo_path) continue;
+        byPath.set(row.photo_path, [...(byPath.get(row.photo_path) ?? []), row.id]);
+      }
+      if (byPath.size === 0) return urls;
+      const { data: signed } = await supabaseAdmin.storage
+        .from(REGISTRATION_PHOTO_BUCKET)
+        .createSignedUrls([...byPath.keys()], PHOTO_URL_EXPIRY_SECONDS);
+      for (const item of signed ?? []) {
+        if (!item.path || !item.signedUrl || item.error) continue;
+        for (const id of byPath.get(item.path) ?? []) urls[id] = item.signedUrl;
+      }
+      return urls;
     },
     async signPhotos(rows) {
       const paths = rows.map(
@@ -841,6 +865,11 @@ export function createAdminRegistrationService(
 
   return {
     list: (query: AdminRegistrationQuery, includePhotos = true) => listEnriched(query, includePhotos),
+    /** Photos load after the list so signing never delays the table. */
+    async photoUrls(registrationIds: string[]) {
+      if (!repository.signPhotosForIds) return {};
+      return repository.signPhotosForIds(registrationIds);
+    },
     async summary(): Promise<AdminRegistrationSummary> {
       const completeRows =
         repository.listCandidates && repository.listComplementPayments

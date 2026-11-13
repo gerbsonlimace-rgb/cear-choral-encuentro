@@ -7,6 +7,7 @@ import { AdminRegistrationsPage } from "./AdminRegistrationsPage";
 vi.mock("@/lib/admin.functions", () => ({
   getAdminAccess: vi.fn(),
   getAdminRegistrationSummary: vi.fn(),
+  getAdminRegistrationPhotos: vi.fn(async () => ({})),
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
   exportAdminRegistrationsPdf: vi.fn(),

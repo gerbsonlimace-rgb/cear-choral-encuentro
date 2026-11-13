@@ -135,7 +135,10 @@ export const getAdminRegistrationsBootstrap = createServerFn({ method: "GET" })
         const service = getAdminRegistrationService();
         const handlers = createAdminFunctionHandlers(service);
         const [registrations, summary] = await Promise.all([
-          handlers.list({ search: "", paymentStatus: "all", page: 1, pageSize: 25 }),
+          service.list(
+            adminRegistrationQuerySchema.parse({ search: "", paymentStatus: "all", page: 1, pageSize: 25 }),
+            false,
+          ),
           handlers.summary(),
         ]);
         return { registrations, summary };
@@ -149,7 +152,17 @@ export const listAdminRegistrations = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getAdminRegistrationService } =
       await import("@/features/admin/admin-registration.server");
-    return createAdminFunctionHandlers(getAdminRegistrationService()).list(data);
+    // Photos are signed by getAdminRegistrationPhotos after the table renders.
+    return getAdminRegistrationService().list(adminRegistrationQuerySchema.parse(data), false);
+  });
+
+export const getAdminRegistrationPhotos = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(z.object({ registrationIds: z.array(z.string().uuid()).max(100) }))
+  .handler(async ({ data }): Promise<Record<string, string>> => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().photoUrls(data.registrationIds);
   });
 
 export const getAdminRegistrationSummary = createServerFn({ method: "GET" })

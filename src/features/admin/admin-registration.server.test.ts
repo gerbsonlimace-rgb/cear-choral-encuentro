@@ -7,6 +7,7 @@ const { supabaseAdminMock } = vi.hoisted(() => ({
       throw new Error("Unconfigured Supabase boundary");
     },
     storage: undefined as unknown,
+    rpc: undefined as unknown,
   },
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: supabaseAdminMock }));
@@ -15,6 +16,7 @@ import {
   createAdminRegistrationService,
   createSupabaseAdminRegistrationRepository,
   getAdminRegistrationService,
+  parseAdminRegistrationSnapshot,
 } from "./admin-registration.server";
 import { PDFDocument } from "pdf-lib";
 
@@ -220,13 +222,18 @@ describe("registration export", () => {
     expect(trace).toContainEqual(["from", "admin_access_events"]);
   });
 
-  it("lazily exposes the production service with the same repository mapping", async () => {
-    const { trace } = databaseHarness([success([])]);
+  it("lazily exposes the production service and loads the listing in one database call", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { registrations: [], complements: [], reviews: [] },
+      error: null,
+    });
+    supabaseAdminMock.rpc = rpc;
+    const { trace } = databaseHarness([]);
     const service = getAdminRegistrationService();
-    expect(trace).toEqual([]);
+    expect(rpc).not.toHaveBeenCalled();
     await expect(
       service.list({
-        search: "",
+        search: "Maria",
         paymentStatus: "pending",
         choirId: "all",
         musicalProfile: "all",
@@ -234,7 +241,32 @@ describe("registration export", () => {
         pageSize: 10,
       }),
     ).resolves.toEqual({ rows: [], total: 0, page: 1, pageSize: 10 });
-    expect(trace.filter(([method]) => method === "eq")).toEqual([]);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("admin_registration_snapshot", { p_search: "Maria" });
+    expect(trace).toEqual([]);
+  });
+
+  it("maps the snapshot into candidates, login evidence, complements and reviews", () => {
+    const snapshot = parseAdminRegistrationSnapshot({
+      registrations: [
+        { ...selectedRow, id: "a", participant_accounts: [{ access_status: "active" }], regent_name: "Ana", has_logged_in: true },
+        { ...selectedRow, id: "b", participant_accounts: [], regent_name: null, has_logged_in: false },
+      ],
+      complements: [
+        {
+          id: "c1", registration_id: "a", amount_cents: 5000, status: "paid", checkout_url: null,
+          created_at: "2026-11-01T00:00:00Z", paid_at: null, initiated_by_name: "Ana", initiated_as: "regent",
+        },
+      ],
+      reviews: [],
+    });
+    expect(snapshot.candidates.map((c) => [c.row.id, c.accountStatus, c.regentName])).toEqual([
+      ["a", "active", "Ana"],
+      ["b", null, null],
+    ]);
+    expect([...snapshot.loggedInIds]).toEqual(["a"]);
+    expect(snapshot.payments).toHaveLength(1);
+    expect(snapshot.candidates[0]?.row).not.toHaveProperty("has_logged_in");
   });
 });
 
