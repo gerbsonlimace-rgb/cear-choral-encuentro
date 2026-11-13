@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import {
@@ -617,7 +618,18 @@ function RegistrationDetailsDialog({
 function isInteractiveTarget(target: EventTarget | null) {
   return (
     target instanceof Element &&
-    Boolean(target.closest("button,a,input,select,textarea,[role='menuitem']"))
+    Boolean(target.closest("button,a,input,select,textarea,label,[role='menuitem']"))
+  );
+}
+
+/**
+ * Clicks inside portaled windows (payment, confirmations, menus) bubble through
+ * React to the row/card. Only clicks physically inside the row open details.
+ */
+function shouldOpenDetails(event: MouseEvent<HTMLElement>) {
+  const target = event.target;
+  return (
+    target instanceof Node && event.currentTarget.contains(target) && !isInteractiveTarget(target)
   );
 }
 
@@ -691,7 +703,7 @@ function RegistrationViews({
                 aria-label={`Ver todos os dados de ${row.name}`}
                 className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 onClick={(event) => {
-                  if (!isInteractiveTarget(event.target)) setSelectedRow(row);
+                  if (shouldOpenDetails(event)) setSelectedRow(row);
                 }}
                 onKeyDown={(event) => openWithKeyboard(event, row)}
               >
@@ -749,7 +761,7 @@ function RegistrationViews({
             aria-label={`Ver todos os dados de ${row.name}`}
             className="cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={(event) => {
-              if (!isInteractiveTarget(event.target)) setSelectedRow(row);
+              if (shouldOpenDetails(event)) setSelectedRow(row);
             }}
             onKeyDown={(event) => openWithKeyboard(event, row)}
           >

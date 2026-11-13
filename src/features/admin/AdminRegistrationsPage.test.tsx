@@ -259,6 +259,20 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
   });
 
+  it("keeps the payment window open and does not show details when clicking inside it", async () => {
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({ rows: [pending], total: 1, page: 1, pageSize: 25 }),
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("heading"));
+    await user.click(dialog);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Bruno Pendente/ })).not.toBeInTheDocument();
+  });
+
   it("records a partial manual payment and lets the admin waive the remainder as a discount", async () => {
     const markPaid = vi.fn().mockResolvedValue({
       status: "paid",
