@@ -36,6 +36,7 @@
 - Add general total-registration and pending-initial-fee counters and an audited PDF export of the complete active-filter result; verify 115 tests, a 10-page PDF, and browser file delivery.
 - Compact the summary and add audited PDF export by exact choir group; 64 tests passed, layouts and a three-page sample download checked; real-account verification remains blocked below.
 - Complete Google Search Console setup using Gerbson's linked connection: live META verification succeeded, root property confirmed as siteOwner, and existing sitemap submitted successfully; 97 affected tests passed before final delivery.
+- Let the admin "Marcar como pago" dialog record the amount received and either leave the remaining registration fee pending (with a later "Registrar restante da taxa" action) or waive it as a discount; 241 tests passed.
 
 ## Open
 - Fix reported PDF downloads in administrative summary and registrations; add filtered financial/raffle totals, registration count, and event logo above the PDF table.

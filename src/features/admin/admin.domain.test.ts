@@ -73,6 +73,8 @@ const legacyRow: RegistrationDatabaseRow = {
   manual_receipt_mime_type: null,
   manual_receipt_path: null,
   manual_receipt_size_bytes: null,
+  manual_fee_pending_cents: null,
+  manual_discount_cents: null,
 };
 
 const pendingRow: RegistrationDatabaseRow = {

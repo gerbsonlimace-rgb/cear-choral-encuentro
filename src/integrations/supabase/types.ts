@@ -700,6 +700,8 @@ export type Database = {
           installments: number | null
           institution: string | null
           is_free_registration: boolean
+          manual_discount_cents: number | null
+          manual_fee_pending_cents: number | null
           manual_paid_by: string | null
           manual_receipt_file_name: string | null
           manual_receipt_mime_type: string | null
@@ -748,6 +750,8 @@ export type Database = {
           installments?: number | null
           institution?: string | null
           is_free_registration?: boolean
+          manual_discount_cents?: number | null
+          manual_fee_pending_cents?: number | null
           manual_paid_by?: string | null
           manual_receipt_file_name?: string | null
           manual_receipt_mime_type?: string | null
@@ -796,6 +800,8 @@ export type Database = {
           installments?: number | null
           institution?: string | null
           is_free_registration?: boolean
+          manual_discount_cents?: number | null
+          manual_fee_pending_cents?: number | null
           manual_paid_by?: string | null
           manual_receipt_file_name?: string | null
           manual_receipt_mime_type?: string | null

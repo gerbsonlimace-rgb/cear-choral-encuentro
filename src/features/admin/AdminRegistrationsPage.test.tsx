@@ -250,11 +250,66 @@ describe("AdminRegistrationsPage read-only views", () => {
             mimeType: "application/pdf",
             fileName: "pix-pendente.pdf",
           },
+          amountCents: 10000,
+          remainder: "pending",
         },
       }),
     );
     expect(await screen.findByText("Inscrição marcada como paga.")).toBeInTheDocument();
     expect(createPaymentLink).toHaveBeenCalledWith({ data: { registrationId: "pending" } });
+  });
+
+  it("records a partial manual payment and lets the admin waive the remainder as a discount", async () => {
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
+      registrationId: "pending",
+      receivedCents: 6000,
+      pendingCents: 0,
+      discountCents: 4000,
+    });
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [pending],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      markPaid,
+    });
+
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    const dialog = screen.getByRole("alertdialog");
+    const amount = within(dialog).getByLabelText("Valor recebido (R$)");
+    expect(amount).toHaveValue("100,00");
+
+    await user.clear(amount);
+    await user.type(amount, "120,00");
+    expect(within(dialog).getByText("O valor não pode ser maior que R$ 100,00.")).toBeInTheDocument();
+
+    await user.clear(amount);
+    await user.type(amount, "60,00");
+    expect(within(dialog).getByText("Restante: R$ 40,00")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("radio", { name: /Isentar o restante/ }));
+    await user.upload(
+      within(dialog).getByLabelText("Comprovante de pagamento"),
+      new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar pagamento" }));
+
+    await waitFor(() =>
+      expect(markPaid).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          registrationId: "pending",
+          amountCents: 6000,
+          remainder: "discount",
+        }),
+      }),
+    );
+    expect(
+      await screen.findByText("Pagamento de R$ 60,00 registrado com desconto de R$ 40,00."),
+    ).toBeInTheDocument();
   });
 
   it("lets an administrator exempt a pending participant and confirms all values will be zero", async () => {
@@ -375,6 +430,8 @@ describe("AdminRegistrationsPage read-only views", () => {
             mimeType: "application/pdf",
             fileName: "pix-pendente.pdf",
           },
+          amountCents: 10000,
+          remainder: "pending",
         },
       }),
     );

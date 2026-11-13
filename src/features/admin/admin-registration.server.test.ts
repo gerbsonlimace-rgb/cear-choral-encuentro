@@ -19,7 +19,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 
 const expectedColumns =
-  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -271,7 +271,7 @@ describe("manual payment confirmation", () => {
         createSupabaseAdminRegistrationRepository(),
         () => new Date("2026-09-15T01:00:00Z"),
       ).markPaid("registration-1", "admin-1", receipt),
-    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1", receivedCents: 10000, pendingCents: 0, discountCents: 0 });
 
     expect(upload).toHaveBeenCalledWith(
       expect.stringMatching(/^registration-1\/.+\.pdf$/),
@@ -317,6 +317,9 @@ describe("manual payment confirmation", () => {
     await expect(service.markPaid("registration-1", "admin-1", receipt)).resolves.toEqual({
       status: "paid",
       registrationId: "registration-1",
+      receivedCents: 10000,
+      pendingCents: 0,
+      discountCents: 0,
     });
     expect(trace).toContainEqual([
       "update",
@@ -361,7 +364,7 @@ describe("manual payment confirmation", () => {
         createSupabaseAdminRegistrationRepository(),
         () => new Date(),
       ).markPaid("registration-1", "admin-1", receipt),
-    ).resolves.toEqual({ status: "paid", registrationId: "registration-1" });
+    ).resolves.toEqual({ status: "paid", registrationId: "registration-1", receivedCents: 10000, pendingCents: 0, discountCents: 0 });
     expect(trace).toContainEqual([
       "update",
       expect.objectContaining({
@@ -369,6 +372,48 @@ describe("manual payment confirmation", () => {
         payment_origin: "manual",
         manual_paid_by: "admin-1",
         checkout_url: null,
+      }),
+    ]);
+  });
+
+  it("keeps the unpaid fee open after a partial manual payment", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    supabaseAdminMock.storage = {
+      from: vi.fn().mockReturnValue({ upload, remove }),
+    };
+    const pendingRow = {
+      ...selectedRow,
+      payment_status: "pending",
+      payment_origin: "infinitepay",
+      pricing_type: "standard",
+      standard_price_cents: 10000,
+      registration_price_cents: 10000,
+      amount_cents: 10000,
+      paid_amount_cents: null,
+      manual_fee_pending_cents: null,
+      manual_discount_cents: null,
+    };
+    const { trace } = databaseHarness([
+      singleSuccess(pendingRow),
+      singleSuccess({ id: pendingRow.id }),
+    ]);
+    await expect(
+      createAdminRegistrationService(
+        createSupabaseAdminRegistrationRepository(),
+        () => new Date(),
+      ).markPaid("registration-1", "admin-1", receipt, { amountCents: 7000, remainder: "pending" }),
+    ).resolves.toMatchObject({ status: "paid", receivedCents: 7000, pendingCents: 3000 });
+    expect(trace).toContainEqual([
+      "update",
+      expect.objectContaining({
+        payment_status: "paid",
+        amount_cents: 7000,
+        paid_amount_cents: 7000,
+        registration_price_cents: 7000,
+        standard_price_cents: 7000,
+        manual_fee_pending_cents: 3000,
+        manual_discount_cents: null,
       }),
     ]);
   });
@@ -1027,6 +1072,8 @@ describe("registration repository list", () => {
           voicePart: "soprano",
           observations: "Sem restrições.",
           includeShirt: false,
+          manualFeePendingCents: null,
+          manualDiscountCents: null,
           shirtSize: null,
           shirtPriceCents: null,
           paymentStatus: "paid",

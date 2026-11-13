@@ -223,6 +223,7 @@ export const markAdminRegistrationPaid = createServerFn({ method: "POST" })
       data.registrationId,
       context.adminUserId,
       data.receipt,
+      { amountCents: data.amountCents, remainder: data.remainder },
     );
   });
 

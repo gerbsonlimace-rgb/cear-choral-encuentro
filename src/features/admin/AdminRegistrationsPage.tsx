@@ -128,6 +128,30 @@ import {
 } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 import { getAdminRafflePending, getAdminRegistrationPendingCents, formatAdminRafflePending } from "./admin-raffle.domain";
+import {
+  getManualPaymentDue,
+  parseReceivedAmount,
+  type ManualPaymentRemainder,
+} from "./admin-manual-payment.domain";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+type ManualPaymentChoice = { amountCents: number; remainder: ManualPaymentRemainder };
+
+function manualPaymentDue(row: AdminRegistrationRow) {
+  return getManualPaymentDue({
+    paymentStatus: row.paymentStatus,
+    paymentOrigin: row.paymentOrigin ?? null,
+    amountCents: row.amountCents,
+    paidAmountCents: row.paidAmountCents,
+    pricingType: row.pricingType,
+    standardPriceCents: row.standardPriceCents,
+    registrationPriceCents: row.registrationPriceCents,
+    feePendingCents: row.manualFeePendingCents ?? null,
+    discountCents: row.manualDiscountCents ?? null,
+  });
+}
+
+const centsToInput = (value: number) => (value / 100).toFixed(2).replace(".", ",");
 
 type Props = {
   deleteRegistration?: (input: {
@@ -151,10 +175,18 @@ type Props = {
     reused: boolean;
   }>;
   markPaid?: (input: {
-    data: { registrationId: string; receipt: ManualPaymentReceipt };
+    data: {
+      registrationId: string;
+      receipt: ManualPaymentReceipt;
+      amountCents?: number;
+      remainder?: ManualPaymentRemainder;
+    };
   }) => Promise<{
     status: "paid";
     registrationId: string;
+    receivedCents?: number;
+    pendingCents?: number;
+    discountCents?: number;
   }>;
   markExempt?: (input: { data: { registrationId: string } }) => Promise<{
     status: "exempt";
@@ -287,7 +319,9 @@ function Status({ row }: { row: AdminRegistrationRow }) {
   const freePending = row.paymentStatus === "pending" && row.isFreeRegistration;
   const label = freePending
     ? "Aguardando aprovação"
-    : {
+    : status === "paid" && (row.manualFeePendingCents ?? 0) > 0
+      ? "Parcialmente pago"
+      : {
         legacy: "Histórico",
         pending: "Pendente taxa de inscrição",
         partially_paid: "Parcialmente pago",
@@ -352,9 +386,15 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
                 Recebido: <span className="font-medium text-foreground">{money(received)}</span>
               </p>
             )}
-            {pending !== null && (!raffle || state.status === "pending") && (
+            {pending !== null &&
+              (!raffle || state.status === "pending" || (row.manualFeePendingCents ?? 0) > 0) && (
               <p>
                 Pendente taxa de inscrição: <span className="font-medium text-foreground">{money(getAdminRegistrationPendingCents(row, state))}</span>
+              </p>
+            )}
+            {(row.manualDiscountCents ?? 0) > 0 && (
+              <p>
+                Desconto concedido: <span className="font-medium text-foreground">{money(row.manualDiscountCents ?? 0)}</span>
               </p>
             )}
             {received === null && pending === null && <p>Valores não informados</p>}
@@ -544,6 +584,9 @@ function RegistrationDetailsDialog({
             <DetailItem label="Valor do pedido">{money(row.amountCents)}</DetailItem>
             <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
             <DetailItem label="Pendente taxa de inscrição">{money(getAdminRegistrationPendingCents(row, financial))}</DetailItem>
+            {(row.manualDiscountCents ?? 0) > 0 && (
+              <DetailItem label="Desconto concedido">{money(row.manualDiscountCents ?? 0)}</DetailItem>
+            )}
             {getAdminRafflePending(row, financial) && (
               <DetailItem label="Pendente em rifas">
                 {formatAdminRafflePending(getAdminRafflePending(row, financial) ?? { cents: 0, tickets: 0 })}
@@ -599,7 +642,11 @@ function RegistrationViews({
   onReset: (row: AdminRegistrationRow) => Promise<void>;
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
-  onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onMarkPaid: (
+    row: AdminRegistrationRow,
+    receipt: ManualPaymentReceipt,
+    payment: ManualPaymentChoice,
+  ) => Promise<boolean>;
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
@@ -791,7 +838,11 @@ function RegistrationActions({
   onReset: (row: AdminRegistrationRow) => Promise<void>;
   onBalancePayment: (row: AdminRegistrationRow) => void;
   onPaymentLink: (row: AdminRegistrationRow) => void;
-  onMarkPaid: (row: AdminRegistrationRow, receipt: ManualPaymentReceipt) => Promise<boolean>;
+  onMarkPaid: (
+    row: AdminRegistrationRow,
+    receipt: ManualPaymentReceipt,
+    payment: ManualPaymentChoice,
+  ) => Promise<boolean>;
   onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
@@ -808,6 +859,9 @@ function RegistrationActions({
   const [deleteCpf, setDeleteCpf] = useState("");
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
+  const due = manualPaymentDue(row);
+  const [amountInput, setAmountInput] = useState("");
+  const [remainder, setRemainder] = useState<ManualPaymentRemainder>("pending");
   const state = getAdminFinancialState(row);
   const openUrl = row.openComplementPayment?.checkoutUrl;
   const access = row.participantAccess;
@@ -833,13 +887,31 @@ function RegistrationActions({
   const openMarkPaid = () => {
     setReceipt(null);
     setReceiptError("");
+    setAmountInput(due ? centsToInput(due.dueCents) : "");
+    setRemainder("pending");
     setConfirmMarkPaid(true);
   };
+  const receivedCents = parseReceivedAmount(amountInput);
+  const leftoverCents =
+    due && receivedCents !== null && receivedCents <= due.dueCents ? due.dueCents - receivedCents : 0;
+  const amountError = !due
+    ? ""
+    : amountInput.trim() === ""
+      ? "Informe o valor recebido."
+      : receivedCents === null
+        ? "Informe um valor válido, por exemplo 150,00."
+        : receivedCents > due.dueCents
+          ? `O valor não pode ser maior que ${money(due.dueCents)}.`
+          : leftoverCents > 0 && !due.canSplit
+            ? "Esta inscrição só pode ser quitada pelo valor total."
+            : "";
+  const isBalance = due?.mode === "balance";
   const hasActions =
     Boolean(onEdit) ||
     row.hasManualReceipt ||
     (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
     state.status === "pending" ||
+    due?.mode === "balance" ||
     (state.status === "partially_paid" && state.pendingCents > 0) ||
     access?.canReprocess ||
     access?.canReset ||
@@ -889,6 +961,11 @@ function RegistrationActions({
                 <CircleOff aria-hidden="true" /> Marcar como isento
               </DropdownMenuItem>
             </>
+          )}
+          {due?.mode === "balance" && (
+            <DropdownMenuItem onSelect={openMarkPaid}>
+              <BadgeCheck aria-hidden="true" /> Registrar restante da taxa ({money(due.dueCents)})
+            </DropdownMenuItem>
           )}
           {state.status === "pending" && row.isFreeRegistration && (
             <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
@@ -966,45 +1043,110 @@ function RegistrationActions({
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Marcar inscrição como paga?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isBalance ? "Registrar restante da taxa?" : "Marcar inscrição como paga?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Confirme que o valor de {money(pendingAmountCents(row))} foi recebido e anexe o
-              comprovante antes de concluir esta ação.
+              {isBalance ? "Faltam" : "A taxa de inscrição é de"} {money(due?.dueCents ?? null)}. Informe
+              quanto foi recebido e anexe o comprovante.
+              {row.pricingType === "promotional" && " As rifas continuam controladas à parte."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
-            <Input
-              id={`payment-receipt-${row.id}`}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-              aria-required="true"
-              disabled={busy}
-              onChange={(event) => void selectReceipt(event)}
-            />
-            {receipt && (
-              <p className="text-xs text-muted-foreground">
-                Arquivo selecionado: {receipt.fileName}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={`payment-amount-${row.id}`}>Valor recebido (R$)</Label>
+              <Input
+                id={`payment-amount-${row.id}`}
+                inputMode="decimal"
+                autoComplete="off"
+                value={amountInput}
+                disabled={busy}
+                aria-invalid={Boolean(amountError)}
+                aria-describedby={`payment-amount-help-${row.id}`}
+                onChange={(event) => setAmountInput(event.target.value)}
+              />
+              <p id={`payment-amount-help-${row.id}`} className={amountError ? "text-sm text-destructive" : "text-xs text-muted-foreground"}>
+                {amountError ||
+                  (leftoverCents > 0
+                    ? `Restante: ${money(leftoverCents)}`
+                    : "Valor total: a taxa de inscrição fica quitada.")}
               </p>
+            </div>
+            {leftoverCents > 0 && !amountError && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-foreground">
+                  O que fazer com o restante de {money(leftoverCents)}?
+                </legend>
+                <RadioGroup
+                  value={remainder}
+                  onValueChange={(value) => setRemainder(value as ManualPaymentRemainder)}
+                  disabled={busy}
+                >
+                  <label
+                    htmlFor={`remainder-pending-${row.id}`}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                  >
+                    <RadioGroupItem id={`remainder-pending-${row.id}`} value="pending" className="mt-0.5" />
+                    <span className="space-y-0.5">
+                      <span className="block text-sm font-medium text-foreground">Deixar pendente</span>
+                      <span className="block text-xs text-muted-foreground">
+                        A inscrição fica parcialmente paga e o restante continua a receber.
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    htmlFor={`remainder-discount-${row.id}`}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                  >
+                    <RadioGroupItem id={`remainder-discount-${row.id}`} value="discount" className="mt-0.5" />
+                    <span className="space-y-0.5">
+                      <span className="block text-sm font-medium text-foreground">
+                        Isentar o restante (desconto)
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        O restante é perdoado e a taxa de inscrição fica quitada.
+                      </span>
+                    </span>
+                  </label>
+                </RadioGroup>
+              </fieldset>
             )}
-            {receiptError && (
-              <p role="alert" className="text-sm text-destructive">
-                {receiptError}
-              </p>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
+              <Input
+                id={`payment-receipt-${row.id}`}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+                aria-required="true"
+                disabled={busy}
+                onChange={(event) => void selectReceipt(event)}
+              />
+              {receipt && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo selecionado: {receipt.fileName}
+                </p>
+              )}
+              {receiptError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {receiptError}
+                </p>
+              )}
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busy || !receipt}
+              disabled={busy || !receipt || !due || Boolean(amountError) || receivedCents === null}
               onClick={(event) => {
                 event.preventDefault();
-                if (!receipt) return;
-                void onMarkPaid(row, receipt).then((success) => {
-                  if (success) setConfirmMarkPaid(false);
-                });
+                if (!receipt || receivedCents === null || amountError) return;
+                void onMarkPaid(row, receipt, { amountCents: receivedCents, remainder }).then(
+                  (success) => {
+                    if (success) setConfirmMarkPaid(false);
+                  },
+                );
               }}
             >
               Confirmar pagamento
@@ -1919,6 +2061,7 @@ export function AdminRegistrationsPage({
   async function runMarkPaidAction(
     row: AdminRegistrationRow,
     receipt: ManualPaymentReceipt,
+    payment: ManualPaymentChoice,
   ): Promise<boolean> {
     if (actionBusy.current || gate !== "authorized") return false;
     actionBusy.current = true;
@@ -1926,9 +2069,23 @@ export function AdminRegistrationsPage({
     setActionError("");
     setAnnouncement("");
     try {
-      const result = await markPaid({ data: { registrationId: row.id, receipt } });
+      const result = await markPaid({
+        data: {
+          registrationId: row.id,
+          receipt,
+          amountCents: payment.amountCents,
+          remainder: payment.remainder,
+        },
+      });
       if (result.status !== "paid") throw new Error("Unexpected payment result");
-      setAnnouncement("Inscrição marcada como paga.");
+      const received = result.receivedCents ?? payment.amountCents;
+      setAnnouncement(
+        (result.pendingCents ?? 0) > 0
+          ? `Pagamento de ${money(received)} registrado. Restam ${money(result.pendingCents ?? 0)} da taxa de inscrição.`
+          : (result.discountCents ?? 0) > 0
+            ? `Pagamento de ${money(received)} registrado com desconto de ${money(result.discountCents ?? 0)}.`
+            : "Inscrição marcada como paga.",
+      );
       setRetry((value) => value + 1);
       return true;
     } catch {

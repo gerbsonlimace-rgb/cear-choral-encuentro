@@ -15,3 +15,4 @@
 - Generate administrative registration PDFs on the authorized server from the complete filtered dataset, audit their format separately, and prepare downloads before the final user click so mobile file delivery retains user activation.
 - Match summary-card PDF exports by the exact stored choir name on the server, because the summary groups by name rather than configured choir ID.
 - Embed the event artwork in administrative PDF generation and derive its financial summary from exported rows using the shared raffle separation rules, avoiding external asset requests and double-counted totals.
+- Track partial manual registration-fee balances and administrator discounts in dedicated registration columns used only by admin accounting, so raffle complements, checkout eligibility and the shared financial state stay unchanged.

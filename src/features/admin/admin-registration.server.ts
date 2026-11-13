@@ -20,6 +20,7 @@ import {
   type ManualPaymentReceipt,
   type RegistrationDatabaseRow,
 } from "./admin.domain";
+import { planManualPayment, type ManualPaymentRemainder } from "./admin-manual-payment.domain";
 
 export const adminRegistrationColumns = [
   "id",
@@ -59,6 +60,8 @@ export const adminRegistrationColumns = [
   "manual_receipt_file_name",
   "manual_receipt_mime_type",
   "manual_receipt_size_bytes",
+  "manual_fee_pending_cents",
+  "manual_discount_cents",
   "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
@@ -155,6 +158,19 @@ export type AdminExportAuditEvent = {
   resultCount: number;
 };
 
+export type AdminManualPaymentOptions = {
+  amountCents?: number;
+  remainder?: ManualPaymentRemainder;
+};
+
+export type AdminManualPaymentResult = {
+  status: "paid";
+  registrationId: string;
+  receivedCents?: number;
+  pendingCents?: number;
+  discountCents?: number;
+};
+
 export type AdminRegistrationRepository = {
   listLoggedInRegistrationIds?(): Promise<Set<string>>;
   listCandidates?(search: string): Promise<AdminRegistrationCandidate[]>;
@@ -173,7 +189,8 @@ export type AdminRegistrationRepository = {
     registrationId: string,
     adminUserId: string,
     receipt: ManualPaymentReceipt,
-  ) => Promise<{ status: "paid"; registrationId: string }>;
+    payment?: AdminManualPaymentOptions,
+  ) => Promise<AdminManualPaymentResult>;
   markExempt?: (
     registrationId: string,
     adminUserId: string,
@@ -422,25 +439,31 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
       });
       if (error) throw new Error("Não foi possível registrar a exportação.");
     },
-    async markPaid(registrationId, adminUserId, receipt) {
+    async markPaid(registrationId, adminUserId, receipt, payment = {}) {
       const { data: current, error: readError } = await supabaseAdmin
         .from("registrations")
-        .select("id,amount_cents,payment_status,checkout_url")
+        .select(
+          "id,amount_cents,paid_amount_cents,payment_status,payment_origin,pricing_type,standard_price_cents,registration_price_cents,manual_fee_pending_cents,manual_discount_cents,paid_at",
+        )
         .eq("id", registrationId)
         .maybeSingle();
       if (readError) throw new Error("Não foi possível consultar a inscrição.");
       if (!current) throw new Error("Inscrição não encontrada.");
-      if (current.payment_status !== "pending") {
-        throw new Error("A inscrição não está pendente.");
-      }
-      const amountCents = current.amount_cents;
-      if (
-        typeof amountCents !== "number" ||
-        !Number.isSafeInteger(amountCents) ||
-        amountCents <= 0
-      ) {
-        throw new Error("Não foi possível confirmar o valor da inscrição.");
-      }
+      const plan = planManualPayment(
+        {
+          paymentStatus: current.payment_status,
+          paymentOrigin: current.payment_origin,
+          amountCents: current.amount_cents,
+          paidAmountCents: current.paid_amount_cents,
+          pricingType: current.pricing_type,
+          standardPriceCents: current.standard_price_cents,
+          registrationPriceCents: current.registration_price_cents,
+          feePendingCents: current.manual_fee_pending_cents,
+          discountCents: current.manual_discount_cents,
+        },
+        payment.amountCents,
+        payment.remainder,
+      );
 
       const { parsed, bytes } = parseManualReceipt(receipt);
       const receiptPath = `${registrationId}/${crypto.randomUUID()}.${receiptExtension(parsed.mimeType)}`;
@@ -454,33 +477,49 @@ export function createSupabaseAdminRegistrationRepository(): AdminRegistrationRe
 
       const paidAt = new Date().toISOString();
       try {
-        const { data, error } = await supabaseAdmin
+        const receiptFields = {
+          manual_paid_by: adminUserId,
+          manual_receipt_path: receiptPath,
+          manual_receipt_file_name: parsed.fileName,
+          manual_receipt_mime_type: parsed.mimeType,
+          manual_receipt_size_bytes: bytes.byteLength,
+        };
+        const changes =
+          plan.mode === "initial"
+            ? {
+                ...plan.update,
+                ...receiptFields,
+                payment_status: "paid",
+                payment_origin: "manual",
+                checkout_url: null,
+                infinitepay_invoice_slug: null,
+                infinitepay_transaction_nsu: null,
+                payment_method: null,
+                installments: null,
+                receipt_url: null,
+                paid_at: paidAt,
+              }
+            : { ...plan.update, ...receiptFields };
+        let request = supabaseAdmin
           .from("registrations")
-          .update({
-            payment_status: "paid",
-            payment_origin: "manual",
-            manual_paid_by: adminUserId,
-            manual_receipt_path: receiptPath,
-            manual_receipt_file_name: parsed.fileName,
-            manual_receipt_mime_type: parsed.mimeType,
-            manual_receipt_size_bytes: bytes.byteLength,
-            checkout_url: null,
-            infinitepay_invoice_slug: null,
-            infinitepay_transaction_nsu: null,
-            payment_method: null,
-            installments: null,
-            paid_amount_cents: amountCents,
-            receipt_url: null,
-            paid_at: paidAt,
-          })
+          .update(changes)
           .eq("id", registrationId)
-          .eq("payment_status", "pending")
-          .select("id")
-          .maybeSingle();
+          .eq("payment_status", current.payment_status);
+        request =
+          current.amount_cents === null
+            ? request.is("amount_cents", null)
+            : request.eq("amount_cents", current.amount_cents);
+        const { data, error } = await request.select("id").maybeSingle();
         if (error || !data) {
           throw new Error("Não foi possível marcar a inscrição como paga.");
         }
-        return { status: "paid", registrationId: data.id };
+        return {
+          status: "paid",
+          registrationId: data.id,
+          receivedCents: plan.receivedCents,
+          pendingCents: plan.pendingCents,
+          discountCents: plan.discountCents,
+        };
       } catch (error) {
         await storage.remove([receiptPath]).catch(() => undefined);
         throw error;
@@ -743,9 +782,14 @@ export function createAdminRegistrationService(
       });
       return file;
     },
-    async markPaid(registrationId: string, adminUserId: string, receipt: ManualPaymentReceipt) {
+    async markPaid(
+      registrationId: string,
+      adminUserId: string,
+      receipt: ManualPaymentReceipt,
+      payment: AdminManualPaymentOptions = {},
+    ) {
       if (!repository.markPaid) throw new Error("Ação administrativa indisponível.");
-      const result = await repository.markPaid(registrationId, adminUserId, receipt);
+      const result = await repository.markPaid(registrationId, adminUserId, receipt, payment);
       // Payment truth is durable even if access provisioning is temporarily
       // unavailable; the admin can retry from the existing recovery action.
       await provisionParticipant?.(registrationId).catch(() => undefined);

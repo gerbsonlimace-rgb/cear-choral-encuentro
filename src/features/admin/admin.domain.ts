@@ -96,6 +96,8 @@ export const adminMarkPaidSchema = z
   .object({
     registrationId: z.string().uuid(),
     receipt: manualPaymentReceiptSchema,
+    amountCents: z.number().int().positive().max(100_000_000).optional(),
+    remainder: z.enum(["pending", "discount"]).optional(),
   })
   .strict();
 
@@ -234,6 +236,10 @@ export type AdminRegistrationRow = {
   isFreeRegistration?: boolean;
   rafflePaidCents?: number;
   hasManualReceipt?: boolean;
+  /** Registration-fee balance left open by an administrator (admin-only tracking). */
+  manualFeePendingCents?: number | null;
+  /** Registration-fee amount waived as a discount by an administrator. */
+  manualDiscountCents?: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
@@ -348,6 +354,8 @@ export function mapAdminRegistrationRow(
         : null,
     isFreeRegistration: row.is_free_registration,
     hasManualReceipt: Boolean(row.manual_receipt_path),
+    manualFeePendingCents: row.manual_fee_pending_cents ?? null,
+    manualDiscountCents: row.manual_discount_cents ?? null,
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
@@ -458,7 +466,8 @@ export function summarizeAdminRegistrations(
       | "pricingType"
       | "standardPriceCents"
       | "registrationPriceCents"
-    >
+    > &
+      Partial<Pick<AdminRegistrationRow, "manualFeePendingCents">>
   >,
 ): AdminRegistrationSummary {
   const summary: AdminRegistrationSummary = {
@@ -511,10 +520,15 @@ export function summarizeAdminRegistrations(
       const pendingRegentCents =
         financialState.status === "partially_paid" ? financialState.pendingCents : 0;
 
+      const feeBalanceCents =
+        getAdminRegistrationPendingCents(row as AdminRegistrationRow, financialState) ?? 0;
+
       summary.receivedCents += receivedCents;
       summary.pendingRegentCents += pendingRegentCents;
+      summary.pendingCents += feeBalanceCents;
       choir.receivedCents += receivedCents;
       choir.pendingRegentCents += pendingRegentCents;
+      choir.pendingCents += feeBalanceCents;
     } else if (financialState.status === "pending") {
       const pendingCents = getAdminRegistrationPendingCents(row as AdminRegistrationRow, financialState) ?? 0;
       summary.pendingCents += pendingCents;
@@ -592,6 +606,7 @@ function displayDate(value: string | null): string {
 function displayStatus(row: AdminRegistrationRow): string {
   if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
   const value = getAdminFinancialState(row).status;
+  if (value === "paid" && (row.manualFeePendingCents ?? 0) > 0) return "Parcialmente pago";
   return {
     pending: "Pendente",
     partially_paid: "Parcialmente pago",
@@ -655,7 +670,9 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
             ? row.amountCents
             : getAdminFinancialState(row).status === "pending"
               ? getAdminFinancialState(row).pendingCents
-              : row.standardPriceCents
+              : row.standardPriceCents === null
+                ? null
+                : row.standardPriceCents + (row.manualFeePendingCents ?? 0)
           : row.amountCents,
       ),
       displayAmount(

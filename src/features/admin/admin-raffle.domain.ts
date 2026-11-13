@@ -26,13 +26,21 @@ export function getAdminRafflePending(
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 export function getAdminRegistrationPendingCents(
-  row: Parameters<typeof getAdminRafflePending>[0],
+  row: Parameters<typeof getAdminRafflePending>[0] & Partial<Pick<AdminRegistrationRow, "manualFeePendingCents">>,
   financial: RegistrationFinancialState,
 ): number | null {
+  // A fee balance left open by an administrator is tracked only here, apart
+  // from raffle complements and from the shared registration financial state.
+  const feeBalance =
+    (financial.status === "paid" || financial.status === "partially_paid") &&
+    Number.isSafeInteger(row.manualFeePendingCents) &&
+    (row.manualFeePendingCents ?? 0) > 0
+      ? (row.manualFeePendingCents as number)
+      : 0;
   const raffle = getAdminRafflePending(row, financial);
-  if (financial.pendingCents === null) return null;
-  if (!raffle || row.isFreeRegistration) return financial.pendingCents;
-  return Math.max(0, financial.pendingCents - raffle.cents);
+  if (financial.pendingCents === null) return feeBalance > 0 ? feeBalance : null;
+  if (!raffle || row.isFreeRegistration) return financial.pendingCents + feeBalance;
+  return Math.max(0, financial.pendingCents - raffle.cents) + feeBalance;
 }
 
 export function formatAdminRafflePending(pending: { cents: number; tickets: number | null }): string {
