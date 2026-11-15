@@ -20,6 +20,7 @@ import { getUnifiedPortalAccess } from "@/lib/portal-access.functions";
 
 import type { PortalDestination, UnifiedPortalAccess } from "./portal-access.domain";
 import { MobileEventSplash } from "./MobileEventSplash";
+import { localPortalConfigurationError } from "./portal-access-error";
 
 type Props = {
   onAuthorized: (destination: PortalDestination) => void;
@@ -135,8 +136,14 @@ export function UnifiedPortalLoginPage({
         const access = await startupCheckAccess.current();
         if (!isCurrent()) return;
         activeGate.resolve(await routeAuthorizedAccess(access, isCurrent));
-      } catch {
+      } catch (error) {
         if (!isCurrent()) return;
+        const configurationError = localPortalConfigurationError(error);
+        if (configurationError) {
+          setError(configurationError);
+          activeGate.resolve(false);
+          return;
+        }
         await closeRejectedSession();
         if (isCurrent()) {
           setError("Não foi possível verificar seu acesso. Tente novamente.");
@@ -178,10 +185,15 @@ export function UnifiedPortalLoginPage({
       const access = await checkAccess();
       if (!isCurrent()) return;
       await routeAuthorizedAccess(access, isCurrent);
-    } catch {
+    } catch (error) {
       if (!isCurrent()) return;
       setPassword("");
       if (signedIn) {
+        const configurationError = localPortalConfigurationError(error);
+        if (configurationError) {
+          setError(configurationError);
+          return;
+        }
         await closeRejectedSession();
         if (!isCurrent()) return;
         setError("Não foi possível verificar seu acesso. Tente novamente.");

@@ -162,6 +162,31 @@ describe("UnifiedPortalLoginPage", () => {
     expect(screen.getByLabelText("Senha")).toHaveValue("");
   });
 
+  it("preserves a new login when the local server key is missing without authorizing access", async () => {
+    const { user, signOut, onAuthorized } = setup({
+      checkAccess: vi.fn().mockRejectedValue(new Error(
+        "Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY.",
+      )),
+    });
+    await enter(user);
+    expect(screen.getByRole("alert")).toHaveTextContent(".env.local");
+    expect(signOut).not.toHaveBeenCalled();
+    expect(onAuthorized).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Senha")).toHaveValue("");
+  });
+
+  it("preserves an existing login when local configuration prevents checking its role", async () => {
+    const { signOut, onAuthorized } = setup({
+      getSession: async () => ({ data: { session: { user: { id: "signed-in" } } }, error: null }),
+      checkAccess: vi.fn().mockRejectedValue(new Error(
+        "Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY.",
+      )),
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Seu login foi preservado.");
+    expect(signOut).not.toHaveBeenCalled();
+    expect(onAuthorized).not.toHaveBeenCalled();
+  });
+
   it("prevents duplicate submissions while authentication is pending", async () => {
     let resolveSignIn: ((result: { error: null }) => void) | undefined;
     const { user, signIn, onAuthorized } = setup({
