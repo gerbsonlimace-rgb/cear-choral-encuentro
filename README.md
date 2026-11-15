@@ -9,7 +9,7 @@ This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/12147374-4203-4e9f-9634-296f68f73e48).
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/e6f04773-e2dc-44c3-a483-34df39d64822).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
