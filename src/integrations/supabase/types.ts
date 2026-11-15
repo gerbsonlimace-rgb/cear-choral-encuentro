@@ -681,6 +681,8 @@ export type Database = {
       registrations: {
         Row: {
           amount_cents: number | null
+          admin_payment_reason: string | null
+          admin_registration_original_price_cents: number | null
           badge_name: string | null
           birth_date: string
           checkout_url: string | null
@@ -731,6 +733,8 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
+          admin_payment_reason?: string | null
+          admin_registration_original_price_cents?: number | null
           badge_name?: string | null
           birth_date: string
           checkout_url?: string | null
@@ -781,6 +785,8 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
+          admin_payment_reason?: string | null
+          admin_registration_original_price_cents?: number | null
           badge_name?: string | null
           birth_date?: string
           checkout_url?: string | null

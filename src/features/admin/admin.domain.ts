@@ -95,9 +95,11 @@ export const manualPaymentReceiptSchema = z
 export const adminMarkPaidSchema = z
   .object({
     registrationId: z.string().uuid(),
-    receipt: manualPaymentReceiptSchema,
-    amountCents: z.number().int().positive().max(100_000_000).optional(),
+    receipt: manualPaymentReceiptSchema.optional(),
+    amountCents: z.number().int().min(0).max(100_000_000).optional(),
     remainder: z.enum(["pending", "discount"]).optional(),
+    originalRegistrationPriceCents: z.number().int().min(0).max(100_000_000).optional(),
+    reason: z.string().trim().max(500).optional(),
   })
   .strict();
 
@@ -240,6 +242,8 @@ export type AdminRegistrationRow = {
   manualFeePendingCents?: number | null;
   /** Registration-fee amount waived as a discount by an administrator. */
   manualDiscountCents?: number | null;
+  adminRegistrationOriginalPriceCents?: number | null;
+  manualPaymentReason?: string | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
@@ -366,6 +370,8 @@ export function mapAdminRegistrationRow(
     hasManualReceipt: Boolean(row.manual_receipt_path),
     manualFeePendingCents: row.manual_fee_pending_cents ?? null,
     manualDiscountCents: row.manual_discount_cents ?? null,
+    adminRegistrationOriginalPriceCents: row.admin_registration_original_price_cents ?? null,
+    manualPaymentReason: row.admin_payment_reason ?? null,
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
@@ -616,13 +622,14 @@ function displayDate(value: string | null): string {
 
 function displayStatus(row: AdminRegistrationRow): string {
   if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
+  if ((row.manualDiscountCents ?? 0) > 0) return "Isenção parcial";
   const value = getAdminFinancialState(row).status;
   if (value === "paid" && (row.manualFeePendingCents ?? 0) > 0) return "Parcialmente pago";
   return {
     pending: "Pendente",
     partially_paid: "Parcialmente pago",
     paid: "Pago",
-    exempt: "Isento",
+    exempt: "Isenção total",
     legacy: "Histórico",
   }[value];
 }
@@ -634,7 +641,8 @@ function displayPaymentMethod(value: AdminRegistrationRow["paymentMethod"]): str
 }
 
 function displayPricingType(row: AdminRegistrationRow): string {
-  if (getAdminFinancialState(row).status === "exempt") return "Isento";
+  if (getAdminFinancialState(row).status === "exempt") return "Isenção total";
+  if ((row.manualDiscountCents ?? 0) > 0) return "Isenção parcial";
   if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
   const value = row.pricingType;
   if (value === "standard") return "Normal";

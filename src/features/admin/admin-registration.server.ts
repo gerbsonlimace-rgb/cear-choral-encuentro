@@ -62,6 +62,8 @@ export const adminRegistrationColumns = [
   "manual_receipt_size_bytes",
   "manual_fee_pending_cents",
   "manual_discount_cents",
+  "admin_registration_original_price_cents",
+  "admin_payment_reason",
   "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
@@ -230,6 +232,8 @@ export type AdminExportAuditEvent = {
 export type AdminManualPaymentOptions = {
   amountCents?: number;
   remainder?: ManualPaymentRemainder;
+  originalRegistrationPriceCents?: number;
+  reason?: string;
 };
 
 export type AdminManualPaymentResult = {
@@ -266,7 +270,7 @@ export type AdminRegistrationRepository = {
   markPaid?: (
     registrationId: string,
     adminUserId: string,
-    receipt: ManualPaymentReceipt,
+    receipt: ManualPaymentReceipt | undefined,
     payment?: AdminManualPaymentOptions,
   ) => Promise<AdminManualPaymentResult>;
   markExempt?: (
@@ -560,12 +564,53 @@ export function createSupabaseAdminRegistrationRepository(
       const { data: current, error: readError } = await supabaseAdmin
         .from("registrations")
         .select(
-          "id,amount_cents,paid_amount_cents,payment_status,payment_origin,pricing_type,standard_price_cents,registration_price_cents,manual_fee_pending_cents,manual_discount_cents,paid_at",
+          "id,amount_cents,paid_amount_cents,payment_status,payment_origin,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,include_shirt,shirt_price_cents,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,is_free_registration,manual_receipt_path,order_nsu,paid_at",
         )
         .eq("id", registrationId)
         .maybeSingle();
       if (readError) throw new Error("Não foi possível consultar a inscrição.");
       if (!current) throw new Error("Inscrição não encontrada.");
+      const originalRegistrationPriceCents =
+        payment.originalRegistrationPriceCents ?? current.admin_registration_original_price_cents;
+      const isRestoringExemption = current.payment_origin === "exemption";
+      const registrationPriceCents = isRestoringExemption
+        ? originalRegistrationPriceCents ?? current.registration_price_cents
+        : current.registration_price_cents;
+      const standardPriceCents = isRestoringExemption
+        ? (originalRegistrationPriceCents ?? current.registration_price_cents ?? 0) +
+          (current.remaining_price_cents ?? 0)
+        : current.standard_price_cents;
+      if (current.is_free_registration) {
+        if (payment.amountCents !== 0 || payment.remainder !== "discount") {
+          throw new Error("Esta inscrição gratuita só pode ser aprovada como isenta.");
+        }
+        const { data, error } = await supabaseAdmin
+          .from("registrations")
+          .update({
+            payment_status: "paid",
+            payment_origin: "exemption",
+            exempted_by: adminUserId,
+            exempted_at: new Date().toISOString(),
+            amount_cents: 0,
+            paid_amount_cents: 0,
+            admin_registration_original_price_cents: 0,
+            admin_payment_reason: payment.reason?.trim() || null,
+            order_nsu: null,
+            checkout_url: null,
+            infinitepay_invoice_slug: null,
+            infinitepay_transaction_nsu: null,
+            payment_method: null,
+            installments: null,
+            receipt_url: null,
+            paid_at: null,
+          })
+          .eq("id", registrationId)
+          .eq("payment_status", current.payment_status)
+          .select("id")
+          .maybeSingle();
+        if (error || !data) throw new Error("Não foi possível aprovar a inscrição gratuita.");
+        return { status: "paid", registrationId: data.id, receivedCents: 0, pendingCents: 0, discountCents: 0 };
+      }
       const plan = planManualPayment(
         {
           paymentStatus: current.payment_status,
@@ -573,50 +618,82 @@ export function createSupabaseAdminRegistrationRepository(
           amountCents: current.amount_cents,
           paidAmountCents: current.paid_amount_cents,
           pricingType: current.pricing_type,
-          standardPriceCents: current.standard_price_cents,
-          registrationPriceCents: current.registration_price_cents,
+          standardPriceCents,
+          registrationPriceCents,
           feePendingCents: current.manual_fee_pending_cents,
           discountCents: current.manual_discount_cents,
+          originalRegistrationPriceCents,
         },
         payment.amountCents,
         payment.remainder,
       );
 
-      const { parsed, bytes } = parseManualReceipt(receipt);
-      const receiptPath = `${registrationId}/${crypto.randomUUID()}.${receiptExtension(parsed.mimeType)}`;
+      const parsedReceipt = receipt ? parseManualReceipt(receipt) : null;
+      const receiptPath = parsedReceipt
+        ? `${registrationId}/${crypto.randomUUID()}.${receiptExtension(parsedReceipt.parsed.mimeType)}`
+        : null;
       const storage = supabaseAdmin.storage.from(MANUAL_PAYMENT_RECEIPT_BUCKET);
-      const { error: uploadError } = await storage.upload(receiptPath, bytes, {
-        cacheControl: "31536000",
-        contentType: parsed.mimeType,
-        upsert: false,
-      });
-      if (uploadError) throw new Error("Não foi possível enviar o comprovante.");
+      if (parsedReceipt && receiptPath) {
+        const { error: uploadError } = await storage.upload(receiptPath, parsedReceipt.bytes, {
+          cacheControl: "31536000",
+          contentType: parsedReceipt.parsed.mimeType,
+          upsert: false,
+        });
+        if (uploadError) throw new Error("Não foi possível enviar o comprovante.");
+      }
 
       const paidAt = new Date().toISOString();
       try {
+        const totalExemption = plan.receivedCents === 0 && plan.pendingCents === 0;
+        const oldReceiptPath = current.manual_receipt_path;
         const receiptFields = {
-          manual_paid_by: adminUserId,
+          manual_paid_by: totalExemption ? null : adminUserId,
           manual_receipt_path: receiptPath,
-          manual_receipt_file_name: parsed.fileName,
-          manual_receipt_mime_type: parsed.mimeType,
-          manual_receipt_size_bytes: bytes.byteLength,
+          manual_receipt_file_name: parsedReceipt?.parsed.fileName ?? null,
+          manual_receipt_mime_type: parsedReceipt?.parsed.mimeType ?? null,
+          manual_receipt_size_bytes: parsedReceipt?.bytes.byteLength ?? null,
         };
-        const changes =
-          plan.mode === "initial"
-            ? {
-                ...plan.update,
-                ...receiptFields,
-                payment_status: "paid",
-                payment_origin: "manual",
-                checkout_url: null,
-                infinitepay_invoice_slug: null,
-                infinitepay_transaction_nsu: null,
-                payment_method: null,
-                installments: null,
-                receipt_url: null,
-                paid_at: paidAt,
-              }
-            : { ...plan.update, ...receiptFields };
+        const originalPrice =
+          originalRegistrationPriceCents ??
+          current.admin_registration_original_price_cents ??
+          (current.registration_price_cents ?? 0) +
+            (current.manual_fee_pending_cents ?? 0) +
+            (current.manual_discount_cents ?? 0);
+        const sharedChanges = {
+          ...plan.update,
+          ...receiptFields,
+          admin_registration_original_price_cents: originalPrice,
+          admin_payment_reason: payment.reason?.trim() || null,
+          payment_status: "paid",
+          checkout_url: null,
+          infinitepay_invoice_slug: null,
+          infinitepay_transaction_nsu: null,
+          payment_method: null,
+          installments: null,
+          receipt_url: null,
+        };
+        const changes = totalExemption
+          ? {
+              ...sharedChanges,
+              payment_origin: "exemption",
+              exempted_by: adminUserId,
+              exempted_at: paidAt,
+              amount_cents: 0,
+              paid_amount_cents: 0,
+              standard_price_cents: current.remaining_price_cents ?? 0,
+              registration_price_cents: 0,
+              shirt_price_cents: current.include_shirt ? 0 : null,
+              order_nsu: null,
+              paid_at: null,
+            }
+          : {
+              ...sharedChanges,
+              payment_origin: "manual",
+              exempted_by: null,
+              exempted_at: null,
+              order_nsu: current.order_nsu ?? crypto.randomUUID(),
+              paid_at: paidAt,
+            };
         let request = supabaseAdmin
           .from("registrations")
           .update(changes)
@@ -630,6 +707,9 @@ export function createSupabaseAdminRegistrationRepository(
         if (error || !data) {
           throw new Error("Não foi possível marcar a inscrição como paga.");
         }
+        if (oldReceiptPath && oldReceiptPath !== receiptPath) {
+          await storage.remove([oldReceiptPath]).catch(() => undefined);
+        }
         return {
           status: "paid",
           registrationId: data.id,
@@ -638,7 +718,7 @@ export function createSupabaseAdminRegistrationRepository(
           discountCents: plan.discountCents,
         };
       } catch (error) {
-        await storage.remove([receiptPath]).catch(() => undefined);
+        if (receiptPath) await storage.remove([receiptPath]).catch(() => undefined);
         throw error;
       }
     },

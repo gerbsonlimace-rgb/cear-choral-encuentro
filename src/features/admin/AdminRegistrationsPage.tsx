@@ -21,7 +21,6 @@ import {
   RefreshCw,
   KeyRound,
   Trash2,
-  CircleOff,
   ShieldCheck,
   ShieldOff,
   Users,
@@ -89,7 +88,6 @@ import {
   getAdminRegistrationPhotos,
   listAdminRegistrations,
   markAdminRegistrationPaid,
-  markAdminRegistrationExempt,
   deleteAdminRegistration,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
@@ -138,7 +136,12 @@ import {
 } from "./admin-manual-payment.domain";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type ManualPaymentChoice = { amountCents: number; remainder: ManualPaymentRemainder };
+type ManualPaymentChoice = {
+  amountCents: number;
+  remainder: ManualPaymentRemainder;
+  originalRegistrationPriceCents: number;
+  reason: string;
+};
 
 function manualPaymentDue(row: AdminRegistrationRow) {
   return getManualPaymentDue({
@@ -151,7 +154,16 @@ function manualPaymentDue(row: AdminRegistrationRow) {
     registrationPriceCents: row.registrationPriceCents,
     feePendingCents: row.manualFeePendingCents ?? null,
     discountCents: row.manualDiscountCents ?? null,
+    originalRegistrationPriceCents: row.adminRegistrationOriginalPriceCents ?? null,
   });
+}
+
+function getAdminAccessErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+    return "O localhost não encontrou SUPABASE_SERVICE_ROLE_KEY no .env. Configure essa chave somente no servidor e reinicie o localhost.";
+  }
+  return "Não foi possível verificar seu acesso. Tente novamente.";
 }
 
 const centsToInput = (value: number) => (value / 100).toFixed(2).replace(".", ",");
@@ -181,9 +193,11 @@ type Props = {
   markPaid?: (input: {
     data: {
       registrationId: string;
-      receipt: ManualPaymentReceipt;
+      receipt?: ManualPaymentReceipt;
       amountCents?: number;
       remainder?: ManualPaymentRemainder;
+      originalRegistrationPriceCents?: number;
+      reason?: string;
     };
   }) => Promise<{
     status: "paid";
@@ -191,10 +205,6 @@ type Props = {
     receivedCents?: number;
     pendingCents?: number;
     discountCents?: number;
-  }>;
-  markExempt?: (input: { data: { registrationId: string } }) => Promise<{
-    status: "exempt";
-    registrationId: string;
   }>;
   getReceiptUrl?: (input: { data: { registrationId: string } }) => Promise<{
     signedUrl: string;
@@ -325,14 +335,16 @@ function Status({ row }: { row: AdminRegistrationRow }) {
   const freePending = row.paymentStatus === "pending" && row.isFreeRegistration;
   const label = freePending
     ? "Aguardando aprovação"
-    : status === "paid" && (row.manualFeePendingCents ?? 0) > 0
+    : (row.manualDiscountCents ?? 0) > 0
+      ? "Isenção parcial"
+      : status === "paid" && (row.manualFeePendingCents ?? 0) > 0
       ? "Parcialmente pago"
       : {
         legacy: "Histórico",
         pending: "Pendente taxa de inscrição",
         partially_paid: "Parcialmente pago",
         paid: "Pago",
-        exempt: "Isento",
+        exempt: "Isenção total",
       }[status];
   return (
     <Badge variant={status === "paid" || status === "partially_paid" ? "default" : "secondary"}>
@@ -400,7 +412,7 @@ function PaymentSummary({ row }: { row: AdminRegistrationRow }) {
             )}
             {(row.manualDiscountCents ?? 0) > 0 && (
               <p>
-                Desconto concedido: <span className="font-medium text-foreground">{money(row.manualDiscountCents ?? 0)}</span>
+                Isenção parcial: <span className="font-medium text-foreground">{money(row.manualDiscountCents ?? 0)}</span>
               </p>
             )}
             {received === null && pending === null && <p>Valores não informados</p>}
@@ -471,11 +483,13 @@ function RegistrationDetailsDialog({
         : row.paymentOrigin === "exemption"
           ? row.paymentStatus === "pending"
             ? "Isenção aguardando aprovação"
-            : "Isenção administrativa"
+            : "Isenção total"
           : "Não informado";
   const pricingType =
     financial.status === "exempt"
-      ? "Isento"
+      ? "Isenção total"
+      : (row.manualDiscountCents ?? 0) > 0
+        ? "Isenção parcial"
       : row.isFreeRegistration && row.paymentStatus === "pending"
         ? "Aguardando aprovação"
         : row.pricingType === "promotional"
@@ -591,7 +605,7 @@ function RegistrationDetailsDialog({
             <DetailItem label="Recebido">{money(receivedAmountCents(row))}</DetailItem>
             <DetailItem label="Pendente taxa de inscrição">{money(getAdminRegistrationPendingCents(row, financial))}</DetailItem>
             {(row.manualDiscountCents ?? 0) > 0 && (
-              <DetailItem label="Desconto concedido">{money(row.manualDiscountCents ?? 0)}</DetailItem>
+              <DetailItem label="Isenção parcial">{money(row.manualDiscountCents ?? 0)}</DetailItem>
             )}
             {getAdminRafflePending(row, financial) && (
               <DetailItem label="Pendente em rifas">
@@ -646,7 +660,6 @@ function RegistrationViews({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
-  onMarkExempt,
   onDelete,
   onViewReceipt,
   onEdit,
@@ -661,10 +674,9 @@ function RegistrationViews({
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (
     row: AdminRegistrationRow,
-    receipt: ManualPaymentReceipt,
+    receipt: ManualPaymentReceipt | undefined,
     payment: ManualPaymentChoice,
   ) => Promise<boolean>;
-  onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
@@ -744,7 +756,6 @@ function RegistrationViews({
                     onBalancePayment={onBalancePayment}
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
-                    onMarkExempt={onMarkExempt}
                     onDelete={onDelete}
                     onViewReceipt={onViewReceipt}
                     onEdit={onEdit}
@@ -790,7 +801,6 @@ function RegistrationViews({
                   onBalancePayment={onBalancePayment}
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
-                  onMarkExempt={onMarkExempt}
                   onDelete={onDelete}
                   onViewReceipt={onViewReceipt}
                   onEdit={onEdit}
@@ -842,7 +852,6 @@ function RegistrationActions({
   onBalancePayment,
   onPaymentLink,
   onMarkPaid,
-  onMarkExempt,
   onDelete,
   onViewReceipt,
   onEdit,
@@ -857,10 +866,9 @@ function RegistrationActions({
   onPaymentLink: (row: AdminRegistrationRow) => void;
   onMarkPaid: (
     row: AdminRegistrationRow,
-    receipt: ManualPaymentReceipt,
+    receipt: ManualPaymentReceipt | undefined,
     payment: ManualPaymentChoice,
   ) => Promise<boolean>;
-  onMarkExempt: (row: AdminRegistrationRow) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
@@ -869,7 +877,6 @@ function RegistrationActions({
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
-  const [confirmExempt, setConfirmExempt] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmAdmin, setConfirmAdmin] = useState(false);
@@ -877,9 +884,15 @@ function RegistrationActions({
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState("");
   const due = manualPaymentDue(row);
+  const savedOriginalPrice = row.adminRegistrationOriginalPriceCents ??
+    (row.paymentOrigin === "exemption" ? null : row.registrationPriceCents);
+  const [originalAmountInput, setOriginalAmountInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
+  const [reason, setReason] = useState("");
   const [remainder, setRemainder] = useState<ManualPaymentRemainder>("pending");
   const state = getAdminFinancialState(row);
+  const canConfigurePayment =
+    row.paymentStatus === "pending" || due?.mode === "balance" || row.paymentOrigin === "exemption";
   const openUrl = row.openComplementPayment?.checkoutUrl;
   const access = row.participantAccess;
   const selectReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -904,30 +917,46 @@ function RegistrationActions({
   const openMarkPaid = () => {
     setReceipt(null);
     setReceiptError("");
-    setAmountInput(due ? centsToInput(due.dueCents) : "");
-    setRemainder("pending");
+    const original = savedOriginalPrice ?? (row.isFreeRegistration ? 0 : null);
+    setOriginalAmountInput(original === null ? "" : centsToInput(original));
+    setAmountInput(
+      row.paymentOrigin === "exemption"
+        ? "0,00"
+        : due
+          ? centsToInput(due.dueCents)
+          : original === null
+            ? ""
+            : centsToInput(original),
+    );
+    setReason(row.manualPaymentReason ?? "");
+    setRemainder(row.paymentOrigin === "exemption" || row.isFreeRegistration ? "discount" : "pending");
     setConfirmMarkPaid(true);
   };
+  const originalAmountCents = parseReceivedAmount(originalAmountInput);
   const receivedCents = parseReceivedAmount(amountInput);
+  const dueCents = due?.mode === "balance"
+    ? due.dueCents
+    : row.paymentOrigin === "exemption" || !due
+      ? originalAmountCents
+      : due.dueCents;
   const leftoverCents =
-    due && receivedCents !== null && receivedCents <= due.dueCents ? due.dueCents - receivedCents : 0;
-  const amountError = !due
-    ? ""
-    : amountInput.trim() === ""
+    dueCents !== null && receivedCents !== null && receivedCents <= dueCents ? dueCents - receivedCents : 0;
+  const amountError = originalAmountCents === null
+    ? "Informe o valor original da inscrição."
+    : receivedCents === null
       ? "Informe o valor recebido."
-      : receivedCents === null
-        ? "Informe um valor válido, por exemplo 150,00."
-        : receivedCents > due.dueCents
-          ? `O valor não pode ser maior que ${money(due.dueCents)}.`
-          : leftoverCents > 0 && !due.canSplit
-            ? "Esta inscrição só pode ser quitada pelo valor total."
-            : "";
-  const isBalance = due?.mode === "balance";
+      : dueCents === null
+        ? "Informe um valor pendente válido."
+        : receivedCents > dueCents
+          ? `O valor não pode ser maior que ${money(dueCents)}.`
+          : leftoverCents > 0 && due?.canSplit === false && !row.isFreeRegistration
+              ? "Esta inscrição só pode ser quitada pelo valor total."
+              : "";
   const hasActions =
     Boolean(onEdit) ||
     row.hasManualReceipt ||
     (typeof openUrl === "string" && isSafeCheckoutUrl(openUrl)) ||
-    state.status === "pending" ||
+    canConfigurePayment ||
     due?.mode === "balance" ||
     (state.status === "partially_paid" && state.pendingCents > 0) ||
     access?.canReprocess ||
@@ -971,22 +1000,11 @@ function RegistrationActions({
               <DropdownMenuItem onSelect={() => onPaymentLink(row)}>
                 <Link2 aria-hidden="true" /> Gerar novo link de pagamento
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openMarkPaid}>
-                <BadgeCheck aria-hidden="true" /> Marcar como pago
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
-                <CircleOff aria-hidden="true" /> Marcar como isento
-              </DropdownMenuItem>
             </>
           )}
-          {due?.mode === "balance" && (
+          {canConfigurePayment && (
             <DropdownMenuItem onSelect={openMarkPaid}>
-              <BadgeCheck aria-hidden="true" /> Registrar restante da taxa ({money(due.dueCents)})
-            </DropdownMenuItem>
-          )}
-          {state.status === "pending" && row.isFreeRegistration && (
-            <DropdownMenuItem onSelect={() => setConfirmExempt(true)}>
-              <BadgeCheck aria-hidden="true" /> Aprovar como isento
+              <BadgeCheck aria-hidden="true" /> Configurar pagamento
             </DropdownMenuItem>
           )}
           {state.status === "partially_paid" &&
@@ -1063,15 +1081,27 @@ function RegistrationActions({
         <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isBalance ? "Registrar restante da taxa?" : "Marcar inscrição como paga?"}
+              Configurar pagamento da inscrição
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isBalance ? "Faltam" : "A taxa de inscrição é de"} {money(due?.dueCents ?? null)}. Informe
-              quanto foi recebido e anexe o comprovante.
-              {row.pricingType === "promotional" && " As rifas continuam controladas à parte."}
+              Valor original: {money(originalAmountCents)}. Registre quanto foi recebido e escolha se o saldo fica pendente ou recebe isenção.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={`payment-original-${row.id}`}>Valor original da inscrição (R$)</Label>
+              <Input
+                id={`payment-original-${row.id}`}
+                inputMode="decimal"
+                autoComplete="off"
+                value={originalAmountInput}
+                disabled={busy || row.isFreeRegistration || (savedOriginalPrice !== null && row.paymentOrigin !== "exemption")}
+                onChange={(event) => setOriginalAmountInput(event.target.value)}
+              />
+              {row.paymentOrigin === "exemption" && savedOriginalPrice === null && (
+                <p className="text-xs text-muted-foreground">O valor anterior não foi preservado. Informe o valor original para registrar o pagamento.</p>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor={`payment-amount-${row.id}`}>Valor recebido (R$)</Label>
               <Input
@@ -1120,10 +1150,10 @@ function RegistrationActions({
                     <RadioGroupItem id={`remainder-discount-${row.id}`} value="discount" className="mt-0.5" />
                     <span className="space-y-0.5">
                       <span className="block text-sm font-medium text-foreground">
-                        Isentar o restante (desconto)
+                        Isentar o restante
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        O restante é perdoado e a taxa de inscrição fica quitada.
+                        Registra isenção total ou parcial da taxa de inscrição.
                       </span>
                     </span>
                   </label>
@@ -1131,12 +1161,15 @@ function RegistrationActions({
               </fieldset>
             )}
             <div className="space-y-2">
-              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante de pagamento</Label>
+              <Label htmlFor={`payment-reason-${row.id}`}>Justificativa (opcional)</Label>
+              <Textarea id={`payment-reason-${row.id}`} value={reason} maxLength={500} disabled={busy} onChange={(event) => setReason(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`payment-receipt-${row.id}`}>Comprovante (opcional)</Label>
               <Input
                 id={`payment-receipt-${row.id}`}
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-                aria-required="true"
                 disabled={busy}
                 onChange={(event) => void selectReceipt(event)}
               />
@@ -1155,44 +1188,23 @@ function RegistrationActions({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busy || !receipt || !due || Boolean(amountError) || receivedCents === null}
+              disabled={busy || Boolean(amountError) || receivedCents === null || (receivedCents === 0 && remainder !== "discount") || (receivedCents > 0 && Boolean(receiptError))}
               onClick={(event) => {
                 event.preventDefault();
-                if (!receipt || receivedCents === null || amountError) return;
-                void onMarkPaid(row, receipt, { amountCents: receivedCents, remainder }).then(
+                if (receivedCents === null || originalAmountCents === null || amountError || (receivedCents === 0 && remainder !== "discount")) return;
+                void onMarkPaid(row, receipt ?? undefined, {
+                  amountCents: receivedCents,
+                  remainder,
+                  originalRegistrationPriceCents: originalAmountCents,
+                  reason,
+                }).then(
                   (success) => {
                     if (success) setConfirmMarkPaid(false);
                   },
                 );
               }}
             >
-              Confirmar pagamento
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={confirmExempt} onOpenChange={setConfirmExempt}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{row.isFreeRegistration ? "Aprovar como isento?" : "Marcar participante como isento?"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {row.isFreeRegistration
-                ? `A inscrição de ${row.name} será aprovada como isenta e o acesso poderá ser preparado.`
-                : `A inscrição de ${row.name} será confirmada sem cobrança. Todos os valores ficarão em ${money(0)} e o link de pagamento será cancelado.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={busy}
-              onClick={(event) => {
-                event.preventDefault();
-                void onMarkExempt(row).then((success) => {
-                  if (success) setConfirmExempt(false);
-                });
-              }}
-            >
-              {row.isFreeRegistration ? "Aprovar isenção" : "Confirmar isenção"}
+              {receivedCents === 0 && remainder === "discount" ? "Registrar isenção" : "Salvar configuração"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1693,7 +1705,6 @@ export function AdminRegistrationsPage({
   exportPdfRegistrations,
   createPaymentLink = createAdminRegistrationCheckoutLink,
   markPaid = markAdminRegistrationPaid,
-  markExempt = markAdminRegistrationExempt,
   deleteRegistration = deleteAdminRegistration,
   getReceiptUrl = getAdminRegistrationReceipt,
   openReceiptUrl = defaultOpenReceiptUrl,
@@ -1720,6 +1731,7 @@ export function AdminRegistrationsPage({
   const [gate, setGate] = useState<
     "checking" | "authorized" | "forbidden" | "error" | "expired" | "leaving"
   >("checking");
+  const [gateErrorMessage, setGateErrorMessage] = useState("");
   const [result, setResult] = useState<AdminRegistrationPage | null>(null);
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
@@ -1808,8 +1820,11 @@ export function AdminRegistrationsPage({
     setSummary(null);
     try {
       const access = await checkAdmin();
-      if (current === revision.current) setGate(access.status);
-    } catch {
+      if (current === revision.current) {
+        setGateErrorMessage("");
+        setGate(access.status);
+      }
+    } catch (error) {
       try {
         const session = await getSession();
         if (current !== revision.current) return;
@@ -1821,7 +1836,10 @@ export function AdminRegistrationsPage({
       } catch {
         /* An unavailable local session cannot authorize or prove expiry. */
       }
-      if (current === revision.current) setGate("error");
+      if (current === revision.current) {
+        setGateErrorMessage(getAdminAccessErrorMessage(error));
+        setGate("error");
+      }
     }
   }, [checkAdmin, getSession, onMissingSession]);
 
@@ -1855,12 +1873,13 @@ export function AdminRegistrationsPage({
             setGate(result.access.status);
             return;
           }
+          setGateErrorMessage("");
           setResult(result.data.registrations);
           setSummary(result.data.summary);
           setBootstrapDataReady(true);
           setGate("authorized");
         })
-        .catch(async () => {
+        .catch(async (error) => {
           if (!active) return;
           try {
             const session = await getSession();
@@ -1873,6 +1892,7 @@ export function AdminRegistrationsPage({
           } catch {
             /* An unavailable local session cannot authorize or prove expiry. */
           }
+          setGateErrorMessage(getAdminAccessErrorMessage(error));
           setGate("error");
         })
         .finally(() => {
@@ -2111,7 +2131,7 @@ export function AdminRegistrationsPage({
 
   async function runMarkPaidAction(
     row: AdminRegistrationRow,
-    receipt: ManualPaymentReceipt,
+    receipt: ManualPaymentReceipt | undefined,
     payment: ManualPaymentChoice,
   ): Promise<boolean> {
     if (actionBusy.current || gate !== "authorized") return false;
@@ -2126,43 +2146,26 @@ export function AdminRegistrationsPage({
           receipt,
           amountCents: payment.amountCents,
           remainder: payment.remainder,
+          originalRegistrationPriceCents: payment.originalRegistrationPriceCents,
+          reason: payment.reason,
         },
       });
       if (result.status !== "paid") throw new Error("Unexpected payment result");
       const received = result.receivedCents ?? payment.amountCents;
       setAnnouncement(
-        (result.pendingCents ?? 0) > 0
+        received === 0 && (result.discountCents ?? 0) > 0
+          ? `Isenção total de ${money(result.discountCents ?? 0)} registrada.`
+          : (result.pendingCents ?? 0) > 0
           ? `Pagamento de ${money(received)} registrado. Restam ${money(result.pendingCents ?? 0)} da taxa de inscrição.`
           : (result.discountCents ?? 0) > 0
             ? `Pagamento de ${money(received)} registrado com desconto de ${money(result.discountCents ?? 0)}.`
             : "Inscrição marcada como paga.",
       );
       setRetry((value) => value + 1);
-      return true;
-    } catch {
-      setActionError("Não foi possível marcar a inscrição como paga. Tente novamente.");
-      return false;
-    } finally {
-      actionBusy.current = false;
-      setParticipantActionBusy(false);
-    }
-  }
-
-  async function runMarkExemptAction(row: AdminRegistrationRow): Promise<boolean> {
-    if (actionBusy.current || gate !== "authorized") return false;
-    actionBusy.current = true;
-    setParticipantActionBusy(true);
-    setActionError("");
-    setAnnouncement("");
-    try {
-      const result = await markExempt({ data: { registrationId: row.id } });
-      if (result.status !== "exempt") throw new Error("Unexpected exemption result");
-      setAnnouncement(row.isFreeRegistration ? "Inscrição aprovada como isenta." : "Participante marcado como isento. Valores zerados.");
-      setRetry((value) => value + 1);
       setSummaryRetry((value) => value + 1);
       return true;
     } catch {
-      setActionError(row.isFreeRegistration ? "Não foi possível aprovar a inscrição. Tente novamente." : "Não foi possível marcar o participante como isento. Tente novamente.");
+      setActionError("Não foi possível marcar a inscrição como paga. Tente novamente.");
       return false;
     } finally {
       actionBusy.current = false;
@@ -2355,7 +2358,7 @@ export function AdminRegistrationsPage({
           <Card>
             <CardContent className="space-y-3 p-5">
               <p role="alert" className="text-sm">
-                Não foi possível verificar seu acesso. Tente novamente.
+                {gateErrorMessage || "Não foi possível verificar seu acesso. Tente novamente."}
               </p>
               <Button
                 size="sm"
@@ -2530,7 +2533,6 @@ export function AdminRegistrationsPage({
                   onBalancePayment={setBalanceTarget}
                   onPaymentLink={(row) => void runPaymentLinkAction(row)}
                   onMarkPaid={runMarkPaidAction}
-                  onMarkExempt={runMarkExemptAction}
                   onDelete={runDeleteAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                   onEdit={openEditDialog}

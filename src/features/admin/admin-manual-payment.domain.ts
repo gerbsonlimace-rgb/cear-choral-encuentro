@@ -19,6 +19,7 @@ export type ManualPaymentSnapshot = {
   registrationPriceCents: number | null;
   feePendingCents: number | null;
   discountCents: number | null;
+  originalRegistrationPriceCents?: number | null;
 };
 
 export type ManualPaymentUpdate = {
@@ -62,6 +63,13 @@ export function getManualPaymentDue(
   ) {
     return { mode: "balance", dueCents: snapshot.feePendingCents, canSplit: true };
   }
+  if (
+    snapshot.paymentStatus === "paid" &&
+    snapshot.paymentOrigin === "exemption" &&
+    isPositive(snapshot.originalRegistrationPriceCents)
+  ) {
+    return { mode: "initial", dueCents: snapshot.originalRegistrationPriceCents, canSplit: true };
+  }
   return null;
 }
 
@@ -73,23 +81,28 @@ export function planManualPayment(
   const due = getManualPaymentDue(snapshot);
   if (!due) throw new Error("Esta inscrição não tem taxa de inscrição a receber.");
   const received = receivedCents ?? due.dueCents;
-  if (!isPositive(received)) throw new Error("Informe um valor recebido maior que zero.");
+  const isFullExemption = received === 0 && remainder === "discount";
+  if (!isPositive(received) && !isFullExemption) {
+    throw new Error("Informe um valor recebido ou isente o valor total.");
+  }
   if (received > due.dueCents) {
     throw new Error("O valor recebido não pode ser maior que o valor pendente.");
   }
   const leftover = due.dueCents - received;
-  if (leftover > 0 && !due.canSplit) {
+  if (leftover > 0 && !due.canSplit && !isFullExemption) {
     throw new Error("Esta inscrição só pode ser quitada pelo valor total.");
   }
   const pendingCents = remainder === "pending" ? leftover : 0;
   const newDiscount = remainder === "discount" ? leftover : 0;
-  const discountCents = (snapshot.discountCents ?? 0) + newDiscount;
+  const previousDiscount = snapshot.paymentOrigin === "exemption" ? 0 : snapshot.discountCents ?? 0;
+  const discountCents = previousDiscount + newDiscount;
 
   const update: ManualPaymentUpdate = {
     amount_cents: 0,
     paid_amount_cents: 0,
     manual_fee_pending_cents: pendingCents > 0 ? pendingCents : null,
-    manual_discount_cents: discountCents > 0 ? discountCents : null,
+    manual_discount_cents:
+      received === 0 && remainder === "discount" ? null : discountCents > 0 ? discountCents : null,
   };
 
   if (due.mode === "initial") {
@@ -131,5 +144,5 @@ export function parseReceivedAmount(value: string): number | null {
   if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
   const [reais, decimal = ""] = normalized.split(".");
   const cents = Number(reais) * 100 + Number(decimal.padEnd(2, "0"));
-  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+  return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
 }
