@@ -6,7 +6,7 @@ import type { AdminRegistrationRow } from "./admin.domain";
 
 async function pdfText(base64: string): Promise<string> {
   const data = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-  const doc = await getDocument({ data, isEvalSupported: false }).promise;
+  const doc = await getDocument({ data }).promise;
   const pages: string[] = [];
   for (let index = 1; index <= doc.numPages; index += 1) {
     const page = await doc.getPage(index);
