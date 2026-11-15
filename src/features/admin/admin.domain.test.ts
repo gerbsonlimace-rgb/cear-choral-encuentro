@@ -6,6 +6,7 @@ import {
   adminRegistrationQuerySchema,
   buildRegistrationsCsv,
   enrichAdminRegistrationRow,
+  getRegistrationDisplayName,
   mapAdminRegistrationRow,
   resolveParticipantAccess,
   summarizeAdminRegistrations,
@@ -391,7 +392,7 @@ describe("admin registration history and CSV", () => {
     expect(file.fileName).toBe("inscricoes-2026-09-07.csv");
     expect(csvRows[0]).toEqual([
       "Data",
-      "Nome",
+      "Nome para o crachá",
       "CPF",
       "Coro/Diocese",
       "E-mail",
@@ -437,6 +438,32 @@ describe("admin registration history and CSV", () => {
     expect(file.content).not.toContain("order-secret");
     expect(file.content).not.toContain("receipt-secret");
     expect(file.content).toContain("\r\n");
+  });
+});
+
+describe("registration display name", () => {
+  it("uses the badge name when the participant gave one", () => {
+    const row = mapAdminRegistrationRow({ ...pendingRow, badge_name: "Irmã Macrina" });
+    expect(getRegistrationDisplayName(row)).toBe("Irmã Macrina");
+  });
+
+  it("falls back to the full name when the badge name is missing or blank", () => {
+    expect(
+      getRegistrationDisplayName(mapAdminRegistrationRow({ ...pendingRow, badge_name: null })),
+    ).toBe("Bia Pendente");
+    expect(getRegistrationDisplayName({ name: "Ana Histórica", badgeName: "   " })).toBe(
+      "Ana Histórica",
+    );
+  });
+
+  it("exports the badge name in the CSV name column", () => {
+    const file = buildRegistrationsCsv(
+      [mapAdminRegistrationRow({ ...pendingRow, badge_name: "Irmã Macrina" })],
+      new Date("2026-09-07T12:00:00.000Z"),
+    );
+    const csvRows = parseCsv(file.content);
+    expect(csvRows[0][1]).toBe("Nome para o crachá");
+    expect(csvRows[1][1]).toBe("Irmã Macrina");
   });
 });
 

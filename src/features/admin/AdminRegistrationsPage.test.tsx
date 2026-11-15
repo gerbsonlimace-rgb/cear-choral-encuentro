@@ -88,6 +88,7 @@ const pending: AdminRegistrationRow = {
   ...legacy,
   id: "pending",
   name: "Bruno Pendente",
+  badgeName: null,
   paymentStatus: "pending",
   amountCents: 10000,
   musicalProfile: "regente",
@@ -96,6 +97,7 @@ const paid: AdminRegistrationRow = {
   ...legacy,
   id: "paid",
   name: "Clara Paga",
+  badgeName: "Clara",
   paymentStatus: "paid",
   amountCents: 13990,
   paidAmountCents: 13990,
@@ -110,6 +112,7 @@ const partial: AdminRegistrationRow = {
   ...paid,
   id: "partial",
   name: "Daniela Parcial",
+  badgeName: "Daniela",
   paidAmountCents: 18000,
   financialState: {
     status: "partially_paid",
@@ -197,7 +200,7 @@ describe("AdminRegistrationsPage read-only views", () => {
         pageSize: 25,
       }),
     });
-    await waitFor(() => expect(screen.getAllByText("Daniela Parcial")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText("Daniela")).toHaveLength(2));
     expect(screen.getAllByText("Pagamento em processamento")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Pagar saldo/ })).not.toBeInTheDocument();
   });
@@ -603,9 +606,10 @@ describe("AdminRegistrationsPage read-only views", () => {
       expect(scope.getByText("Pendente taxa de inscrição")).toBeInTheDocument();
       expect(scope.getByText("Pago")).toBeInTheDocument();
       expect(scope.getByText("Valores não informados")).toBeInTheDocument();
-      expect(scope.getByText("Ana Histórica")).toBeInTheDocument();
-      expect(scope.getByText("AH")).toBeInTheDocument();
-      expect(scope.getByText("CP")).toBeInTheDocument();
+      expect(scope.getByText("Ana")).toBeInTheDocument();
+      expect(scope.getByText("Bruno Pendente")).toBeInTheDocument();
+      expect(scope.getByText("A")).toBeInTheDocument();
+      expect(scope.getByText("C")).toBeInTheDocument();
       expect(scope.getAllByText("Coralista").length).toBeGreaterThan(0);
       expect(scope.getByText("Regente")).toBeInTheDocument();
       expect(scope.getByText("Instrumentista")).toBeInTheDocument();

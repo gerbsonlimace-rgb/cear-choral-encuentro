@@ -209,8 +209,6 @@ export type AdminRegistrationRow = {
   createdAt: string;
   name: string;
   badgeName: string | null;
-  /** Name shown in the listing and exports: the badge name when the participant gave one. */
-  displayName: string;
   cpf: string;
   birthDate: string;
   diocese: string;
@@ -276,6 +274,16 @@ export function resolveParticipantAccess(
   return { label: "Aguardando criação", canReprocess: true, canReset: false };
 }
 
+/**
+ * Name shown in the listing and in exports: the name the participant chose for
+ * the badge, falling back to the full registration name when none was given.
+ */
+export function getRegistrationDisplayName(
+  row: Pick<AdminRegistrationRow, "name" | "badgeName">,
+): string {
+  return row.badgeName?.trim() || row.name;
+}
+
 export type AdminRegistrationPage = {
   rows: AdminRegistrationRow[];
   total: number;
@@ -325,7 +333,6 @@ export function mapAdminRegistrationRow(
     createdAt: row.created_at,
     name: row.name,
     badgeName: row.badge_name,
-    displayName: row.badge_name?.trim() || row.name,
     cpf: formatCpf(row.cpf),
     birthDate: row.birth_date ?? "",
     diocese: displayText(row.diocese),
@@ -655,7 +662,7 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
     csvHeaders,
     ...rows.map((row) => [
       displayDate(row.createdAt),
-      row.displayName,
+      getRegistrationDisplayName(row),
       row.cpf,
       row.choirName,
       row.email,

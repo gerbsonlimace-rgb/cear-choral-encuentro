@@ -123,6 +123,7 @@ import type {
 import {
   adminUpdateRegistrationFormSchema,
   getAdminFinancialState,
+  getRegistrationDisplayName,
   manualPaymentReceiptMimeTypeSchema,
   MAX_MANUAL_PAYMENT_RECEIPT_BYTES,
   type AdminUpdateRegistrationInput,
@@ -307,11 +308,13 @@ function nameInitials(name: string): string {
 function ParticipantAvatar({ row, large = false }: { row: AdminRegistrationRow; large?: boolean }) {
   return (
     <Avatar className={`${large ? "h-20 w-20" : "h-10 w-10"} shrink-0 border border-border`}>
-      {row.photoUrl && <AvatarImage src={row.photoUrl} alt={`Foto de ${row.displayName}`} />}
+      {row.photoUrl && (
+        <AvatarImage src={row.photoUrl} alt={`Foto de ${getRegistrationDisplayName(row)}`} />
+      )}
       <AvatarFallback
         className={`bg-primary/10 font-semibold text-primary ${large ? "text-xl" : "text-xs"}`}
       >
-        {nameInitials(row.displayName)}
+        {nameInitials(getRegistrationDisplayName(row))}
       </AvatarFallback>
     </Avatar>
   );
@@ -717,7 +720,7 @@ function RegistrationViews({
                     <ParticipantAvatar row={row} />
                     <div className="min-w-0">
                       <p className="break-words font-medium">
-                        {row.displayName}
+                        {getRegistrationDisplayName(row)}
                         {roles?.[row.id]?.isAdmin && <AdminTag />}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>
@@ -773,7 +776,7 @@ function RegistrationViews({
                   <ParticipantAvatar row={row} />
                   <div className="min-w-0">
                     <h2 className="break-words text-sm font-semibold">
-                      {row.displayName}
+                      {getRegistrationDisplayName(row)}
                       {roles?.[row.id]?.isAdmin && <AdminTag />}
                     </h2>
                     <p className="mt-1 text-xs text-muted-foreground">CPF {row.cpf}</p>

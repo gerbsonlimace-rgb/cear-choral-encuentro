@@ -93,11 +93,13 @@ describe("registration export", () => {
       ...selectedRow,
       id: `row-${index}`,
       name: `Maria ${index}`,
+      badge_name: `Maria ${index}`,
     }));
     const last = Array.from({ length: 5 }, (_, index) => ({
       ...selectedRow,
       id: `row-${1000 + index}`,
       name: `Maria ${1000 + index}`,
+      badge_name: `Maria ${1000 + index}`,
     }));
     const { trace } = databaseHarness([
       success(first, 1005),
@@ -153,7 +155,7 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome para o crachá;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
     expect(lines[1]).toBe(
       "07/09/2026;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
@@ -1076,7 +1078,7 @@ describe("registration repository list", () => {
       ["eq", "payment_status", "paid"],
       [
         "or",
-        'name.ilike."%Maria%",cpf.ilike."%Maria%",choir_name.ilike."%Maria%",email.ilike."%Maria%",phone.ilike."%Maria%",city.ilike."%Maria%",institution.ilike."%Maria%"',
+        'name.ilike."%Maria%",badge_name.ilike."%Maria%",cpf.ilike."%Maria%",choir_name.ilike."%Maria%",email.ilike."%Maria%",phone.ilike."%Maria%",city.ilike."%Maria%",institution.ilike."%Maria%"',
       ],
       ["order", "created_at", { ascending: false }],
       ["order", "id", { ascending: false }],
@@ -1135,7 +1137,7 @@ describe("registration repository list", () => {
     });
   });
 
-  it("keeps hostile syntax and SQL wildcards inside seven fixed quoted values", async () => {
+  it("keeps hostile syntax and SQL wildcards inside eight fixed quoted values", async () => {
     const { trace } = databaseHarness([success([])]);
     await createSupabaseAdminRegistrationRepository().list({
       search: String.raw`"),payment_status.eq.paid\%_`,
@@ -1147,7 +1149,7 @@ describe("registration repository list", () => {
     });
     expect(trace.find(([method]) => method === "or")).toEqual([
       "or",
-      String.raw`name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",cpf.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",choir_name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",email.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",phone.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",city.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",institution.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%"`,
+      String.raw`name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",badge_name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",cpf.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",choir_name.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",email.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",phone.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",city.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%",institution.ilike."%\"),payment\\_status.eq.paid\\\\\\%\\_%"`,
     ]);
     expect(trace.some(([method]) => method === "eq")).toBe(false);
   });

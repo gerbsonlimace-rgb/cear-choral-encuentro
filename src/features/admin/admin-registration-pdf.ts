@@ -1,5 +1,10 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import { getAdminFinancialState, type AdminRegistrationRow, type AdminRegistrationPdfExportQuery } from "./admin.domain";
+import {
+  getAdminFinancialState,
+  getRegistrationDisplayName,
+  type AdminRegistrationRow,
+  type AdminRegistrationPdfExportQuery,
+} from "./admin.domain";
 import { getAdminRafflePending, getAdminRegistrationPendingCents, formatAdminRafflePending } from "./admin-raffle.domain";
 import { adminPdfLogoBase64 } from "./admin-pdf-logo";
 
@@ -129,7 +134,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
     const state = getAdminFinancialState(row);
     const financial = getPdfFinancialColumns(row);
     const cells: FinancialCell[] = [
-      { value: row.displayName, indicator: "none" },
+      { value: getRegistrationDisplayName(row), indicator: "none" },
       { value: row.choirName, indicator: "none" },
       { value: row.email, indicator: "none" },
       { value: row.phone, indicator: "none" },
