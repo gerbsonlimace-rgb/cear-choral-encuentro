@@ -161,7 +161,7 @@ function manualPaymentDue(row: AdminRegistrationRow) {
 function getAdminAccessErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
   if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-    return "O localhost não encontrou SUPABASE_SERVICE_ROLE_KEY no .env. Configure essa chave somente no servidor e reinicie o localhost.";
+    return "O localhost não encontrou SUPABASE_SERVICE_ROLE_KEY. Configure essa chave no arquivo .env.local e reinicie o localhost.";
   }
   return "Não foi possível verificar seu acesso. Tente novamente.";
 }
@@ -1095,7 +1095,7 @@ function RegistrationActions({
                 inputMode="decimal"
                 autoComplete="off"
                 value={originalAmountInput}
-                disabled={busy || row.isFreeRegistration || (savedOriginalPrice !== null && row.paymentOrigin !== "exemption")}
+                disabled={busy || (savedOriginalPrice !== null && row.paymentOrigin !== "exemption")}
                 onChange={(event) => setOriginalAmountInput(event.target.value)}
               />
               {row.paymentOrigin === "exemption" && savedOriginalPrice === null && (
@@ -2153,7 +2153,7 @@ export function AdminRegistrationsPage({
       if (result.status !== "paid") throw new Error("Unexpected payment result");
       const received = result.receivedCents ?? payment.amountCents;
       setAnnouncement(
-        received === 0 && (result.discountCents ?? 0) > 0
+        received === 0 && manualPaymentDue(row)?.mode !== "balance" && (result.discountCents ?? 0) > 0
           ? `Isenção total de ${money(result.discountCents ?? 0)} registrada.`
           : (result.pendingCents ?? 0) > 0
           ? `Pagamento de ${money(received)} registrado. Restam ${money(result.pendingCents ?? 0)} da taxa de inscrição.`

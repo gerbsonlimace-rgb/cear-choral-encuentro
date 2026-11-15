@@ -88,7 +88,7 @@ alter table public.registrations
     ),
   add constraint registrations_shirt_price_snapshot_check
     check (
-      (payment_origin = 'exemption' and admin_registration_original_price_cents is null)
+      payment_origin = 'exemption'
       or pricing_type is null
       or (include_shirt and shirt_price_cents is not null)
       or (not include_shirt and shirt_price_cents is null)

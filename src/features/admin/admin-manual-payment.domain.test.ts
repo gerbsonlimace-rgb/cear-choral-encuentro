@@ -19,6 +19,38 @@ const standardPending: ManualPaymentSnapshot = {
 };
 
 describe("manual registration-fee payment", () => {
+  it("keeps prior receipts counted when waiving only the remaining fee", () => {
+    const plan = planManualPayment({
+      ...standardPending, paymentStatus: "paid", paymentOrigin: "manual",
+      amountCents: 10000, paidAmountCents: 10000,
+      registrationPriceCents: 10000, standardPriceCents: 10000, feePendingCents: 5000,
+    }, 0, "discount");
+    expect(plan.update).toMatchObject({
+      amount_cents: 10000, paid_amount_cents: 10000,
+      manual_fee_pending_cents: null, manual_discount_cents: 5000,
+    });
+  });
+
+  it.each(["pending", "paid"])("charges a previously exempt %s registration without carrying forward its old waiver", (paymentStatus) => {
+    const plan = planManualPayment({
+      ...standardPending, paymentStatus, paymentOrigin: "exemption",
+      amountCents: 0, paidAmountCents: 0, originalRegistrationPriceCents: 15000,
+      discountCents: 15000,
+    }, 10000, "pending");
+    expect(plan.update).toMatchObject({
+      paid_amount_cents: 10000, manual_fee_pending_cents: 5000, manual_discount_cents: null,
+    });
+  });
+
+  it("approves a free registration through the same payment configuration", () => {
+    const plan = planManualPayment({
+      ...standardPending, paymentOrigin: "exemption", amountCents: 0,
+      registrationPriceCents: 0, standardPriceCents: 0, originalRegistrationPriceCents: 0,
+    }, 0, "discount");
+    expect(plan.update.paid_amount_cents).toBe(0);
+    expect(plan.update.manual_discount_cents).toBeNull();
+  });
+
   it("settles the full fee when the received amount equals the fee", () => {
     const plan = planManualPayment(standardPending, 15000, "pending");
     expect(plan.pendingCents).toBe(0);

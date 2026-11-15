@@ -64,9 +64,11 @@ export function getManualPaymentDue(
     return { mode: "balance", dueCents: snapshot.feePendingCents, canSplit: true };
   }
   if (
-    snapshot.paymentStatus === "paid" &&
+    (snapshot.paymentStatus === "paid" || snapshot.paymentStatus === "pending") &&
     snapshot.paymentOrigin === "exemption" &&
-    isPositive(snapshot.originalRegistrationPriceCents)
+    typeof snapshot.originalRegistrationPriceCents === "number" &&
+    Number.isSafeInteger(snapshot.originalRegistrationPriceCents) &&
+    snapshot.originalRegistrationPriceCents >= 0
   ) {
     return { mode: "initial", dueCents: snapshot.originalRegistrationPriceCents, canSplit: true };
   }
@@ -102,7 +104,7 @@ export function planManualPayment(
     paid_amount_cents: 0,
     manual_fee_pending_cents: pendingCents > 0 ? pendingCents : null,
     manual_discount_cents:
-      received === 0 && remainder === "discount" ? null : discountCents > 0 ? discountCents : null,
+      due.mode === "initial" && isFullExemption ? null : discountCents > 0 ? discountCents : null,
   };
 
   if (due.mode === "initial") {

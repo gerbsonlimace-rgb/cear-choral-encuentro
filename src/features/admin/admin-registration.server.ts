@@ -580,37 +580,6 @@ export function createSupabaseAdminRegistrationRepository(
         ? (originalRegistrationPriceCents ?? current.registration_price_cents ?? 0) +
           (current.remaining_price_cents ?? 0)
         : current.standard_price_cents;
-      if (current.is_free_registration) {
-        if (payment.amountCents !== 0 || payment.remainder !== "discount") {
-          throw new Error("Esta inscrição gratuita só pode ser aprovada como isenta.");
-        }
-        const { data, error } = await supabaseAdmin
-          .from("registrations")
-          .update({
-            payment_status: "paid",
-            payment_origin: "exemption",
-            exempted_by: adminUserId,
-            exempted_at: new Date().toISOString(),
-            amount_cents: 0,
-            paid_amount_cents: 0,
-            admin_registration_original_price_cents: 0,
-            admin_payment_reason: payment.reason?.trim() || null,
-            order_nsu: null,
-            checkout_url: null,
-            infinitepay_invoice_slug: null,
-            infinitepay_transaction_nsu: null,
-            payment_method: null,
-            installments: null,
-            receipt_url: null,
-            paid_at: null,
-          })
-          .eq("id", registrationId)
-          .eq("payment_status", current.payment_status)
-          .select("id")
-          .maybeSingle();
-        if (error || !data) throw new Error("Não foi possível aprovar a inscrição gratuita.");
-        return { status: "paid", registrationId: data.id, receivedCents: 0, pendingCents: 0, discountCents: 0 };
-      }
       const plan = planManualPayment(
         {
           paymentStatus: current.payment_status,
@@ -644,14 +613,16 @@ export function createSupabaseAdminRegistrationRepository(
 
       const paidAt = new Date().toISOString();
       try {
-        const totalExemption = plan.receivedCents === 0 && plan.pendingCents === 0;
+        const totalExemption = plan.update.paid_amount_cents === 0 && plan.pendingCents === 0;
         const oldReceiptPath = current.manual_receipt_path;
         const receiptFields = {
           manual_paid_by: totalExemption ? null : adminUserId,
-          manual_receipt_path: receiptPath,
-          manual_receipt_file_name: parsedReceipt?.parsed.fileName ?? null,
-          manual_receipt_mime_type: parsedReceipt?.parsed.mimeType ?? null,
-          manual_receipt_size_bytes: parsedReceipt?.bytes.byteLength ?? null,
+          ...(parsedReceipt && receiptPath ? {
+            manual_receipt_path: receiptPath,
+            manual_receipt_file_name: parsedReceipt.parsed.fileName,
+            manual_receipt_mime_type: parsedReceipt.parsed.mimeType,
+            manual_receipt_size_bytes: parsedReceipt.bytes.byteLength,
+          } : {}),
         };
         const originalPrice =
           originalRegistrationPriceCents ??
@@ -665,6 +636,8 @@ export function createSupabaseAdminRegistrationRepository(
           admin_registration_original_price_cents: originalPrice,
           admin_payment_reason: payment.reason?.trim() || null,
           payment_status: "paid",
+          is_free_registration: current.is_free_registration && (originalPrice === 0),
+          ...(!current.include_shirt ? { shirt_price_cents: null } : {}),
           checkout_url: null,
           infinitepay_invoice_slug: null,
           infinitepay_transaction_nsu: null,
@@ -707,7 +680,7 @@ export function createSupabaseAdminRegistrationRepository(
         if (error || !data) {
           throw new Error("Não foi possível marcar a inscrição como paga.");
         }
-        if (oldReceiptPath && oldReceiptPath !== receiptPath) {
+        if (receiptPath && oldReceiptPath && oldReceiptPath !== receiptPath) {
           await storage.remove([oldReceiptPath]).catch(() => undefined);
         }
         return {
@@ -1004,7 +977,7 @@ export function createAdminRegistrationService(
     async markPaid(
       registrationId: string,
       adminUserId: string,
-      receipt: ManualPaymentReceipt,
+      receipt: ManualPaymentReceipt | undefined,
       payment: AdminManualPaymentOptions = {},
     ) {
       if (!repository.markPaid) throw new Error("Ação administrativa indisponível.");

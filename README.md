@@ -26,6 +26,18 @@ npm i
 npm run dev
 ```
 
+Para usar as operações administrativas no localhost, configure a chave de servidor do
+mesmo projeto Supabase em `.env.local` e reinicie `npm run dev`:
+
+```dotenv
+SUPABASE_SERVICE_ROLE_KEY=<chave de servidor do projeto>
+```
+
+O arquivo `.env` deste repositório é versionado e contém configurações públicas.
+Use `.env.local` (ignorado pelo Git) para segredos e nunca prefixe a chave de
+servidor com `VITE_`. Um token pessoal `sbp_` da API de gerenciamento não substitui
+a chave de servidor do projeto.
+
 ## InfinitePay checkout
 
 - InfiniteTag padrão: `lucas-soares-xwv`
