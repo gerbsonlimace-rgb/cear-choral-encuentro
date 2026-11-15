@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { buildRegistrationsPdf, getPdfFinancialColumns, getPdfHeaderDetails, summarizePdfRegistrations } from "./admin-registration-pdf";
 import type { AdminRegistrationRow } from "./admin.domain";
+
+async function pdfText(base64: string): Promise<string> {
+  const data = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const doc = await getDocument({ data, isEvalSupported: false }).promise;
+  const pages: string[] = [];
+  for (let index = 1; index <= doc.numPages; index += 1) {
+    const page = await doc.getPage(index);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+  }
+  return pages.join("\n");
+}
 
 describe("registration PDF", () => {
   it("shows the selected choir and its regent in the report header", () => {
@@ -78,5 +91,30 @@ describe("registration PDF", () => {
     const pdf = await PDFDocument.load(file.base64);
     expect(pdf.getPageCount()).toBeGreaterThan(1);
     expect(pdf.getPage(0).getSize()).toEqual({ width: 842, height: 595 });
+  });
+
+  it("prints the badge name and the full name as separate columns", async () => {
+    const rows = [
+      {
+        name: "Francilene Carneiro Lima",
+        badgeName: "Irmã Macrina",
+        choirName: "Coro Diocesano de Quixadá",
+        choirId: "all",
+        musicalProfile: "coralista",
+        email: "lenyfrancycarneiro@gmail.com",
+        phone: "+55 85 9727-8622",
+        financialState: { status: "pending", pendingCents: 20000, confirmedPrincipalCents: 0 },
+      } as AdminRegistrationRow,
+    ];
+    const file = await buildRegistrationsPdf(
+      rows,
+      { search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all", loginStatus: "all" },
+      new Date("2026-10-20T01:00:00Z"),
+    );
+    const text = await pdfText(file.base64);
+    expect(text).toContain("Nome no crachá");
+    expect(text).toContain("Nome completo");
+    expect(text).toContain("Irmã Macrina");
+    expect(text).toContain("Francilene Carneiro Lima");
   });
 });

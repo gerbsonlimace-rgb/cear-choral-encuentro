@@ -574,6 +574,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 const csvHeaders = [
   "Data",
   "Nome para o crachá",
+  "Nome completo",
   "CPF",
   "Coro/Diocese",
   "E-mail",
@@ -663,6 +664,7 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
     ...rows.map((row) => [
       displayDate(row.createdAt),
       getRegistrationDisplayName(row),
+      row.name,
       row.cpf,
       row.choirName,
       row.email,

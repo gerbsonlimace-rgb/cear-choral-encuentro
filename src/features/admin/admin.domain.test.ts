@@ -276,7 +276,7 @@ describe("admin registration history and CSV", () => {
       receivedCents: 0,
     });
     const approvedCsv = parseCsv(buildRegistrationsCsv([approved], new Date("2026-09-26T16:00:00.000Z")).content)[1];
-    expect(approvedCsv.slice(9, 11)).toEqual(["Isento", "Isento"]);
+    expect(approvedCsv.slice(10, 12)).toEqual(["Isento", "Isento"]);
   });
 
   it("exports a registration awaiting exemption approval without marking it paid", () => {
@@ -292,7 +292,7 @@ describe("admin registration history and CSV", () => {
     });
 
     const csv = parseCsv(buildRegistrationsCsv([awaitingApproval], new Date("2026-09-26T16:00:00.000Z")).content)[1];
-    expect(csv.slice(9, 11)).toEqual(["Aguardando aprovação", "Aguardando aprovação"]);
+    expect(csv.slice(10, 12)).toEqual(["Aguardando aprovação", "Aguardando aprovação"]);
     const summary = summarizeAdminRegistrations([awaitingApproval]);
     expect(summary).toMatchObject({
       paid: 0,
@@ -339,6 +339,7 @@ describe("admin registration history and CSV", () => {
 
     expect(parseCsv(file.content)[1]).toEqual([
       "06/09/2026",
+      "Bia Pendente",
       "Bia Pendente",
       "529.982.247-25",
       "Diocese de Sobral",
@@ -393,6 +394,7 @@ describe("admin registration history and CSV", () => {
     expect(csvRows[0]).toEqual([
       "Data",
       "Nome para o crachá",
+      "Nome completo",
       "CPF",
       "Coro/Diocese",
       "E-mail",
@@ -413,6 +415,7 @@ describe("admin registration history and CSV", () => {
     expect(csvRows[3]).toEqual([
       "07/09/2026",
       '\'=HYPERLINK("https://evil.example")',
+      '\'=HYPERLINK("https://evil.example")',
       "529.982.247-25",
       "Diocese de Sobral",
       "carla@example.com",
@@ -430,7 +433,7 @@ describe("admin registration history and CSV", () => {
       "2",
       "08/09/2026",
     ]);
-    expect(csvRows[4][5]).toBe("'  +5585999999999");
+    expect(csvRows[4][6]).toBe("'  +5585999999999");
     expect(file.content).not.toContain("checkout-secret");
     expect(file.content).not.toContain("invoice-secret");
     expect(file.content).not.toContain("transaction-secret");
@@ -456,7 +459,7 @@ describe("registration display name", () => {
     );
   });
 
-  it("exports the badge name in the CSV name column", () => {
+  it("exports the badge name and the full name as separate CSV columns", () => {
     const file = buildRegistrationsCsv(
       [mapAdminRegistrationRow({ ...pendingRow, badge_name: "Irmã Macrina" })],
       new Date("2026-09-07T12:00:00.000Z"),
@@ -464,6 +467,8 @@ describe("registration display name", () => {
     const csvRows = parseCsv(file.content);
     expect(csvRows[0][1]).toBe("Nome para o crachá");
     expect(csvRows[1][1]).toBe("Irmã Macrina");
+    expect(csvRows[0][2]).toBe("Nome completo");
+    expect(csvRows[1][2]).toBe("Bia Pendente");
   });
 });
 
