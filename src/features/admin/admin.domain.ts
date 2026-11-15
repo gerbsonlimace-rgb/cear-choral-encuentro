@@ -209,6 +209,8 @@ export type AdminRegistrationRow = {
   createdAt: string;
   name: string;
   badgeName: string | null;
+  /** Name shown in the listing and exports: the badge name when the participant gave one. */
+  displayName: string;
   cpf: string;
   birthDate: string;
   diocese: string;
@@ -323,6 +325,7 @@ export function mapAdminRegistrationRow(
     createdAt: row.created_at,
     name: row.name,
     badgeName: row.badge_name,
+    displayName: row.badge_name?.trim() || row.name,
     cpf: formatCpf(row.cpf),
     birthDate: row.birth_date ?? "",
     diocese: displayText(row.diocese),
@@ -563,7 +566,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 
 const csvHeaders = [
   "Data",
-  "Nome",
+  "Nome para o crachá",
   "CPF",
   "Coro/Diocese",
   "E-mail",
@@ -652,7 +655,7 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
     csvHeaders,
     ...rows.map((row) => [
       displayDate(row.createdAt),
-      row.name,
+      row.displayName,
       row.cpf,
       row.choirName,
       row.email,

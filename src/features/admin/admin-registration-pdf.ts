@@ -86,7 +86,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
   doc.setTitle("Lista de inscritos | II Encontro de Coros");
   doc.setCreationDate(now);
   const widths = [150, 120, 165, 95, 95, 80, 73];
-  const headers = ["Nome", "Coro", "E-mail", "WhatsApp", "Situação", "Valor inscrição", "Valor rifas"];
+  const headers = ["Nome no crachá", "Coro", "E-mail", "WhatsApp", "Situação", "Valor inscrição", "Valor rifas"];
   const choir = query.choirName ?? (query.choirId === "all" ? "Todos" : query.choirId === "other" ? "Outros coros" : rows.find((row) => row.choirId === query.choirId)?.choirName ?? "Coro selecionado");
   const headerDetails = getPdfHeaderDetails(rows, query);
   const headerDetailLines = wrap(`Coro: ${headerDetails.choir} · Regente: ${headerDetails.regent}`, 662, font, 9);
@@ -129,7 +129,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
     const state = getAdminFinancialState(row);
     const financial = getPdfFinancialColumns(row);
     const cells: FinancialCell[] = [
-      { value: row.name, indicator: "none" },
+      { value: row.displayName, indicator: "none" },
       { value: row.choirName, indicator: "none" },
       { value: row.email, indicator: "none" },
       { value: row.phone, indicator: "none" },

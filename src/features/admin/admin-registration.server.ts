@@ -209,7 +209,7 @@ function matchesAdminRegistrationFilters(
 function registrationSearchFilter(search: string): string {
   // SQL LIKE escaping must survive the PostgREST quoted-value parser.
   const cpfSearch = search.replace(/\D/g, "");
-  return ["name", "cpf", "choir_name", "email", "phone", "city", "institution"]
+  return ["name", "badge_name", "cpf", "choir_name", "email", "phone", "city", "institution"]
     .map((column) => {
       const value = column === "cpf" && cpfSearch ? cpfSearch : search;
       const pattern = `%${value.replace(/[\\%_]/g, "\\$&")}%`;
