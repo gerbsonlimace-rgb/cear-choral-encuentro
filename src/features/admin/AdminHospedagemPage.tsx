@@ -64,7 +64,7 @@ export function AdminHospedagemPage({
   const [roomCount, setRoomCount] = useState(0);
   const [extraRoomIds, setExtraRoomIds] = useState<Record<string, number[]>>({});
   const [extraRoomCounter, setExtraRoomCounter] = useState(100000);
-  const [extraPeople, setExtraPeople] = useState<Array<{ id: string; name: string; cpf: string; paid: string; role: string; sex: string; birthDate: string; photo: string | null; roomId: number | null }>>([]);
+  const [extraPeople, setExtraPeople] = useState<Array<{ id: string; name: string; cpf: string; paid: string; role: string; sex: string; birthDate: string; photo: string | null; choir: string; roomId: number | null }>>([]);
   const [extraName, setExtraName] = useState("");
   const [extraCpf, setExtraCpf] = useState("");
   const [extraPaid, setExtraPaid] = useState("");
@@ -126,16 +126,8 @@ export function AdminHospedagemPage({
     setRoomCount(totalNeededValue);
 
     const nextAssignments: Record<string, number | null> = {};
-    let roomIndex = 0;
-    let inRoom = 0;
     for (const row of rows) {
-      if (inRoom >= capacityValue) {
-        roomIndex += 1;
-        inRoom = 0;
-      }
-      if (roomIndex >= totalNeededValue) roomIndex = totalNeededValue - 1;
-      nextAssignments[row.id] = roomIndex;
-      inRoom += 1;
+      nextAssignments[row.id] = null;
     }
     setAssignments(nextAssignments);
 
@@ -511,7 +503,7 @@ export function AdminHospedagemPage({
             <Card>
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Por coro</h2>
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-4">
                   {(() => {
                     const names = [...new Set(registrations.map((row) => row.choirName || "Sem coro"))];
                     let offset = 0;
@@ -569,8 +561,74 @@ export function AdminHospedagemPage({
                             </Button>
                           </div>
                           {expandedChoirs.has(choirName) && (
-                          <div className="space-y-3">
-                            <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-4 md:grid-cols-[minmax(300px,1fr)_2fr]">
+                            <div className="space-y-2">
+                              <p className="text-sm font-semibold">Não alocados</p>
+                              <div
+                                className="grid gap-2 grid-cols-4 min-h-24 rounded-xl border bg-muted/10 p-3"
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={(event) => {
+                                  event.preventDefault();
+                                  const id = event.dataTransfer.getData("text/plain");
+                                  if (!id) return;
+                                  if (id.startsWith("extra-")) {
+                                    setExtraPeople((previous) =>
+                                      previous.map((person) =>
+                                        person.id === id ? { ...person, roomId: null } : person,
+                                      ),
+                                    );
+                                  } else {
+                                    setAssignments((previous) => ({ ...previous, [id]: null }));
+                                  }
+                                }}
+                              >
+                                {registrations
+                                  .filter((row) => (row.choirName || "Sem coro") === choirName && assignments[row.id] === null)
+                                  .map((row) => (
+                                    <div
+                                      key={row.id}
+                                      draggable
+                                      onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
+                                      className="flex flex-col items-center gap-1 cursor-move"
+                                    >
+                                      {photoUrls[row.id] ? (
+                                        <img src={photoUrls[row.id]} alt={row.name} className="h-10 w-10 rounded-full object-cover" />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                          {row.name.slice(0, 2).toUpperCase()}
+                                        </div>
+                                      )}
+                                      <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                        {row.badgeName || row.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                {extraPeople
+                                  .filter((person) => person.choir === choirName && person.roomId === null)
+                                  .map((person) => (
+                                    <div
+                                      key={person.id}
+                                      draggable
+                                      onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}
+                                      className="flex flex-col items-center gap-1 cursor-move"
+                                    >
+                                      {person.photo ? (
+                                        <img src={person.photo} alt={person.name} className="h-10 w-10 rounded-full object-cover" />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                          {person.name.slice(0, 2).toUpperCase()}
+                                        </div>
+                                      )}
+                                      <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                        {person.name} ({person.role})
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <p className="text-sm font-semibold">Quartos</p>
+                              <div className="grid gap-3 sm:grid-cols-2">
                               {Array.from({ length: rooms }).map((_, roomIndex) => {
                                 const globalRoom = base + roomIndex;
                                 const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
@@ -668,9 +726,36 @@ export function AdminHospedagemPage({
                                       }
                                     }}
                                   >
-                                    <p className="text-sm font-semibold mb-2">
-                                      {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(rooms + index + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length})
-                                    </p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold">
+                                        {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(rooms + index + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length})
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setExtraRoomIds((previous) => ({
+                                            ...previous,
+                                            [choirName]: (previous[choirName] || []).filter((id) => id !== roomId),
+                                          }));
+                                          setAssignments((previous) => {
+                                            const next = { ...previous };
+                                            for (const key of Object.keys(next)) {
+                                              if (next[key] === roomId) next[key] = null;
+                                            }
+                                            return next;
+                                          });
+                                          setExtraPeople((previous) =>
+                                            previous.map((person) =>
+                                              person.roomId === roomId ? { ...person, roomId: null } : person,
+                                            ),
+                                          );
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-destructive"
+                                        aria-label="Excluir quarto"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
                                     <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
@@ -719,6 +804,7 @@ export function AdminHospedagemPage({
                                 );
                               })}
                             </div>
+                          </div>
                           </div>
                           )}
                         </div>
@@ -882,6 +968,7 @@ export function AdminHospedagemPage({
                         sex: extraSex,
                         birthDate: extraBirthDate,
                         photo: extraPhoto,
+                        choir: extraChoir,
                         roomId: extraRoomId ? Number(extraRoomId) : null,
                       },
                     ]);
