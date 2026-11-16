@@ -74,6 +74,7 @@ export function AdminHospedagemPage({
   const [extraPhoto, setExtraPhoto] = useState<string | null>(null);
   const [extraChoir, setExtraChoir] = useState("");
   const [extraRoomId, setExtraRoomId] = useState("");
+  const [hiddenRooms, setHiddenRooms] = useState<Set<number>>(new Set());
   const [expandedChoirs, setExpandedChoirs] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const hymnSnippet = "Louvado seja o Senhor, que nos reúne em comunhão e alegria.";
@@ -293,6 +294,7 @@ export function AdminHospedagemPage({
     setExtraRoomIds({});
     setExtraRoomCounter(100000);
     setExtraPeople([]);
+    setHiddenRooms(new Set());
     setError("");
     setMessage("Quartos resetados para a distribuição inicial.");
   };
@@ -319,6 +321,7 @@ export function AdminHospedagemPage({
       offset += rooms + (extraRoomIds[choirName]?.length || 0);
       const roomsHtml = Array.from({ length: rooms }).map((_, roomIndex) => {
         const globalRoom = base + roomIndex;
+        if (hiddenRooms.has(globalRoom)) return "";
         const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
         const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(roomIndex + 1).padStart(2, "0")}`;
@@ -381,6 +384,7 @@ export function AdminHospedagemPage({
       offset += rooms + (extraRoomIds[choirName]?.length || 0);
       for (let roomIndex = 0; roomIndex < rooms; roomIndex++) {
         const globalRoom = base + roomIndex;
+        if (hiddenRooms.has(globalRoom)) continue;
         const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
         const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(roomIndex + 1).padStart(2, "0")}`;
@@ -631,6 +635,7 @@ export function AdminHospedagemPage({
                               <div className="grid gap-3 sm:grid-cols-2">
                               {Array.from({ length: rooms }).map((_, roomIndex) => {
                                 const globalRoom = base + roomIndex;
+                                if (hiddenRooms.has(globalRoom)) return null;
                                 const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
                                 const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
                                 return (
@@ -653,9 +658,33 @@ export function AdminHospedagemPage({
                                       }
                                     }}
                                   >
-                                    <p className="text-sm font-semibold mb-2">
-                                      {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(roomIndex + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length}/{cap})
-                                    </p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold">
+                                        {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(roomIndex + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length}/{cap})
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setHiddenRooms((previous) => new Set(previous).add(globalRoom));
+                                          setAssignments((previous) => {
+                                            const next = { ...previous };
+                                            for (const key of Object.keys(next)) {
+                                              if (next[key] === globalRoom) next[key] = null;
+                                            }
+                                            return next;
+                                          });
+                                          setExtraPeople((previous) =>
+                                            previous.map((person) =>
+                                              person.roomId === globalRoom ? { ...person, roomId: null } : person,
+                                            ),
+                                          );
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-destructive"
+                                        aria-label="Excluir quarto"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
                                     <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
