@@ -680,14 +680,12 @@ export type Database = {
       }
       registrations: {
         Row: {
-          amount_cents: number | null
           admin_payment_reason: string | null
-          admin_registration_original_price_cents: number | null
           admin_raffle_paid_cents: number | null
+          admin_registration_original_price_cents: number | null
+          amount_cents: number | null
           badge_name: string | null
           birth_date: string
-          cancelled_at: string | null
-          cancelled_by: string | null
           checkout_url: string | null
           choir_id: string | null
           choir_name: string
@@ -726,7 +724,6 @@ export type Database = {
           photo_path: string | null
           pricing_type: string | null
           receipt_url: string | null
-          refund_cents: number
           registration_price_cents: number | null
           remaining_price_cents: number | null
           role: string | null
@@ -736,21 +733,18 @@ export type Database = {
           voice_part: string | null
         }
         Insert: {
-          amount_cents?: number | null
           admin_payment_reason?: string | null
-          admin_registration_original_price_cents?: number | null
           admin_raffle_paid_cents?: number | null
+          admin_registration_original_price_cents?: number | null
+          amount_cents?: number | null
           badge_name?: string | null
           birth_date: string
-          cancelled_at?: string | null
-          cancelled_by?: string | null
           checkout_url?: string | null
           choir_id?: string | null
           choir_name: string
           city?: string | null
           cpf?: string | null
           created_at?: string
-          refund_cents?: number
           diocese: string
           email?: string | null
           exempted_at?: string | null
@@ -792,21 +786,18 @@ export type Database = {
           voice_part?: string | null
         }
         Update: {
-          amount_cents?: number | null
           admin_payment_reason?: string | null
-          admin_registration_original_price_cents?: number | null
           admin_raffle_paid_cents?: number | null
+          admin_registration_original_price_cents?: number | null
+          amount_cents?: number | null
           badge_name?: string | null
           birth_date?: string
-          cancelled_at?: string | null
-          cancelled_by?: string | null
           checkout_url?: string | null
           choir_id?: string | null
           choir_name?: string
           city?: string | null
           cpf?: string | null
           created_at?: string
-          refund_cents?: number
           diocese?: string
           email?: string | null
           exempted_at?: string | null
