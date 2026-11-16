@@ -279,6 +279,30 @@ export function AdminHospedagemPage({
   const removeChoir = (index: number) =>
     setChoirs((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
 
+  const resetRooms = () => {
+    const capacityValue = toNumber(roomCapacity) || 3;
+    const totalNeededValue =
+      totalNeeded || roomsNeeded(registrations.length, capacityValue);
+    const nextAssignments: Record<string, number | null> = {};
+    let roomIndex = 0;
+    let inRoom = 0;
+    for (const row of registrations) {
+      if (inRoom >= capacityValue) {
+        roomIndex += 1;
+        inRoom = 0;
+      }
+      if (roomIndex >= totalNeededValue) roomIndex = totalNeededValue - 1;
+      nextAssignments[row.id] = roomIndex;
+      inRoom += 1;
+    }
+    setAssignments(nextAssignments);
+    setExtraRoomIds({});
+    setExtraRoomCounter(100000);
+    setExtraPeople([]);
+    setError("");
+    setMessage("Quartos resetados para a distribuição inicial.");
+  };
+
   const openPrintableHtml = (html: string) => {
     const win = window.open("", "_blank");
     if (!win) return;
@@ -686,6 +710,9 @@ export function AdminHospedagemPage({
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Exportações</h2>
                 <div className="flex flex-wrap gap-3">
+                  <Button type="button" size="sm" variant="outline" onClick={() => void resetRooms()}>
+                    Resetar quartos
+                  </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => void exportRoomMapPdf()}>
                     Exportar mapa de quartos (PDF)
                   </Button>
