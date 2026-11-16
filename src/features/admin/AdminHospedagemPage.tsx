@@ -417,7 +417,7 @@ export function AdminHospedagemPage({
 
   return (
     <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="w-full space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
