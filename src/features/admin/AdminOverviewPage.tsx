@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AdminAccessState, AdminHospedagemBootstrap } from "@/lib/admin.functions";
-import { getAdminAccess, getAdminHospedagemBootstrap } from "@/lib/admin.functions";
+import { getAdminAccess, getAdminHospedagemBootstrap, getAdminRegistrationPhotos } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 
@@ -31,6 +31,7 @@ export function AdminOverviewPage({
 }: AdminOverviewPageProps) {
   const [gate, setGate] = useState<"checking" | "authorized" | "forbidden" | "error">("checking");
   const [rows, setRows] = useState<Array<{ id: string; name: string; phone: string; birthDate: string }>>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -50,14 +51,31 @@ export function AdminOverviewPage({
         const bootstrap = await loadInitialData();
         if (!active) return;
         if (bootstrap.access.status === "authorized" && bootstrap.data) {
-          setRows(
-            bootstrap.data.registrations.map((row) => ({
-              id: row.id,
-              name: row.name,
-              phone: row.phone,
-              birthDate: row.birthDate,
-            })),
-          );
+          const nextRows = bootstrap.data.registrations.map((row) => ({
+            id: row.id,
+            name: row.name,
+            phone: row.phone,
+            birthDate: row.birthDate,
+          }));
+          setRows(nextRows);
+          const ids = [...new Set(nextRows.map((row) => row.id))];
+          const chunks: string[][] = [];
+          for (let index = 0; index < ids.length; index += 100) {
+            chunks.push(ids.slice(index, index + 100));
+          }
+          void Promise.all(
+            chunks.map((registrationIds) =>
+              getAdminRegistrationPhotos({ data: { registrationIds } }).catch(
+                () => ({}) as Record<string, string>,
+              ),
+            ),
+          )
+            .then((results) => {
+              const merged: Record<string, string> = {};
+              for (const urls of results) Object.assign(merged, urls);
+              if (active) setPhotoUrls(merged);
+            })
+            .catch(() => undefined);
         }
         setGate("authorized");
       } catch {
@@ -105,6 +123,7 @@ export function AdminOverviewPage({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left border-b">
+                      <th className="py-2">Foto</th>
                       <th className="py-2">Nome</th>
                       <th className="py-2">Telefone</th>
                       <th className="py-2">Idade</th>
@@ -113,6 +132,15 @@ export function AdminOverviewPage({
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.id} className="border-b">
+                        <td className="py-2">
+                          {photoUrls[row.id] ? (
+                            <img src={photoUrls[row.id]} alt={row.name} className="h-9 w-9 rounded-full object-cover" />
+                          ) : (
+                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                              {row.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </td>
                         <td className="py-2">{row.name}</td>
                         <td className="py-2">{row.phone}</td>
                         <td className="py-2">{age(row.birthDate)}</td>
