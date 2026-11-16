@@ -75,6 +75,7 @@ export function AdminHospedagemPage({
   const [extraChoir, setExtraChoir] = useState("");
   const [extraRoomId, setExtraRoomId] = useState("");
   const [hiddenRooms, setHiddenRooms] = useState<Set<number>>(new Set());
+  const [noLodgingIds, setNoLodgingIds] = useState<Set<string>>(new Set());
   const [expandedChoirs, setExpandedChoirs] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const hymnSnippet = "Louvado seja o Senhor, que nos reúne em comunhão e alegria.";
@@ -284,8 +285,22 @@ export function AdminHospedagemPage({
     setExtraRoomCounter(100000);
     setExtraPeople([]);
     setHiddenRooms(new Set());
+    setNoLodgingIds(new Set());
     setError("");
     setMessage("Todos desalocados. Quartos resetados.");
+  };
+
+  const toggleNoLodging = (id: string) => {
+    setNoLodgingIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        setAssignments((current) => ({ ...current, [id]: null }));
+      }
+      return next;
+    });
   };
 
   const openPrintableHtml = (html: string) => {
@@ -576,7 +591,7 @@ export function AdminHospedagemPage({
                                 }}
                               >
                                 {registrations
-                                  .filter((row) => (row.choirName || "Sem coro") === choirName && assignments[row.id] === null)
+                                  .filter((row) => (row.choirName || "Sem coro") === choirName && assignments[row.id] === null && !noLodgingIds.has(row.id))
                                   .map((row) => (
                                     <div
                                       key={row.id}
@@ -594,6 +609,13 @@ export function AdminHospedagemPage({
                                       <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
                                         {row.badgeName || row.name}
                                       </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleNoLodging(row.id)}
+                                        className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                      >
+                                        {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                      </button>
                                     </div>
                                   ))}
                                 {extraPeople
@@ -617,6 +639,37 @@ export function AdminHospedagemPage({
                                       </span>
                                     </div>
                                   ))}
+                              </div>
+                              <div className="space-y-2 mt-3">
+                                <p className="text-sm font-semibold">Inscrição sem hospedagem</p>
+                                <div className="flex flex-wrap gap-3 min-h-12 rounded-xl border bg-muted/10 p-3">
+                                  {registrations
+                                    .filter((row) => (row.choirName || "Sem coro") === choirName && noLodgingIds.has(row.id))
+                                    .map((row) => (
+                                      <div key={row.id} className="flex flex-col items-center gap-1">
+                                        {photoUrls[row.id] ? (
+                                          <img src={photoUrls[row.id]} alt={row.name} className="h-10 w-10 rounded-full object-cover" />
+                                        ) : (
+                                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                            {row.name.slice(0, 2).toUpperCase()}
+                                          </div>
+                                        )}
+                                        <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                          {row.badgeName || row.name}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleNoLodging(row.id)}
+                                          className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                        >
+                                          Com hosp.
+                                        </button>
+                                      </div>
+                                    ))}
+                                  {registrations.filter((row) => (row.choirName || "Sem coro") === choirName && noLodgingIds.has(row.id)).length === 0 && (
+                                    <p className="text-xs text-muted-foreground">Nenhum</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className="space-y-3">
@@ -696,6 +749,13 @@ export function AdminHospedagemPage({
                                           <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleNoLodging(row.id)}
+                                            className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                          >
+                                            {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                          </button>
                                         </div>
                                       ))}
                                       {extraOccupants.map((person) => (
@@ -796,6 +856,13 @@ export function AdminHospedagemPage({
                                           <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleNoLodging(row.id)}
+                                            className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                          >
+                                            {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                          </button>
                                         </div>
                                       ))}
                                       {extraOccupants.map((person) => (
