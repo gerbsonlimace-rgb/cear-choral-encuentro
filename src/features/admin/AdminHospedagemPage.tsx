@@ -275,20 +275,9 @@ export function AdminHospedagemPage({
     setChoirs((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
 
   const resetRooms = () => {
-    const capacityValue = toNumber(roomCapacity) || 3;
-    const totalNeededValue =
-      totalNeeded || roomsNeeded(registrations.length, capacityValue);
     const nextAssignments: Record<string, number | null> = {};
-    let roomIndex = 0;
-    let inRoom = 0;
     for (const row of registrations) {
-      if (inRoom >= capacityValue) {
-        roomIndex += 1;
-        inRoom = 0;
-      }
-      if (roomIndex >= totalNeededValue) roomIndex = totalNeededValue - 1;
-      nextAssignments[row.id] = roomIndex;
-      inRoom += 1;
+      nextAssignments[row.id] = null;
     }
     setAssignments(nextAssignments);
     setExtraRoomIds({});
@@ -296,7 +285,7 @@ export function AdminHospedagemPage({
     setExtraPeople([]);
     setHiddenRooms(new Set());
     setError("");
-    setMessage("Quartos resetados para a distribuição inicial.");
+    setMessage("Todos desalocados. Quartos resetados.");
   };
 
   const openPrintableHtml = (html: string) => {
