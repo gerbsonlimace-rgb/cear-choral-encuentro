@@ -18,6 +18,10 @@ import {
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
+import {
+  LODGING_EXTRA_ROOM_BASE,
+  type LodgingPlan,
+} from "@/features/admin/admin-lodging.domain";
 
 export type AdminAccessState =
   { status: "authorized"; userId: string; email: string | null } | { status: "forbidden" };
@@ -34,6 +38,10 @@ export type AdminRegistrationsBootstrap = AdminPageBootstrap<{
 
 export type AdminHospedagemBootstrap = AdminPageBootstrap<{
   registrations: AdminRegistrationRow[];
+  /** Null when the plan was never configured by an administrator. */
+  plan: LodgingPlan | null;
+  /** Signed URLs of the photos of the people added by hand. */
+  extraPhotoUrls: Record<string, string>;
 }>;
 
 type AdminAccessInput = {
@@ -155,9 +163,10 @@ export const getAdminRegistrationsBootstrap = createServerFn({ method: "GET" })
 export const getAdminHospedagemBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ getAdminAuthorizer }, { getAdminRegistrationService }] = await Promise.all([
+    const [{ getAdminAuthorizer }, { getAdminRegistrationService }, lodging] = await Promise.all([
       import("@/features/admin/admin-auth.server"),
       import("@/features/admin/admin-registration.server"),
+      import("@/features/admin/admin-lodging.server"),
     ]);
     return createAdminBootstrap<NonNullable<AdminHospedagemBootstrap["data"]>>({
       userId: context.userId,
@@ -184,9 +193,61 @@ export const getAdminHospedagemBootstrap = createServerFn({ method: "GET" })
           if (rows.length >= batch.total || batch.rows.length === 0) break;
           page += 1;
         }
-        return { registrations: rows };
+        const plan = await lodging.getAdminLodgingPlan();
+        const extraPhotoUrls = await lodging.signAdminLodgingPhotos(
+          (plan?.extraPeople ?? [])
+            .map((person) => person.photoPath)
+            .filter((path): path is string => Boolean(path)),
+        );
+        return { registrations: rows, plan, extraPhotoUrls };
       },
     });
+  });
+
+const lodgingExtraPersonSchema = z.object({
+  id: z.string().min(1).max(120),
+  name: z.string().max(180),
+  cpf: z.string().max(20),
+  paid: z.string().max(40),
+  role: z.string().max(40),
+  sex: z.string().max(20),
+  birthDate: z.string().max(20),
+  photoPath: z.string().max(300).nullable(),
+  choir: z.string().max(180),
+  roomKey: z.string().max(300).nullable(),
+});
+
+const lodgingPlanSchema = z.object({
+  roomsAvailable: z.number().int().min(0).max(100000),
+  roomCapacity: z.number().int().min(1).max(100),
+  noLodgingIds: z.array(z.string().uuid()).max(5000),
+  assignments: z.record(z.string(), z.string().max(300)).default({}),
+  extraRooms: z.record(z.string(), z.array(z.number().int().min(LODGING_EXTRA_ROOM_BASE)).max(500)).default({}),
+  hiddenRoomKeys: z.array(z.string().max(300)).max(5000),
+  extraPeople: z.array(lodgingExtraPersonSchema).max(500),
+  extraRoomCounter: z.number().int().min(LODGING_EXTRA_ROOM_BASE).max(10_000_000),
+});
+
+export const saveAdminLodgingPlan = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(lodgingPlanSchema)
+  .handler(async ({ data }) => {
+    const { saveAdminLodgingPlan } = await import("@/features/admin/admin-lodging.server");
+    await saveAdminLodgingPlan(data);
+    return { status: "saved" as const };
+  });
+
+export const uploadAdminLodgingPhoto = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(
+    z.object({
+      base64: z.string().min(4).max(8_000_000),
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { uploadAdminLodgingPhoto } = await import("@/features/admin/admin-lodging.server");
+    return uploadAdminLodgingPhoto(data);
   });
 
 export const listAdminRegistrations = createServerFn({ method: "POST" })
