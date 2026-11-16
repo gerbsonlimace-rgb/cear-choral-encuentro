@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { AdminAccessState, AdminHospedagemBootstrap } from "@/lib/admin.functions";
 import { getAdminAccess, getAdminRegistrationPhotos } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +74,7 @@ export function AdminHospedagemPage({
   const [extraPhoto, setExtraPhoto] = useState<string | null>(null);
   const [extraChoir, setExtraChoir] = useState("");
   const [extraRoomId, setExtraRoomId] = useState("");
+  const [expandedChoirs, setExpandedChoirs] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const hymnSnippet = "Louvado seja o Senhor, que nos reúne em comunhão e alegria.";
   const [message, setMessage] = useState("");
@@ -525,17 +527,36 @@ export function AdminHospedagemPage({
                       return (
                         <div key={choirName} className="rounded-xl border p-3 space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <p className="font-semibold">{choirName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Total: {members.length} · Homens: {men} · Mulheres: {women} · Quartos: {rooms + (extraRoomIds[choirName]?.length || 0)}
-                              </p>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedChoirs((previous) => {
+                                  const next = new Set(previous);
+                                  if (next.has(choirName)) next.delete(choirName);
+                                  else next.add(choirName);
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center gap-2 text-left"
+                            >
+                              {expandedChoirs.has(choirName) ? (
+                                <ChevronDown className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0" />
+                              )}
+                              <div>
+                                <p className="font-semibold">{choirName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Total: {members.length} · Homens: {men} · Mulheres: {women} · Quartos: {rooms + (extraRoomIds[choirName]?.length || 0)}
+                                </p>
+                              </div>
+                            </button>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => {
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 const newId = extraRoomCounter;
                                 setExtraRoomCounter((value) => value + 1);
                                 setExtraRoomIds((previous) => ({
@@ -547,6 +568,7 @@ export function AdminHospedagemPage({
                               + Quarto
                             </Button>
                           </div>
+                          {expandedChoirs.has(choirName) && (
                           <div className="space-y-3">
                             <div className="grid gap-3 sm:grid-cols-2">
                               {Array.from({ length: rooms }).map((_, roomIndex) => {
@@ -698,6 +720,7 @@ export function AdminHospedagemPage({
                               })}
                             </div>
                           </div>
+                          )}
                         </div>
                       );
                     });
