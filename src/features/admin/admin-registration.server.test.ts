@@ -154,6 +154,8 @@ describe("registration export", () => {
     expect(file.fileName).toBe("inscricoes-2026-09-07.csv");
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
+    console.log("CSVROW_CODES", JSON.stringify([...lines[1]].map((c) => c.charCodeAt(0)).filter((c) => c > 127 || c === 160)));
+    console.log("EXP_CODES", JSON.stringify([...lines[1]].map((c, i) => lines[1][i]).join("").length), [..."07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026"].map((c) => c.charCodeAt(0)).filter((c) => c > 127));
     expect(lines[0]).toBe(
       "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );

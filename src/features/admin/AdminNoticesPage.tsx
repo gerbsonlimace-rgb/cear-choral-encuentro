@@ -214,8 +214,8 @@ export function AdminNoticesPage({
               </p>
             )}
             {data.notices.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center">
-                <Megaphone aria-hidden="true" className="mx-auto mb-3 size-6 text-zinc-400" />
+              <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+                <Megaphone aria-hidden="true" className="mx-auto mb-3 size-6 text-muted-foreground" />
                 <p className="font-semibold">Nenhum aviso cadastrado</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Crie o primeiro aviso para orientar os participantes.
@@ -226,7 +226,7 @@ export function AdminNoticesPage({
                 {sortEventNotices(data.notices).map((notice) => (
                   <article
                     key={notice.id}
-                    className="flex min-w-0 flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5"
+                    className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="min-w-0 break-words text-xs font-medium text-zinc-500">
@@ -285,7 +285,7 @@ export function AdminNoticesPage({
           if (!saving) setDialogOpen(open);
         }}
       >
-        <DialogContent className="internal-app max-h-[90svh] overflow-y-auto bg-white sm:max-w-xl">
+        <DialogContent className="internal-app max-h-[90svh] overflow-y-auto bg-card sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar aviso" : "Novo aviso"}</DialogTitle>
             <DialogDescription>
@@ -302,7 +302,7 @@ export function AdminNoticesPage({
                   id="notice-event"
                   value={eventId}
                   onChange={(event) => setEventId(event.target.value)}
-                  className="flex min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Aviso geral (sem evento)</option>
                   {data?.events.map((source) => (

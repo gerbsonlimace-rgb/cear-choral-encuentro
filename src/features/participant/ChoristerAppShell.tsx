@@ -14,6 +14,7 @@ import { flushSync } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { PortalModeSwitch } from "@/features/access/PortalModeSwitch";
 import { isSignedUrlExpired } from "@/features/chorister-app/choristerApp.domain";
 import type {
@@ -424,7 +425,12 @@ export function ChoristerAppShell({
       onNavigate={(id) => selectTab(id as ChoristerTab)}
       profileName={participant.identity.name}
       profileDetail={participant.registration.choirName}
-      topbarActions={<PortalModeSwitch mode="participant" onNavigate={onOpenAdmin} />}
+      topbarActions={
+        <>
+          <PortalModeSwitch mode="participant" onNavigate={onOpenAdmin} />
+          <ThemeToggle />
+        </>
+      }
     >
       <div className="chorister-app mx-auto w-full max-w-5xl text-zinc-950">
           {contentStatus !== "ready" && (

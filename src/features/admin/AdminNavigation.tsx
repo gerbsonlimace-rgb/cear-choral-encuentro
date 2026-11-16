@@ -1,4 +1,5 @@
 import {
+  BedDouble,
   CalendarCheck2,
   ClipboardList,
   Files,
@@ -9,6 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { PortalModeSwitch } from "@/features/access/PortalModeSwitch";
 import { AccountMenu } from "@/features/access/AccountMenu";
 
@@ -16,6 +18,10 @@ export type AdminNavigationKey =
   | "summary"
   | "registrations"
   | "choirs"
+  | "hospedagem"
+  | "accommodation"
+  | "lodging"
+  | "housing"
   | "sponsors"
   | "documents"
   | "notices"
@@ -32,6 +38,7 @@ export type AdminNavigationPath =
   | "/admin/inscricoes"
   | "/admin/resumo"
   | "/admin/coros"
+  | "/admin/hospedagem"
   | "/admin/patrocinadores"
   | "/admin/documentos"
   | "/admin/avisos"
@@ -45,6 +52,7 @@ const links = [
   { key: "summary", href: "/admin/resumo", label: "Resumo", icon: LayoutDashboard },
   { key: "registrations", href: "/admin/inscricoes", label: "Inscrições", icon: ClipboardList },
   { key: "choirs", href: "/admin/coros", label: "Coros", icon: Music2 },
+  { key: "hospedagem", href: "/admin/hospedagem", label: "Hospedagem", icon: BedDouble },
   { key: "activities", href: "/admin/atividades", label: "Agenda", icon: CalendarCheck2 },
   { key: "sponsors", href: "/admin/patrocinadores", label: "Patrocinadores", icon: HeartHandshake },
   { key: "documents", href: "/admin/documentos", label: "Documentos", icon: Files },
@@ -77,6 +85,7 @@ export function AdminNavigation({ current, navigateTo }: AdminNavigationProps) {
       topbarActions={
         <>
           <PortalModeSwitch mode="admin" onNavigate={navigateTo} />
+          <ThemeToggle />
           <AccountMenu />
         </>
       }

@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   BadgeCheck,
+  Ban,
   Banknote,
   ChartNoAxesCombined,
   Clock3,
@@ -88,6 +89,8 @@ import {
   getAdminRegistrationPhotos,
   listAdminRegistrations,
   markAdminRegistrationPaid,
+  setAdminRegistrationRafflePaid,
+  cancelAdminRegistration,
   deleteAdminRegistration,
   reprocessParticipantAccess,
   resetParticipantInitialPassword,
@@ -140,6 +143,7 @@ type ManualPaymentChoice = {
   amountCents: number;
   remainder: ManualPaymentRemainder;
   originalRegistrationPriceCents: number;
+  rafflePaidCents?: number;
   reason: string;
 };
 
@@ -197,6 +201,7 @@ type Props = {
       amountCents?: number;
       remainder?: ManualPaymentRemainder;
       originalRegistrationPriceCents?: number;
+      rafflePaidCents?: number;
       reason?: string;
     };
   }) => Promise<{
@@ -331,6 +336,9 @@ function ParticipantAvatar({ row, large = false }: { row: AdminRegistrationRow; 
 }
 
 function Status({ row }: { row: AdminRegistrationRow }) {
+  if (row.cancelledAt) {
+    return <Badge variant="destructive">Cancelada</Badge>;
+  }
   const status = getAdminFinancialState(row).status;
   const freePending = row.paymentStatus === "pending" && row.isFreeRegistration;
   const label = freePending
@@ -661,6 +669,7 @@ function RegistrationViews({
   onPaymentLink,
   onMarkPaid,
   onDelete,
+  onCancel,
   onViewReceipt,
   onEdit,
   roles,
@@ -678,6 +687,7 @@ function RegistrationViews({
     payment: ManualPaymentChoice,
   ) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
+  onCancel?: (row: AdminRegistrationRow, refundCents: number) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
   roles?: Record<string, RegistrationAdminRole>;
@@ -757,6 +767,7 @@ function RegistrationViews({
                     onPaymentLink={onPaymentLink}
                     onMarkPaid={onMarkPaid}
                     onDelete={onDelete}
+                    onCancel={onCancel}
                     onViewReceipt={onViewReceipt}
                     onEdit={onEdit}
                     role={roles?.[row.id]}
@@ -802,6 +813,7 @@ function RegistrationViews({
                   onPaymentLink={onPaymentLink}
                   onMarkPaid={onMarkPaid}
                   onDelete={onDelete}
+                  onCancel={onCancel}
                   onViewReceipt={onViewReceipt}
                   onEdit={onEdit}
                   role={roles?.[row.id]}
@@ -853,6 +865,7 @@ function RegistrationActions({
   onPaymentLink,
   onMarkPaid,
   onDelete,
+  onCancel,
   onViewReceipt,
   onEdit,
   role,
@@ -870,6 +883,7 @@ function RegistrationActions({
     payment: ManualPaymentChoice,
   ) => Promise<boolean>;
   onDelete?: (row: AdminRegistrationRow, cpf: string) => Promise<boolean>;
+  onCancel?: (row: AdminRegistrationRow, refundCents: number) => Promise<boolean>;
   onViewReceipt: (row: AdminRegistrationRow) => void;
   onEdit?: (row: AdminRegistrationRow) => void;
   role?: RegistrationAdminRole;
@@ -879,6 +893,8 @@ function RegistrationActions({
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [refundInput, setRefundInput] = useState("");
   const [confirmAdmin, setConfirmAdmin] = useState(false);
   const [deleteCpf, setDeleteCpf] = useState("");
   const [receipt, setReceipt] = useState<ManualPaymentReceipt | null>(null);
@@ -889,10 +905,12 @@ function RegistrationActions({
   const [originalAmountInput, setOriginalAmountInput] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [reason, setReason] = useState("");
+  const [rafflePaidInput, setRafflePaidInput] = useState("");
   const [remainder, setRemainder] = useState<ManualPaymentRemainder>("pending");
   const state = getAdminFinancialState(row);
   const canConfigurePayment =
-    row.paymentStatus === "pending" || due?.mode === "balance" || row.paymentOrigin === "exemption";
+    !row.cancelledAt &&
+    (row.paymentStatus === "pending" || due?.mode === "balance" || row.paymentOrigin === "exemption");
   const openUrl = row.openComplementPayment?.checkoutUrl;
   const access = row.participantAccess;
   const selectReceipt = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -929,11 +947,21 @@ function RegistrationActions({
             : centsToInput(original),
     );
     setReason(row.manualPaymentReason ?? "");
+    setRafflePaidInput(row.adminRafflePaidCents ? centsToInput(row.adminRafflePaidCents) : "");
     setRemainder(row.paymentOrigin === "exemption" || row.isFreeRegistration ? "discount" : "pending");
     setConfirmMarkPaid(true);
   };
   const originalAmountCents = parseReceivedAmount(originalAmountInput);
   const receivedCents = parseReceivedAmount(amountInput);
+  const rafflePending = getAdminRafflePending(row, state);
+  const rafflePaidRaw =
+    rafflePaidInput.trim() === "" ? undefined : parseReceivedAmount(rafflePaidInput);
+  const rafflePaidError =
+    rafflePaidInput.trim() !== "" && rafflePaidRaw === null
+      ? "Informe um valor válido para as rifas."
+      : "";
+  const parsedRafflePaidCents = rafflePaidRaw ?? undefined;
+  const showRafflePayment = row.isFreeRegistration || row.pricingType === "promotional";
   const dueCents = due?.mode === "balance"
     ? due.dueCents
     : row.paymentOrigin === "exemption" || !due
@@ -1048,6 +1076,20 @@ function RegistrationActions({
               </DropdownMenuItem>
             </>
           )}
+          {onCancel && !row.cancelledAt && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => {
+                  setRefundInput("0,00");
+                  setConfirmCancel(true);
+                }}
+              >
+                <Ban aria-hidden="true" /> Cancelar inscrição
+              </DropdownMenuItem>
+            </>
+          )}
           {onDelete && (
             <>
               <DropdownMenuSeparator />
@@ -1121,6 +1163,31 @@ function RegistrationActions({
                     : "Valor total: a taxa de inscrição fica quitada.")}
               </p>
             </div>
+            {showRafflePayment && (
+              <div className="space-y-2">
+                <Label htmlFor={`payment-raffle-${row.id}`}>Rifas pagas (R$)</Label>
+                <Input
+                  id={`payment-raffle-${row.id}`}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="0,00"
+                  value={rafflePaidInput}
+                  disabled={busy}
+                  aria-invalid={Boolean(rafflePaidError)}
+                  aria-describedby={`payment-raffle-help-${row.id}`}
+                  onChange={(event) => setRafflePaidInput(event.target.value)}
+                />
+                <p
+                  id={`payment-raffle-help-${row.id}`}
+                  className={rafflePaidError ? "text-sm text-destructive" : "text-xs text-muted-foreground"}
+                >
+                  {rafflePaidError ||
+                    (rafflePending
+                      ? `Pendente em rifas: ${formatAdminRafflePending(rafflePending)}. Informe quanto foi recebido manualmente.`
+                      : "Informe quanto foi recebido manualmente pelas rifas.")}
+                </p>
+              </div>
+            )}
             {leftoverCents > 0 && !amountError && (
               <fieldset className="space-y-2">
                 <legend className="text-sm font-medium text-foreground">
@@ -1188,14 +1255,15 @@ function RegistrationActions({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busy || Boolean(amountError) || receivedCents === null || (receivedCents === 0 && remainder !== "discount") || (receivedCents > 0 && Boolean(receiptError))}
+              disabled={busy || Boolean(amountError) || Boolean(rafflePaidError) || receivedCents === null || (receivedCents === 0 && remainder !== "discount") || (receivedCents > 0 && Boolean(receiptError))}
               onClick={(event) => {
                 event.preventDefault();
-                if (receivedCents === null || originalAmountCents === null || amountError || (receivedCents === 0 && remainder !== "discount")) return;
+                if (receivedCents === null || originalAmountCents === null || amountError || rafflePaidError || (receivedCents === 0 && remainder !== "discount")) return;
                 void onMarkPaid(row, receipt ?? undefined, {
                   amountCents: receivedCents,
                   remainder,
                   originalRegistrationPriceCents: originalAmountCents,
+                  rafflePaidCents: parsedRafflePaidCents,
                   reason,
                 }).then(
                   (success) => {
@@ -1228,6 +1296,62 @@ function RegistrationActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {onCancel && !row.cancelledAt && (
+        <AlertDialog
+          open={confirmCancel}
+          onOpenChange={(open) => {
+            setConfirmCancel(open);
+            if (!open) setRefundInput("");
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar inscrição?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A inscrição de {row.name} passará para <strong>Cancelada</strong>. O valor já
+                recebido permanece no saldo do coro, menos a devolução informada abaixo. Use
+                <strong> 0,00</strong> quando não houver devolução.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <label htmlFor={`refund-${row.id}`} className="text-sm font-medium">
+                Valor devolvido ao participante (R$)
+              </label>
+              <input
+                id={`refund-${row.id}`}
+                inputMode="decimal"
+                autoComplete="off"
+                value={refundInput}
+                onChange={(event) => setRefundInput(event.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground">
+                Status de pagamento intacto: só a situação administrativa muda.
+              </p>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={busy}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(event) => {
+                  event.preventDefault();
+                  const refundCents = parseReceivedAmount(refundInput);
+                  if (refundCents === null) return;
+                  void onCancel(row, refundCents).then((success) => {
+                    if (success) {
+                      setConfirmCancel(false);
+                      setRefundInput("");
+                    }
+                  });
+                }}
+              >
+                Cancelar inscrição
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       {onDelete && (
         <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <AlertDialogContent>
@@ -2140,6 +2264,23 @@ export function AdminRegistrationsPage({
     setActionError("");
     setAnnouncement("");
     try {
+      const due = manualPaymentDue(row);
+      if (!due) {
+        // Only raffle payments can be recorded here without touching the
+        // registration fee.
+        if (payment.rafflePaidCents !== undefined) {
+          await setAdminRegistrationRafflePaid({
+            data: {
+              registrationId: row.id,
+              rafflePaidCents: payment.rafflePaidCents ?? null,
+            },
+          });
+        }
+        setAnnouncement("Pagamento de rifas registrado.");
+        setRetry((value) => value + 1);
+        setSummaryRetry((value) => value + 1);
+        return true;
+      }
       const result = await markPaid({
         data: {
           registrationId: row.id,
@@ -2147,6 +2288,7 @@ export function AdminRegistrationsPage({
           amountCents: payment.amountCents,
           remainder: payment.remainder,
           originalRegistrationPriceCents: payment.originalRegistrationPriceCents,
+          rafflePaidCents: payment.rafflePaidCents,
           reason: payment.reason,
         },
       });
@@ -2191,6 +2333,36 @@ export function AdminRegistrationsPage({
       return true;
     } catch {
       setActionError("Não foi possível excluir a inscrição. Tente novamente.");
+      return false;
+    } finally {
+      actionBusy.current = false;
+      setParticipantActionBusy(false);
+    }
+  }
+
+  async function runCancelAction(
+    row: AdminRegistrationRow,
+    refundCents: number,
+  ): Promise<boolean> {
+    if (actionBusy.current || gate !== "authorized") return false;
+    actionBusy.current = true;
+    setParticipantActionBusy(true);
+    setActionError("");
+    setAnnouncement("");
+    try {
+      await cancelAdminRegistration({
+        data: { registrationId: row.id, refundCents },
+      });
+      setAnnouncement(
+        refundCents > 0
+          ? `Inscrição de ${row.name} cancelada com devolução de ${money(refundCents)}.`
+          : `Inscrição de ${row.name} cancelada sem devolução.`,
+      );
+      setRetry((value) => value + 1);
+      setSummaryRetry((value) => value + 1);
+      return true;
+    } catch {
+      setActionError("Não foi possível cancelar a inscrição. Tente novamente.");
       return false;
     } finally {
       actionBusy.current = false;
@@ -2534,6 +2706,7 @@ export function AdminRegistrationsPage({
                   onPaymentLink={(row) => void runPaymentLinkAction(row)}
                   onMarkPaid={runMarkPaidAction}
                   onDelete={runDeleteAction}
+                  onCancel={runCancelAction}
                   onViewReceipt={(row) => void runReceiptAction(row)}
                   onEdit={openEditDialog}
                   roles={roles}

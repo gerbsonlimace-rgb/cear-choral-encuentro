@@ -258,6 +258,29 @@
   --destructive-foreground: #ffffff;
 }
 
+.dark .chorister-app {
+  color-scheme: dark;
+  --background: #18181b;
+  --foreground: #fafafa;
+  --card: #27272a;
+  --card-foreground: #fafafa;
+  --popover: #27272a;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #3f3f46;
+  --accent-foreground: #fafafa;
+  --border: #3f3f46;
+  --input: #3f3f46;
+  --ring: #a1a1aa;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+}
+
 .chorister-app :is(button, a, input):focus-visible {
   outline: 2px solid #71717a;
   outline-offset: 3px;
@@ -273,8 +296,8 @@
   font-family: var(--font-body);
 }
 
-/* Authenticated operating surfaces share a DetraPay-inspired light shell.
- * Public pages intentionally remain on the event campaign system above. */
+/* Authenticated operating surfaces share a DetraPay-inspired shell.
+ * Light by default; a `.dark` ancestor switches the palette. */
 .internal-app {
   color-scheme: light;
   --brand-ink: oklch(0.18 0.01 90);
@@ -301,6 +324,32 @@
   --destructive-foreground: #ffffff;
   font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
+}
+
+.dark .internal-app {
+  color-scheme: dark;
+  --brand-ink: oklch(0.18 0.04 230);
+  --brand-gold: oklch(0.76 0.15 88);
+  --brand-gold-soft: oklch(0.3 0.06 88);
+  --background: #18181b;
+  --foreground: #fafafa;
+  --card: #27272a;
+  --card-foreground: #fafafa;
+  --popover: #27272a;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #3f3f46;
+  --accent-foreground: #fafafa;
+  --border: #3f3f46;
+  --input: #3f3f46;
+  --ring: #d5a900;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
 }
 
 /* Keep app controls and portaled overlays on the welcome card's typeface.

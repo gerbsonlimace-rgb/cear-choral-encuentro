@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   adminRegistrationExportSchema,
   adminRegistrationPdfExportSchema,
+  adminCancelRegistrationSchema,
   adminMarkExemptSchema,
   adminMarkPaidSchema,
   adminRegistrationQuerySchema,
@@ -11,6 +12,7 @@ import {
   type AdminRegistrationExportQuery,
   type AdminRegistrationPage,
   type AdminRegistrationQuery,
+  type AdminRegistrationRow,
   type AdminRegistrationSummary,
 } from "@/features/admin/admin.domain";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
@@ -28,6 +30,10 @@ export type AdminPageBootstrap<T> = {
 export type AdminRegistrationsBootstrap = AdminPageBootstrap<{
   registrations: AdminRegistrationPage;
   summary: AdminRegistrationSummary;
+}>;
+
+export type AdminHospedagemBootstrap = AdminPageBootstrap<{
+  registrations: AdminRegistrationRow[];
 }>;
 
 type AdminAccessInput = {
@@ -146,6 +152,43 @@ export const getAdminRegistrationsBootstrap = createServerFn({ method: "GET" })
     });
   });
 
+export const getAdminHospedagemBootstrap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ getAdminAuthorizer }, { getAdminRegistrationService }] = await Promise.all([
+      import("@/features/admin/admin-auth.server"),
+      import("@/features/admin/admin-registration.server"),
+    ]);
+    return createAdminBootstrap<NonNullable<AdminHospedagemBootstrap["data"]>>({
+      userId: context.userId,
+      email: typeof context.claims.email === "string" ? context.claims.email : null,
+      findActive: (userId) => getAdminAuthorizer().findActive(userId),
+      load: async () => {
+        const service = getAdminRegistrationService();
+        const rows: AdminRegistrationRow[] = [];
+        let page = 1;
+        while (true) {
+          const batch = await service.list(
+            {
+              search: "",
+              paymentStatus: "all",
+              choirId: "all",
+              musicalProfile: "all",
+              loginStatus: "all",
+              page,
+              pageSize: 1000,
+            },
+            false,
+          );
+          rows.push(...batch.rows);
+          if (rows.length >= batch.total || batch.rows.length === 0) break;
+          page += 1;
+        }
+        return { registrations: rows };
+      },
+    });
+  });
+
 export const listAdminRegistrations = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .validator(adminRegistrationQuerySchema)
@@ -240,6 +283,7 @@ export const markAdminRegistrationPaid = createServerFn({ method: "POST" })
         amountCents: data.amountCents,
         remainder: data.remainder,
         originalRegistrationPriceCents: data.originalRegistrationPriceCents,
+        rafflePaidCents: data.rafflePaidCents ?? undefined,
         reason: data.reason,
       },
     );
@@ -252,6 +296,19 @@ export const markAdminRegistrationExempt = createServerFn({ method: "POST" })
     const { getAdminRegistrationService } =
       await import("@/features/admin/admin-registration.server");
     return getAdminRegistrationService().markExempt(data.registrationId, context.adminUserId);
+  });
+
+export const cancelAdminRegistration = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminCancelRegistrationSchema)
+  .handler(async ({ data, context }) => {
+    const { getAdminRegistrationService } =
+      await import("@/features/admin/admin-registration.server");
+    return getAdminRegistrationService().cancel(
+      data.registrationId,
+      context.adminUserId,
+      data.refundCents,
+    );
   });
 
 export const deleteAdminRegistration = createServerFn({ method: "POST" })
@@ -308,4 +365,58 @@ export const revokeAdminFromRegistration = createServerFn({ method: "POST" })
     const { revokeAdminFromRegistration: run } =
       await import("@/features/admin/admin-roles.server");
     return run(data.registrationId, context.adminUserId);
+  });
+
+const adminChoirRaffleSchema = z
+  .object({ choirName: z.string().trim().min(1).max(255) })
+  .strict();
+
+export const listAdminChoirRaffles = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminChoirRaffleSchema)
+  .handler(async ({ data }) => {
+    const { listAdminChoirRaffles: run } =
+      await import("@/features/admin/admin-raffle-settlement.server");
+    return run(data.choirName);
+  });
+
+export const getAdminChoirRoster = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(adminChoirRaffleSchema)
+  .handler(async ({ data }) => {
+    const { getAdminChoirRoster: run } =
+      await import("@/features/admin/admin-raffle-settlement.server");
+    return run(data.choirName);
+  });
+
+export const settleAdminChoirRaffles = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(
+    z
+      .object({
+        choirName: z.string().trim().min(1).max(255),
+        totalCents: z.number().int().min(0).max(100_000_000).optional(),
+      })
+      .strict(),
+  )
+  .handler(async ({ data }) => {
+    const { settleAdminChoirRaffles: run } =
+      await import("@/features/admin/admin-raffle-settlement.server");
+    return run({ choirName: data.choirName, totalCents: data.totalCents });
+  });
+
+export const setAdminRegistrationRafflePaid = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator(
+    z
+      .object({
+        registrationId: z.string().uuid(),
+        rafflePaidCents: z.number().int().min(0).max(100_000_000).nullable(),
+      })
+      .strict(),
+  )
+  .handler(async ({ data }) => {
+    const { setAdminRegistrationRafflePaid: run } =
+      await import("@/features/admin/admin-raffle-settlement.server");
+    return run(data);
   });

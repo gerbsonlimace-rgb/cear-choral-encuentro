@@ -23,11 +23,13 @@ import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminDocumentosRouteImport } from './routes/admin.documentos'
+import { Route as AdminHospedagemRouteImport } from './routes/admin.hospedagem'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminPagamentoRouteImport } from './routes/admin.pagamento'
 import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocinadores'
 import { Route as AdminResumoRouteImport } from './routes/admin.resumo'
+import { Route as AdminVisaoGeralRouteImport } from './routes/admin.visao-geral'
 import { Route as ApiInfinitepayWebhookRouteImport } from './routes/api/infinitepay-webhook'
 import { Route as ParticipanteIndexRouteImport } from './routes/participante.index'
 import { Route as ParticipanteDivulgarRifaRouteImport } from './routes/participante.divulgar-rifa'
@@ -111,6 +113,11 @@ const AdminDocumentosRoute = AdminDocumentosRouteImport.update({
   path: '/admin/documentos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHospedagemRoute = AdminHospedagemRouteImport.update({
+  id: '/admin/hospedagem',
+  path: '/admin/hospedagem',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminInscricoesRoute = AdminInscricoesRouteImport.update({
   id: '/admin/inscricoes',
   path: '/admin/inscricoes',
@@ -134,6 +141,11 @@ const AdminPatrocinadoresRoute = AdminPatrocinadoresRouteImport.update({
 const AdminResumoRoute = AdminResumoRouteImport.update({
   id: '/admin/resumo',
   path: '/admin/resumo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminVisaoGeralRoute = AdminVisaoGeralRouteImport.update({
+  id: '/admin/visao-geral',
+  path: '/admin/visao-geral',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInfinitepayWebhookRoute = ApiInfinitepayWebhookRouteImport.update({
@@ -212,11 +224,13 @@ export interface FileRoutesByFullPath {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -243,11 +257,13 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -277,11 +293,13 @@ export interface FileRoutesById {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
+  '/admin/visao-geral': typeof AdminVisaoGeralRoute
   '/api/infinitepay-webhook': typeof ApiInfinitepayWebhookRoute
   '/participante/divulgar-rifa': typeof ParticipanteDivulgarRifaRoute
   '/participante/login': typeof ParticipanteLoginRoute
@@ -312,11 +330,13 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
+    | '/admin/visao-geral'
     | '/api/infinitepay-webhook'
     | '/participante/divulgar-rifa'
     | '/participante/login'
@@ -343,11 +363,13 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
+    | '/admin/visao-geral'
     | '/api/infinitepay-webhook'
     | '/participante/divulgar-rifa'
     | '/participante/login'
@@ -376,11 +398,13 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
+    | '/admin/visao-geral'
     | '/api/infinitepay-webhook'
     | '/participante/divulgar-rifa'
     | '/participante/login'
@@ -410,11 +434,13 @@ export interface RootRouteChildren {
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCorosRoute: typeof AdminCorosRoute
   AdminDocumentosRoute: typeof AdminDocumentosRoute
+  AdminHospedagemRoute: typeof AdminHospedagemRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPagamentoRoute: typeof AdminPagamentoRoute
   AdminPatrocinadoresRoute: typeof AdminPatrocinadoresRoute
   AdminResumoRoute: typeof AdminResumoRoute
+  AdminVisaoGeralRoute: typeof AdminVisaoGeralRoute
   ApiInfinitepayWebhookRoute: typeof ApiInfinitepayWebhookRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -519,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDocumentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/hospedagem': {
+      id: '/admin/hospedagem'
+      path: '/admin/hospedagem'
+      fullPath: '/admin/hospedagem'
+      preLoaderRoute: typeof AdminHospedagemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/inscricoes': {
       id: '/admin/inscricoes'
       path: '/admin/inscricoes'
@@ -552,6 +585,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/resumo'
       fullPath: '/admin/resumo'
       preLoaderRoute: typeof AdminResumoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/visao-geral': {
+      id: '/admin/visao-geral'
+      path: '/admin/visao-geral'
+      fullPath: '/admin/visao-geral'
+      preLoaderRoute: typeof AdminVisaoGeralRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/infinitepay-webhook': {
@@ -696,11 +736,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCorosRoute: AdminCorosRoute,
   AdminDocumentosRoute: AdminDocumentosRoute,
+  AdminHospedagemRoute: AdminHospedagemRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPagamentoRoute: AdminPagamentoRoute,
   AdminPatrocinadoresRoute: AdminPatrocinadoresRoute,
   AdminResumoRoute: AdminResumoRoute,
+  AdminVisaoGeralRoute: AdminVisaoGeralRoute,
   ApiInfinitepayWebhookRoute: ApiInfinitepayWebhookRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
