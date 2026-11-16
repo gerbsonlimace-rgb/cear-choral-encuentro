@@ -434,6 +434,84 @@ export type Database = {
         }
         Relationships: []
       }
+      lodging_plan: {
+        Row: {
+          assignments: Json
+          created_at: string
+          extra_people: Json
+          extra_room_counter: number
+          extra_rooms: Json
+          hidden_rooms: Json
+          id: boolean
+          no_lodging_registration_ids: string[]
+          room_capacity: number
+          rooms_available: number
+          updated_at: string
+        }
+        Insert: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Update: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lodging_rooms: {
+        Row: {
+          capacity: number
+          choir_name: string
+          created_at: string
+          hidden: boolean
+          id: string
+          room_index: number
+          room_key: string
+          room_type: string
+          updated_at: string
+        }
+        Insert: {
+          capacity: number
+          choir_name: string
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          room_index: number
+          room_key: string
+          room_type: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          choir_name?: string
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          room_index?: number
+          room_key?: string
+          room_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       participant_access_events: {
         Row: {
           admin_user_id: string | null
@@ -680,6 +758,7 @@ export type Database = {
       }
       registrations: {
         Row: {
+          admin_lodging_opt_out: boolean
           admin_payment_reason: string | null
           admin_raffle_paid_cents: number | null
           admin_registration_original_price_cents: number | null
@@ -702,6 +781,7 @@ export type Database = {
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
           infinitepay_transaction_nsu: string | null
+          lodging_room_id: string | null
           installments: number | null
           institution: string | null
           is_free_registration: boolean
@@ -736,6 +816,7 @@ export type Database = {
           voice_part: string | null
         }
         Insert: {
+          admin_lodging_opt_out?: boolean
           admin_payment_reason?: string | null
           admin_raffle_paid_cents?: number | null
           admin_registration_original_price_cents?: number | null
@@ -758,6 +839,7 @@ export type Database = {
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
+          lodging_room_id?: string | null
           installments?: number | null
           institution?: string | null
           is_free_registration?: boolean
@@ -792,6 +874,7 @@ export type Database = {
           voice_part?: string | null
         }
         Update: {
+          admin_lodging_opt_out?: boolean
           admin_payment_reason?: string | null
           admin_raffle_paid_cents?: number | null
           admin_registration_original_price_cents?: number | null
@@ -814,6 +897,7 @@ export type Database = {
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
           infinitepay_transaction_nsu?: string | null
+          lodging_room_id?: string | null
           installments?: number | null
           institution?: string | null
           is_free_registration?: boolean
@@ -848,6 +932,13 @@ export type Database = {
           voice_part?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "registrations_lodging_room_id_fkey"
+            columns: ["lodging_room_id"]
+            isOneToOne: false
+            referencedRelation: "lodging_rooms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "registrations_choir_id_fkey"
             columns: ["choir_id"]
@@ -889,6 +980,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      replace_lodging_plan_with_rooms: {
+        Args: {
+          p_assignments: Json
+          p_extra_people: Json
+          p_extra_room_counter: number
+          p_extra_rooms: Json
+          p_hidden_rooms: Json
+          p_no_lodging_registration_ids: string[]
+          p_placements: Json
+          p_room_capacity: number
+          p_rooms: Json
+          p_rooms_available: number
+        }
+        Returns: {
+          assignments: Json
+          created_at: string
+          extra_people: Json
+          extra_room_counter: number
+          extra_rooms: Json
+          hidden_rooms: Json
+          id: boolean
+          no_lodging_registration_ids: string[]
+          room_capacity: number
+          rooms_available: number
+          updated_at: string
+        }
+      }
       admin_registration_snapshot: {
         Args: { p_search?: string }
         Returns: Json

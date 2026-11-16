@@ -30,6 +30,8 @@ describe("admin participant access state", () => {
 const legacyRow: RegistrationDatabaseRow = {
   id: "4ea5e017-366b-4bba-a1d6-8cf7fec7e93e",
   created_at: "2025-08-22T14:00:00.000Z",
+  admin_lodging_opt_out: false,
+  lodging_room_id: null,
   name: "Ana Histórica",
   cpf: "52998224725",
   birth_date: "1990-01-01",

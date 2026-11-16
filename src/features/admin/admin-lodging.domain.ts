@@ -50,6 +50,34 @@ export type LodgingRoomLayout = {
   roomIdByKey: Map<string, number>;
 };
 
+export type LodgingRegistrantRow = {
+  id: string;
+  choirName: string;
+  voicePart: string | null;
+  registrationPriceCents: number | null;
+};
+
+export type LodgingRoomRecord = {
+  room_key: string;
+  choir_name: string;
+  room_index: number;
+  room_type: "auto" | "extra";
+  capacity: number;
+  hidden: boolean;
+};
+
+export type LodgingRegistrationPlacement = {
+  registration_id: string;
+  choir_name: string;
+  room_key: string | null;
+  opted_out: boolean;
+};
+
+export type LodgingRoomRelations = {
+  rooms: LodgingRoomRecord[];
+  placements: LodgingRegistrationPlacement[];
+};
+
 export function emptyLodgingPlan(): LodgingPlan {
   return {
     roomsAvailable: 0,
@@ -139,10 +167,7 @@ export function parseLodgingPlan(row: unknown): LodgingPlan {
   plan.hiddenRoomKeys = asStringList(source.hidden_rooms);
   plan.extraPeople = asExtraPeople(source.extra_people);
   const counter = asFiniteNumber(source.extra_room_counter, plan.extraRoomCounter);
-  plan.extraRoomCounter = Math.max(
-    LODGING_EXTRA_ROOM_BASE,
-    Math.trunc(counter),
-  );
+  plan.extraRoomCounter = Math.max(LODGING_EXTRA_ROOM_BASE, Math.trunc(counter));
   return plan;
 }
 
@@ -179,4 +204,88 @@ export function buildLodgingRoomLayout(input: {
     }
   }
   return { choirs, keyByRoomId, roomIdByKey };
+}
+
+/** Converts the editor's full plan into normalized room rows and registration links. */
+export function buildLodgingRoomRelations(
+  rows: LodgingRegistrantRow[],
+  plan: LodgingPlan,
+): LodgingRoomRelations {
+  const capacity = Math.max(1, Math.trunc(plan.roomCapacity || 3));
+  const noLodgingIds = new Set(plan.noLodgingIds);
+  for (const row of rows) {
+    if (row.registrationPriceCents === 8000) noLodgingIds.add(row.id);
+  }
+
+  const choirNames = [
+    ...new Set([
+      ...rows.map((row) => row.choirName || "Sem coro"),
+      ...Object.keys(plan.extraRooms),
+    ]),
+  ];
+  const roomsByChoir: Record<string, number> = {};
+  for (const choirName of choirNames) {
+    const members = rows.filter(
+      (row) => (row.choirName || "Sem coro") === choirName && !noLodgingIds.has(row.id),
+    );
+    const men = members.filter(
+      (row) => row.voicePart === "tenor" || row.voicePart === "baixo",
+    ).length;
+    const women = members.filter(
+      (row) => row.voicePart === "soprano" || row.voicePart === "contralto",
+    ).length;
+    roomsByChoir[choirName] = Math.ceil(men / capacity) + Math.ceil(women / capacity);
+  }
+
+  const rooms: LodgingRoomRecord[] = [];
+  const roomsByKey = new Map<string, LodgingRoomRecord>();
+  for (const choirName of choirNames) {
+    const automaticCount = roomsByChoir[choirName] ?? 0;
+    const extras = [...new Set(plan.extraRooms[choirName] ?? [])];
+    for (let index = 0; index < automaticCount; index += 1) {
+      const key = lodgingRoomKey(choirName, index);
+      const room: LodgingRoomRecord = {
+        room_key: key,
+        choir_name: choirName,
+        room_index: index + 1,
+        room_type: "auto",
+        capacity,
+        hidden: plan.hiddenRoomKeys.includes(key),
+      };
+      rooms.push(room);
+      roomsByKey.set(key, room);
+    }
+    for (const [index, roomId] of extras.entries()) {
+      const key = lodgingExtraRoomKey(choirName, roomId);
+      const room: LodgingRoomRecord = {
+        room_key: key,
+        choir_name: choirName,
+        room_index: automaticCount + index + 1,
+        room_type: "extra",
+        capacity,
+        hidden: plan.hiddenRoomKeys.includes(key),
+      };
+      rooms.push(room);
+      roomsByKey.set(key, room);
+    }
+  }
+
+  const placements = rows.map((row): LodgingRegistrationPlacement => {
+    const choirName = row.choirName || "Sem coro";
+    const withoutLodging = noLodgingIds.has(row.id);
+    const optedOut = withoutLodging && row.registrationPriceCents !== 8000;
+    const requestedKey = withoutLodging ? null : (plan.assignments[row.id] ?? null);
+    const room = requestedKey ? roomsByKey.get(requestedKey) : null;
+    if (requestedKey && (!room || room.hidden || room.choir_name !== choirName)) {
+      throw new Error("Uma inscrição aponta para um quarto indisponível.");
+    }
+    return {
+      registration_id: row.id,
+      choir_name: choirName,
+      room_key: room?.room_key ?? null,
+      opted_out: optedOut,
+    };
+  });
+
+  return { rooms, placements };
 }

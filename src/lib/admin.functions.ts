@@ -199,7 +199,11 @@ export const getAdminHospedagemBootstrap = createServerFn({ method: "GET" })
             .map((person) => person.photoPath)
             .filter((path): path is string => Boolean(path)),
         );
-        return { registrations: rows, plan, extraPhotoUrls };
+        return {
+          registrations: rows.filter((row) => !row.cancelledAt),
+          plan,
+          extraPhotoUrls,
+        };
       },
     });
   });
