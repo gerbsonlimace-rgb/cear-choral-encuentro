@@ -191,6 +191,23 @@ function setup(overrides = {}) {
 }
 
 describe("AdminRegistrationsPage read-only views", () => {
+  it("offers payment configuration for a cancelled registration", async () => {
+    const { user } = setup({
+      loadRegistrations: vi.fn().mockResolvedValue({
+        rows: [{ ...pending, cancelledAt: "2026-11-16T12:00:00.000Z", refundCents: 0 }],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      }),
+      markPaid: vi.fn(),
+      onCancel: vi.fn(),
+    });
+    const table = await screen.findByRole("table", { name: "Inscrições" });
+    await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
+    expect(screen.getByRole("menuitem", { name: "Configurar pagamento" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Cancelar inscrição" })).not.toBeInTheDocument();
+  });
+
   it("does not create a duplicate checkout when an open complement URL is unsafe", async () => {
     setup({
       loadRegistrations: vi.fn().mockResolvedValue({

@@ -908,8 +908,8 @@ function RegistrationActions({
   const [rafflePaidInput, setRafflePaidInput] = useState("");
   const [remainder, setRemainder] = useState<ManualPaymentRemainder>("pending");
   const state = getAdminFinancialState(row);
+  // Cancelled registrations stay configurable so admins can settle values after cancellation.
   const canConfigurePayment =
-    !row.cancelledAt &&
     (row.paymentStatus === "pending" || due?.mode === "balance" || row.paymentOrigin === "exemption");
   const openUrl = row.openComplementPayment?.checkoutUrl;
   const access = row.participantAccess;
