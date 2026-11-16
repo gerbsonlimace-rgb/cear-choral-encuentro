@@ -31,8 +31,9 @@ describe("AdminSummaryPage", () => {
     render(<AdminSummaryPage checkAccess={checkAccess} loadSummary={loadSummary} />);
 
     expect((await screen.findAllByText("R$ 1.500,00")).length).toBeGreaterThan(0);
-    const receivedTotal = screen.getByText("Total recebido").closest("article");
-    const pendingTotal = within(screen.getByRole("region", { name: "Indicadores do encontro" })).getByText("Pendente taxa de inscrição").closest("article");
+    const indicators = within(screen.getByRole("region", { name: "Indicadores do encontro" }));
+    const receivedTotal = indicators.getByText("Total recebido").closest("article");
+    const pendingTotal = indicators.getByText("Pendente taxa de inscrição").closest("article");
     expect(receivedTotal).toHaveTextContent("R$ 1.500,00");
     expect(pendingTotal).toHaveTextContent("R$ 500,00");
     expect(pendingTotal).not.toHaveTextContent("de regentes");

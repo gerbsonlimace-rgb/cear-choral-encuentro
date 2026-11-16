@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banknote, CheckCircle2, CircleOff, Clock3, Users, History } from "lucide-react";
+import { Banknote, Ban, CheckCircle2, CircleOff, Clock3, Users, History } from "lucide-react";
 
 import { useServerFn } from "@tanstack/react-start";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +32,7 @@ export function AdminSummaryPage({
   const preparePdf = prepareChoirPdf ?? exportPdfFn;
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     let active = true;
     void checkAccess()
@@ -44,7 +45,7 @@ export function AdminSummaryPage({
     return () => {
       active = false;
     };
-  }, [checkAccess, loadSummary]);
+  }, [checkAccess, loadSummary, refresh]);
 
   const registrationMetrics = summary
     ? [
@@ -53,14 +54,24 @@ export function AdminSummaryPage({
         { label: "Pagamentos pendentes", value: String(summary.pending), icon: Clock3 },
         { label: "Inscrições isentas", value: String(summary.exempt ?? 0), icon: CircleOff },
         { label: "Históricas", value: String(summary.legacy), icon: History },
+        { label: "Canceladas", value: String(summary.cancelled ?? 0), icon: Ban },
       ]
     : [];
+  const raffleReceivedCents = summary?.rafflePaidCents ?? 0;
+  const registrationReceivedCents = (summary?.receivedCents ?? 0) - raffleReceivedCents;
   const financialMetrics = summary
     ? [
         {
           label: "Total recebido",
           value: money.format(summary.receivedCents / 100),
           icon: Banknote,
+          details: [
+            { label: "Inscrições", value: money.format(registrationReceivedCents / 100) },
+            { label: "Rifas", value: money.format(raffleReceivedCents / 100) },
+            ...(summary.refundedCents
+              ? [{ label: "Devoluções", value: `− ${money.format(summary.refundedCents / 100)}` }]
+              : []),
+          ],
         },
         {
           label: "Pendente taxa de inscrição",
@@ -114,12 +125,22 @@ export function AdminSummaryPage({
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {financialMetrics.map(({ label, value, icon: Icon }) => (
+                {financialMetrics.map(({ label, value, icon: Icon, details }) => (
                   <article key={label} className="flex min-w-0 items-center gap-2 rounded-lg border bg-card p-3">
                     <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">{label}</p>
                       <p className="break-words text-xl font-semibold tabular-nums">{value}</p>
+                      {details && (
+                        <dl className="mt-0.5 space-y-0.5 text-[11px] text-muted-foreground">
+                          {details.map((detail) => (
+                            <div key={detail.label} className="flex flex-wrap justify-between gap-x-2">
+                              <dt>{detail.label}</dt>
+                              <dd className="font-medium tabular-nums">{detail.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -129,7 +150,14 @@ export function AdminSummaryPage({
               <h2 className="text-sm font-semibold">Financeiro por coro/diocese</h2>
               {summary.byChoir.length ? (
                 <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {summary.byChoir.map((item) => <AdminChoirSummaryCard key={item.choirName} item={item} preparePdf={preparePdf} />)}
+                  {summary.byChoir.map((item) => (
+                    <AdminChoirSummaryCard
+                      key={item.choirName}
+                      item={item}
+                      preparePdf={preparePdf}
+                      onSettled={() => setRefresh((value) => value + 1)}
+                    />
+                  ))}
                 </ul>
               ) : <p className="text-sm text-muted-foreground">Nenhum coro/diocese com inscrições.</p>}
             </section>

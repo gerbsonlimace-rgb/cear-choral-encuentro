@@ -22,6 +22,7 @@ export const adminPaymentStatusSchema = z.enum([
   "paid",
   "exempt",
   "legacy",
+  "cancelled",
 ]);
 
 /** Sentinel accepted in place of a choir uuid to disable the choir filter. */
@@ -99,6 +100,7 @@ export const adminMarkPaidSchema = z
     amountCents: z.number().int().min(0).max(100_000_000).optional(),
     remainder: z.enum(["pending", "discount"]).optional(),
     originalRegistrationPriceCents: z.number().int().min(0).max(100_000_000).optional(),
+    rafflePaidCents: z.number().int().min(0).max(100_000_000).nullable().optional(),
     reason: z.string().trim().max(500).optional(),
   })
   .strict();
@@ -106,6 +108,14 @@ export const adminMarkPaidSchema = z
 export const adminMarkExemptSchema = z
   .object({
     registrationId: z.string().uuid(),
+  })
+  .strict();
+
+/** Cancellation only records the refund; shared payment columns stay untouched. */
+export const adminCancelRegistrationSchema = z
+  .object({
+    registrationId: z.string().uuid(),
+    refundCents: z.number().int().min(0).max(100_000_000),
   })
   .strict();
 
@@ -237,6 +247,7 @@ export type AdminRegistrationRow = {
   paymentOrigin?: "infinitepay" | "manual" | "exemption" | null;
   isFreeRegistration?: boolean;
   rafflePaidCents?: number;
+  adminRafflePaidCents?: number | null;
   hasManualReceipt?: boolean;
   /** Registration-fee balance left open by an administrator (admin-only tracking). */
   manualFeePendingCents?: number | null;
@@ -244,6 +255,10 @@ export type AdminRegistrationRow = {
   manualDiscountCents?: number | null;
   adminRegistrationOriginalPriceCents?: number | null;
   manualPaymentReason?: string | null;
+  /** Set when the registration was cancelled administratively. */
+  cancelledAt?: string | null;
+  /** Amount returned to the participant on cancellation (0 = money kept). */
+  refundCents?: number | null;
   pricingType: "standard" | "promotional" | null;
   standardPriceCents: number | null;
   registrationPriceCents: number | null;
@@ -298,8 +313,12 @@ export type AdminRegistrationPage = {
 export type AdminChoirFinancials = {
   rafflePendingCents?: number;
   rafflePendingTickets?: number | null;
+  /** Raffle revenue already received for this choir (manual or settlement). */
+  rafflePaidCents?: number;
   choirName: string;
   total: number;
+  cancelled?: number;
+  refundedCents?: number;
   receivedCents: number;
   pendingCents: number;
   pendingRegentCents: number;
@@ -309,12 +328,16 @@ export type AdminChoirFinancials = {
 export type AdminRegistrationSummary = {
   rafflePendingCents?: number;
   rafflePendingTickets?: number | null;
+  /** Raffle revenue already received (manual or settlement). */
+  rafflePaidCents?: number;
   total: number;
   paid: number;
   pending: number;
   partiallyPaid?: number;
   exempt?: number;
   legacy: number;
+  cancelled?: number;
+  refundedCents?: number;
   receivedCents: number;
   pendingCents: number;
   pendingRegentCents: number;
@@ -371,7 +394,10 @@ export function mapAdminRegistrationRow(
     manualFeePendingCents: row.manual_fee_pending_cents ?? null,
     manualDiscountCents: row.manual_discount_cents ?? null,
     adminRegistrationOriginalPriceCents: row.admin_registration_original_price_cents ?? null,
+    adminRafflePaidCents: row.admin_raffle_paid_cents ?? null,
     manualPaymentReason: row.admin_payment_reason ?? null,
+    cancelledAt: row.cancelled_at ?? null,
+    refundCents: row.refund_cents ?? 0,
     pricingType: row.pricing_type as AdminRegistrationRow["pricingType"],
     standardPriceCents: row.standard_price_cents,
     registrationPriceCents: row.registration_price_cents,
@@ -483,17 +509,28 @@ export function summarizeAdminRegistrations(
       | "standardPriceCents"
       | "registrationPriceCents"
     > &
-      Partial<Pick<AdminRegistrationRow, "manualFeePendingCents">>
+      Partial<
+        Pick<
+          AdminRegistrationRow,
+          | "manualFeePendingCents"
+          | "adminRafflePaidCents"
+          | "cancelledAt"
+          | "refundCents"
+        >
+      >
   >,
 ): AdminRegistrationSummary {
   const summary: AdminRegistrationSummary = {
     rafflePendingCents: 0,
     rafflePendingTickets: 0,
+    rafflePaidCents: 0,
     total: rows.length,
     paid: 0,
     pending: 0,
     partiallyPaid: 0,
     legacy: 0,
+    cancelled: 0,
+    refundedCents: 0,
     receivedCents: 0,
     pendingCents: 0,
     pendingRegentCents: 0,
@@ -502,12 +539,30 @@ export function summarizeAdminRegistrations(
   };
   const choirs = new Map<
     string,
-    { total: number; receivedCents: number; pendingCents: number; pendingRegentCents: number; rafflePendingCents: number; rafflePendingTickets: number | null }
+    {
+      total: number;
+      receivedCents: number;
+      pendingCents: number;
+      pendingRegentCents: number;
+      rafflePendingCents: number;
+      rafflePendingTickets: number | null;
+      rafflePaidCents: number;
+      cancelled: number;
+      refundedCents: number;
+    }
   >();
 
   for (const row of rows) {
     const financialState = getAdminFinancialState(row as AdminRegistrationRow);
-    if (financialState.status === "partially_paid") {
+    const cancelled = Boolean(row.cancelledAt);
+    const refundCents = cancelled ? row.refundCents ?? 0 : 0;
+    // A cancelled registration keeps the raffle revenue already received, but
+    // its obligations and status counters move to the cancelled bucket only.
+    const adminRafflePaidCents = cancelled ? 0 : row.adminRafflePaidCents ?? 0;
+    if (cancelled) {
+      summary.cancelled = (summary.cancelled ?? 0) + 1;
+      summary.refundedCents = (summary.refundedCents ?? 0) + refundCents;
+    } else if (financialState.status === "partially_paid") {
       summary.partiallyPaid = (summary.partiallyPaid ?? 0) + 1;
     } else if (financialState.status === "exempt") {
       summary.exempt = (summary.exempt ?? 0) + 1;
@@ -515,13 +570,20 @@ export function summarizeAdminRegistrations(
     const choir = choirs.get(row.choirName) ?? {
       rafflePendingCents: 0,
       rafflePendingTickets: 0,
+      rafflePaidCents: 0,
+      cancelled: 0,
+      refundedCents: 0,
       total: 0,
       receivedCents: 0,
       pendingCents: 0,
       pendingRegentCents: 0,
     };
     choir.total += 1;
-    const raffle = getAdminRafflePending(row as AdminRegistrationRow, financialState);
+    if (cancelled) {
+      choir.cancelled += 1;
+      choir.refundedCents += refundCents;
+    }
+    const raffle = cancelled ? null : getAdminRafflePending(row as AdminRegistrationRow, financialState);
     if (raffle) {
       summary.rafflePendingCents = (summary.rafflePendingCents ?? 0) + raffle.cents;
       choir.rafflePendingCents += raffle.cents;
@@ -529,6 +591,32 @@ export function summarizeAdminRegistrations(
         ? null : (summary.rafflePendingTickets ?? 0) + raffle.tickets;
       choir.rafflePendingTickets = choir.rafflePendingTickets === null || raffle.tickets === null
         ? null : choir.rafflePendingTickets + raffle.tickets;
+    }
+
+    if (cancelled) {
+      // Only the status changes: money already received stays counted, minus
+      // any refund the administrator informed, and no pending remains.
+      const confirmedCents =
+        financialState.status === "paid" || financialState.status === "partially_paid"
+          ? financialState.confirmedPrincipalCents
+          : 0;
+      const raffleRevenueCents = row.adminRafflePaidCents ?? 0;
+      const netCents = Math.max(0, confirmedCents + raffleRevenueCents - refundCents);
+      summary.receivedCents += netCents;
+      choir.receivedCents += netCents;
+      if (raffleRevenueCents > 0) {
+        summary.rafflePaidCents = (summary.rafflePaidCents ?? 0) + raffleRevenueCents;
+        choir.rafflePaidCents += raffleRevenueCents;
+      }
+      choirs.set(row.choirName, choir);
+      continue;
+    }
+
+    if (adminRafflePaidCents > 0) {
+      summary.receivedCents += adminRafflePaidCents;
+      summary.rafflePaidCents = (summary.rafflePaidCents ?? 0) + adminRafflePaidCents;
+      choir.receivedCents += adminRafflePaidCents;
+      choir.rafflePaidCents += adminRafflePaidCents;
     }
 
     if (financialState.status === "paid" || financialState.status === "partially_paid") {
@@ -621,6 +709,7 @@ function displayDate(value: string | null): string {
 }
 
 function displayStatus(row: AdminRegistrationRow): string {
+  if (row.cancelledAt) return "Cancelada";
   if (row.isFreeRegistration && row.paymentStatus === "pending") return "Aguardando aprovação";
   if ((row.manualDiscountCents ?? 0) > 0) return "Isenção parcial";
   const value = getAdminFinancialState(row).status;

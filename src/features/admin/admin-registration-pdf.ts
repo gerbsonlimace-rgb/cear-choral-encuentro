@@ -15,7 +15,7 @@ const rule = rgb(0.83, 0.83, 0.84);
 const shade = rgb(0.96, 0.96, 0.96);
 const paidColor = rgb(0.08, 0.54, 0.28);
 const pendingColor = rgb(0.77, 0.16, 0.16);
-const statusLabels = { all: "Todos", pending: "Taxa pendente", partially_paid: "Parcialmente pago", paid: "Pago", exempt: "Isento", legacy: "Histórico" };
+const statusLabels = { all: "Todos", pending: "Taxa pendente", partially_paid: "Parcialmente pago", paid: "Pago", exempt: "Isento", legacy: "Histórico", cancelled: "Cancelada" };
 const roleLabels: Record<string, string> = { coralista: "Coralista", regente: "Regente", instrumentista: "Instrumentista" };
 const money = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
@@ -139,7 +139,7 @@ export async function buildRegistrationsPdf(rows: AdminRegistrationRow[], query:
       { value: row.choirName, indicator: "none" },
       { value: row.email, indicator: "none" },
       { value: row.phone, indicator: "none" },
-      { value: statusLabels[state.status], indicator: "none" },
+      { value: row.cancelledAt ? statusLabels.cancelled : statusLabels[state.status], indicator: "none" },
       financial.registration,
       financial.raffles,
     ];

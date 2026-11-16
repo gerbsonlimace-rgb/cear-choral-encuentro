@@ -144,6 +144,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <head>
         <HeadContent />
+        <script
+          // Apply persisted theme before first paint to avoid a light flash.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("app-theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body>
         {children}

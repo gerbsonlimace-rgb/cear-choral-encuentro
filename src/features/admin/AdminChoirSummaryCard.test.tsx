@@ -22,11 +22,13 @@ describe("choir summary PDF", () => {
   it("allows another preparation after a failure without delivering a partial file", async () => {
     const preparePdf = vi.fn().mockRejectedValueOnce(new Error("unavailable")).mockResolvedValue({ base64: btoa("%PDF-fixture"), fileName: "quixada.pdf" });
     render(<AdminChoirSummaryCard item={item} preparePdf={preparePdf} />);
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Exportar PDF de Coro de Quixadá" }));
     await screen.findByRole("alert");
-    await waitFor(() => expect(screen.getByRole("button")).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Exportar PDF de Coro de Quixadá" })).toBeEnabled(),
+    );
     expect(screen.queryByRole("button", { name: "Baixar PDF de Coro de Quixadá" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Exportar PDF de Coro de Quixadá" }));
     await screen.findByRole("button", { name: "Baixar PDF de Coro de Quixadá" });
     expect(preparePdf).toHaveBeenCalledTimes(2);
   });

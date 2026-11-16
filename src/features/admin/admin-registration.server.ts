@@ -64,6 +64,9 @@ export const adminRegistrationColumns = [
   "manual_discount_cents",
   "admin_registration_original_price_cents",
   "admin_payment_reason",
+  "cancelled_at",
+  "cancelled_by",
+  "refund_cents",
   "photo_path",
   "participant_accounts(access_status)",
 ].join(",");
@@ -233,6 +236,7 @@ export type AdminManualPaymentOptions = {
   amountCents?: number;
   remainder?: ManualPaymentRemainder;
   originalRegistrationPriceCents?: number;
+  rafflePaidCents?: number;
   reason?: string;
 };
 
@@ -277,6 +281,11 @@ export type AdminRegistrationRepository = {
     registrationId: string,
     adminUserId: string,
   ) => Promise<{ status: "exempt"; registrationId: string }>;
+  cancel?: (
+    registrationId: string,
+    adminUserId: string,
+    refundCents: number,
+  ) => Promise<{ status: "cancelled"; registrationId: string; refundCents: number }>;
   getReceiptUrl?(registrationId: string): Promise<{ signedUrl: string; expiresIn: number }>;
   updateRegistration?(
     input: AdminUpdateRegistrationInput,
@@ -494,8 +503,13 @@ export function createSupabaseAdminRegistrationRepository(
       let request = supabaseAdmin
         .from("registrations")
         .select(adminRegistrationColumns, { count: "exact" });
-      if (query.paymentStatus !== "all")
-        request = request.eq("payment_status", query.paymentStatus);
+      if (query.paymentStatus === "cancelled") {
+        request = request.not("cancelled_at", "is", null);
+      } else if (query.paymentStatus !== "all") {
+        request = request
+          .eq("payment_status", query.paymentStatus)
+          .is("cancelled_at", null);
+      }
       if (query.choirId === "other") {
         request = request.is("choir_id", null);
       } else if (query.choirId !== "all") {
@@ -564,7 +578,7 @@ export function createSupabaseAdminRegistrationRepository(
       const { data: current, error: readError } = await supabaseAdmin
         .from("registrations")
         .select(
-          "id,amount_cents,paid_amount_cents,payment_status,payment_origin,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,include_shirt,shirt_price_cents,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,is_free_registration,manual_receipt_path,order_nsu,paid_at",
+          "id,amount_cents,paid_amount_cents,payment_status,payment_origin,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,include_shirt,shirt_price_cents,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_raffle_paid_cents,admin_payment_reason,is_free_registration,manual_receipt_path,order_nsu,paid_at",
         )
         .eq("id", registrationId)
         .maybeSingle();
@@ -634,6 +648,8 @@ export function createSupabaseAdminRegistrationRepository(
           ...plan.update,
           ...receiptFields,
           admin_registration_original_price_cents: originalPrice,
+          admin_raffle_paid_cents:
+            payment.rafflePaidCents !== undefined ? payment.rafflePaidCents : current.admin_raffle_paid_cents,
           admin_payment_reason: payment.reason?.trim() || null,
           payment_status: "paid",
           is_free_registration: current.is_free_registration && (originalPrice === 0),
@@ -731,6 +747,27 @@ export function createSupabaseAdminRegistrationRepository(
         throw new Error("Não foi possível marcar a inscrição como isenta.");
       }
       return { status: "exempt", registrationId: data.id };
+    },
+    async cancel(registrationId, adminUserId, refundCents) {
+      const { data, error } = await supabaseAdmin
+        .from("registrations")
+        .update({
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: adminUserId,
+          refund_cents: refundCents,
+        })
+        .eq("id", registrationId)
+        .is("cancelled_at", null)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) {
+        throw new Error(
+          error?.message.includes("cancelled_at")
+            ? "Inscrição já cancelada."
+            : "Não foi possível cancelar a inscrição.",
+        );
+      }
+      return { status: "cancelled", registrationId: data.id, refundCents };
     },
     async getReceiptUrl(registrationId) {
       const { data, error } = await supabaseAdmin
@@ -907,7 +944,9 @@ export function createAdminRegistrationService(
         matchesAdminRegistrationFilters(row, query) &&
         matchesLoginFilter(row, query, loggedInIds) &&
         (query.paymentStatus === "all" ||
-          row.financialState?.status === query.paymentStatus),
+          (query.paymentStatus === "cancelled"
+            ? Boolean(row.cancelledAt)
+            : !row.cancelledAt && row.financialState?.status === query.paymentStatus)),
     );
     const start = (query.page - 1) * query.pageSize;
     const pageRows = filtered.slice(start, start + query.pageSize);
@@ -949,7 +988,7 @@ export function createAdminRegistrationService(
         // The audit table predates the derived partial state and only accepts raw
         // registration statuses. A partially paid registration is still raw `paid`.
         paymentStatusFilter:
-          query.paymentStatus === "all"
+          query.paymentStatus === "all" || query.paymentStatus === "cancelled"
             ? null
             : query.paymentStatus === "partially_paid" || query.paymentStatus === "exempt"
               ? "paid"
@@ -968,7 +1007,7 @@ export function createAdminRegistrationService(
       const file = await buildRegistrationsPdf(rows, query, now());
       await repository.recordExport({
         format: "pdf", adminUserId,
-        paymentStatusFilter: query.paymentStatus === "all" ? null
+        paymentStatusFilter: query.paymentStatus === "all" || query.paymentStatus === "cancelled" ? null
           : query.paymentStatus === "partially_paid" || query.paymentStatus === "exempt" ? "paid" : query.paymentStatus,
         searchUsed: query.search.length > 0, resultCount: rows.length,
       });
@@ -992,6 +1031,10 @@ export function createAdminRegistrationService(
       const result = await repository.markExempt(registrationId, adminUserId);
       await provisionParticipant?.(registrationId).catch(() => undefined);
       return result;
+    },
+    async cancel(registrationId: string, adminUserId: string, refundCents: number) {
+      if (!repository.cancel) throw new Error("Ação administrativa indisponível.");
+      return repository.cancel(registrationId, adminUserId, refundCents);
     },
     async getReceiptUrl(registrationId: string) {
       if (!repository.getReceiptUrl) throw new Error("Ação administrativa indisponível.");
@@ -1037,7 +1080,9 @@ export function createAdminRegistrationService(
         matchesAdminRegistrationFilters(row, query) &&
         matchesLoginFilter(row, query, loggedInIds) &&
         (query.paymentStatus === "all" ||
-          row.financialState?.status === query.paymentStatus),
+          (query.paymentStatus === "cancelled"
+            ? Boolean(row.cancelledAt)
+            : !row.cancelledAt && row.financialState?.status === query.paymentStatus)),
     );
   }
 }

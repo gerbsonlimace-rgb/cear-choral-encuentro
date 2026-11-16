@@ -76,6 +76,12 @@ const legacyRow: RegistrationDatabaseRow = {
   manual_receipt_size_bytes: null,
   manual_fee_pending_cents: null,
   manual_discount_cents: null,
+  admin_payment_reason: null,
+  admin_registration_original_price_cents: null,
+  admin_raffle_paid_cents: null,
+  cancelled_at: null,
+  cancelled_by: null,
+  refund_cents: 0,
 };
 
 const pendingRow: RegistrationDatabaseRow = {
@@ -179,7 +185,7 @@ describe("admin registration filters", () => {
   // Detects a production mutation that accepts an unsupported payment status while all other fields are valid.
   it("rejects an unsupported payment status", () => {
     expect(() =>
-      adminRegistrationQuerySchema.parse({ paymentStatus: "cancelled", pageSize: 25 }),
+      adminRegistrationQuerySchema.parse({ paymentStatus: "refunded", pageSize: 25 }),
     ).toThrow();
   });
 
@@ -276,7 +282,7 @@ describe("admin registration history and CSV", () => {
       receivedCents: 0,
     });
     const approvedCsv = parseCsv(buildRegistrationsCsv([approved], new Date("2026-09-26T16:00:00.000Z")).content)[1];
-    expect(approvedCsv.slice(10, 12)).toEqual(["Isento", "Isento"]);
+    expect(approvedCsv.slice(10, 12)).toEqual(["Isenção total", "Isenção total"]);
   });
 
   it("exports a registration awaiting exemption approval without marking it paid", () => {
@@ -508,11 +514,14 @@ describe("admin registration summary", () => {
     expect(summarizeAdminRegistrations(rows)).toEqual({
       rafflePendingCents: 60000,
       rafflePendingTickets: 60,
+      rafflePaidCents: 0,
       total: 5,
       paid: 1,
       pending: 1,
       partiallyPaid: 2,
       legacy: 1,
+      cancelled: 0,
+      refundedCents: 0,
       receivedCents: 50000,
       pendingCents: 10000,
       pendingRegentCents: 40000,
@@ -522,6 +531,9 @@ describe("admin registration summary", () => {
           choirName: "Diocese de Quixadá",
           rafflePendingCents: 60000,
           rafflePendingTickets: 60,
+          rafflePaidCents: 0,
+          cancelled: 0,
+          refundedCents: 0,
           total: 3,
           receivedCents: 20000,
           pendingCents: 10000,
@@ -532,6 +544,9 @@ describe("admin registration summary", () => {
           choirName: "Arquidiocese de Fortaleza",
           rafflePendingCents: 0,
           rafflePendingTickets: 0,
+          rafflePaidCents: 0,
+          cancelled: 0,
+          refundedCents: 0,
           total: 1,
           receivedCents: 30000,
           pendingCents: 0,
@@ -542,6 +557,9 @@ describe("admin registration summary", () => {
           choirName: "Diocese de Sobral",
           rafflePendingCents: 0,
           rafflePendingTickets: 0,
+          rafflePaidCents: 0,
+          cancelled: 0,
+          refundedCents: 0,
           total: 1,
           receivedCents: 0,
           pendingCents: 0,
