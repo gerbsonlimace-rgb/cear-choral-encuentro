@@ -21,7 +21,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 
 const expectedColumns =
-  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,cancelled_at,cancelled_by,refund_cents,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -154,12 +154,11 @@ describe("registration export", () => {
     expect(file.fileName).toBe("inscricoes-2026-09-07.csv");
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
-    console.log("CSVROW_CODES", JSON.stringify([...lines[1]].map((c) => c.charCodeAt(0)).filter((c) => c > 127 || c === 160)));
-    console.log("EXP_CODES", JSON.stringify([...lines[1]].map((c, i) => lines[1][i]).join("").length), [..."07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026"].map((c) => c.charCodeAt(0)).filter((c) => c > 127));
     expect(lines[0]).toBe(
       "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
     );
-    expect(lines[1]).toBe(
+    // Intl formats pt-BR currency with U+00A0; normalize before comparing.
+    expect(lines[1].replaceAll("\u00A0", " ")).toBe(
       "07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
     );
     expect(lines[1000]).toContain(";Maria 999;");
@@ -1078,6 +1077,7 @@ describe("registration repository list", () => {
       ["from", "registrations"],
       ["select", expectedColumns, { count: "exact" }],
       ["eq", "payment_status", "paid"],
+      ["is", "cancelled_at", null],
       [
         "or",
         'name.ilike."%Maria%",badge_name.ilike."%Maria%",cpf.ilike."%Maria%",choir_name.ilike."%Maria%",email.ilike."%Maria%",phone.ilike."%Maria%",city.ilike."%Maria%",institution.ilike."%Maria%"',
@@ -1110,6 +1110,13 @@ describe("registration repository list", () => {
           includeShirt: false,
           manualFeePendingCents: null,
           manualDiscountCents: null,
+          adminRegistrationOriginalPriceCents: null,
+          manualPaymentReason: null,
+          adminRafflePaidCents: null,
+          cancelledAt: null,
+          refundCents: 0,
+          choirId: undefined,
+          isFreeRegistration: undefined,
           shirtSize: null,
           shirtPriceCents: null,
           paymentStatus: "paid",

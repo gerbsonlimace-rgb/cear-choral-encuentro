@@ -194,7 +194,7 @@ describe("admin registration handlers", () => {
     };
 
     await expect(
-      createAdminFunctionHandlers(service).export({ paymentStatus: "cancelled" }, "admin-user-1"),
+      createAdminFunctionHandlers(service).export({ paymentStatus: "refunded" }, "admin-user-1"),
     ).rejects.toMatchObject({ name: "ZodError" });
     expect(serviceReached).toBe(false);
   });

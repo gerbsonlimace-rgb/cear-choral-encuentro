@@ -137,8 +137,24 @@ export function AdminHospedagemPage({
     }
     setAssignments(nextAssignments);
 
-    void getAdminRegistrationPhotos({ data: { registrationIds: rows.map((row) => row.id) } })
-      .then((urls) => setPhotoUrls(urls))
+    // The server rejects more than 100 ids per call, so sign in chunks and merge.
+    const ids = [...new Set(rows.map((row) => row.id))];
+    const chunks: string[][] = [];
+    for (let index = 0; index < ids.length; index += 100) {
+      chunks.push(ids.slice(index, index + 100));
+    }
+    void Promise.all(
+      chunks.map((registrationIds) =>
+        getAdminRegistrationPhotos({ data: { registrationIds } }).catch(
+          () => ({}) as Record<string, string>,
+        ),
+      ),
+    )
+      .then((results) => {
+        const merged: Record<string, string> = {};
+        for (const urls of results) Object.assign(merged, urls);
+        setPhotoUrls(merged);
+      })
       .catch(() => undefined);
   };
 
@@ -295,7 +311,7 @@ export function AdminHospedagemPage({
           </div>
         `), ...extraOccupants.map((person) => `
           <div class="person">
-            <div class="avatar">${person.name.slice(0, 2).toUpperCase()}</div>
+            ${person.photo ? `<img src="${person.photo}" alt="${person.name}" />` : `<div class="avatar">${person.name.slice(0, 2).toUpperCase()}</div>`}
             <span>${person.name}</span>
           </div>
         `)].join("");
@@ -312,7 +328,7 @@ export function AdminHospedagemPage({
           </div>
         `), ...extraOccupants.map((person) => `
           <div class="person">
-            <div class="avatar">${person.name.slice(0, 2).toUpperCase()}</div>
+            ${person.photo ? `<img src="${person.photo}" alt="${person.name}" />` : `<div class="avatar">${person.name.slice(0, 2).toUpperCase()}</div>`}
             <span>${person.name}</span>
           </div>
         `)].join("");
@@ -321,15 +337,15 @@ export function AdminHospedagemPage({
       return `<section class="choir"><h2>${choirName}</h2><div class="rooms">${roomsHtml}${extraHtml}</div></section>`;
     }).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Mapa de quartos</title><style>
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      .choir { margin-bottom: 24px; }
-      .choir h2 { margin-bottom: 10px; }
-      .rooms { display: flex; flex-wrap: wrap; gap: 12px; }
-      .room { border: 1px solid #ccc; border-radius: 12px; padding: 10px; min-width: 180px; }
-      .room-title { font-weight: bold; margin-bottom: 8px; }
-      .people { display: flex; flex-wrap: wrap; gap: 8px; }
-      .person { width: 70px; text-align: center; font-size: 10px; }
-      .person img, .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin: 0 auto 4px; display: block; background: #eee; line-height: 40px; }
+      body { font-family: Arial, sans-serif; margin: 24px; }
+      .choir { margin-bottom: 32px; }
+      .choir h2 { margin-bottom: 12px; font-size: 20px; }
+      .rooms { display: flex; flex-wrap: wrap; gap: 16px; }
+      .room { border: 1px solid #ccc; border-radius: 14px; padding: 14px; min-width: 240px; }
+      .room-title { font-weight: bold; margin-bottom: 12px; font-size: 15px; }
+      .people { display: flex; flex-wrap: wrap; gap: 14px; }
+      .person { width: 96px; text-align: center; font-size: 12px; }
+      .person img, .avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; margin: 0 auto 6px; display: block; background: #eee; line-height: 64px; }
     </style></head><body><h1>Mapa de quartos</h1>${roomCards}</body></html>`;
     openPrintableHtml(html);
   };
@@ -351,23 +367,23 @@ export function AdminHospedagemPage({
         const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(roomIndex + 1).padStart(2, "0")}`;
         for (const row of occupants) plaques.push({ roomLabel, name: row.badgeName || row.name, photo: photoUrls[row.id] || null });
-        for (const person of extraOccupants) plaques.push({ roomLabel, name: person.name, photo: null });
+        for (const person of extraOccupants) plaques.push({ roomLabel, name: person.name, photo: person.photo ?? null });
       }
       for (const [index, roomId] of (extraRoomIds[choirName] || []).entries()) {
         const occupants = registrations.filter((row) => assignments[row.id] === roomId);
         const extraOccupants = extraPeople.filter((person) => person.roomId === roomId);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(rooms + index + 1).padStart(2, "0")}`;
         for (const row of occupants) plaques.push({ roomLabel, name: row.badgeName || row.name, photo: photoUrls[row.id] || null });
-        for (const person of extraOccupants) plaques.push({ roomLabel, name: person.name, photo: null });
+        for (const person of extraOccupants) plaques.push({ roomLabel, name: person.name, photo: person.photo ?? null });
       }
     }
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Plaquinas</title><style>
       body { font-family: Arial, sans-serif; margin: 0; }
-      .plaque { page-break-after: always; padding: 40px; text-align: center; }
-      .room { font-size: 32px; font-weight: bold; margin-bottom: 20px; }
-      .photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 20px; display: block; background: #eee; }
-      .name { font-size: 24px; margin-bottom: 20px; }
-      .hymn { font-size: 12px; color: #555; }
+      .plaque { page-break-after: always; padding: 60px; text-align: center; }
+      .room { font-size: 40px; font-weight: bold; margin-bottom: 28px; }
+      .photo { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; margin: 0 auto 28px; display: block; background: #eee; }
+      .name { font-size: 32px; margin-bottom: 24px; }
+      .hymn { font-size: 15px; color: #555; }
     </style></head><body>
       ${plaques.map((plaque) => `
         <div class="plaque">
@@ -389,7 +405,7 @@ export function AdminHospedagemPage({
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Encontro de Coros · Administração
             </p>
-            <h1 className="mt-2 font-display text-2xl">Hospedagem</h1>
+            <h1 className="mt-2 font-display text-xl sm:text-2xl">Hospedagem</h1>
           </div>
           {gate === "authorized" && (
             <Button size="sm" variant="outline" onClick={() => void logout()}>
@@ -412,7 +428,7 @@ export function AdminHospedagemPage({
             <Card>
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Capacidade e disponibilidade</h2>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="rooms-available">Quartos disponíveis</Label>
                     <Input
@@ -442,7 +458,7 @@ export function AdminHospedagemPage({
                     />
                   </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="men-count">Homens</Label>
                     <Input
@@ -469,7 +485,7 @@ export function AdminHospedagemPage({
             <Card>
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Por coro</h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 xl:grid-cols-2">
                   {(() => {
                     const names = [...new Set(registrations.map((row) => row.choirName || "Sem coro"))];
                     let offset = 0;
@@ -508,7 +524,7 @@ export function AdminHospedagemPage({
                             </Button>
                           </div>
                           <div className="space-y-3">
-                            <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="grid gap-3 sm:grid-cols-2">
                               {Array.from({ length: rooms }).map((_, roomIndex) => {
                                 const globalRoom = base + roomIndex;
                                 const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
@@ -516,7 +532,7 @@ export function AdminHospedagemPage({
                                 return (
                                   <div
                                     key={globalRoom}
-                                    className="rounded-lg border bg-muted/20 p-2 min-h-16"
+                                    className="rounded-xl border bg-muted/20 p-3 min-h-36"
                                     onDragOver={(event) => event.preventDefault()}
                                     onDrop={(event) => {
                                       event.preventDefault();
@@ -533,29 +549,29 @@ export function AdminHospedagemPage({
                                       }
                                     }}
                                   >
-                                    <p className="text-[0.65rem] font-medium mb-1">
+                                    <p className="text-sm font-semibold mb-2">
                                       {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(roomIndex + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length}/{cap})
                                     </p>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
                                           key={row.id}
                                           draggable
                                           onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
-                                          className="flex flex-col items-center gap-1 cursor-move"
+                                          className="flex flex-col items-center gap-2 cursor-move"
                                         >
                                           {photoUrls[row.id] ? (
                                             <img
                                               src={photoUrls[row.id]}
                                               alt={row.name}
-                                              className="h-8 w-8 rounded-full object-cover"
+                                              className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover"
                                             />
                                           ) : (
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                                            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                                               {row.name.slice(0, 2).toUpperCase()}
                                             </div>
                                           )}
-                                          <span className="text-[0.6rem] text-muted-foreground max-w-14 truncate">
+                                          <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
                                         </div>
@@ -565,16 +581,16 @@ export function AdminHospedagemPage({
                                           key={person.id}
                                           draggable
                                           onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}
-                                          className="flex flex-col items-center gap-1 cursor-move"
+                                          className="flex flex-col items-center gap-2 cursor-move"
                                         >
                                           {person.photo ? (
-                                            <img src={person.photo} alt={person.name} className="h-8 w-8 rounded-full object-cover" />
+                                            <img src={person.photo} alt={person.name} className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover" />
                                           ) : (
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                                            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                                               {person.name.slice(0, 2).toUpperCase()}
                                             </div>
                                           )}
-                                          <span className="text-[0.6rem] text-muted-foreground max-w-14 truncate">
+                                          <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {person.name} ({person.role})
                                           </span>
                                         </div>
@@ -589,7 +605,7 @@ export function AdminHospedagemPage({
                                 return (
                                   <div
                                     key={roomId}
-                                    className="rounded-lg border bg-muted/20 p-2 min-h-16"
+                                    className="rounded-xl border bg-muted/20 p-3 min-h-36"
                                     onDragOver={(event) => event.preventDefault()}
                                     onDrop={(event) => {
                                       event.preventDefault();
@@ -606,29 +622,29 @@ export function AdminHospedagemPage({
                                       }
                                     }}
                                   >
-                                    <p className="text-[0.65rem] font-medium mb-1">
+                                    <p className="text-sm font-semibold mb-2">
                                       {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(rooms + index + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length})
                                     </p>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
                                           key={row.id}
                                           draggable
                                           onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
-                                          className="flex flex-col items-center gap-1 cursor-move"
+                                          className="flex flex-col items-center gap-2 cursor-move"
                                         >
                                           {photoUrls[row.id] ? (
                                             <img
                                               src={photoUrls[row.id]}
                                               alt={row.name}
-                                              className="h-8 w-8 rounded-full object-cover"
+                                              className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover"
                                             />
                                           ) : (
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                                            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                                               {row.name.slice(0, 2).toUpperCase()}
                                             </div>
                                           )}
-                                          <span className="text-[0.6rem] text-muted-foreground max-w-14 truncate">
+                                          <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
                                         </div>
@@ -638,16 +654,16 @@ export function AdminHospedagemPage({
                                           key={person.id}
                                           draggable
                                           onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}
-                                          className="flex flex-col items-center gap-1 cursor-move"
+                                          className="flex flex-col items-center gap-2 cursor-move"
                                         >
                                           {person.photo ? (
-                                            <img src={person.photo} alt={person.name} className="h-8 w-8 rounded-full object-cover" />
+                                            <img src={person.photo} alt={person.name} className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover" />
                                           ) : (
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                                            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                                               {person.name.slice(0, 2).toUpperCase()}
                                             </div>
                                           )}
-                                          <span className="text-[0.6rem] text-muted-foreground max-w-14 truncate">
+                                          <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {person.name} ({person.role})
                                           </span>
                                         </div>
@@ -682,7 +698,7 @@ export function AdminHospedagemPage({
             <Card>
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Pessoas avulsas</h2>
-                <div className="grid gap-3 md:grid-cols-4 items-end">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 items-end">
                   <div className="space-y-2">
                     <Label htmlFor="extra-name">Nome</Label>
                     <Input id="extra-name" value={extraName} onChange={(e) => setExtraName(e.target.value)} />
@@ -827,22 +843,22 @@ export function AdminHospedagemPage({
                 >
                   Adicionar pessoa avulsa
                 </Button>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {extraPeople.map((person) => (
                     <div
                       key={person.id}
                       draggable
                       onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}
-                      className="flex flex-col items-center gap-1 rounded-lg border bg-muted/30 p-2 cursor-move"
+                      className="flex flex-col items-center gap-2 rounded-lg border bg-muted/30 p-3 cursor-move"
                     >
                       {person.photo ? (
-                        <img src={person.photo} alt={person.name} className="h-8 w-8 rounded-full object-cover" />
+                        <img src={person.photo} alt={person.name} className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover" />
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[0.6rem] font-semibold text-primary">
+                        <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                           {person.name.slice(0, 2).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-[0.6rem] text-muted-foreground max-w-14 truncate">{person.name}</span>
+                      <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">{person.name}</span>
                       <span className="text-[0.55rem] text-muted-foreground">{person.cpf}</span>
                       <span className="text-[0.55rem] text-muted-foreground">R$ {person.paid || "0"}</span>
                     </div>
