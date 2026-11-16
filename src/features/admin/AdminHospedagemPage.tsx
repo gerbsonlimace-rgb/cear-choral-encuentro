@@ -1,14 +1,27 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronDown, ChevronRight, LoaderCircle, Save } from "lucide-react";
 import type { AdminAccessState, AdminHospedagemBootstrap } from "@/lib/admin.functions";
-import { getAdminAccess, getAdminRegistrationPhotos } from "@/lib/admin.functions";
+import {
+  getAdminAccess,
+  getAdminRegistrationPhotos,
+  saveAdminLodgingPlan,
+  uploadAdminLodgingPhoto,
+} from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import {
+  buildLodgingRoomLayout,
+  emptyLodgingPlan,
+  lodgingExtraRoomKey,
+  type LodgingExtraPerson,
+  type LodgingPlan,
+} from "./admin-lodging.domain";
 
 export type AdminHospedagemPageProps = {
   onSignedOut: () => void;
@@ -18,6 +31,10 @@ export type AdminHospedagemPageProps = {
   getSession?: () => Promise<{ data: { session: unknown | null }; error: unknown }>;
   signOut?: () => Promise<{ error: unknown }>;
   navigateTo?: (to: AdminNavigationPath) => void;
+  /** Test seam that records the plan instead of writing it to the server. */
+  persistPlan?: (plan: LodgingPlan) => Promise<void>;
+  /** Test seam that stores the photo of a person added by hand. */
+  storePhoto?: (input: { base64: string; mimeType: string }) => Promise<{ path: string }>;
 };
 
 type Gate = "checking" | "authorized" | "forbidden" | "error" | "leaving";
@@ -26,6 +43,21 @@ type ChoirRow = {
   name: string;
   men: string;
   women: string;
+};
+
+type LodgingRegistration = {
+  id: string;
+  name: string;
+  badgeName: string | null;
+  choirName: string;
+  voicePart: string | null;
+  registrationPriceCents: number | null;
+};
+
+type ExtraPerson = Omit<LodgingExtraPerson, "roomKey"> & {
+  roomId: number | null;
+  /** Signed URL shown on the screen. */
+  photo: string | null;
 };
 
 const defaultGetSession = () => supabase.auth.getSession();
@@ -41,6 +73,39 @@ function roomsNeeded(people: number, capacity: number): number {
   return Math.ceil(people / capacity);
 }
 
+function isMenVoice(voicePart: string | null) {
+  return voicePart === "tenor" || voicePart === "baixo";
+}
+
+function isWomenVoice(voicePart: string | null) {
+  return voicePart === "soprano" || voicePart === "contralto";
+}
+
+function choirNameOf(row: { choirName: string }) {
+  return row.choirName || "Sem coro";
+}
+
+/**
+ * Room layout of a roster: the numeric room ids every choir owns and the
+ * stable keys the stored plan uses.
+ */
+function layoutFor(
+  rows: LodgingRegistration[],
+  excludedIds: Set<string>,
+  capacity: number,
+  extraRooms: Record<string, number[]>,
+) {
+  const choirNames = [...new Set(rows.map(choirNameOf))];
+  const roomsByChoir: Record<string, number> = {};
+  for (const choirName of choirNames) {
+    const members = rows.filter((row) => choirNameOf(row) === choirName);
+    const men = members.filter((row) => !excludedIds.has(row.id) && isMenVoice(row.voicePart)).length;
+    const women = members.filter((row) => !excludedIds.has(row.id) && isWomenVoice(row.voicePart)).length;
+    roomsByChoir[choirName] = roomsNeeded(men, capacity) + roomsNeeded(women, capacity);
+  }
+  return buildLodgingRoomLayout({ choirNames, roomsByChoir, extraRooms });
+}
+
 export function AdminHospedagemPage({
   onSignedOut,
   onMissingSession,
@@ -49,6 +114,8 @@ export function AdminHospedagemPage({
   getSession = defaultGetSession,
   signOut = defaultSignOut,
   navigateTo,
+  persistPlan,
+  storePhoto,
 }: AdminHospedagemPageProps) {
   const [gate, setGate] = useState<Gate>("checking");
   const [roomsAvailable, setRoomsAvailable] = useState("0");
@@ -57,13 +124,14 @@ export function AdminHospedagemPage({
   const [menCount, setMenCount] = useState("");
   const [womenCount, setWomenCount] = useState("");
   const [choirs, setChoirs] = useState<ChoirRow[]>([{ name: "", men: "", women: "" }]);
-  const [registrations, setRegistrations] = useState<Array<{ id: string; name: string; badgeName: string | null; choirName: string; voicePart: string | null }>>([]);
+  const [registrations, setRegistrations] = useState<LodgingRegistration[]>([]);
+  const [noLodgingIds, setNoLodgingIds] = useState<Set<string>>(new Set());
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [assignments, setAssignments] = useState<Record<string, number | null>>({});
   const [roomCount, setRoomCount] = useState(0);
   const [extraRoomIds, setExtraRoomIds] = useState<Record<string, number[]>>({});
   const [extraRoomCounter, setExtraRoomCounter] = useState(100000);
-  const [extraPeople, setExtraPeople] = useState<Array<{ id: string; name: string; cpf: string; paid: string; role: string; sex: string; birthDate: string; photo: string | null; roomId: number | null }>>([]);
+  const [extraPeople, setExtraPeople] = useState<ExtraPerson[]>([]);
   const [extraName, setExtraName] = useState("");
   const [extraCpf, setExtraCpf] = useState("");
   const [extraPaid, setExtraPaid] = useState("");
@@ -73,28 +141,33 @@ export function AdminHospedagemPage({
   const [extraPhoto, setExtraPhoto] = useState<string | null>(null);
   const [extraChoir, setExtraChoir] = useState("");
   const [extraRoomId, setExtraRoomId] = useState("");
+  const [hiddenRooms, setHiddenRooms] = useState<Set<number>>(new Set());
+  const [expandedChoirs, setExpandedChoirs] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [dirty, setDirty] = useState(false);
   const hymnSnippet = "Louvado seja o Senhor, que nos reúne em comunhão e alegria.";
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
+  const hydrated = useRef(false);
+  const lastSavedSignature = useRef<string | null>(null);
 
-  const isMenVoice = (voicePart: string | null) =>
-    voicePart === "tenor" || voicePart === "baixo";
-  const isWomenVoice = (voicePart: string | null) =>
-    voicePart === "soprano" || voicePart === "contralto";
-
-  const applyRegistrations = (
-    rows: Array<{ id: string; name: string; badgeName: string | null; choirName: string; voicePart: string | null }>,
+  const syncLodgingCounts = (
+    rows: LodgingRegistration[],
+    excludedIds: Set<string>,
+    capacityOverride?: number,
   ) => {
-    setRegistrations(rows);
-    setTotalRegistrants(String(rows.length));
     let men = 0;
     let women = 0;
     const groups = new Map<string, { men: number; women: number }>();
     for (const row of rows) {
       const choir = row.choirName || "Sem coro";
       const current = groups.get(choir) ?? { men: 0, women: 0 };
+      if (excludedIds.has(row.id)) {
+        groups.set(choir, current);
+        continue;
+      }
       if (isMenVoice(row.voicePart)) {
         current.men += 1;
         men += 1;
@@ -115,27 +188,72 @@ export function AdminHospedagemPage({
     );
     if (groups.size === 0) setChoirs([{ name: "", men: "", women: "" }]);
 
-    const capacityValue = toNumber(roomCapacity) || 3;
+    const capacityValue = capacityOverride ?? (toNumber(roomCapacity) || 3);
     const needed = [...groups.values()].reduce(
       (sum, counts) => sum + roomsNeeded(counts.men, capacityValue) + roomsNeeded(counts.women, capacityValue),
       0,
     );
-    const totalNeededValue = needed || roomsNeeded(rows.length, capacityValue);
+    const totalNeededValue = needed || roomsNeeded(rows.filter((row) => !excludedIds.has(row.id)).length, capacityValue);
     setRoomCount(totalNeededValue);
+  };
 
+  const applyRegistrations = (
+    rows: LodgingRegistration[],
+    plan?: LodgingPlan | null,
+    extraPhotoUrls: Record<string, string> = {},
+  ) => {
+    // A plan that was never configured leaves the R$ 80 registrations without
+    // lodging; a stored plan is the administrator's own decision. A plan without
+    // any allocation content is treated as the never-configured default.
+    const stored = plan ?? emptyLodgingPlan();
+    const hasStoredPlan =
+      Boolean(plan) &&
+      (stored.roomsAvailable > 0 ||
+        Object.keys(stored.assignments).length > 0 ||
+        stored.noLodgingIds.length > 0 ||
+        Object.keys(stored.extraRooms).length > 0 ||
+        stored.extraPeople.length > 0);
+    const excludedIds = hasStoredPlan
+      ? new Set(stored.noLodgingIds)
+      : new Set(rows.filter((row) => row.registrationPriceCents === 8000).map((row) => row.id));
+    const capacity = stored.roomCapacity || 3;
+    const extraRooms = stored.extraRooms;
+    setRegistrations(rows);
+    setNoLodgingIds(excludedIds);
+    setTotalRegistrants(String(rows.length));
+    setRoomCapacity(String(capacity));
+    setRoomsAvailable(String(stored.roomsAvailable));
+    setExtraRoomIds(extraRooms);
+    setExtraRoomCounter(stored.extraRoomCounter);
+    syncLodgingCounts(rows, excludedIds, capacity);
+
+    // The stored plan addresses rooms by a stable key, so the allocation
+    // survives a new session even when the roster or the capacity changed.
+    const layout = layoutFor(rows, excludedIds, capacity, extraRooms);
     const nextAssignments: Record<string, number | null> = {};
-    let roomIndex = 0;
-    let inRoom = 0;
     for (const row of rows) {
-      if (inRoom >= capacityValue) {
-        roomIndex += 1;
-        inRoom = 0;
-      }
-      if (roomIndex >= totalNeededValue) roomIndex = totalNeededValue - 1;
-      nextAssignments[row.id] = roomIndex;
-      inRoom += 1;
+      nextAssignments[row.id] = null;
+    }
+    for (const [registrationId, key] of Object.entries(stored.assignments)) {
+      if (!(registrationId in nextAssignments)) continue;
+      const roomId = layout.roomIdByKey.get(key);
+      if (roomId !== undefined) nextAssignments[registrationId] = roomId;
     }
     setAssignments(nextAssignments);
+
+    const hidden = new Set<number>();
+    for (const key of stored.hiddenRoomKeys) {
+      const roomId = layout.roomIdByKey.get(key);
+      if (roomId !== undefined) hidden.add(roomId);
+    }
+    setHiddenRooms(hidden);
+
+    const extra: ExtraPerson[] = stored.extraPeople.map((person) => ({
+      ...person,
+      roomId: person.roomKey ? (layout.roomIdByKey.get(person.roomKey) ?? null) : null,
+      photo: person.photoPath ? (extraPhotoUrls[person.photoPath] ?? null) : null,
+    }));
+    setExtraPeople(extra);
 
     // The server rejects more than 100 ids per call, so sign in chunks and merge.
     const ids = [...new Set(rows.map((row) => row.id))];
@@ -177,8 +295,12 @@ export function AdminHospedagemPage({
               badgeName: string | null;
               choirName: string;
               voicePart: string | null;
+              registrationPriceCents: number | null;
             }>,
+            bootstrap.data.plan,
+            bootstrap.data.extraPhotoUrls,
           );
+          hydrated.current = true;
           setBootstrapDataReady(true);
           setGate("authorized");
         })
@@ -275,9 +397,212 @@ export function AdminHospedagemPage({
     }
   };
 
+  /** Reads the current screen state as the plan stored on the server. */
+  const buildPlan = useCallback((): LodgingPlan => {
+    const roomLimit = toNumber(roomCapacity) || 3;
+    const layout = layoutFor(registrations, noLodgingIds, roomLimit, extraRoomIds);
+    const storedAssignments: Record<string, string> = {};
+    for (const [registrationId, roomId] of Object.entries(assignments)) {
+      if (roomId === null) continue;
+      const key = layout.keyByRoomId.get(roomId);
+      if (key) storedAssignments[registrationId] = key;
+    }
+    const hiddenRoomKeys: string[] = [];
+    for (const roomId of hiddenRooms) {
+      const key = layout.keyByRoomId.get(roomId);
+      if (key) hiddenRoomKeys.push(key);
+    }
+    return {
+      roomsAvailable: toNumber(roomsAvailable),
+      roomCapacity: roomLimit,
+      noLodgingIds: [...noLodgingIds],
+      assignments: storedAssignments,
+      extraRooms: extraRoomIds,
+      hiddenRoomKeys,
+      extraPeople: extraPeople.map((person) => ({
+        id: person.id,
+        name: person.name,
+        cpf: person.cpf,
+        paid: person.paid,
+        role: person.role,
+        sex: person.sex,
+        birthDate: person.birthDate,
+        photoPath: person.photoPath,
+        choir: person.choir,
+        roomKey: person.roomId === null ? null : (layout.keyByRoomId.get(person.roomId) ?? null),
+      })),
+      extraRoomCounter,
+    };
+  }, [
+    assignments,
+    extraPeople,
+    extraRoomCounter,
+    extraRoomIds,
+    hiddenRooms,
+    noLodgingIds,
+    registrations,
+    roomCapacity,
+    roomsAvailable,
+  ]);
+
+  const planSignature = useMemo(() => JSON.stringify(buildPlan()), [buildPlan]);
+
+  const persist = useCallback(async () => {
+    const plan = buildPlan();
+    const signature = JSON.stringify(plan);
+    setSaveState("saving");
+    try {
+      if (persistPlan) await persistPlan(plan);
+      else await saveAdminLodgingPlan({ data: plan });
+      lastSavedSignature.current = signature;
+      setDirty(false);
+      setSaveState("saved");
+      setError("");
+    } catch (persistError) {
+      setSaveState("error");
+      setError(
+        persistError instanceof Error && persistError.message
+          ? persistError.message
+          : "Não foi possível salvar a alocação de quartos.",
+      );
+    }
+  }, [buildPlan, persistPlan]);
+
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+
+  /** Adds a person who has no registration, storing her photo out of the row. */
+  const addExtraPerson = async () => {
+    if (!extraName.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      let photoPath: string | null = null;
+      if (extraPhoto) {
+        const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(extraPhoto);
+        if (match) {
+          const mimeType = match[1] as "image/jpeg" | "image/png" | "image/webp";
+          const stored = storePhoto
+            ? await storePhoto({ base64: match[2], mimeType })
+            : await uploadAdminLodgingPhoto({ data: { base64: match[2], mimeType } });
+          photoPath = stored.path;
+        }
+      }
+      const id = `extra-${Date.now()}`;
+      setExtraPeople((previous) => [
+        ...previous,
+        {
+          id,
+          name: extraName.trim(),
+          cpf: extraCpf.trim(),
+          paid: extraPaid.trim(),
+          role: extraRole,
+          sex: extraSex,
+          birthDate: extraBirthDate,
+          photoPath,
+          photo: extraPhoto,
+          choir: extraChoir,
+          roomId: extraRoomId ? Number(extraRoomId) : null,
+        },
+      ]);
+      setExtraName("");
+      setExtraCpf("");
+      setExtraPaid("");
+      setExtraPhoto(null);
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error && uploadError.message
+          ? uploadError.message
+          : "Não foi possível adicionar a pessoa avulsa.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Every change of the allocation is stored shortly after it happens, so
+  // leaving the screen never loses the rooms the administrator defined.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    if (lastSavedSignature.current === null) {
+      lastSavedSignature.current = planSignature;
+      return;
+    }
+    if (planSignature === lastSavedSignature.current) return;
+    setDirty(true);
+    const timer = setTimeout(() => {
+      void persistRef.current();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [planSignature]);
+
   const addChoir = () => setChoirs((previous) => [...previous, { name: "", men: "", women: "" }]);
   const removeChoir = (index: number) =>
     setChoirs((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
+
+  const resetRooms = () => {
+    const nextAssignments: Record<string, number | null> = {};
+    for (const row of registrations) {
+      nextAssignments[row.id] = null;
+    }
+    setAssignments(nextAssignments);
+    setExtraRoomIds({});
+    setExtraRoomCounter(100000);
+    setExtraPeople([]);
+    setHiddenRooms(new Set());
+    setNoLodgingIds(new Set(registrations.filter((row) => row.registrationPriceCents === 8000).map((row) => row.id)));
+    setError("");
+    setMessage("Todos desalocados. Quartos resetados.");
+  };
+
+  /**
+   * Finds the first free room of the choir of a participant who is coming back
+   * to lodging, so the drag and drop never leaves a person without a room.
+   */
+  const findAvailableLodgingRoom = (id: string): number | null => {
+    const capacity = toNumber(roomCapacity) || 3;
+    const choirName = registrations.find((row) => row.id === id)?.choirName || "Sem coro";
+    const excludedIds = new Set(noLodgingIds);
+    excludedIds.delete(id);
+    const layout = layoutFor(registrations, excludedIds, capacity, extraRoomIds);
+    const range = layout.choirs.get(choirName);
+    if (!range) return null;
+    const isTaken = (roomId: number) =>
+      extraPeople.some((person) => person.roomId === roomId) ||
+      registrations.some(
+        (row) => row.id !== id && assignments[row.id] === roomId && !noLodgingIds.has(row.id),
+      );
+    for (let index = 0; index < range.rooms; index += 1) {
+      const roomId = range.base + index;
+      if (isTaken(roomId)) continue;
+      return roomId;
+    }
+    for (const roomId of extraRoomIds[choirName] || []) {
+      if (!isTaken(roomId)) return roomId;
+    }
+    return null;
+  };
+
+  const setNoLodgingForRegistration = (id: string, withoutLodging: boolean) => {
+    const row = registrations.find((item) => item.id === id);
+    if (!row) return;
+    // Only people who paid for lodging may opt in; the R$ 80 ones stay without it.
+    if (!withoutLodging && row.registrationPriceCents === 8000) return;
+
+    const nextNoLodgingIds = new Set(noLodgingIds);
+    if (withoutLodging) nextNoLodgingIds.add(id);
+    else nextNoLodgingIds.delete(id);
+
+    if (withoutLodging) {
+      // Opting out releases the room so somebody else can take it.
+      setAssignments((current) => ({ ...current, [id]: null }));
+    } else {
+      // Opting back in takes a room of the choir again.
+      setAssignments((current) => ({ ...current, [id]: findAvailableLodgingRoom(id) }));
+    }
+    setNoLodgingIds(nextNoLodgingIds);
+    syncLodgingCounts(registrations, nextNoLodgingIds);
+  };
 
   const openPrintableHtml = (html: string) => {
     const win = window.open("", "_blank");
@@ -293,14 +618,15 @@ export function AdminHospedagemPage({
     let offset = 0;
     const roomCards = names.map((choirName) => {
       const members = registrations.filter((row) => (row.choirName || "Sem coro") === choirName);
-      const men = members.filter((row) => isMenVoice(row.voicePart)).length;
-      const women = members.filter((row) => isWomenVoice(row.voicePart)).length;
+      const men = members.filter((row) => !noLodgingIds.has(row.id) && isMenVoice(row.voicePart)).length;
+      const women = members.filter((row) => !noLodgingIds.has(row.id) && isWomenVoice(row.voicePart)).length;
       const cap = toNumber(roomCapacity) || 3;
       const rooms = roomsNeeded(men, cap) + roomsNeeded(women, cap);
       const base = offset;
       offset += rooms + (extraRoomIds[choirName]?.length || 0);
       const roomsHtml = Array.from({ length: rooms }).map((_, roomIndex) => {
         const globalRoom = base + roomIndex;
+        if (hiddenRooms.has(globalRoom)) return "";
         const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
         const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(roomIndex + 1).padStart(2, "0")}`;
@@ -355,14 +681,15 @@ export function AdminHospedagemPage({
     let offset = 0;
     for (const choirName of names) {
       const members = registrations.filter((row) => (row.choirName || "Sem coro") === choirName);
-      const men = members.filter((row) => isMenVoice(row.voicePart)).length;
-      const women = members.filter((row) => isWomenVoice(row.voicePart)).length;
+      const men = members.filter((row) => !noLodgingIds.has(row.id) && isMenVoice(row.voicePart)).length;
+      const women = members.filter((row) => !noLodgingIds.has(row.id) && isWomenVoice(row.voicePart)).length;
       const cap = toNumber(roomCapacity) || 3;
       const rooms = roomsNeeded(men, cap) + roomsNeeded(women, cap);
       const base = offset;
       offset += rooms + (extraRoomIds[choirName]?.length || 0);
       for (let roomIndex = 0; roomIndex < rooms; roomIndex++) {
         const globalRoom = base + roomIndex;
+        if (hiddenRooms.has(globalRoom)) continue;
         const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
         const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
         const roomLabel = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(roomIndex + 1).padStart(2, "0")}`;
@@ -399,7 +726,7 @@ export function AdminHospedagemPage({
 
   return (
     <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="w-full space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -408,9 +735,37 @@ export function AdminHospedagemPage({
             <h1 className="mt-2 font-display text-xl sm:text-2xl">Hospedagem</h1>
           </div>
           {gate === "authorized" && (
-            <Button size="sm" variant="outline" onClick={() => void logout()}>
-              Sair
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`text-xs ${
+                  saveState === "error" ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {saveState === "saving"
+                  ? "Salvando a alocação…"
+                  : saveState === "error"
+                    ? "Não foi possível salvar a alocação."
+                    : dirty
+                      ? "Alterações de quarto ainda não salvas."
+                      : "Alocação de quartos salva."}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={saveState === "saving"}
+                onClick={() => void persist()}
+              >
+                {saveState === "saving" ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <Save aria-hidden="true" className="size-4" />
+                )}
+                Salvar alocação
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void logout()}>
+                Sair
+              </Button>
+            </div>
           )}
         </header>
         {gate === "authorized" && <AdminNavigation current="hospedagem" navigateTo={navigateTo} />}
@@ -485,14 +840,14 @@ export function AdminHospedagemPage({
             <Card>
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Por coro</h2>
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-4">
                   {(() => {
                     const names = [...new Set(registrations.map((row) => row.choirName || "Sem coro"))];
                     let offset = 0;
                     return names.map((choirName) => {
                       const members = registrations.filter((row) => (row.choirName || "Sem coro") === choirName);
-                      const men = members.filter((row) => isMenVoice(row.voicePart)).length;
-                      const women = members.filter((row) => isWomenVoice(row.voicePart)).length;
+                      const men = members.filter((row) => !noLodgingIds.has(row.id) && isMenVoice(row.voicePart)).length;
+                      const women = members.filter((row) => !noLodgingIds.has(row.id) && isWomenVoice(row.voicePart)).length;
                       const cap = toNumber(roomCapacity) || 3;
                       const rooms = roomsNeeded(men, cap) + roomsNeeded(women, cap);
                       const extra = (extraRoomIds[choirName] || []).length;
@@ -501,17 +856,36 @@ export function AdminHospedagemPage({
                       return (
                         <div key={choirName} className="rounded-xl border p-3 space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <p className="font-semibold">{choirName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Total: {members.length} · Homens: {men} · Mulheres: {women} · Quartos: {rooms + (extraRoomIds[choirName]?.length || 0)}
-                              </p>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedChoirs((previous) => {
+                                  const next = new Set(previous);
+                                  if (next.has(choirName)) next.delete(choirName);
+                                  else next.add(choirName);
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center gap-2 text-left"
+                            >
+                              {expandedChoirs.has(choirName) ? (
+                                <ChevronDown className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0" />
+                              )}
+                              <div>
+                                <p className="font-semibold">{choirName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Total: {members.length} · Homens: {men} · Mulheres: {women} · Quartos: {rooms + (extraRoomIds[choirName]?.length || 0)}
+                                </p>
+                              </div>
+                            </button>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => {
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 const newId = extraRoomCounter;
                                 setExtraRoomCounter((value) => value + 1);
                                 setExtraRoomIds((previous) => ({
@@ -523,10 +897,129 @@ export function AdminHospedagemPage({
                               + Quarto
                             </Button>
                           </div>
-                          <div className="space-y-3">
-                            <div className="grid gap-3 sm:grid-cols-2">
+                          {expandedChoirs.has(choirName) && (
+                          <div className="grid gap-4 md:grid-cols-[minmax(300px,1fr)_2fr]">
+                            <div className="space-y-2">
+                              <p className="text-sm font-semibold">Não alocados</p>
+                              <div
+                                role="region"
+                                aria-label="Inscritos não alocados"
+                                className="grid gap-2 grid-cols-4 min-h-24 rounded-xl border bg-muted/10 p-3"
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={(event) => {
+                                  event.preventDefault();
+                                  const id = event.dataTransfer.getData("text/plain");
+                                  if (!id) return;
+                                  if (id.startsWith("extra-")) {
+                                    setExtraPeople((previous) =>
+                                      previous.map((person) =>
+                                        person.id === id ? { ...person, roomId: null } : person,
+                                      ),
+                                    );
+                                  } else {
+                                    setNoLodgingForRegistration(id, false);
+                                  }
+                                }}
+                              >
+                                {registrations
+                                  .filter((row) => (row.choirName || "Sem coro") === choirName && assignments[row.id] === null && !noLodgingIds.has(row.id))
+                                  .map((row) => (
+                                    <div
+                                      key={row.id}
+                                      draggable
+                                      onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
+                                      className="flex flex-col items-center gap-1 cursor-move"
+                                    >
+                                      {photoUrls[row.id] ? (
+                                        <img src={photoUrls[row.id]} alt={row.name} className="h-10 w-10 rounded-full object-cover" />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                          {row.name.slice(0, 2).toUpperCase()}
+                                        </div>
+                                      )}
+                                      <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                        {row.badgeName || row.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                {extraPeople
+                                  .filter((person) => person.choir === choirName && person.roomId === null)
+                                  .map((person) => (
+                                    <div
+                                      key={person.id}
+                                      draggable
+                                      onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}
+                                      className="flex flex-col items-center gap-1 cursor-move"
+                                    >
+                                      {person.photo ? (
+                                        <img src={person.photo} alt={person.name} className="h-10 w-10 rounded-full object-cover" />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                          {person.name.slice(0, 2).toUpperCase()}
+                                        </div>
+                                      )}
+                                      <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                        {person.name} ({person.role})
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                              <div className="space-y-2 mt-3">
+                                <p className="text-sm font-semibold">Inscrição sem hospedagem</p>
+                                <p className="text-xs text-muted-foreground">Arraste aqui quem vai se hospedar por conta própria.</p>
+                                <div
+                                  role="region"
+                                  aria-label="Inscrições sem hospedagem"
+                                  className="flex flex-wrap gap-3 min-h-12 rounded-xl border bg-muted/10 p-3"
+                                  onDragOver={(event) => event.preventDefault()}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    const id = event.dataTransfer.getData("text/plain");
+                                    const row = registrations.find((item) => item.id === id);
+                                    if ((row?.choirName || "Sem coro") !== choirName) return;
+                                    setNoLodgingForRegistration(id, true);
+                                  }}
+                                >
+                                  {registrations
+                                    .filter((row) => (row.choirName || "Sem coro") === choirName && noLodgingIds.has(row.id))
+                                    .map((row) => (
+                                      <div
+                                        key={row.id}
+                                        draggable={row.registrationPriceCents !== 8000}
+                                        onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
+                                        className="flex flex-col items-center gap-1"
+                                      >
+                                        {photoUrls[row.id] ? (
+                                          <img src={photoUrls[row.id]} alt={row.name} className="h-10 w-10 rounded-full object-cover" />
+                                        ) : (
+                                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                            {row.name.slice(0, 2).toUpperCase()}
+                                          </div>
+                                        )}
+                                        <span className="text-[0.6rem] text-muted-foreground w-full text-center leading-tight break-words">
+                                          {row.badgeName || row.name}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setNoLodgingForRegistration(row.id, !noLodgingIds.has(row.id))}
+                                          className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                        >
+                                          {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                        </button>
+                                      </div>
+                                    ))}
+                                  {registrations.filter((row) => (row.choirName || "Sem coro") === choirName && noLodgingIds.has(row.id)).length === 0 && (
+                                    <p className="text-xs text-muted-foreground">Nenhum</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <p className="text-sm font-semibold">Quartos</p>
+                              <div className="grid gap-3 sm:grid-cols-2">
                               {Array.from({ length: rooms }).map((_, roomIndex) => {
                                 const globalRoom = base + roomIndex;
+                                if (hiddenRooms.has(globalRoom)) return null;
                                 const occupants = registrations.filter((row) => assignments[row.id] === globalRoom);
                                 const extraOccupants = extraPeople.filter((person) => person.roomId === globalRoom);
                                 return (
@@ -545,13 +1038,38 @@ export function AdminHospedagemPage({
                                           ),
                                         );
                                       } else {
+                                        setNoLodgingForRegistration(id, false);
                                         setAssignments((previous) => ({ ...previous, [id]: globalRoom }));
                                       }
                                     }}
                                   >
-                                    <p className="text-sm font-semibold mb-2">
-                                      {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(roomIndex + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length}/{cap})
-                                    </p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold">
+                                        {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(roomIndex + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length}/{cap})
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setHiddenRooms((previous) => new Set(previous).add(globalRoom));
+                                          setAssignments((previous) => {
+                                            const next = { ...previous };
+                                            for (const key of Object.keys(next)) {
+                                              if (next[key] === globalRoom) next[key] = null;
+                                            }
+                                            return next;
+                                          });
+                                          setExtraPeople((previous) =>
+                                            previous.map((person) =>
+                                              person.roomId === globalRoom ? { ...person, roomId: null } : person,
+                                            ),
+                                          );
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-destructive"
+                                        aria-label="Excluir quarto"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
                                     <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
@@ -574,6 +1092,13 @@ export function AdminHospedagemPage({
                                           <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setNoLodgingForRegistration(row.id, !noLodgingIds.has(row.id))}
+                                            className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                          >
+                                            {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                          </button>
                                         </div>
                                       ))}
                                       {extraOccupants.map((person) => (
@@ -618,13 +1143,41 @@ export function AdminHospedagemPage({
                                           ),
                                         );
                                       } else {
+                                        setNoLodgingForRegistration(id, false);
                                         setAssignments((previous) => ({ ...previous, [id]: roomId }));
                                       }
                                     }}
                                   >
-                                    <p className="text-sm font-semibold mb-2">
-                                      {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(rooms + index + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length})
-                                    </p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold">
+                                        {choirName.trim().split(/\s+/).pop()?.toUpperCase()}-{String(rooms + index + 1).padStart(2, "0")} ({occupants.length + extraOccupants.length})
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setExtraRoomIds((previous) => ({
+                                            ...previous,
+                                            [choirName]: (previous[choirName] || []).filter((id) => id !== roomId),
+                                          }));
+                                          setAssignments((previous) => {
+                                            const next = { ...previous };
+                                            for (const key of Object.keys(next)) {
+                                              if (next[key] === roomId) next[key] = null;
+                                            }
+                                            return next;
+                                          });
+                                          setExtraPeople((previous) =>
+                                            previous.map((person) =>
+                                              person.roomId === roomId ? { ...person, roomId: null } : person,
+                                            ),
+                                          );
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-destructive"
+                                        aria-label="Excluir quarto"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
                                     <div className="flex flex-wrap gap-3">
                                       {occupants.map((row) => (
                                         <div
@@ -647,6 +1200,13 @@ export function AdminHospedagemPage({
                                           <span className="text-xs text-muted-foreground w-20 sm:w-24 text-center leading-tight break-words">
                                             {row.badgeName || row.name}
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setNoLodgingForRegistration(row.id, !noLodgingIds.has(row.id))}
+                                            className="text-[0.6rem] text-muted-foreground hover:text-primary"
+                                          >
+                                            {noLodgingIds.has(row.id) ? "Com hosp." : "Sem hosp."}
+                                          </button>
                                         </div>
                                       ))}
                                       {extraOccupants.map((person) => (
@@ -674,6 +1234,8 @@ export function AdminHospedagemPage({
                               })}
                             </div>
                           </div>
+                          </div>
+                          )}
                         </div>
                       );
                     });
@@ -686,6 +1248,9 @@ export function AdminHospedagemPage({
               <CardContent className="p-5 sm:p-6 space-y-4">
                 <h2 className="font-display text-xl">Exportações</h2>
                 <div className="flex flex-wrap gap-3">
+                  <Button type="button" size="sm" variant="outline" onClick={() => void resetRooms()}>
+                    Resetar quartos
+                  </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => void exportRoomMapPdf()}>
                     Exportar mapa de quartos (PDF)
                   </Button>
@@ -782,31 +1347,18 @@ export function AdminHospedagemPage({
                       <option value="">Não alocado</option>
                       {[...new Set(registrations.map((row) => row.choirName || "Sem coro"))].flatMap((choirName) => {
                         const members = registrations.filter((row) => (row.choirName || "Sem coro") === choirName);
-                        const men = members.filter((row) => isMenVoice(row.voicePart)).length;
-                        const women = members.filter((row) => isWomenVoice(row.voicePart)).length;
+                        const men = members.filter((row) => !noLodgingIds.has(row.id) && isMenVoice(row.voicePart)).length;
+                        const women = members.filter((row) => !noLodgingIds.has(row.id) && isWomenVoice(row.voicePart)).length;
                         const cap = toNumber(roomCapacity) || 3;
                         const rooms = roomsNeeded(men, cap) + roomsNeeded(women, cap);
-                        let offset = 0;
-                        // compute base offset
-                        const allNames = [...new Set(registrations.map((row) => row.choirName || "Sem coro"))];
-                        const idx = allNames.indexOf(choirName);
-                        for (let i = 0; i < idx; i++) {
-                          const m = registrations.filter((row) => (row.choirName || "Sem coro") === allNames[i]);
-                          const mm = m.filter((row) => isMenVoice(row.voicePart)).length;
-                          const ww = m.filter((row) => isWomenVoice(row.voicePart)).length;
-                          offset += roomsNeeded(mm, cap) + roomsNeeded(ww, cap) + (extraRoomIds[allNames[i]]?.length || 0);
-                        }
-                        const base = offset;
-                        const opts = Array.from({ length: rooms }).map((_, ri) => {
-                          const id = base + ri;
-                          const label = `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(ri + 1).padStart(2, "0")}`;
-                          return { id, label };
-                        });
                         const extraOpts = (extraRoomIds[choirName] || []).map((id, ri) => ({
                           id,
                           label: `${choirName.trim().split(/\s+/).pop()?.toUpperCase()}-${String(rooms + ri + 1).padStart(2, "0")}`,
                         }));
-                        return [...opts, ...extraOpts].map((o) => (
+                        // Only the rooms created by the administrator can be picked for the
+                        // people added by hand; the rooms derived from the roster are already
+                        // covered by the capacity math.
+                        return extraOpts.map((o) => (
                           <option key={o.id} value={o.id}>
                             {choirName} - {o.label}
                           </option>
@@ -818,27 +1370,9 @@ export function AdminHospedagemPage({
                 <Button
                   type="button"
                   size="sm"
+                  disabled={saving}
                   onClick={() => {
-                    if (!extraName.trim()) return;
-                    const id = `extra-${Date.now()}`;
-                    setExtraPeople((previous) => [
-                      ...previous,
-                      {
-                        id,
-                        name: extraName.trim(),
-                        cpf: extraCpf.trim(),
-                        paid: extraPaid.trim(),
-                        role: extraRole,
-                        sex: extraSex,
-                        birthDate: extraBirthDate,
-                        photo: extraPhoto,
-                        roomId: extraRoomId ? Number(extraRoomId) : null,
-                      },
-                    ]);
-                    setExtraName("");
-                    setExtraCpf("");
-                    setExtraPaid("");
-                    setExtraPhoto(null);
+                    void addExtraPerson();
                   }}
                 >
                   Adicionar pessoa avulsa
