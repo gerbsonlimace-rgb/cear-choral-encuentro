@@ -111,7 +111,7 @@ export function AdminOverviewPage({
             </Button>
           )}
         </header>
-        {gate === "authorized" && <AdminNavigation current="summary" navigateTo={navigateTo} />}
+        {gate === "authorized" && <AdminNavigation current="hospedagem" navigateTo={navigateTo} />}
         {gate === "checking" && <Skeleton className="h-40 w-full" />}
         {gate === "forbidden" && <p role="alert">Acesso não autorizado.</p>}
         {gate === "error" && <p role="alert">Não foi possível verificar seu acesso.</p>}

@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useServerFn } from "@tanstack/react-start";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,70 +75,106 @@ export function AdminChoirSummaryCard({
   }
 
   return (
-    <li className="min-w-0 rounded-lg border bg-card p-3">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="min-w-0 break-words text-sm font-semibold">{item.choirName}</h3>
-        <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">{item.total} {item.total === 1 ? "inscrito" : "inscritos"}</span>
-      </div>
-      <dl className="mt-2 space-y-1 text-xs">
-        {[
-          {
-            label: "Total recebido",
-            value: money.format(item.receivedCents / 100),
-            details: [
+    <li className="min-w-0">
+      <Card
+        className="min-w-0 overflow-hidden rounded-xl border-zinc-200 bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]"
+      >
+        <div className="flex items-center justify-between gap-2 bg-brand-gold-soft px-2.5 py-1.5">
+          <h3 className="min-w-0 break-words text-xs font-bold leading-4 text-brand-ink">
+            {item.choirName}
+          </h3>
+          <span
+            className="shrink-0 rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-brand-ink"
+          >
+            {item.total} {item.total === 1 ? "inscrito" : "inscritos"}
+          </span>
+        </div>
+        <CardContent className="p-2.5">
+          <dl className="space-y-0.5 text-[11px] leading-4">
+            {[
               {
-                label: "Inscrições",
-                value: money.format(
-                  (item.receivedCents - (item.rafflePaidCents ?? 0)) / 100,
-                ),
+                label: "Total recebido",
+                value: money.format(item.receivedCents / 100),
+                details: [
+                  {
+                    label: "Inscrições",
+                    value: money.format(
+                      (item.receivedCents - (item.rafflePaidCents ?? 0)) / 100,
+                    ),
+                  },
+                  { label: "Rifas", value: money.format((item.rafflePaidCents ?? 0) / 100) },
+                ],
               },
-              { label: "Rifas", value: money.format((item.rafflePaidCents ?? 0) / 100) },
-            ],
-          },
-          { label: "Pendente taxa de inscrição", value: money.format(item.pendingCents / 100) },
-          { label: "Pendente em rifas", value: formatAdminRafflePending({ cents: item.rafflePendingCents ?? 0, tickets: item.rafflePendingTickets ?? null }) },
-          { label: "Total previsto", value: money.format(item.expectedCents / 100) },
-        ].map(({ label, value, details }) => (
-          <div key={label} className="space-y-0.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="font-semibold tabular-nums">{value}</dd>
-            </div>
-            {details && (
-              <dl className="space-y-0.5 text-[11px] text-muted-foreground">
-                {details.map((detail) => (
-                  <div key={detail.label} className="flex flex-wrap justify-between gap-x-2">
-                    <dt>{detail.label}</dt>
-                    <dd className="font-medium tabular-nums">{detail.value}</dd>
-                  </div>
-                ))}
-              </dl>
+              { label: "Pendente taxa de inscrição", value: money.format(item.pendingCents / 100) },
+              { label: "Pendente em rifas", value: formatAdminRafflePending({ cents: item.rafflePendingCents ?? 0, tickets: item.rafflePendingTickets ?? null }) },
+              { label: "Total previsto", value: money.format(item.expectedCents / 100) },
+            ].map(({ label, value, details }) => (
+              <div key={label} className="space-y-0.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="font-semibold tabular-nums">{value}</dd>
+                </div>
+                {details && (
+                  <dl className="space-y-0.5 text-[10px] leading-4 text-muted-foreground">
+                    {details.map((detail) => (
+                      <div key={detail.label} className="flex flex-wrap justify-between gap-x-2">
+                        <dt>{detail.label}</dt>
+                        <dd className="font-medium tabular-nums">{detail.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            ))}
+          </dl>
+          <div className="mt-2 flex flex-wrap justify-end gap-1.5 border-t pt-2">
+            <ChoirDetailsDialog item={item} />
+            {((item.rafflePendingCents ?? 0) > 0 || (item.rafflePaidCents ?? 0) > 0) && (
+              <RaffleSettlementDialog item={item} onSettled={onSettled} />
             )}
+            {file && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                aria-label={`Abrir PDF de ${item.choirName}`}
+                onClick={() => openPreparedPdf(file.blob)}
+              >
+                <ExternalLink aria-hidden="true" className="size-4" />
+                Abrir PDF
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              disabled={busy}
+              aria-label={`${file ? "Baixar PDF" : "Exportar PDF"} de ${item.choirName}`}
+              onClick={() => {
+                if (file) {
+                  setError("");
+                  void deliverFile(file.blob, file.fileName).catch(() => {
+                    if (active.current) setError("Não foi possível baixar o PDF. Tente novamente.");
+                  });
+                } else void exportPdf();
+              }}
+            >
+              {busy ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : file ? <Download aria-hidden="true" className="size-4" /> : <FileDown aria-hidden="true" className="size-4" />}
+              {busy ? "Gerando…" : file ? "Baixar PDF" : "Exportar PDF"}
+            </Button>
           </div>
-        ))}
-      </dl>
-      <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
-        <ChoirDetailsDialog item={item} />
-        {((item.rafflePendingCents ?? 0) > 0 || (item.rafflePaidCents ?? 0) > 0) && (
-          <RaffleSettlementDialog item={item} onSettled={onSettled} />
-        )}
-        {file && <Button size="sm" variant="ghost" aria-label={`Abrir PDF de ${item.choirName}`} onClick={() => openPreparedPdf(file.blob)}><ExternalLink aria-hidden="true" className="size-4" />Abrir PDF</Button>}
-        <Button size="sm" variant="outline" disabled={busy}
-          aria-label={`${file ? "Baixar PDF" : "Exportar PDF"} de ${item.choirName}`}
-          onClick={() => {
-            if (file) {
-              setError("");
-              void deliverFile(file.blob, file.fileName).catch(() => {
-                if (active.current) setError("Não foi possível baixar o PDF. Tente novamente.");
-              });
-            } else void exportPdf();
-          }}>
-          {busy ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : file ? <Download aria-hidden="true" className="size-4" /> : <FileDown aria-hidden="true" className="size-4" />}
-          {busy ? "Gerando…" : file ? "Baixar PDF" : "Exportar PDF"}
-        </Button>
-      </div>
-      {file && <p role="status" className="mt-2 text-xs text-muted-foreground">PDF pronto. Baixar PDF</p>}
-      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+          {file && (
+            <p role="status" className="mt-1.5 text-[10px] text-muted-foreground">
+              PDF pronto. Baixar PDF
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="mt-1.5 text-[10px] text-destructive">
+              {error}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </li>
   );
 }
