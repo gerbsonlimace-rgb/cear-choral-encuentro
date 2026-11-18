@@ -23,6 +23,7 @@ import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminDocumentosRouteImport } from './routes/admin.documentos'
+import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
 import { Route as AdminHospedagemRouteImport } from './routes/admin.hospedagem'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -111,6 +112,11 @@ const AdminCorosRoute = AdminCorosRouteImport.update({
 const AdminDocumentosRoute = AdminDocumentosRouteImport.update({
   id: '/admin/documentos',
   path: '/admin/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
+  id: '/admin/financeiro',
+  path: '/admin/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminHospedagemRoute = AdminHospedagemRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -434,6 +446,7 @@ export interface RootRouteChildren {
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCorosRoute: typeof AdminCorosRoute
   AdminDocumentosRoute: typeof AdminDocumentosRoute
+  AdminFinanceiroRoute: typeof AdminFinanceiroRoute
   AdminHospedagemRoute: typeof AdminHospedagemRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -543,6 +556,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/documentos'
       fullPath: '/admin/documentos'
       preLoaderRoute: typeof AdminDocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/financeiro': {
+      id: '/admin/financeiro'
+      path: '/admin/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AdminFinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/hospedagem': {
@@ -736,6 +756,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCorosRoute: AdminCorosRoute,
   AdminDocumentosRoute: AdminDocumentosRoute,
+  AdminFinanceiroRoute: AdminFinanceiroRoute,
   AdminHospedagemRoute: AdminHospedagemRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,

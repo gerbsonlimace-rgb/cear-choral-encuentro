@@ -9,11 +9,17 @@ vi.mock("@/lib/portal-access.functions", () => ({ getPortalModes: vi.fn() }));
 
 describe("AdminNavigation", () => {
   it("offers the signed-in administrator a profile menu with password change", async () => {
-    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: false, regent: false });
+    vi.mocked(getPortalModes).mockResolvedValueOnce({
+      admin: true,
+      participant: false,
+      regent: false,
+    });
     const user = userEvent.setup();
-    render(<AdminNavigation current="summary" />);
+    render(<AdminNavigation current="registrations" />);
 
-    await user.click(within(screen.getByTestId("internal-topbar")).getByRole("button", { name: "Meu perfil" }));
+    await user.click(
+      within(screen.getByTestId("internal-topbar")).getByRole("button", { name: "Meu perfil" }),
+    );
     await user.click(screen.getByRole("menuitem", { name: "Alterar senha" }));
 
     expect(screen.getByRole("dialog", { name: "Alterar senha" })).toBeInTheDocument();
@@ -22,9 +28,13 @@ describe("AdminNavigation", () => {
   });
 
   it("offers participant mode in the shared topbar when both accesses are available", async () => {
-    vi.mocked(getPortalModes).mockResolvedValueOnce({ admin: true, participant: true, regent: false });
+    vi.mocked(getPortalModes).mockResolvedValueOnce({
+      admin: true,
+      participant: true,
+      regent: false,
+    });
     const navigateTo = vi.fn();
-    render(<AdminNavigation current="summary" navigateTo={navigateTo} />);
+    render(<AdminNavigation current="registrations" navigateTo={navigateTo} />);
     const topbar = screen.getByTestId("internal-topbar");
     expect(
       within(topbar).getByRole("img", { name: "Logo do II Encontro de Coros" }),
@@ -45,7 +55,10 @@ describe("AdminNavigation", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("href", "/admin/resumo");
+    expect(screen.getByRole("link", { name: "Financeiro" })).toHaveAttribute(
+      "href",
+      "/admin/financeiro",
+    );
     expect(screen.getByRole("link", { name: "Documentos" })).toHaveAttribute(
       "href",
       "/admin/documentos",
@@ -75,7 +88,7 @@ describe("AdminNavigation", () => {
   it("groups secondary administration destinations under Mais", async () => {
     const navigateTo = vi.fn();
     const user = userEvent.setup();
-    render(<AdminNavigation current="summary" navigateTo={navigateTo} />);
+    render(<AdminNavigation current="registrations" navigateTo={navigateTo} />);
 
     await user.click(screen.getByRole("button", { name: "Mais opções" }));
     const sheet = screen.getByRole("dialog", { name: "Mais opções de Administração" });
@@ -84,9 +97,10 @@ describe("AdminNavigation", () => {
     expect(navigateTo).toHaveBeenCalledExactlyOnceWith("/admin/documentos");
   });
 
-  it("marks the summary as the current administrative section", () => {
-    render(<AdminNavigation current="summary" />);
+  it("no longer offers a summary destination in the administration menu", () => {
+    render(<AdminNavigation current="registrations" />);
 
-    expect(screen.getByRole("link", { name: "Resumo" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Resumo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Resumo/ })).not.toBeInTheDocument();
   });
 });

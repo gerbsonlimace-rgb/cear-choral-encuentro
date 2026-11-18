@@ -1,21 +1,20 @@
-import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-
-import { AdminSummaryPage } from "@/features/admin/AdminSummaryPage";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/resumo")({
-  ssr: false,
-  component: AdminSummaryRoute,
+  // The summary cards live inside the registrations screen, so the old address
+  // only redirects there instead of keeping a second copy of the indicators.
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/inscricoes" });
+  },
   head: () => ({
     meta: [
       { property: "og:type", content: "website" },
-      { title: "Resumo | Administração do Encontro de Coros" },
+      { title: "Inscrições | Administração do Encontro de Coros" },
       {
         name: "description",
         content: "Visão geral administrativa das inscrições e pagamentos do Encontro de Coros.",
       },
-      { property: "og:title", content: "Resumo | Administração do Encontro de Coros" },
+      { property: "og:title", content: "Inscrições | Administração do Encontro de Coros" },
       {
         property: "og:description",
         content: "Visão geral administrativa das inscrições e pagamentos do Encontro de Coros.",
@@ -25,36 +24,3 @@ export const Route = createFileRoute("/admin/resumo")({
     ],
   }),
 });
-
-function AdminSummaryRoute() {
-  const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      if (!data.session) {
-        void navigate({ to: "/acessar", replace: true });
-        return;
-      }
-      setReady(true);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [navigate]);
-
-  if (!ready) {
-    return (
-      <main className="internal-app min-h-svh bg-background p-6" role="status">
-        <p className="text-sm text-muted-foreground">Carregando o resumo…</p>
-      </main>
-    );
-  }
-
-  return (
-    <AdminSummaryPage navigateTo={(to) => void navigate({ to })} />
-  );
-}
