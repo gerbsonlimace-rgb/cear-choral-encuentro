@@ -575,31 +575,6 @@ describe("registration summary", () => {
       byChoir: [{ choirName: "Diocese de Quixadá", total: 1 }],
     });
   });
-
-  it("loads the complete lodging roster through the registration snapshot", async () => {
-    const listSnapshot = vi.fn().mockResolvedValue({
-      candidates: [{ row: selectedRow as RegistrationDatabaseRow, accountStatus: null, regentName: null }],
-      payments: [],
-      reviews: new Map(),
-      loggedInIds: new Set(),
-    });
-    const repository = {
-      listSnapshot,
-      listCandidates: vi.fn(),
-      listComplementPayments: vi.fn(),
-      list: vi.fn(),
-      listAll: vi.fn(),
-      recordExport: vi.fn(),
-    };
-
-    const rows = await createAdminRegistrationService(repository, () => new Date()).lodgingRows();
-
-    expect(rows.map((row) => row.name)).toEqual(["Maria"]);
-    expect(listSnapshot).toHaveBeenCalledTimes(1);
-    expect(listSnapshot).toHaveBeenCalledWith("");
-    expect(repository.list).not.toHaveBeenCalled();
-    expect(repository.listAll).not.toHaveBeenCalled();
-  });
 });
 
 describe("derived registration listing", () => {

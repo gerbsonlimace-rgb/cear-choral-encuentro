@@ -19,7 +19,6 @@ import { requireAdmin } from "@/features/admin/admin-auth.middleware";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
 import {
-  emptyLodgingPlan,
   LODGING_EXTRA_ROOM_BASE,
   type LodgingPlan,
 } from "@/features/admin/admin-lodging.domain";
@@ -303,23 +302,6 @@ export const exportAdminRegistrationsPdf = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getAdminRegistrationService } = await import("@/features/admin/admin-registration.server");
     return getAdminRegistrationService().exportPdf(data, context.adminUserId);
-  });
-
-export const exportAdminLodgingPdf = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
-  .handler(async () => {
-    const [{ getAdminRegistrationService }, lodging] = await Promise.all([
-      import("@/features/admin/admin-registration.server"),
-      import("@/features/admin/admin-lodging.server"),
-    ]);
-    const service = getAdminRegistrationService();
-    const [registrations, storedPlan] = await Promise.all([
-      service.lodgingRows(),
-      lodging.getAdminLodgingPlan(),
-    ]);
-    const plan = storedPlan ?? emptyLodgingPlan();
-    const { buildLodgingRegistrationsPdf } = await import("@/features/admin/admin-lodging-pdf");
-    return buildLodgingRegistrationsPdf(registrations, plan, new Date());
   });
 
 export const reprocessParticipantAccess = createServerFn({ method: "POST" })
