@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import { AdminNamedLodgingPage } from "./AdminNamedLodgingPage";
 import {
   buildLodgingRoomLayout,
   emptyLodgingPlan,
@@ -46,6 +47,7 @@ type ChoirRow = {
 };
 
 type LodgingRegistration = {
+  cancelledAt?: string | null;
   id: string;
   name: string;
   badgeName: string | null;
@@ -118,6 +120,7 @@ export function AdminHospedagemPage({
   storePhoto,
 }: AdminHospedagemPageProps) {
   const [gate, setGate] = useState<Gate>("checking");
+  const [namedPlan, setNamedPlan] = useState<LodgingPlan | null>(null);
   const [roomsAvailable, setRoomsAvailable] = useState("0");
   const [roomCapacity, setRoomCapacity] = useState("3");
   const [totalRegistrants, setTotalRegistrants] = useState("");
@@ -206,6 +209,7 @@ export function AdminHospedagemPage({
     // lodging; a stored plan is the administrator's own decision. A plan without
     // any allocation content is treated as the never-configured default.
     const stored = plan ?? emptyLodgingPlan();
+    setNamedPlan(stored.namedRooms?.length ? stored : null);
     const hasStoredPlan =
       Boolean(plan) &&
       (stored.roomsAvailable > 0 ||
@@ -523,6 +527,7 @@ export function AdminHospedagemPage({
   // Every change of the allocation is stored shortly after it happens, so
   // leaving the screen never loses the rooms the administrator defined.
   useEffect(() => {
+    if (namedPlan) return;
     if (!hydrated.current) return;
     if (lastSavedSignature.current === null) {
       lastSavedSignature.current = planSignature;
@@ -534,7 +539,7 @@ export function AdminHospedagemPage({
       void persistRef.current();
     }, 1200);
     return () => clearTimeout(timer);
-  }, [planSignature]);
+  }, [planSignature, namedPlan]);
 
   const addChoir = () => setChoirs((previous) => [...previous, { name: "", men: "", women: "" }]);
   const removeChoir = (index: number) =>
@@ -723,6 +728,17 @@ export function AdminHospedagemPage({
     </body></html>`;
     openPrintableHtml(html);
   };
+
+  if (gate === "authorized" && namedPlan) {
+    return <AdminNamedLodgingPage
+      registrations={registrations}
+      initialPlan={namedPlan}
+      photoUrls={photoUrls}
+      persistPlan={persistPlan ?? (async (plan) => { await saveAdminLodgingPlan({ data: plan }); })}
+      onSignOut={() => void logout()}
+      navigateTo={navigateTo}
+    />;
+  }
 
   return (
     <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 pb-24 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">

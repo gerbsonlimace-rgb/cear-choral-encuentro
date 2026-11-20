@@ -218,6 +218,13 @@ const lodgingExtraPersonSchema = z.object({
 });
 
 const lodgingPlanSchema = z.object({
+  namedRooms: z.array(z.object({
+    key: z.string().trim().min(1).max(120),
+    name: z.string().trim().min(1).max(120),
+    location: z.string().max(180),
+    floor: z.string().max(80),
+    notes: z.string().max(1000),
+  })).max(500).default([]),
   roomsAvailable: z.number().int().min(0).max(100000),
   roomCapacity: z.number().int().min(1).max(100),
   noLodgingIds: z.array(z.string().uuid()).max(5000),

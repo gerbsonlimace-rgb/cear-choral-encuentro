@@ -12,6 +12,14 @@
 /** Extra rooms created by the administrator use ids from this range. */
 export const LODGING_EXTRA_ROOM_BASE = 100000;
 
+export type NamedLodgingRoom = {
+  key: string;
+  name: string;
+  location: string;
+  floor: string;
+  notes: string;
+};
+
 export type LodgingExtraPerson = {
   id: string;
   name: string;
@@ -28,6 +36,8 @@ export type LodgingExtraPerson = {
 };
 
 export type LodgingPlan = {
+  /** Physical rooms from the event map; empty preserves the legacy choir layout. */
+  namedRooms?: NamedLodgingRoom[];
   roomsAvailable: number;
   roomCapacity: number;
   noLodgingIds: string[];
@@ -52,6 +62,7 @@ export type LodgingRoomLayout = {
 
 export function emptyLodgingPlan(): LodgingPlan {
   return {
+    namedRooms: [],
     roomsAvailable: 0,
     roomCapacity: 3,
     noLodgingIds: [],
@@ -135,6 +146,20 @@ export function parseLodgingPlan(row: unknown): LodgingPlan {
   plan.roomCapacity = capacity > 0 ? Math.trunc(capacity) : plan.roomCapacity;
   plan.noLodgingIds = asStringList(source.no_lodging_registration_ids);
   plan.assignments = asStringRecord(source.assignments);
+  plan.namedRooms = Array.isArray(source.named_rooms)
+    ? source.named_rooms.flatMap((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const room = item as Record<string, unknown>;
+        if (typeof room.key !== "string" || !room.key.trim() || typeof room.name !== "string" || !room.name.trim()) return [];
+        return [{
+          key: room.key,
+          name: room.name,
+          location: typeof room.location === "string" ? room.location : "",
+          floor: typeof room.floor === "string" ? room.floor : "",
+          notes: typeof room.notes === "string" ? room.notes : "",
+        }];
+      })
+    : [];
   plan.extraRooms = asExtraRooms(source.extra_rooms);
   plan.hiddenRoomKeys = asStringList(source.hidden_rooms);
   plan.extraPeople = asExtraPeople(source.extra_people);
@@ -144,6 +169,29 @@ export function parseLodgingPlan(row: unknown): LodgingPlan {
     Math.trunc(counter),
   );
   return plan;
+}
+
+/** Shared by the authorized server writer and the physical-room editor. */
+export function validateNamedLodgingPlan(plan: LodgingPlan): void {
+  if (!plan.namedRooms?.length) return;
+  const keys = new Set<string>();
+  const names = new Set<string>();
+  for (const room of plan.namedRooms) {
+    const name = room.name.trim().toLocaleUpperCase("pt-BR");
+    if (keys.has(room.key) || names.has(name)) throw new Error(`Quarto repetido: ${room.name}.`);
+    keys.add(room.key);
+    names.add(name);
+  }
+  const counts = new Map<string, number>();
+  const destinations = [...Object.values(plan.assignments), ...plan.extraPeople.flatMap((person) => person.roomKey ? [person.roomKey] : [])];
+  const capacity = Math.min(plan.roomCapacity, 3);
+  for (const key of destinations) {
+    const room = plan.namedRooms.find((item) => item.key === key);
+    if (!room) throw new Error(`O quarto ${key} não existe no mapa.`);
+    const count = (counts.get(key) ?? 0) + 1;
+    if (count > capacity) throw new Error(`O quarto ${room.name} comporta até ${capacity} pessoas.`);
+    counts.set(key, count);
+  }
 }
 
 /**

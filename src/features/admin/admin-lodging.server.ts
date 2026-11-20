@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   parseLodgingPlan,
+  validateNamedLodgingPlan,
   type LodgingPlan,
 } from "./admin-lodging.domain";
 
@@ -21,7 +22,7 @@ export async function getAdminLodgingPlan(): Promise<LodgingPlan | null> {
   const { data, error } = await supabaseAdmin
     .from("lodging_plan")
     .select(
-      "rooms_available,room_capacity,no_lodging_registration_ids,assignments,extra_rooms,hidden_rooms,extra_people,extra_room_counter",
+      "rooms_available,room_capacity,no_lodging_registration_ids,assignments,extra_rooms,hidden_rooms,extra_people,extra_room_counter,named_rooms",
     )
     .maybeSingle();
   if (error) {
@@ -34,16 +35,20 @@ export async function getAdminLodgingPlan(): Promise<LodgingPlan | null> {
 
 /** Replaces the whole plan in one statement. */
 export async function saveAdminLodgingPlan(plan: LodgingPlan): Promise<void> {
-  const { error } = await supabaseAdmin.rpc("replace_lodging_plan", {
-    p_rooms_available: plan.roomsAvailable,
-    p_room_capacity: plan.roomCapacity,
-    p_no_lodging_registration_ids: plan.noLodgingIds,
-    p_assignments: plan.assignments,
-    p_extra_rooms: plan.extraRooms,
-    p_hidden_rooms: plan.hiddenRoomKeys,
-    p_extra_people: plan.extraPeople,
-    p_extra_room_counter: plan.extraRoomCounter,
-  });
+  validateNamedLodgingPlan(plan);
+  const { error } = await supabaseAdmin.from("lodging_plan").upsert({
+    id: true,
+    rooms_available: plan.roomsAvailable,
+    room_capacity: plan.roomCapacity,
+    no_lodging_registration_ids: plan.noLodgingIds,
+    assignments: plan.assignments,
+    extra_rooms: plan.extraRooms,
+    hidden_rooms: plan.hiddenRoomKeys,
+    extra_people: plan.extraPeople,
+    extra_room_counter: plan.extraRoomCounter,
+    named_rooms: plan.namedRooms ?? [],
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "id" });
   if (error) {
     if (isMissingTable(error)) {
       throw new Error(

@@ -481,6 +481,7 @@ export type Database = {
       }
       lodging_plan: {
         Row: {
+          named_rooms: Json
           assignments: Json
           created_at: string
           extra_people: Json
@@ -494,6 +495,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          named_rooms?: Json
           assignments?: Json
           created_at?: string
           extra_people?: Json
@@ -507,6 +509,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          named_rooms?: Json
           assignments?: Json
           created_at?: string
           extra_people?: Json
