@@ -22,5 +22,5 @@ export function parseJobSelection(input) {
 export function selectJobRegistrationIds(registrations, states, selection) {
   const requested = selection.scope === "all" ? null : new Set(selection.registrationIds);
   return registrations.filter((row) => row.payment_status === "paid" && !row.cancelled_at &&
-    (!requested || requested.has(row.id)) && (selection.resend === true || !["sent", "review"].includes(states[row.id]))).map((row) => row.id);
+    (!requested || requested.has(row.id)) && (selection.resend === true || !["sent", "received", "review"].includes(states[row.id]))).map((row) => row.id);
 }
