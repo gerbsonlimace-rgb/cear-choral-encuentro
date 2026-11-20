@@ -26,7 +26,7 @@ function ParticipantPortalRoute() {
   );
   return (
     <ParticipantPortalPage
-      onOpenAdmin={() => void navigate({ to: "/admin/resumo" })}
+      onOpenAdmin={() => void navigate({ to: "/admin/inscricoes" })}
       onMissingAccess={onMissingAccess}
       onSignedOut={() => navigate({ to: "/acessar" })}
     />

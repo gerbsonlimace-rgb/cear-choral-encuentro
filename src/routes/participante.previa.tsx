@@ -19,7 +19,7 @@ function ParticipantPreviewRoute() {
     void navigate({ to: "/acessar", replace: true });
   }, [navigate]);
   const onReturnAdmin = useCallback(() => {
-    void navigate({ to: "/admin/resumo" });
+    void navigate({ to: "/admin/inscricoes" });
   }, [navigate]);
 
   return <ParticipantPreviewPage onUnauthorized={onUnauthorized} onReturnAdmin={onReturnAdmin} />;

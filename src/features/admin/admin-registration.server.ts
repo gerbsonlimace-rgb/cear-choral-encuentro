@@ -974,6 +974,11 @@ export function createAdminRegistrationService(
             });
       return summarizeAdminRegistrations(completeRows);
     },
+    async financeRows(): Promise<AdminRegistrationRow[]> {
+      return repository.listCandidates && repository.listComplementPayments
+        ? listAllEnriched()
+        : repository.listAll({ search: "", paymentStatus: "all", choirId: "all", musicalProfile: "all" });
+    },
     async export(
       query: AdminRegistrationExportQuery,
       adminUserId: string,

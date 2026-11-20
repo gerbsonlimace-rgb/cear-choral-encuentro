@@ -38,6 +38,7 @@
 - Complete Google Search Console setup using Gerbson's linked connection: live META verification succeeded, root property confirmed as siteOwner, and existing sitemap submitted successfully; 97 affected tests passed before final delivery.
 - Let the admin "Marcar como pago" dialog record the amount received and either leave the remaining registration fee pending (with a later "Registrar restante da taxa" action) or waive it as a discount; 241 tests passed.
 - Show the badge name (with full-name fallback) as the participant label in the admin registrations list, the CSV export and the registrations PDF, and match the badge name in the listing search; 197 admin tests plus 21 route tests passed.
+- Move the administrative summary cards (registration counters, financial totals and the per-choir breakdown) into the registrations screen and remove the "Resumo" menu entry, keeping `/admin/resumo` as a redirect to `/admin/inscricoes`; show the indicators as compact metric cards and the per-choir breakdown as painted cards.
 
 ## Open
 - Fix reported PDF downloads in administrative summary and registrations; add filtered financial/raffle totals, registration count, and event logo above the PDF table.

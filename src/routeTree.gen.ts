@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcessarRouteImport } from './routes/acessar'
+import { Route as CartaoRouteImport } from './routes/cartao'
+import { Route as ChamadaRouteImport } from './routes/chamada'
 import { Route as EuvouRouteImport } from './routes/euvou'
 import { Route as InscricaoRouteImport } from './routes/inscricao'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
@@ -23,6 +25,7 @@ import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
 import { Route as AdminDocumentosRouteImport } from './routes/admin.documentos'
+import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
 import { Route as AdminHospedagemRouteImport } from './routes/admin.hospedagem'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
@@ -51,6 +54,16 @@ const IndexRoute = IndexRouteImport.update({
 const AcessarRoute = AcessarRouteImport.update({
   id: '/acessar',
   path: '/acessar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartaoRoute = CartaoRouteImport.update({
+  id: '/cartao',
+  path: '/cartao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChamadaRoute = ChamadaRouteImport.update({
+  id: '/chamada',
+  path: '/chamada',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EuvouRoute = EuvouRouteImport.update({
@@ -111,6 +124,11 @@ const AdminCorosRoute = AdminCorosRouteImport.update({
 const AdminDocumentosRoute = AdminDocumentosRouteImport.update({
   id: '/admin/documentos',
   path: '/admin/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
+  id: '/admin/financeiro',
+  path: '/admin/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminHospedagemRoute = AdminHospedagemRouteImport.update({
@@ -213,6 +231,8 @@ const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -224,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -248,6 +269,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -257,6 +280,7 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -282,6 +306,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -293,6 +319,7 @@ export interface FileRoutesById {
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
   '/admin/documentos': typeof AdminDocumentosRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
@@ -319,6 +346,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -330,6 +359,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -354,6 +384,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -363,6 +395,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -387,6 +420,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -398,6 +433,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/coros'
     | '/admin/documentos'
+    | '/admin/financeiro'
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
@@ -423,6 +459,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
+  CartaoRoute: typeof CartaoRoute
+  ChamadaRoute: typeof ChamadaRoute
   EuvouRoute: typeof EuvouRoute
   InscricaoRoute: typeof InscricaoRoute
   PagamentoRoute: typeof PagamentoRoute
@@ -434,6 +472,7 @@ export interface RootRouteChildren {
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCorosRoute: typeof AdminCorosRoute
   AdminDocumentosRoute: typeof AdminDocumentosRoute
+  AdminFinanceiroRoute: typeof AdminFinanceiroRoute
   AdminHospedagemRoute: typeof AdminHospedagemRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -459,6 +498,20 @@ declare module '@tanstack/react-router' {
       path: '/acessar'
       fullPath: '/acessar'
       preLoaderRoute: typeof AcessarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cartao': {
+      id: '/cartao'
+      path: '/cartao'
+      fullPath: '/cartao'
+      preLoaderRoute: typeof CartaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chamada': {
+      id: '/chamada'
+      path: '/chamada'
+      fullPath: '/chamada'
+      preLoaderRoute: typeof ChamadaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/euvou': {
@@ -543,6 +596,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/documentos'
       fullPath: '/admin/documentos'
       preLoaderRoute: typeof AdminDocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/financeiro': {
+      id: '/admin/financeiro'
+      path: '/admin/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AdminFinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/hospedagem': {
@@ -725,6 +785,8 @@ const RegenteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
+  CartaoRoute: CartaoRoute,
+  ChamadaRoute: ChamadaRoute,
   EuvouRoute: EuvouRoute,
   InscricaoRoute: InscricaoRoute,
   PagamentoRoute: PagamentoRoute,
@@ -736,6 +798,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCorosRoute: AdminCorosRoute,
   AdminDocumentosRoute: AdminDocumentosRoute,
+  AdminFinanceiroRoute: AdminFinanceiroRoute,
   AdminHospedagemRoute: AdminHospedagemRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,

@@ -13,7 +13,7 @@ function setup(overrides: Partial<UnifiedPortalChecks> = {}) {
 
 describe("unified portal destination", () => {
   it.each([
-    [{ role: "admin" as const }, "/admin/resumo"],
+    [{ role: "admin" as const }, "/admin/inscricoes"],
     [{ role: "regent" as const, passwordChangeRequired: true }, "/regente/alterar-senha"],
     [{ role: "regent" as const, passwordChangeRequired: false }, "/regente"],
   ])("routes an admin or regent profile", async (profile, destination) => {

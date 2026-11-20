@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { getPortalModes, type PortalModes } from "@/lib/portal-access.functions";
 
-export type PortalModeDestination = "/admin/resumo" | "/participante" | "/participante/previa" | "/regente";
+export type PortalModeDestination = "/admin/inscricoes" | "/participante" | "/participante/previa" | "/regente";
 
 type Props = {
   mode: "admin" | "participant";
@@ -89,7 +89,7 @@ export function PortalModeSwitch({ mode, onNavigate, loadModes = getPortalModes 
       )}
       {showAdminSwitch && (
         <ModeLink
-          destination={mode === "admin" ? "/participante" : "/admin/resumo"}
+          destination={mode === "admin" ? "/participante" : "/admin/inscricoes"}
           label={mode === "admin" ? "Ir para participante" : "Ir para admin"}
           shortLabel={mode === "admin" ? "Participante" : "Admin"}
           icon={<ArrowLeftRight aria-hidden="true" className="size-4" />}

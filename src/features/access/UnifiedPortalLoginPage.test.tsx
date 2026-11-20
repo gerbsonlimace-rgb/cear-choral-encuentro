@@ -66,7 +66,7 @@ function deferred<T>() {
 }
 
 describe("UnifiedPortalLoginPage", () => {
-  it.each(["/admin/resumo", "/regente/alterar-senha", "/regente", "/participante"] as const)(
+  it.each(["/admin/inscricoes", "/regente/alterar-senha", "/regente", "/participante"] as const)(
     "navigates to an authorized %s destination",
     async (destination) => {
       const { user, signIn, checkAccess, onAuthorized } = setup({
@@ -237,11 +237,11 @@ describe("UnifiedPortalLoginPage", () => {
       }),
       checkAccess: vi.fn().mockResolvedValue({
         status: "authorized",
-        destination: "/admin/resumo",
+        destination: "/admin/inscricoes",
       }),
     });
 
-    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/resumo"));
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/inscricoes"));
     expect(checkAccess).toHaveBeenCalledOnce();
     expect(signIn).not.toHaveBeenCalled();
   });
@@ -355,7 +355,7 @@ describe("UnifiedPortalLoginPage", () => {
     const getSession = vi.fn(() => session.promise);
     const checkAccess = vi.fn().mockResolvedValue({
       status: "authorized",
-      destination: "/admin/resumo",
+      destination: "/admin/inscricoes",
     });
     const signOut = vi.fn().mockResolvedValue({ error: null });
     const onAuthorized = vi.fn();
@@ -378,7 +378,7 @@ describe("UnifiedPortalLoginPage", () => {
       }),
     );
 
-    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/resumo"));
+    await waitFor(() => expect(onAuthorized).toHaveBeenCalledExactlyOnceWith("/admin/inscricoes"));
     expect(getSession).toHaveBeenCalledOnce();
     expect(checkAccess).toHaveBeenCalledOnce();
     expect(signOut).not.toHaveBeenCalled();

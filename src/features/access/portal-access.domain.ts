@@ -1,5 +1,5 @@
 export type PortalDestination =
-  "/admin/resumo" | "/regente/alterar-senha" | "/regente" | "/participante";
+  "/admin/inscricoes" | "/regente/alterar-senha" | "/regente" | "/participante";
 
 export type UnifiedPortalAccess =
   { status: "authorized"; destination: PortalDestination } | { status: "unavailable" };
@@ -17,7 +17,7 @@ export function createUnifiedPortalResolver(checks: UnifiedPortalChecks) {
     async resolve(userId: string, email: string | null): Promise<UnifiedPortalAccess> {
       const portal = await checks.findAdminOrRegent(userId, email);
       if (portal?.role === "admin") {
-        return { status: "authorized", destination: "/admin/resumo" };
+        return { status: "authorized", destination: "/admin/inscricoes" };
       }
       if (portal?.role === "regent") {
         return {

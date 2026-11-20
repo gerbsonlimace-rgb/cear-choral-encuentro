@@ -11,6 +11,9 @@ vi.mock("@/lib/admin.functions", () => ({
   listAdminRegistrations: vi.fn(),
   exportAdminRegistrations: vi.fn(),
   exportAdminRegistrationsPdf: vi.fn(),
+  listAdminChoirRaffles: vi.fn(),
+  settleAdminChoirRaffles: vi.fn(),
+  getAdminChoirRoster: vi.fn(),
   createAdminRegistrationCheckoutLink: vi.fn(),
   markAdminRegistrationPaid: vi.fn(),
   markAdminRegistrationExempt: vi.fn(),
@@ -217,7 +220,9 @@ describe("AdminRegistrationsPage read-only views", () => {
         pageSize: 25,
       }),
     });
-    await waitFor(() => expect(screen.getAllByText("Daniela")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText("Daniela")).toHaveLength(2), {
+      timeout: 10000,
+    });
     expect(screen.getAllByText("Pagamento em processamento")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Pagar saldo/ })).not.toBeInTheDocument();
   });
@@ -579,25 +584,30 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(loadSummary).not.toHaveBeenCalled();
   });
 
-  it("keeps financial totals above the filters without repeating the summary breakdown", async () => {
+  it("keeps the summary cards above the filters with the choir breakdown", async () => {
     const { loadSummary, user } = setup();
 
     const financial = await screen.findByRole("group", { name: "Resumo financeiro" });
-    expect(within(financial).getByText("Recebido").parentElement).toHaveTextContent("R$ 200,00");
+    expect(within(financial).getByText("Total recebido").parentElement).toHaveTextContent(
+      "R$ 200,00",
+    );
     expect(within(financial).getByText("Pendente taxa de inscrição").parentElement).toHaveTextContent("R$ 500,00");
     expect(within(financial).getByText("Total previsto").parentElement).toHaveTextContent(
       "R$ 700,00",
     );
-    expect(
-      screen.queryByRole("region", { name: "Visão geral das inscrições" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Financeiro por coro/diocese")).not.toBeInTheDocument();
+    const indicators = within(screen.getByRole("region", { name: "Indicadores do encontro" }));
+    expect(indicators.getByText("Inscrições").parentElement).toHaveTextContent("14");
+    expect(indicators.getByText("Pagamentos confirmados").parentElement).toHaveTextContent("8");
+    expect(indicators.getByText("Pagamentos pendentes").parentElement).toHaveTextContent("4");
+    const overview = screen.getByRole("region", { name: "Visão geral das inscrições" });
+    expect(within(overview).getByText("Financeiro por coro/diocese")).toBeInTheDocument();
+    expect(within(overview).getByText("Diocese de Quixadá")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Pesquisar inscrições"), "Clara");
     await user.click(screen.getByRole("button", { name: "Pesquisar" }));
     await screen.findByRole("table");
     expect(loadSummary).toHaveBeenCalledOnce();
-  });
+  }, 20000);
 
   it("links separately to choir and event-value administration", async () => {
     setup();

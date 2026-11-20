@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  memo,
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
@@ -14,8 +15,11 @@ import {
   Ban,
   Banknote,
   ChartNoAxesCombined,
+  CheckCircle2,
+  CircleOff,
   Clock3,
   ExternalLink,
+  History,
   Link2,
   MoreHorizontal,
   Pencil,
@@ -131,6 +135,7 @@ import {
   type ManualPaymentReceipt,
 } from "./admin.domain";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import { AdminChoirSummaryCard, type PrepareChoirPdf } from "./AdminChoirSummaryCard";
 import { getAdminRafflePending, getAdminRegistrationPendingCents, formatAdminRafflePending } from "./admin-raffle.domain";
 import {
   getManualPaymentDue,
@@ -1761,59 +1766,148 @@ function EditRegistrationForm({
   );
 }
 
-function RegistrationFinancialSummary({ summary }: { summary: AdminRegistrationSummary }) {
-  const financial = [
+/**
+ * Summary of the meeting: registration counters, financial totals and the
+ * financial breakdown per choir/diocese. It lives inside the registrations
+ * screen so the administration has a single place for every indicator.
+ */
+const RegistrationSummaryCards = memo(function RegistrationSummaryCards({
+  summary,
+  prepareChoirPdf,
+  onChoirSettled,
+}: {
+  summary: AdminRegistrationSummary;
+  prepareChoirPdf: PrepareChoirPdf;
+  onChoirSettled: () => void;
+}) {
+  const raffleReceivedCents = summary.rafflePaidCents ?? 0;
+  const registrationReceivedCents = summary.receivedCents - raffleReceivedCents;
+  const counters = [
     {
-      label: "Total de inscrições",
+      label: "Inscrições",
       value: String(summary.total),
-      hint: "Todas as inscrições cadastradas",
+      detail: "Todas as inscrições cadastradas",
       icon: Users,
     },
     {
-      label: "Inscrições aguardando pagamento",
+      label: "Pagamentos confirmados",
+      value: String(summary.paid),
+      detail: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
+      icon: CheckCircle2,
+    },
+    {
+      label: "Pagamentos pendentes",
       value: String(summary.pending),
-      hint: "Taxa inicial de inscrição pendente",
+      detail: "Taxa de inscrição aguardando",
       icon: Clock3,
     },
     {
-      label: "Recebido",
+      label: "Inscrições isentas",
+      value: String(summary.exempt ?? 0),
+      detail: "Sem taxa de inscrição",
+      icon: CircleOff,
+    },
+    {
+      label: "Históricas",
+      value: String(summary.legacy),
+      detail: "Sem histórico de pagamento",
+      icon: History,
+    },
+    {
+      label: "Canceladas",
+      value: String(summary.cancelled ?? 0),
+      detail: "Canceladas pela administração",
+      icon: Ban,
+    },
+  ];
+  const financial = [
+    {
+      label: "Total recebido",
       value: money(summary.receivedCents),
-      hint: `${summary.paid} ${summary.paid === 1 ? "inscrição paga" : "inscrições pagas"}`,
       icon: Banknote,
+      details: [
+        { label: "Inscrições", value: money(registrationReceivedCents) },
+        { label: "Rifas", value: money(raffleReceivedCents) },
+        ...(summary.refundedCents
+          ? [{ label: "Devoluções", value: `− ${money(summary.refundedCents)}` }]
+          : []),
+      ],
     },
     {
       label: "Pendente taxa de inscrição",
       value: money(summary.pendingCents),
-      hint: `${summary.pending} ${summary.pending === 1 ? "inscrição aguardando" : "inscrições aguardando"}`,
       icon: Clock3,
     },
     {
       label: "Pendente em rifas",
       value: money(summary.rafflePendingCents ?? 0),
-      hint: formatAdminRafflePending({ cents: summary.rafflePendingCents ?? 0, tickets: summary.rafflePendingTickets ?? null }),
+      detail: formatAdminRafflePending({
+        cents: summary.rafflePendingCents ?? 0,
+        tickets: summary.rafflePendingTickets ?? null,
+      }),
       icon: Clock3,
     },
     {
       label: "Total previsto",
       value: money(summary.expectedCents),
-      hint: "Recebido + taxas + rifas pendentes",
+      detail: "Recebido + taxas + rifas pendentes",
       icon: ChartNoAxesCombined,
     },
   ];
   return (
-    <div role="group" aria-label="Resumo financeiro" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {financial.map((metric) => (
-        <InternalMetricCard
-          key={metric.label}
-          label={metric.label}
-          value={metric.value}
-          detail={metric.hint}
-          icon={metric.icon}
-        />
-      ))}
+    <div className="space-y-2">
+      <section
+        aria-label="Indicadores do encontro"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
+      >
+        {counters.map((metric) => (
+          <InternalMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            detail={metric.detail}
+            icon={metric.icon}
+            dense
+          />
+        ))}
+      </section>
+      <div
+        role="group"
+        aria-label="Resumo financeiro"
+        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        {financial.map((metric) => (
+          <InternalMetricCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            detail={metric.detail}
+            details={metric.details}
+            icon={metric.icon}
+            dense
+          />
+        ))}
+      </div>
+      <section aria-label="Visão geral das inscrições" className="space-y-1.5">
+        <h2 className="text-xs font-semibold">Financeiro por coro/diocese</h2>
+        {summary.byChoir.length ? (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {summary.byChoir.map((item) => (
+              <AdminChoirSummaryCard
+                key={item.choirName}
+                item={item}
+                preparePdf={prepareChoirPdf}
+                onSettled={onChoirSettled}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">Nenhum coro/diocese com inscrições.</p>
+        )}
+      </section>
     </div>
   );
-}
+});
 
 const LIST_CACHE_TTL_MS = 60_000;
 
@@ -1930,6 +2024,7 @@ export function AdminRegistrationsPage({
     };
   }, [gate, editChoirs.length, loadChoirs]);
   const [summaryRetry, setSummaryRetry] = useState(0);
+  const refreshSummary = useCallback(() => setSummaryRetry((value) => value + 1), []);
   const [bootstrapDataReady, setBootstrapDataReady] = useState(false);
   const actionBusy = useRef(false);
   const revision = useRef(0);
@@ -2564,7 +2659,13 @@ export function AdminRegistrationsPage({
                 </CardContent>
               </Card>
             ) : (
-              summary && <RegistrationFinancialSummary summary={summary} />
+              summary && (
+                <RegistrationSummaryCards
+                  summary={summary}
+                  prepareChoirPdf={preparePdf}
+                  onChoirSettled={refreshSummary}
+                />
+              )
             )}
             <form
               onSubmit={search}

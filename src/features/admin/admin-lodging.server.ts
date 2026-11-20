@@ -32,19 +32,30 @@ export async function getAdminLodgingPlan(): Promise<LodgingPlan | null> {
   return parseLodgingPlan(data);
 }
 
-/** Replaces the whole plan in one statement. */
+/** Replaces the whole plan in one atomic upsert. */
 export async function saveAdminLodgingPlan(plan: LodgingPlan): Promise<void> {
-  const { error } = await supabaseAdmin.rpc("replace_lodging_plan", {
-    p_rooms_available: plan.roomsAvailable,
-    p_room_capacity: plan.roomCapacity,
-    p_no_lodging_registration_ids: plan.noLodgingIds,
-    p_assignments: plan.assignments,
-    p_extra_rooms: plan.extraRooms,
-    p_hidden_rooms: plan.hiddenRoomKeys,
-    p_extra_people: plan.extraPeople,
-    p_extra_room_counter: plan.extraRoomCounter,
-  });
+  const { error } = await supabaseAdmin.from("lodging_plan").upsert(
+    {
+      id: true,
+      rooms_available: plan.roomsAvailable,
+      room_capacity: plan.roomCapacity,
+      no_lodging_registration_ids: plan.noLodgingIds,
+      assignments: plan.assignments,
+      extra_rooms: plan.extraRooms,
+      hidden_rooms: plan.hiddenRoomKeys,
+      extra_people: plan.extraPeople,
+      extra_room_counter: plan.extraRoomCounter,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
   if (error) {
+    console.error("[Admin] Failed to save lodging plan", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     if (isMissingTable(error)) {
       throw new Error(
         "A alocação de quartos ainda não está persistida. Aplique a migration de hospedagem no Supabase para habilitar a gravação.",
