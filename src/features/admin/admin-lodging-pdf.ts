@@ -35,6 +35,32 @@ const headerShade = rgb(0.94, 0.95, 0.96);
 const alternateShade = rgb(0.985, 0.988, 0.992);
 const gold = rgb(0.82, 0.61, 0.03);
 const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
+const genericChoirNames = new Set([
+  "",
+  "ACOMPANHANTE",
+  "ACOMPANHANTES",
+  "AVULSO",
+  "AVULSOS",
+  "AVULSOS E ACOMPANHANTES",
+  "SEM CORO",
+]);
+
+function choirKey(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleUpperCase("pt-BR");
+}
+
+function isGenericChoirName(value: string) {
+  return genericChoirNames.has(choirKey(value));
+}
+
+function isCompanion(role: string) {
+  return /acompanhante/i.test(role);
+}
 
 function printable(value: string, font: PDFFont) {
   return Array.from(value.normalize("NFC").replace(/[\r\n\t]/g, " "))
@@ -96,23 +122,48 @@ function displayRowLines(person: ReportPerson, font: PDFFont, bold: PDFFont = fo
 
 function buildPeople(registrations: AdminRegistrationRow[], plan: LodgingPlan): ReportPerson[] {
   const roomByKey = new Map((plan.namedRooms ?? []).map((room) => [room.key, room]));
+  const choirsByRoom = new Map<string, Set<string>>();
+  const rememberChoir = (roomKey: string | null | undefined, choirName: string) => {
+    if (!roomKey || !choirName.trim() || isGenericChoirName(choirName)) return;
+    const choirs = choirsByRoom.get(roomKey) ?? new Set<string>();
+    choirs.add(choirName.trim());
+    choirsByRoom.set(roomKey, choirs);
+  };
+  for (const row of registrations) {
+    if (row.cancelledAt) continue;
+    rememberChoir(plan.assignments[row.id], row.choirName);
+  }
+  for (const person of plan.extraPeople) {
+    rememberChoir(person.roomKey, person.choir);
+  }
+  const choirFor = (choirName: string, role: string, roomKey: string | null | undefined) => {
+    const explicitChoir = choirName.trim();
+    if (isCompanion(role) && isGenericChoirName(explicitChoir)) {
+      const roomChoirs = roomKey ? choirsByRoom.get(roomKey) : undefined;
+      if (roomChoirs?.size === 1) return [...roomChoirs][0] ?? "Avulsos e acompanhantes";
+    }
+    return explicitChoir || "Avulsos e acompanhantes";
+  };
   const registered: Omit<ReportPerson, "sequenceNumber">[] = registrations
     .filter((row) => !row.cancelledAt)
-    .map((row) => ({
-      badgeName: getRegistrationDisplayName(row),
-      name: row.name,
-      cpf: row.cpf,
-      phone: row.phone,
-      choirName: row.choirName?.trim() || "Sem coro",
-      room: roomByKey.get(plan.assignments[row.id] ?? "") ?? null,
-      star: row.registrationPriceCents === 8000,
-    }));
+    .map((row) => {
+      const roomKey = plan.assignments[row.id] ?? "";
+      return {
+        badgeName: getRegistrationDisplayName(row),
+        name: row.name,
+        cpf: row.cpf,
+        phone: row.phone,
+        choirName: choirFor(row.choirName?.trim() || "Sem coro", row.role, roomKey),
+        room: roomByKey.get(roomKey) ?? null,
+        star: row.registrationPriceCents === 8000,
+      };
+    });
   const extras: Omit<ReportPerson, "sequenceNumber">[] = plan.extraPeople.map((person) => ({
     badgeName: person.name || "Acompanhante",
     name: person.name || "Acompanhante",
     cpf: person.cpf,
     phone: "",
-    choirName: person.choir.trim() || "Avulsos e acompanhantes",
+    choirName: choirFor(person.choir, person.role, person.roomKey),
     room: roomByKey.get(person.roomKey ?? "") ?? null,
     star: false,
   }));
