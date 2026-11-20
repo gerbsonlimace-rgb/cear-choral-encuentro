@@ -3,6 +3,11 @@ export type EventManagementPermission = "reports" | "scan" | "archive";
 export const EVENT_REPORT_ROLE_KEY = "event_report_registration_id";
 export const EVENT_SCAN_ROLE_KEY = "event_scan_registration_id";
 export const EVENT_ARCHIVE_ROLE_KEY = "event_archive_registration_id";
+const EVENT_CALL_ARCHIVER_EMAIL = "gerbsonlimace@gmail.com";
+
+export function isEventCallArchiver(email: string | null | undefined) {
+  return email?.trim().toLowerCase() === EVENT_CALL_ARCHIVER_EMAIL;
+}
 
 /** Server-owned Auth app_metadata decides reports; participant-editable metadata is ignored. */
 export function evaluateEventManagementAccess(
@@ -47,26 +52,21 @@ export function summarizeAttendanceReport(activity: AttendanceReport["activity"]
 }
 
 export function buildAttendanceWhatsAppMessage(report: AttendanceReport): string {
-  const absentees = report.people.filter(person => !person.checkedInAt);
   const activityDate = report.activity.activityDate.slice(0, 10);
   const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(activityDate)
     ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", dateStyle: "long" }).format(new Date(`${activityDate}T12:00:00Z`))
     : report.activity.activityDate;
-  const absenteeLines = absentees.map(person => {
-    const van = person.usesEventVan === null ? "Não informado" : person.usesEventVan ? "Sim" : "Não";
-    const dietary = person.dietaryRestriction === null
-      ? "Não informado"
-      : person.dietaryRestriction
-        ? person.dietaryDescription || "Tipo não informado"
-        : "Nenhuma";
-    return `- ${person.name} | Van: ${van} | Restrição alimentar: ${dietary}`;
-  });
+  const choirLines = report.choirs.map(choir => {
+    const people = report.people.filter(person => person.choirName === choir.name);
+    return [`${choir.name} (${people.filter(person => person.checkedInAt).length}/${people.length} presentes)`,
+      ...people.map(person => `- ${person.name}: ${person.checkedInAt ? "Presente" : "Faltante"}`)];
+  }).flat();
 
   return [
     `Atividade: ${report.activity.title}`,
     `Data: ${dateLabel}`,
-    `Total de presenças: ${report.attended} | Total de faltas: ${report.absent}`,
-    "Faltantes:",
-    ...(absenteeLines.length ? absenteeLines : ["Nenhum participante faltou."]),
+    `Total: ${report.total} | Presentes: ${report.attended} | Faltantes: ${report.absent}`,
+    "Lista por coro:",
+    ...(choirLines.length ? choirLines : ["Nenhum participante confirmado."]),
   ].join("\n");
 }

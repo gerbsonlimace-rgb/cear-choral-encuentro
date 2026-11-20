@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateEventManagementAccess } from "./eventManagement.domain";
+import { evaluateEventManagementAccess, isEventCallArchiver } from "./eventManagement.domain";
 
 const account = {
   registration_id: "registration",
@@ -8,6 +8,12 @@ const account = {
 };
 
 describe("independent scanner and report access", () => {
+  it("restricts call resets to Gerbson's registered email", () => {
+    expect(isEventCallArchiver("GerbsonLimaCE@gmail.com")).toBe(true);
+    expect(isEventCallArchiver("gerbsonlimace@gmail.com ")).toBe(true);
+    expect(isEventCallArchiver("other@example.com")).toBe(false);
+    expect(isEventCallArchiver(null)).toBe(false);
+  });
   it("administration alone never bypasses the explicit report permission", () => {
     expect(evaluateEventManagementAccess({ app_metadata: { user_metadata_report: "registration" } }, account, true))
       .toEqual({ canScan: true, canReport: false, canArchive: false });

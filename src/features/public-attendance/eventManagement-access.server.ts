@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAdminAuthorizer } from "@/features/admin/admin-auth.server";
-import { evaluateEventManagementAccess, EVENT_ARCHIVE_ROLE_KEY, EVENT_REPORT_ROLE_KEY, EVENT_SCAN_ROLE_KEY, type EventManagementAccess, type EventManagementPermission } from "./eventManagement.domain";
+import { evaluateEventManagementAccess, isEventCallArchiver, EVENT_ARCHIVE_ROLE_KEY, EVENT_REPORT_ROLE_KEY, EVENT_SCAN_ROLE_KEY, type EventManagementAccess, type EventManagementPermission } from "./eventManagement.domain";
 
 // Server-owned Auth app_metadata; participant-editable user_metadata is never trusted.
 export async function getEventManagementAccess(userId: string): Promise<EventManagementAccess> {
@@ -10,11 +10,12 @@ export async function getEventManagementAccess(userId: string): Promise<EventMan
     supabaseAdmin.from("participant_accounts").select("registration_id,access_status,registrations(cancelled_at)").eq("user_id", userId).maybeSingle(),
   ]);
   if (user.error || account.error) throw new Error("Não foi possível verificar seu acesso.");
-  return evaluateEventManagementAccess(
+  const access = evaluateEventManagementAccess(
     user.data.user,
     account.data as { registration_id: string; access_status: string | null; registrations?: { cancelled_at: string | null } | null } | null,
     Boolean(admin),
   );
+  return { ...access, canArchive: isEventCallArchiver(user.data.user?.email) && account.data?.access_status === "active" && !account.data.registrations?.cancelled_at };
 }
 
 export async function setEventManagementPermission(registrationId: string, permission: EventManagementPermission, enabled: boolean) {
