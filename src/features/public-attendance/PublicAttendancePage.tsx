@@ -265,7 +265,7 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
         </section>}
         {selected&&<>
           <section aria-label="Progresso da chamada" className="shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
-          <AttendanceNameSearch activityId={selected.id} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();const state=queue.current?.enqueue(token);if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
+          <AttendanceNameSearch key={selected.id} activityId={selected.id} attendedTokens={feedback.filter(item=>item.result.status==="recorded"||item.result.status==="already_recorded").map(item=>item.token)} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();const state=queue.current?.enqueue(token);if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
           <section className="attendance-camera" aria-label="Leitor QR">
             <video ref={video} muted playsInline autoPlay aria-label="Câmera para leitura contínua de QR Codes"/>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true"><div className="attendance-target"/></div>

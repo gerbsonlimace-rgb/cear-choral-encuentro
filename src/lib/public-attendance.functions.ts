@@ -25,7 +25,7 @@ export const recordPublicAttendance = createServerFn({ method: "POST" })
   .validator(publicAttendanceInputSchema)
   .handler(async ({ data }) => (await service()).record(data));
 export const searchEventAttendanceParticipants = createServerFn({method:"POST"}).middleware([requireEventScanner])
-  .validator(z.object({activityId:z.string().uuid(),query:z.string().trim().min(2).max(100)}).strict())
+  .validator(z.object({activityId:z.string().uuid(),query:z.string().trim().max(100)}).strict())
   .handler(async({data})=>(await import("@/features/public-attendance/attendanceSearch.server")).searchAttendanceParticipants(data.activityId,data.query));
 export const savePublicAttendanceLogistics = createServerFn({ method: "POST" })
   .middleware([requireEventScanner])

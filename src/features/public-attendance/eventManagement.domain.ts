@@ -1,4 +1,16 @@
 export type EventManagementAccess = { canScan: boolean; canReport: boolean };
+export const EVENT_REPORT_ROLE_KEY = "event_report_registration_id";
+
+/** Server-owned Auth app_metadata decides reports; participant-editable metadata is ignored. */
+export function evaluateEventManagementAccess(
+  user: { app_metadata?: Record<string, unknown> } | null | undefined,
+  account: { registration_id: string; access_status: string | null; registrations?: { cancelled_at: string | null } | null } | null | undefined,
+  isAdmin: boolean,
+): EventManagementAccess {
+  const canScan = Boolean(isAdmin);
+  if (!account || account.access_status !== "active" || account.registrations?.cancelled_at !== null) return { canScan, canReport: false };
+  return { canScan, canReport: user?.app_metadata?.[EVENT_REPORT_ROLE_KEY] === account.registration_id };
+}
 export type AttendanceReportPerson = {
   id: string; name: string; choirName: string; checkedInAt: string | null;
   usesEventVan: boolean | null; dietaryRestriction: boolean | null; dietaryDescription: string;

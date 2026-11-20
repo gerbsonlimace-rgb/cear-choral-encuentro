@@ -18,7 +18,9 @@ cabe no viewport sem rolagem da página. Listas longas têm rolagem interna; as
 respostas de van e alimentação abrem em uma janela própria com a câmera pausada.
 A câmera continua aberta entre leituras e somente confirmações do servidor contam.
 Buscar nome permite localizar os confirmados por partes do nome, sem exigir acentos,
-e marcar presença com a mesma fila idempotente do QR. Pessoas já presentes ficam
+e marcar presença com a mesma fila idempotente do QR. A lista é pré-carregada ao
+abrir a atividade; a filtragem ocorre em memória a cada tecla, sem debounce nem
+consultas ao servidor durante a digitação. Pessoas já presentes ficam
 identificadas; a câmera pausa durante a busca e retoma ao fechá-la. A paleta dos
 botões e janelas permanece clara e com texto contrastante, inclusive com tema escuro
 salvo no aparelho.

@@ -11,7 +11,7 @@ beforeEach(()=>{
 describe("server attendance name search",()=>{
  it("matches accents and reversed name parts, includes only confirmed active registrations, and returns no private fields",async()=>{
   const result=await searchAttendanceParticipants("activity","lima antonio");
-  expect(result).toEqual([{name:"Antônio Lima",choirName:"Coro",token:"a".repeat(64),attended:true}]);
+  expect(result).toEqual([{name:"Antônio Lima",badgeName:null,choirName:"Coro",token:"a".repeat(64),attended:true}]);
   expect(mocks.cards).toHaveBeenCalledWith("registration_id",[ids[0]]);
  });
  it("rejects unavailable activities and does not expose card tokens",async()=>{
