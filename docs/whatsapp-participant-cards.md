@@ -6,6 +6,12 @@
 
 Para um grupo específico, marque as caixas ao lado dos nomes e clique em **Enviar selecionados (N)**. **Selecionar elegíveis desta página** marca apenas a página atual, respeitando os filtros. A seleção permanece ao trocar de página e pode ser removida com **Limpar seleção**. Selecionar não envia mensagens. Uma seleção vazia nunca se transforma em envio para todos; o serviço valida os IDs e as condições de cada inscrição novamente antes de criar a fila.
 
+Participantes que já receberam também podem ser selecionados. Nesse caso, o
+botão Enviar selecionados exige confirmar o reenvio do grupo escolhido, incluindo
+tentativas em revisão. Enviar todos continua pulando os envios já registrados.
+Após atualizar o código, reinicie o serviço local para carregar os novos formatos
+de seleção e reenvio.
+
 No computador do operador, abra `scripts/iniciar-whatsapp-inscricoes.cmd` e mantenha essa janela ativa. Volte à tela de inscrições e clique em **Conectar serviço**. O Chrome pode pedir acesso à rede local; o serviço atende apenas em `127.0.0.1:4319`. Feche a janela anterior do Chrome criada pelo script de teste antes do primeiro lote, para liberar o perfil de automação.
 
 Os botões só são habilitados quando o serviço local está acessível. Cada chamada verifica a sessão Supabase e a associação administrativa ativa. O serviço aceita apenas a origem oficial ou desenvolvimento em localhost; domínios adicionais devem ser listados explicitamente em `WHATSAPP_ADMIN_ORIGINS`, separados por vírgula. Chaves administrativas e caminhos de imagens permanecem no serviço local.

@@ -36,8 +36,8 @@ async function localRequest(route: string, body?: unknown): Promise<Status> {
   return result;
 }
 
-export function canSelectWhatsAppRegistration(row: AdminRegistrationRow, registrations: Status["registrations"]) {
-  return row.paymentStatus === "paid" && !row.cancelledAt && !["sent", "review"].includes(registrations[row.id]);
+export function canSelectWhatsAppRegistration(row: AdminRegistrationRow, _registrations: Status["registrations"]) {
+  return row.paymentStatus === "paid" && !row.cancelledAt;
 }
 
 const noRows: AdminRegistrationRow[] = [];
@@ -75,7 +75,7 @@ export function useAdminWhatsApp(enabled: boolean, visibleRows: AdminRegistratio
       const visibleById = new Map(visibleRows.map((row) => [row.id, row]));
       const next = enabled ? current.filter((id) => {
         const row = visibleById.get(id);
-        return !["sent", "review"].includes(status.registrations[id]) && (!row || canSelectWhatsAppRegistration(row, status.registrations));
+        return !row || canSelectWhatsAppRegistration(row, status.registrations);
       }) : [];
       return next.length === current.length ? current : next;
     });
@@ -100,7 +100,13 @@ export function useAdminWhatsApp(enabled: boolean, visibleRows: AdminRegistratio
       setSelectedIds((current) => checked ? [...new Set([...current, ...ids])] : current.filter((id) => !ids.includes(id)));
     },
     clearSelection: () => setSelectedIds([]),
-    sendSelected: () => selectedIds.length ? command("/jobs", { registrationIds: selectedIds }) : Promise.resolve(),
+    sendSelected: (resend = false) => {
+      if (!selectedIds.length) return Promise.resolve();
+      if (!resend) return command("/jobs", { registrationIds: selectedIds });
+      return selectedIds.length === 1
+        ? command("/jobs", { resendRegistrationId: selectedIds[0] })
+        : command("/jobs", { resendRegistrationIds: selectedIds });
+    },
     send: (registrationId?: string) => command("/jobs", registrationId ? { registrationId } : { scope: "all" }),
     // Resending is a separate, single-person request so batch sends keep skipping delivered cards.
     resend: (registrationId: string) => command("/jobs", { resendRegistrationId: registrationId }),
@@ -112,6 +118,8 @@ export type AdminWhatsAppController = ReturnType<typeof useAdminWhatsApp>;
 
 export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller: AdminWhatsAppController; rows?: AdminRegistrationRow[] }) {
   const { status, connected, requesting, error } = controller;
+  const [confirmSelected, setConfirmSelected] = useState(false);
+  const processedSelected = controller.selectedIds.filter(id => ["sent", "review"].includes(status.registrations[id])).length;
   const eligibleRows = rows.filter((row) => canSelectWhatsAppRegistration(row, status.registrations));
   const selectedOnPage = eligibleRows.filter((row) => controller.selectedIds.includes(row.id)).length;
   const phaseLabels: Record<string, string> = {
@@ -135,7 +143,7 @@ export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller
               <Pause className="size-4" aria-hidden="true" />{status.pauseRequested ? "Pausando…" : "Pausar após este cartão"}
             </Button>
           ) : (<>
-            <Button type="button" className="min-h-11" onClick={() => void controller.sendSelected()} disabled={!connected || requesting || !controller.selectedIds.length}>
+            <Button type="button" className="min-h-11" onClick={() => processedSelected ? setConfirmSelected(true) : void controller.sendSelected()} disabled={!connected || requesting || !controller.selectedIds.length}>
               <MessageCircle className="size-4" aria-hidden="true" />Enviar selecionados ({controller.selectedIds.length})
             </Button>
             <Button type="button" variant="outline" className="min-h-11" onClick={() => void controller.send()} disabled={!connected || requesting}>
@@ -156,10 +164,17 @@ export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller
       </div>
       {!connected && <p className="text-xs text-muted-foreground">Neste computador, abra <strong>scripts/iniciar-whatsapp-inscricoes.cmd</strong> e clique em “Conectar serviço”. Se o Chrome pedir acesso à rede local, permita para conectar ao serviço deste computador.</p>}
       {connected && <div role="status" aria-live="polite" className="space-y-1 text-xs text-muted-foreground">
-        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} enviados nesta execução` : ""}. Os cartões já enviados são pulados nos envios em lote; para mandar de novo, use “Reenviar cartão” na linha da pessoa.</p>
+        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} enviados nesta execução` : ""}. “Enviar todos” pula quem já recebeu. Para reenviar, selecione as pessoas e confirme o reenvio, ou use “Reenviar cartão”.</p>
         {status.total > 0 && <progress aria-label="Progresso dos envios" className="h-2 w-full max-w-md accent-primary" max={status.total} value={status.completed} />}
       </div>}
       {(error || status.error) && <p role="alert" className="text-sm text-destructive">{error || status.error}</p>}
+      <AlertDialog open={confirmSelected} onOpenChange={setConfirmSelected}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Reenviar os cartões selecionados?</AlertDialogTitle>
+            <AlertDialogDescription>{processedSelected} de {controller.selectedIds.length} selecionados já receberam o cartão ou têm uma tentativa em revisão. Confirme para enviar novamente o PNG e a mensagem atualizados apenas aos selecionados.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction disabled={status.busy || requesting} onClick={() => void controller.sendSelected(true)}>Confirmar reenvio dos selecionados</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

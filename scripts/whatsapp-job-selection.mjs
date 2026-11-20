@@ -6,12 +6,15 @@ export function parseJobSelection(input) {
   const keys = Object.keys(input);
   if (keys.length !== 1) throw new Error("Selecione todos, uma inscrição ou uma lista de inscrições.");
   if (input.scope === "all") return { scope: "all" };
-  // Resending is always one explicit person, so an already-delivered batch can never be repeated by accident.
+  // Resending requires explicit IDs and never applies to scope=all.
   if (keys[0] === "resendRegistrationId" && uuid.test(input.resendRegistrationId || "")) return { registrationIds: [input.resendRegistrationId], resend: true };
   if (keys[0] === "registrationId" && uuid.test(input.registrationId || "")) return { registrationIds: [input.registrationId] };
   if (keys[0] === "registrationIds" && Array.isArray(input.registrationIds) && input.registrationIds.length > 0 &&
       input.registrationIds.length <= 1000 && input.registrationIds.every((id) => typeof id === "string" && uuid.test(id))) {
     return { registrationIds: [...new Set(input.registrationIds)] };
+  }
+  if (keys[0] === "resendRegistrationIds" && Array.isArray(input.resendRegistrationIds) && input.resendRegistrationIds.length > 0 && input.resendRegistrationIds.length <= 1000 && input.resendRegistrationIds.every(id => typeof id === "string" && uuid.test(id))) {
+    return { registrationIds: [...new Set(input.resendRegistrationIds)], resend: true };
   }
   throw new Error("Selecione pelo menos um participante válido (máximo de 1000).");
 }
