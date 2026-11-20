@@ -18,6 +18,7 @@ export type PublicParticipantCard = {
   name: string; choirName: string; eligible: boolean; cardUrl: string; qrDataUrl: string;
   fullName?: string; photoUrl?: string | null; lodging?: ParticipantCardLodging | null;
 };
+export type PublicAttendanceConfirmation = Pick<PublicParticipantCard, "name" | "fullName" | "choirName" | "photoUrl" | "lodging">;
 export type AttendanceCardExportRow = { name: string; choirName: string; token: string };
 
 export function extractParticipantCardToken(value: string): string {

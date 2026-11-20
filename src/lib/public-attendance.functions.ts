@@ -11,6 +11,9 @@ export const getPublicAttendanceActivities = createServerFn({ method: "GET" }).h
 export const getPublicParticipantCard = createServerFn({ method: "GET" })
   .validator(z.object({ token: participantCardTokenSchema }).strict())
   .handler(async ({ data }) => (await service()).card(data.token, new URL(getRequest().url).origin));
+export const getPublicAttendanceConfirmation = createServerFn({ method: "GET" })
+  .validator(z.object({ token: participantCardTokenSchema }).strict())
+  .handler(async ({ data }) => (await service()).confirmation(data.token));
 export const recordPublicAttendance = createServerFn({ method: "POST" })
   .validator(publicAttendanceInputSchema)
   .handler(async ({ data }) => (await service()).record(data));

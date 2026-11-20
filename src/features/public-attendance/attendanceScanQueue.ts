@@ -5,7 +5,7 @@ export type ScanQueueSnapshot = { pending: number; failed: number; active: numbe
 const DEFAULT_CAPACITY = 256;
 
 export function createAttendanceScanQueue<T>(options: {
-  submit(token: string): Promise<T>; onResult(result: T): void; onChange(snapshot: ScanQueueSnapshot): void;
+  submit(token: string): Promise<T>; onResult(result: T, token: string): void; onChange(snapshot: ScanQueueSnapshot): void;
   concurrency?: number; capacity?: number;
 }) {
   const capacity = Math.max(1, options.capacity ?? DEFAULT_CAPACITY);
@@ -21,7 +21,7 @@ export function createAttendanceScanQueue<T>(options: {
       let request: Promise<T>;
       try { request = Promise.resolve(options.submit(token)); }
       catch (error) { request = Promise.reject(error); }
-      void request.then(result => { if (!disposed) options.onResult(result); }, () => { if (!disposed) failed.add(token); })
+      void request.then(result => { if (!disposed) options.onResult(result, token); }, () => { if (!disposed) failed.add(token); })
         .finally(() => { active--; if (!disposed) { pump(); publish(); } });
     }
   }
