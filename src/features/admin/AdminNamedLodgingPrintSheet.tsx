@@ -14,7 +14,7 @@ type Props = {
 const collator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
 const genericChoirs = new Set(["", "ACOMPANHANTE", "ACOMPANHANTES", "AVULSO", "AVULSOS", "AVULSOS E ACOMPANHANTES", "SEM CORO"]);
 function choirKey(value: string) { return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR"); }
-function printName(person: Person) { return `${printName(person)}${person.choirName ? ` (${person.choirName})` : ""}`; }
+function printName(person: Person): string { return `${person.name}${person.star ? " *" : ""}${person.choirName ? ` (${person.choirName})` : ""}`; }
 
 function roomNumberOrder(left: NamedLodgingRoom, right: NamedLodgingRoom) {
   return collator.compare(left.name, right.name);
