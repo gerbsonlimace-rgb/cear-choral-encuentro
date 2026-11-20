@@ -1,0 +1,205 @@
+import type { AdminRegistrationRow } from "./admin.domain";
+import { DIOCESE_SEATS } from "./cearaGeo";
+import { voicePartOptions } from "@/features/registration/registration.domain";
+
+export type ParticipantCount = { key: string; label: string; value: number };
+
+export type ParticipantChoirMap = {
+  choirName: string;
+  diocese: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  total: number;
+  regentName: string | null;
+  regentPhotoUrl: string | null;
+  voices: ParticipantCount[];
+  genders: ParticipantCount[];
+};
+
+export type ParticipantDioceseMap = {
+  diocese: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  total: number;
+  choirs: number;
+};
+
+export type ParticipantMapData = {
+  generatedAt: string;
+  total: number;
+  genders: ParticipantCount[];
+  voices: ParticipantCount[];
+  ageBands: ParticipantCount[];
+  choirs: ParticipantChoirMap[];
+  dioceses: ParticipantDioceseMap[];
+  unlocated: number;
+};
+
+export const GENDER_LABELS: Readonly<Record<string, string>> = {
+  masculino: "Masculino",
+  feminino: "Feminino",
+  nao_informado: "Não informado",
+};
+
+const AGE_BANDS = [
+  { key: "ate-17", label: "Até 17 anos", max: 17 },
+  { key: "18-25", label: "18 a 25 anos", max: 25 },
+  { key: "26-35", label: "26 a 35 anos", max: 35 },
+  { key: "36-45", label: "36 a 45 anos", max: 45 },
+  { key: "46-59", label: "46 a 59 anos", max: 59 },
+  { key: "60-mais", label: "60 anos ou mais", max: Number.POSITIVE_INFINITY },
+] as const;
+
+const CONFIRMED_STATUSES = new Set(["paid", "partially_paid", "exempt"]);
+
+const VOICE_KEYS = voicePartOptions.map((option) => option.value);
+const GENDER_KEYS = ["masculino", "feminino", "nao_informado"] as const;
+
+export function isConfirmedParticipant(row: AdminRegistrationRow): boolean {
+  return !row.cancelledAt && CONFIRMED_STATUSES.has(row.financialState?.status ?? row.paymentStatus);
+}
+
+export function ageOn(birthDate: string, reference: Date): number | null {
+  if (!birthDate) return null;
+  const birth = new Date(`${birthDate}T12:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  let years = reference.getFullYear() - birth.getFullYear();
+  const month = reference.getMonth() - birth.getMonth();
+  if (month < 0 || (month === 0 && reference.getDate() < birth.getDate())) years -= 1;
+  return years >= 0 && years < 130 ? years : null;
+}
+
+function ageBandOf(birthDate: string, reference: Date): string {
+  const age = ageOn(birthDate, reference);
+  if (age === null) return "nao-informado";
+  return AGE_BANDS.find((band) => age <= band.max)?.key ?? "60-mais";
+}
+
+function countBy(values: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return counts;
+}
+
+function orderedCounts(
+  counts: Map<string, number>,
+  keys: readonly string[],
+  labels: Readonly<Record<string, string>>,
+): ParticipantCount[] {
+  const result = keys
+    .map((key) => ({ key, label: labels[key] ?? key, value: counts.get(key) ?? 0 }))
+    .filter((item) => item.value > 0);
+  const known = new Set(keys);
+  for (const [key, value] of counts) {
+    if (!known.has(key) && value > 0) result.push({ key, label: labels[key] ?? key, value });
+  }
+  return result;
+}
+
+function seatOf(diocese: string | null) {
+  return DIOCESE_SEATS.find((seat) => seat.diocese === diocese) ?? null;
+}
+
+/** Pure aggregation used by the administrative dashboard and by its PDF export. */
+export function buildParticipantMapData(
+  registrations: AdminRegistrationRow[],
+  now: Date = new Date(),
+): ParticipantMapData {
+  const rows = registrations.filter(isConfirmedParticipant);
+  const genderCounts = countBy(
+    rows.map((row) => (row.gender in GENDER_LABELS ? row.gender : "nao_informado")),
+  );
+  const voiceCounts = countBy(rows.map((row) => row.voicePart ?? "nao_sei_informar"));
+  const ageCounts = countBy(rows.map((row) => ageBandOf(row.birthDate, now)));
+
+  const choirGroups = new Map<string, AdminRegistrationRow[]>();
+  for (const row of rows) {
+    const name = row.choirName?.trim();
+    if (!name) continue;
+    choirGroups.set(name, [...(choirGroups.get(name) ?? []), row]);
+  }
+
+  const choirs: ParticipantChoirMap[] = [...choirGroups.entries()]
+    .map(([choirName, members]) => {
+      const dioceseCounts = countBy(members.map((member) => member.diocese || "(não informada)"));
+      const diocese = [...dioceseCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const seat = seatOf(diocese);
+      const regent =
+        members.find(
+          (member) =>
+            member.musicalProfile === "regente" &&
+            Boolean(member.photoUrl) &&
+            Boolean(member.regentName || member.name),
+        ) ?? members.find((member) => member.musicalProfile === "regente") ?? null;
+      return {
+        choirName,
+        diocese,
+        city: seat?.city ?? null,
+        latitude: seat?.latitude ?? null,
+        longitude: seat?.longitude ?? null,
+        total: members.length,
+        regentName: regent?.regentName || regent?.name || null,
+        regentPhotoUrl: regent?.photoUrl ?? null,
+        voices: orderedCounts(
+          countBy(members.map((member) => member.voicePart ?? "nao_sei_informar")),
+          VOICE_KEYS,
+          Object.fromEntries(voicePartOptions.map((option) => [option.value, option.label])),
+        ),
+        genders: orderedCounts(
+          countBy(
+            members.map((member) =>
+              member.gender in GENDER_LABELS ? member.gender : "nao_informado",
+            ),
+          ),
+          GENDER_KEYS,
+          GENDER_LABELS,
+        ),
+      };
+    })
+    .sort((left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName, "pt-BR"));
+
+  const dioceseGroups = new Map<string, { total: number; choirNames: Set<string> }>();
+  for (const choir of choirs) {
+    if (!choir.diocese) continue;
+    const group = dioceseGroups.get(choir.diocese) ?? { total: 0, choirNames: new Set<string>() };
+    group.total += choir.total;
+    group.choirNames.add(choir.choirName);
+    dioceseGroups.set(choir.diocese, group);
+  }
+  const dioceses: ParticipantDioceseMap[] = DIOCESE_SEATS.flatMap((seat) => {
+    const group = dioceseGroups.get(seat.diocese);
+    if (!group) return [];
+    return [{
+      diocese: seat.diocese,
+      city: seat.city,
+      latitude: seat.latitude,
+      longitude: seat.longitude,
+      total: group.total,
+      choirs: group.choirNames.size,
+    }];
+  });
+
+  return {
+    generatedAt: now.toISOString(),
+    total: rows.length,
+    genders: orderedCounts(genderCounts, GENDER_KEYS, GENDER_LABELS),
+    voices: orderedCounts(
+      voiceCounts,
+      VOICE_KEYS,
+      Object.fromEntries(voicePartOptions.map((option) => [option.value, option.label])),
+    ),
+    ageBands: orderedCounts(
+      ageCounts,
+      [...AGE_BANDS.map((band) => band.key), "nao-informado"],
+      {
+        ...Object.fromEntries(AGE_BANDS.map((band) => [band.key, band.label])),
+        "nao-informado": "Não informado",
+      },
+    ),
+    choirs,
+    dioceses,
+    unlocated: rows.length - dioceses.reduce((sum, item) => sum + item.total, 0),
+  };
+}

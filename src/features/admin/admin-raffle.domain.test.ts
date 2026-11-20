@@ -4,7 +4,7 @@ import { summarizeAdminRegistrations, type AdminRegistrationRow } from "./admin.
 
 const row: AdminRegistrationRow = {
   id: "isento", createdAt: "2026-10-18", name: "Inscrito", badgeName: null,
-  cpf: "52998224725", birthDate: "1990-01-01", diocese: "Quixadá", choirName: "Coro isento",
+  cpf: "52998224725", gender: "nao_informado", birthDate: "1990-01-01", diocese: "Quixadá", choirName: "Coro isento",
   otherChoirName: null, email: "teste@example.com", phone: "85999999999", city: "Quixadá",
   institution: null, role: "singer", voicePart: null, observations: null, includeShirt: false,
   shirtSize: null, shirtPriceCents: null, paymentStatus: "paid", amountCents: 0,

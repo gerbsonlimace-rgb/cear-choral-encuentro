@@ -15,6 +15,7 @@ import {
   type AdminRegistrationRow,
   type AdminRegistrationSummary,
 } from "@/features/admin/admin.domain";
+import type { ParticipantMapData } from "@/features/admin/participantMap.domain";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { participantRegistrationIdSchema } from "@/features/participant/participant.domain";
@@ -36,6 +37,8 @@ export type AdminRegistrationsBootstrap = AdminPageBootstrap<{
   registrations: AdminRegistrationPage;
   summary: AdminRegistrationSummary;
 }>;
+
+export type AdminParticipantMapBootstrap = AdminPageBootstrap<ParticipantMapData>;
 
 export type AdminHospedagemBootstrap = AdminPageBootstrap<{
   registrations: AdminRegistrationRow[];
@@ -504,4 +507,30 @@ export const setAdminRegistrationRafflePaid = createServerFn({ method: "POST" })
     const { setAdminRegistrationRafflePaid: run } =
       await import("@/features/admin/admin-raffle-settlement.server");
     return run(data);
+  });
+
+export const getAdminParticipantMap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ getAdminAuthorizer }, { loadParticipantMapData }] = await Promise.all([
+      import("@/features/admin/admin-auth.server"),
+      import("@/features/admin/participantMap.server"),
+    ]);
+    return createAdminBootstrap<ParticipantMapData>({
+      userId: context.userId,
+      email: typeof context.claims.email === "string" ? context.claims.email : null,
+      findActive: (userId) => getAdminAuthorizer().findActive(userId),
+      load: () => loadParticipantMapData(),
+    });
+  });
+
+/** Prepared on the server before the final click so mobile file delivery keeps user activation. */
+export const prepareAdminParticipantMapInfographic = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const [{ loadParticipantMapData }, { buildParticipantMapInfographic }] = await Promise.all([
+      import("@/features/admin/participantMap.server"),
+      import("@/features/admin/participantMapPdf"),
+    ]);
+    return buildParticipantMapInfographic(await loadParticipantMapData());
   });

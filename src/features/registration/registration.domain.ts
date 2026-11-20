@@ -84,6 +84,15 @@ export const musicalProfileOptions: ReadonlyArray<{ value: MusicalProfile; label
   { value: "coralista", label: "Coralista" },
 ];
 
+const genderValues = ["masculino", "feminino", "nao_informado"] as const;
+export const genderSchema = z.enum(genderValues);
+export type Gender = z.infer<typeof genderSchema>;
+export const genderOptions: ReadonlyArray<{ value: Gender; label: string }> = [
+  { value: "masculino", label: "Masculino" },
+  { value: "feminino", label: "Feminino" },
+  { value: "nao_informado", label: "Não informado" },
+];
+
 const fortalezaDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Fortaleza",
   year: "numeric",
@@ -186,6 +195,7 @@ export const registrationSchema = z
     choirId: z.string().uuid("Selecione um coro válido.").nullable(),
     otherChoirName: z.string().trim().min(2, "Informe o nome do coro.").max(120).nullable(),
     musicalProfile: musicalProfileSchema,
+    gender: genderSchema.default("nao_informado"),
     voicePart: voicePartSchema.nullable(),
     photo: registrationPhotoSchema,
     participationType: participationTypeSchema,
@@ -250,7 +260,8 @@ export const registrationSchema = z
     }
   });
 
-export type RegistrationInput = z.infer<typeof registrationSchema>;
+// Input type keeps `gender` optional: the schema supplies the default at parse time.
+export type RegistrationInput = z.input<typeof registrationSchema>;
 export type RegistrationPhotoInput = z.infer<typeof registrationPhotoSchema>;
 export type CheckoutItem = { quantity: number; price: number; description: string };
 

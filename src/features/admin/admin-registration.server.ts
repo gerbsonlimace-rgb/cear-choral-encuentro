@@ -39,6 +39,7 @@ export const adminRegistrationColumns = [
   "institution",
   "role",
   "musical_profile",
+  "gender",
   "voice_part",
   "observations",
   "dietary_restriction",
@@ -851,6 +852,7 @@ export function createSupabaseAdminRegistrationRepository(
           institution: input.institution,
           role: input.role,
           musical_profile: input.musicalProfile,
+          gender: input.gender,
           voice_part: input.voicePart,
           observations: input.observations,
         })

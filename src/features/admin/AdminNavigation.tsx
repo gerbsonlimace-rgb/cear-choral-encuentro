@@ -5,6 +5,7 @@ import {
   Files,
   HeartHandshake,
   LayoutDashboard,
+  MapPinned,
   Megaphone,
   Music2,
   WalletCards,
@@ -17,6 +18,7 @@ import { AccountMenu } from "@/features/access/AccountMenu";
 
 export type AdminNavigationKey =
   | "registrations"
+  | "participantMap"
   | "finance"
   | "choirs"
   | "hospedagem"
@@ -37,6 +39,7 @@ type AdminNavigationProps = {
 
 export type AdminNavigationPath =
   | "/admin/inscricoes"
+  | "/admin/mapa-participantes"
   | "/admin/financeiro"
   | "/admin/coros"
   | "/admin/hospedagem"
@@ -51,6 +54,7 @@ export type AdminNavigationPath =
 
 const links = [
   { key: "registrations", href: "/admin/inscricoes", label: "Inscrições", icon: ClipboardList },
+  { key: "participantMap", href: "/admin/mapa-participantes", label: "Mapa participantes", icon: MapPinned },
   { key: "choirs", href: "/admin/coros", label: "Coros", icon: Music2 },
   { key: "hospedagem", href: "/admin/hospedagem", label: "Hospedagem", icon: BedDouble },
   { key: "finance", href: "/admin/financeiro", label: "Financeiro", icon: WalletCards },

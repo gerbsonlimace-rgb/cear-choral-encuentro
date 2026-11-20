@@ -4,6 +4,7 @@ import {
   birthDateSchema,
   brazilianMobilePhoneSchema,
   cpfSchema,
+  genderSchema,
   musicalProfileSchema,
   voicePartSchema,
 } from "@/features/registration/registration.domain";
@@ -155,6 +156,7 @@ const adminUpdateRegistrationFields = z
     institution: optionalTrimmed(120).default(null),
     role: optionalTrimmed(60).default(null),
     musicalProfile: musicalProfileSchema.nullable().default(null),
+    gender: genderSchema.default("nao_informado"),
     voicePart: voicePartSchema.nullable().default(null),
     observations: optionalTrimmed(500).default(null),
   })
@@ -239,6 +241,7 @@ export type AdminRegistrationRow = {
   institution: string | null;
   role: string;
   musicalProfile?: string | null;
+  gender: string;
   voicePart: string | null;
   observations: string | null;
   dietaryRestriction?: boolean | null;
@@ -382,6 +385,7 @@ export function mapAdminRegistrationRow(
     institution: row.institution,
     role: displayText(row.role),
     musicalProfile: row.musical_profile,
+    gender: row.gender ?? "nao_informado",
     voicePart: row.voice_part,
     observations: row.observations,
     dietaryRestriction: row.dietary_restriction ?? null,

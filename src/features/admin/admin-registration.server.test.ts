@@ -21,7 +21,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 
 const expectedColumns =
-  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,dietary_restriction,dietary_restriction_types,dietary_restriction_other,uses_event_van,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,cancelled_at,cancelled_by,refund_cents,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,gender,voice_part,observations,dietary_restriction,dietary_restriction_types,dietary_restriction_other,uses_event_van,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,cancelled_at,cancelled_by,refund_cents,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -539,6 +539,7 @@ describe("registration summary", () => {
             badgeName: selectedRow.badge_name,
             birthDate: selectedRow.birth_date,
             otherChoirName: selectedRow.other_choir_name,
+            gender: "nao_informado",
             voicePart: selectedRow.voice_part,
             includeShirt: selectedRow.include_shirt,
             shirtSize: selectedRow.shirt_size,
@@ -1095,6 +1096,7 @@ describe("registration repository list", () => {
           name: "Maria",
           badgeName: "Maria",
           cpf: "529.982.247-25",
+          gender: "nao_informado",
           birthDate: "1990-01-02",
           diocese: "Diocese de Quixadá",
           choirName: "Diocese de Quixadá",

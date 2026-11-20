@@ -815,6 +815,7 @@ export type Database = {
           email: string | null
           exempted_at: string | null
           exempted_by: string | null
+          gender: string
           id: string
           include_shirt: boolean
           infinitepay_invoice_slug: string | null
@@ -873,6 +874,7 @@ export type Database = {
           email?: string | null
           exempted_at?: string | null
           exempted_by?: string | null
+          gender?: string
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
@@ -931,6 +933,7 @@ export type Database = {
           email?: string | null
           exempted_at?: string | null
           exempted_by?: string | null
+          gender?: string
           id?: string
           include_shirt?: boolean
           infinitepay_invoice_slug?: string | null
