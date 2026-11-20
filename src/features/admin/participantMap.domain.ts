@@ -3,6 +3,7 @@ import { DIOCESE_SEATS } from "./cearaGeo";
 import { voicePartOptions } from "@/features/registration/registration.domain";
 
 export type ParticipantCount = { key: string; label: string; value: number };
+export type GenderCount = ParticipantCount & { inferred: number };
 
 export type ParticipantChoirMap = {
   choirName: string;
@@ -14,7 +15,7 @@ export type ParticipantChoirMap = {
   regentName: string | null;
   regentPhotoUrl: string | null;
   voices: ParticipantCount[];
-  genders: ParticipantCount[];
+  genders: GenderCount[];
 };
 
 export type ParticipantDioceseMap = {
@@ -29,7 +30,8 @@ export type ParticipantDioceseMap = {
 export type ParticipantMapData = {
   generatedAt: string;
   total: number;
-  genders: ParticipantCount[];
+  genders: GenderCount[];
+  inferredGenderCount: number;
   voices: ParticipantCount[];
   ageBands: ParticipantCount[];
   choirs: ParticipantChoirMap[];
@@ -102,15 +104,49 @@ function seatOf(diocese: string | null) {
   return DIOCESE_SEATS.find((seat) => seat.diocese === diocese) ?? null;
 }
 
+function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean } {
+  const declared = row.gender?.trim().toLocaleLowerCase("pt-BR");
+  if (declared && declared in GENDER_LABELS && declared !== "nao_informado") {
+    return { key: declared, inferred: false };
+  }
+
+  switch (row.voicePart?.trim().toLocaleLowerCase("pt-BR")) {
+    case "soprano":
+    case "contralto":
+      return { key: "feminino", inferred: true };
+    case "tenor":
+    case "baixo":
+      return { key: "masculino", inferred: true };
+    default:
+      return { key: "nao_informado", inferred: false };
+  }
+}
+
+function countGenders(rows: AdminRegistrationRow[]): { counts: GenderCount[]; inferred: number } {
+  const values = new Map<string, number>();
+  const inferredValues = new Map<string, number>();
+  for (const row of rows) {
+    const gender = genderFor(row);
+    values.set(gender.key, (values.get(gender.key) ?? 0) + 1);
+    if (gender.inferred) {
+      inferredValues.set(gender.key, (inferredValues.get(gender.key) ?? 0) + 1);
+    }
+  }
+  const counts = GENDER_KEYS.flatMap((key) => {
+    const value = values.get(key) ?? 0;
+    return value > 0 ? [{ key, label: GENDER_LABELS[key], value, inferred: inferredValues.get(key) ?? 0 }] : [];
+  });
+  const inferred = [...inferredValues.values()].reduce((sum, value) => sum + value, 0);
+  return { counts, inferred };
+}
+
 /** Pure aggregation used by the administrative dashboard and by its PDF export. */
 export function buildParticipantMapData(
   registrations: AdminRegistrationRow[],
   now: Date = new Date(),
 ): ParticipantMapData {
   const rows = registrations.filter(isConfirmedParticipant);
-  const genderCounts = countBy(
-    rows.map((row) => (row.gender in GENDER_LABELS ? row.gender : "nao_informado")),
-  );
+  const genderSummary = countGenders(rows);
   const voiceCounts = countBy(rows.map((row) => row.voicePart ?? "nao_sei_informar"));
   const ageCounts = countBy(rows.map((row) => ageBandOf(row.birthDate, now)));
 
@@ -126,6 +162,7 @@ export function buildParticipantMapData(
       const dioceseCounts = countBy(members.map((member) => member.diocese || "(não informada)"));
       const diocese = [...dioceseCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
       const seat = seatOf(diocese);
+      const genderSummary = countGenders(members);
       const regent =
         members.find(
           (member) =>
@@ -147,15 +184,7 @@ export function buildParticipantMapData(
           VOICE_KEYS,
           Object.fromEntries(voicePartOptions.map((option) => [option.value, option.label])),
         ),
-        genders: orderedCounts(
-          countBy(
-            members.map((member) =>
-              member.gender in GENDER_LABELS ? member.gender : "nao_informado",
-            ),
-          ),
-          GENDER_KEYS,
-          GENDER_LABELS,
-        ),
+        genders: genderSummary.counts,
       };
     })
     .sort((left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName, "pt-BR"));
@@ -184,7 +213,8 @@ export function buildParticipantMapData(
   return {
     generatedAt: now.toISOString(),
     total: rows.length,
-    genders: orderedCounts(genderCounts, GENDER_KEYS, GENDER_LABELS),
+    genders: genderSummary.counts,
+    inferredGenderCount: genderSummary.inferred,
     voices: orderedCounts(
       voiceCounts,
       VOICE_KEYS,

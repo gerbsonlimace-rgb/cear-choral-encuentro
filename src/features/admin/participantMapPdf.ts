@@ -115,9 +115,16 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
     page.drawText(metric.value, { x: x + 9, y: 458, font: bold, size: 19, color: ink });
   });
 
-  drawBars(page, 34, 424, 214, "Homens e mulheres", data.genders, font, bold, accent, 24);
+  drawBars(page, 34, 424, 214, "Distribuição por gênero", data.genders, font, bold, accent, 24);
   drawBars(page, 278, 424, 214, "Naipes", data.voices, font, bold, accents[1], 21);
   drawBars(page, 522, 424, 286, "Faixa etária", data.ageBands, font, bold, accents[3], 20);
+  page.drawText(
+    printable(
+      `${data.inferredGenderCount} gênero(s) estimado(s) pelo naipe vocal; o gênero informado tem prioridade.`,
+      font,
+    ),
+    { x: 34, y: 315, font, size: 7, color: muted },
+  );
 
   // Ceará map with one point per diocese seat.
   const scale = 0.24;
@@ -127,7 +134,7 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
     x: mapX, y: mapY, scale,
     color: rgb(0.93, 0.96, 0.99),
     borderColor: accent,
-    borderWidth: 1,
+    borderWidth: 2.5,
   });
   const largest = Math.max(1, ...data.dioceses.map((item) => item.total));
   for (const seat of data.dioceses) {
@@ -135,8 +142,21 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
     const cx = mapX + point.x * scale;
     const cy = mapY + (CEARA_VIEWBOX.height - point.y) * scale;
     const radius = 5 + (seat.total / largest) * 17;
+    const isCentral = seat.city === "Quixadá";
+    if (isCentral) {
+      page.drawCircle({ x: cx, y: cy, size: radius + 4, color: accent, opacity: 0.9 });
+    }
     page.drawCircle({ x: cx, y: cy, size: radius, color: rgb(0.86, 0.36, 0.22), opacity: 0.75 });
     page.drawCircle({ x: cx, y: cy, size: 3, color: rgb(1, 1, 1) });
+    if (isCentral) {
+      page.drawText("QUIXADA - SEDE CENTRAL", {
+        x: cx + radius + 5,
+        y: cy - 2,
+        font: bold,
+        size: 5.6,
+        color: ink,
+      });
+    }
   }
   page.drawText(printable("Participantes por sede diocesana", font), {
     x: 260, y: 250, font: bold, size: 11, color: ink,
