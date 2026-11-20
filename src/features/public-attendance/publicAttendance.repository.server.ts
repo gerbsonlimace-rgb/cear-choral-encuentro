@@ -65,6 +65,15 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       const messages = { invalid_card: "QR Code não reconhecido. Apresente o cartão do participante.", ineligible: "Inscrição pendente ou cancelada. Procure a equipe do evento.", activity_unavailable: "Esta atividade não está disponível para chamada." };
       return { status: row.status, message: messages[row.status] } as PublicAttendanceResult;
     },
+    async archiveCall(input) {
+      const { data, error } = await client().rpc("archive_public_attendance_call", {
+        p_activity_id: input.activityId,
+        p_archived_by_registration_id: input.registrationId,
+      });
+      if (error) throw new Error("Não foi possível arquivar a chamada. Tente novamente.");
+      const row = z.object({ archived_count: z.number().int().nonnegative(), revision: z.string() }).parse(Array.isArray(data) ? data[0] : data);
+      return { archivedCount: row.archived_count, revision: row.revision };
+    },
     async saveLogistics(input) {
       const { data, error } = await client().rpc("save_public_attendance_logistics", {
         p_token: input.token,

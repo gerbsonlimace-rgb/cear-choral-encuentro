@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
-import { requireEventReports, requireEventScanner, requireEventAccess } from "@/features/public-attendance/eventManagement.middleware";
+import { requireEventReports, requireEventScanner, requireEventAccess, requireEventArchiver } from "@/features/public-attendance/eventManagement.middleware";
 import {
   participantCardTokenSchema,
   publicAttendanceInputSchema,
@@ -24,6 +24,13 @@ export const recordPublicAttendance = createServerFn({ method: "POST" })
   .middleware([requireEventScanner])
   .validator(publicAttendanceInputSchema)
   .handler(async ({ data }) => (await service()).record(data));
+export const archivePublicAttendanceCall = createServerFn({ method: "POST" }).middleware([requireEventArchiver])
+  .validator(z.object({ activityId: z.string().uuid() }).strict())
+  .handler(async ({ data }) => {
+    const identity = await (await import("@/features/public-attendance/eventManagement-pass.server")).readEventManagementPassIdentity();
+    if (!identity) throw new Error("Sessão expirada. Desbloqueie o gerenciamento novamente.");
+    return (await service()).archiveCall({ activityId: data.activityId, registrationId: identity.registrationId });
+  });
 export const searchEventAttendanceParticipants = createServerFn({method:"POST"}).middleware([requireEventScanner])
   .validator(z.object({activityId:z.string().uuid(),query:z.string().trim().max(100)}).strict())
   .handler(async({data})=>(await import("@/features/public-attendance/attendanceSearch.server")).searchAttendanceParticipants(data.activityId,data.query));
@@ -50,6 +57,6 @@ export const getEventAttendanceReport = createServerFn({ method: "POST" }).middl
     return { report, file };
   });
 
-export const setRegistrationEventReportAccess = createServerFn({ method: "POST" }).middleware([requireAdmin])
-  .validator(z.object({ registrationId: z.string().uuid(), enabled: z.boolean() }).strict())
-  .handler(async ({ data }) => (await import("@/features/public-attendance/eventManagement-access.server")).setEventReportAccess(data.registrationId,data.enabled));
+export const setRegistrationEventManagementPermission = createServerFn({ method: "POST" }).middleware([requireAdmin])
+  .validator(z.object({ registrationId: z.string().uuid(), permission: z.enum(["reports","scan","archive"]), enabled: z.boolean() }).strict())
+  .handler(async ({ data }) => (await import("@/features/public-attendance/eventManagement-access.server")).setEventManagementPermission(data.registrationId,data.permission,data.enabled));

@@ -1,5 +1,8 @@
-export type EventManagementAccess = { canScan: boolean; canReport: boolean };
+export type EventManagementAccess = { canScan: boolean; canReport: boolean; canArchive: boolean };
+export type EventManagementPermission = "reports" | "scan" | "archive";
 export const EVENT_REPORT_ROLE_KEY = "event_report_registration_id";
+export const EVENT_SCAN_ROLE_KEY = "event_scan_registration_id";
+export const EVENT_ARCHIVE_ROLE_KEY = "event_archive_registration_id";
 
 /** Server-owned Auth app_metadata decides reports; participant-editable metadata is ignored. */
 export function evaluateEventManagementAccess(
@@ -8,8 +11,12 @@ export function evaluateEventManagementAccess(
   isAdmin: boolean,
 ): EventManagementAccess {
   const canScan = Boolean(isAdmin);
-  if (!account || account.access_status !== "active" || account.registrations?.cancelled_at !== null) return { canScan, canReport: false };
-  return { canScan, canReport: user?.app_metadata?.[EVENT_REPORT_ROLE_KEY] === account.registration_id };
+  if (!account || account.access_status !== "active" || account.registrations?.cancelled_at !== null) return { canScan, canReport: false, canArchive: false };
+  return {
+    canScan: canScan || user?.app_metadata?.[EVENT_SCAN_ROLE_KEY] === account.registration_id,
+    canReport: user?.app_metadata?.[EVENT_REPORT_ROLE_KEY] === account.registration_id,
+    canArchive: user?.app_metadata?.[EVENT_ARCHIVE_ROLE_KEY] === account.registration_id,
+  };
 }
 export type AttendanceReportPerson = {
   id: string; name: string; choirName: string; checkedInAt: string | null;

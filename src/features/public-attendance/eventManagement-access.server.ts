@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAdminAuthorizer } from "@/features/admin/admin-auth.server";
-import { evaluateEventManagementAccess, EVENT_REPORT_ROLE_KEY, type EventManagementAccess } from "./eventManagement.domain";
+import { evaluateEventManagementAccess, EVENT_ARCHIVE_ROLE_KEY, EVENT_REPORT_ROLE_KEY, EVENT_SCAN_ROLE_KEY, type EventManagementAccess, type EventManagementPermission } from "./eventManagement.domain";
 
 // Server-owned Auth app_metadata; participant-editable user_metadata is never trusted.
 export async function getEventManagementAccess(userId: string): Promise<EventManagementAccess> {
@@ -17,7 +17,7 @@ export async function getEventManagementAccess(userId: string): Promise<EventMan
   );
 }
 
-export async function setEventReportAccess(registrationId: string, enabled: boolean) {
+export async function setEventManagementPermission(registrationId: string, permission: EventManagementPermission, enabled: boolean) {
   const { data, error } = await supabaseAdmin.from("participant_accounts")
     .select("user_id,access_status,registrations(cancelled_at)").eq("registration_id", registrationId).maybeSingle();
   if (error) throw new Error("Não foi possível consultar a conta do participante.");
@@ -25,15 +25,21 @@ export async function setEventReportAccess(registrationId: string, enabled: bool
   if (enabled && data.registrations?.cancelled_at) throw new Error("A inscrição está cancelada.");
   const user = await supabaseAdmin.auth.admin.getUserById(data.user_id);
   if (user.error || !user.data.user) throw new Error("Não foi possível consultar o acesso.");
+  const key = permission === "reports" ? EVENT_REPORT_ROLE_KEY : permission === "scan" ? EVENT_SCAN_ROLE_KEY : EVENT_ARCHIVE_ROLE_KEY;
   const update = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
-    app_metadata: { ...user.data.user.app_metadata, [EVENT_REPORT_ROLE_KEY]: enabled ? registrationId : null },
+    app_metadata: { ...user.data.user.app_metadata, [key]: enabled ? registrationId : null },
   });
   if (update.error) throw new Error("Não foi possível salvar a permissão.");
-  return { enabled };
+  return { registrationId, permission, enabled };
 }
 
-export async function hasEventReportAccessForAccount(userId: string, registrationId: string) {
+export async function getEventManagementPermissionsForAccount(userId: string, registrationId: string) {
   const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-  if (error) throw new Error("Não foi possível consultar a permissão de relatórios.");
-  return data.user?.app_metadata?.[EVENT_REPORT_ROLE_KEY] === registrationId;
+  if (error) throw new Error("Não foi possível consultar as permissões do gerenciamento do evento.");
+  const metadata = data.user?.app_metadata;
+  return {
+    isEventReports: metadata?.[EVENT_REPORT_ROLE_KEY] === registrationId,
+    isEventScanner: metadata?.[EVENT_SCAN_ROLE_KEY] === registrationId,
+    isEventArchiver: metadata?.[EVENT_ARCHIVE_ROLE_KEY] === registrationId,
+  };
 }

@@ -8,7 +8,7 @@ import "./attendanceApp.css";
 export function EventManagementGate({ children }: { children:(access:EventManagementAccess)=>ReactNode }) {
  const [access,setAccess]=useState<EventManagementAccess|null>(null),[checking,setChecking]=useState(true),[busy,setBusy]=useState(false);
  const [cpf,setCpf]=useState(""),[error,setError]=useState("");
- useEffect(()=>{let active=true;void getEventManagementAccess().then(next=>{if(active)setAccess(next.canReport||next.canScan?next:null);}).catch(()=>{}).finally(()=>{if(active)setChecking(false);});return()=>{active=false;};},[]);
+ useEffect(()=>{let active=true;void getEventManagementAccess().then(next=>{if(active)setAccess(next.canReport||next.canScan||next.canArchive?next:null);}).catch(()=>{}).finally(()=>{if(active)setChecking(false);});return()=>{active=false;};},[]);
  async function unlock(event:FormEvent){event.preventDefault();setBusy(true);setError("");try{const next=await unlockEventManagement({data:{cpf:cpf.replace(/\D/g,"")}});setCpf("");setAccess(next);}catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível desbloquear.");}finally{setBusy(false);}}
  if(checking)return <main className="grid min-h-dvh place-items-center bg-[#f7f7f5]"><p role="status">Verificando acesso…</p></main>;
  if(access)return <>{children(access)}</>;

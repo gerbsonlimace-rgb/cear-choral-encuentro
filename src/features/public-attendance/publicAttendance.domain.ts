@@ -65,6 +65,7 @@ export type PublicAttendanceActivity = {
   totalConfirmed: number; attended: number; revision: string;
 };
 export type PublicAttendanceProgress = Pick<PublicAttendanceActivity, "id" | "totalConfirmed" | "attended" | "revision">;
+export type ArchiveAttendanceCallResult = { archivedCount: number; revision: string };
 export type PublicAttendanceResult =
   | { status: "recorded" | "already_recorded"; participantName: string; checkedInAt: string; activity: PublicAttendanceProgress }
   | { status: "invalid_card" | "ineligible" | "activity_unavailable"; message: string };
