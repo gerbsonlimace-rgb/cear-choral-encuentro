@@ -30,7 +30,7 @@ export async function getAdminFinanceSnapshot(): Promise<{
     (async () => {
       const all: Array<{
         id: string;
-        entry_type: string;
+        entry_type: "income" | "expense";
         entry_date: string;
         description: string;
         responsible: string;

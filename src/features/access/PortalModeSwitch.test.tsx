@@ -9,7 +9,7 @@ vi.mock("@/lib/portal-access.functions", () => ({ getPortalModes: vi.fn() }));
 describe("PortalModeSwitch", () => {
   it.each([
     ["admin", "Ir para participante", "/participante"],
-    ["participant", "Ir para admin", "/admin/resumo"],
+    ["participant", "Ir para admin", "/admin/inscricoes"],
   ] as const)("switches from %s with one click", async (mode, label, destination) => {
     const navigate = vi.fn();
     render(

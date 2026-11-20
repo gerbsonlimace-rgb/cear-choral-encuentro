@@ -71,6 +71,51 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_entries: {
+        Row: {
+          id: string
+          entry_type: "income" | "expense"
+          entry_date: string
+          description: string
+          responsible: string
+          notes: string
+          amount_cents: number
+          attachment_path: string | null
+          attachment_file_name: string | null
+          attachment_mime_type: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entry_type: "income" | "expense"
+          entry_date: string
+          description: string
+          responsible: string
+          notes?: string
+          amount_cents: number
+          attachment_path?: string | null
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entry_type?: "income" | "expense"
+          entry_date?: string
+          description?: string
+          responsible?: string
+          notes?: string
+          amount_cents?: number
+          attachment_path?: string | null
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       choir_regents: {
         Row: {
           choir_id: string
@@ -768,6 +813,48 @@ export type Database = {
           },
         ]
       }
+      lodging_plan: {
+        Row: {
+          assignments: Json
+          created_at: string
+          extra_people: Json
+          extra_room_counter: number
+          extra_rooms: Json
+          hidden_rooms: Json
+          id: boolean
+          no_lodging_registration_ids: string[]
+          room_capacity: number
+          rooms_available: number
+          updated_at: string
+        }
+        Insert: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Update: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registrations: {
         Row: {
           admin_payment_reason: string | null
@@ -1230,6 +1317,7 @@ export type Database = {
           extra_rooms: Json
           hidden_rooms: Json
           id: boolean
+          named_rooms: Json
           no_lodging_registration_ids: string[]
           room_capacity: number
           rooms_available: number

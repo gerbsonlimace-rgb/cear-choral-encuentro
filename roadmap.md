@@ -38,6 +38,7 @@
 - Complete Google Search Console setup using Gerbson's linked connection: live META verification succeeded, root property confirmed as siteOwner, and existing sitemap submitted successfully; 97 affected tests passed before final delivery.
 - Let the admin "Marcar como pago" dialog record the amount received and either leave the remaining registration fee pending (with a later "Registrar restante da taxa" action) or waive it as a discount; 241 tests passed.
 - Show the badge name (with full-name fallback) as the participant label in the admin registrations list, the CSV export and the registrations PDF, and match the badge name in the listing search; 197 admin tests plus 21 route tests passed.
+- Move the administrative summary cards (registration counters, financial totals and the per-choir breakdown) into the registrations screen and remove the "Resumo" menu entry, keeping `/admin/resumo` as a redirect to `/admin/inscricoes`; show the indicators as compact metric cards and the per-choir breakdown as painted cards.
 - Add the participant CPF as its own column in the registrations PDF export (between full name and choir), keeping the CSV column and rebalancing all PDF column widths so nothing overlaps; 7 PDF tests passed and a sample PDF was read back with `pdftotext`.
 - Unblock the build by creating the missing `public.financial_entries` table (service-role-only read/write, RLS on with no browser policy) plus the private `financial-attachments` bucket and a `created_by` index, then align `admin-finance.server.ts` with the regenerated types; build OK.
 

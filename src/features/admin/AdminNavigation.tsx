@@ -38,7 +38,6 @@ type AdminNavigationProps = {
 export type AdminNavigationPath =
   | "/admin/inscricoes"
   | "/admin/financeiro"
-  | "/admin/resumo"
   | "/admin/coros"
   | "/admin/hospedagem"
   | "/admin/patrocinadores"

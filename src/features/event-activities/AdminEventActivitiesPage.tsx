@@ -21,6 +21,7 @@ import {
   updateAdminEventActivity,
 } from "@/lib/event-activity.functions";
 import { AdminActivityAttendancesDialog } from "./AdminActivityAttendancesDialog";
+import { AdminAttendanceCardsActions } from "@/features/public-attendance/AdminAttendanceCardsActions";
 import {
   eventActivityCreateSchema,
   type AdminActivityAttendance,
@@ -196,6 +197,7 @@ export function AdminEventActivitiesPage({
           </div>
         </header>
         <AdminNavigation current="activities" navigateTo={navigateTo} />
+        <AdminAttendanceCardsActions />
         <div aria-live="polite" className="min-h-5 text-sm text-muted-foreground">{message}</div>
         {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
         {activities === null && <Skeleton className="h-64 w-full" />}

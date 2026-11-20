@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcessarRouteImport } from './routes/acessar'
+import { Route as CartaoRouteImport } from './routes/cartao'
+import { Route as ChamadaRouteImport } from './routes/chamada'
 import { Route as EuvouRouteImport } from './routes/euvou'
 import { Route as InscricaoRouteImport } from './routes/inscricao'
 import { Route as PagamentoRouteImport } from './routes/pagamento'
@@ -52,6 +54,16 @@ const IndexRoute = IndexRouteImport.update({
 const AcessarRoute = AcessarRouteImport.update({
   id: '/acessar',
   path: '/acessar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartaoRoute = CartaoRouteImport.update({
+  id: '/cartao',
+  path: '/cartao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChamadaRoute = ChamadaRouteImport.update({
+  id: '/chamada',
+  path: '/chamada',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EuvouRoute = EuvouRouteImport.update({
@@ -219,6 +231,8 @@ const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -255,6 +269,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -290,6 +306,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/cartao': typeof CartaoRoute
+  '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
   '/inscricao': typeof InscricaoRoute
   '/pagamento': typeof PagamentoRoute
@@ -328,6 +346,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -364,6 +384,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -398,6 +420,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acessar'
+    | '/cartao'
+    | '/chamada'
     | '/euvou'
     | '/inscricao'
     | '/pagamento'
@@ -435,6 +459,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
+  CartaoRoute: typeof CartaoRoute
+  ChamadaRoute: typeof ChamadaRoute
   EuvouRoute: typeof EuvouRoute
   InscricaoRoute: typeof InscricaoRoute
   PagamentoRoute: typeof PagamentoRoute
@@ -472,6 +498,20 @@ declare module '@tanstack/react-router' {
       path: '/acessar'
       fullPath: '/acessar'
       preLoaderRoute: typeof AcessarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cartao': {
+      id: '/cartao'
+      path: '/cartao'
+      fullPath: '/cartao'
+      preLoaderRoute: typeof CartaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chamada': {
+      id: '/chamada'
+      path: '/chamada'
+      fullPath: '/chamada'
+      preLoaderRoute: typeof ChamadaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/euvou': {
@@ -745,6 +785,8 @@ const RegenteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
+  CartaoRoute: CartaoRoute,
+  ChamadaRoute: ChamadaRoute,
   EuvouRoute: EuvouRoute,
   InscricaoRoute: InscricaoRoute,
   PagamentoRoute: PagamentoRoute,
