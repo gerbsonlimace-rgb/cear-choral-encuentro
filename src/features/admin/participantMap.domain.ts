@@ -132,11 +132,7 @@ function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean 
       ? "masculino"
       : firstName.endsWith("a")
         ? "feminino"
-        : firstName.endsWith("o")
-          ? "masculino"
-          : nameParts.some((part) => part.endsWith("a"))
-            ? "feminino"
-            : "masculino";
+        : "masculino";
   return { key, inferred: true };
 }
 
