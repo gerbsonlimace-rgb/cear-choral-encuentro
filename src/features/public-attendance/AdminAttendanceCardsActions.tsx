@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Download, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { prepareAdminAttendanceCards } from "@/lib/public-attendance.functions";
-import { downloadAllParticipantCardImages } from "./participantCardImages.client";
+import { createClientOnlyFn } from "@tanstack/react-start";
+
+const loadCardImages = createClientOnlyFn(() => import("./participantCardImages.client"));
 
 export function AdminAttendanceCardsActions() {
   const [file,setFile]=useState<{url:string;filename:string;count:number}|null>(null);
@@ -16,7 +18,9 @@ export function AdminAttendanceCardsActions() {
     setFile({url:URL.createObjectURL(new Blob([result.csv],{type:"text/csv;charset=utf-8"})),filename:result.filename,count:result.count});
   }catch{setError("Não foi possível preparar os cartões. Tente novamente.");}finally{setBusy(false);}};
   const downloadImages=async()=>{setZipBusy(true);setError("");setProgress({done:0,total:cards.length});try{
-    await downloadAllParticipantCardImages(cards,(done,total)=>setProgress({done,total}));
+    const mod=await loadCardImages();
+    if(!mod)throw new Error("Indisponível");
+    await mod.downloadAllParticipantCardImages(cards,(done,total)=>setProgress({done,total}));
   }catch{setError("Não foi possível gerar todas as imagens. Tente novamente.");}finally{setZipBusy(false);}};
   return <section aria-label="Cartões dos participantes" className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3">
     <Button variant="outline" asChild><a href="/chamada" target="_blank" rel="noopener noreferrer"><ScanLine className="size-4"/>Abrir chamada pública</a></Button>
