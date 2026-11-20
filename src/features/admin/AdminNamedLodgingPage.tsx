@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { FileDown, LoaderCircle, Printer, Save } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Download, FileDown, LoaderCircle, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { deliverFile } from "@/lib/file-download";
+import { exportAdminLodgingPdf } from "@/lib/admin.functions";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 import {
   validateNamedLodgingPlan,
@@ -46,6 +49,9 @@ export function AdminNamedLodgingPage({
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [printLayout, setPrintLayout] = useState<"list" | null>(null);
+  const [preparedPdf, setPreparedPdf] = useState<{ blob: Blob; fileName: string } | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const exportLodgingPdf = useServerFn(exportAdminLodgingPdf);
   const rooms = plan.namedRooms ?? [];
   const capacity = Math.min(plan.roomCapacity, 3);
   const active = registrations.filter((row) => !row.cancelledAt);
@@ -79,6 +85,7 @@ export function AdminNamedLodgingPage({
       return;
     }
     setPlan(next);
+    setPreparedPdf(null);
     setDirty(true);
     setSaving(true);
     setError("");
@@ -92,6 +99,30 @@ export function AdminNamedLodgingPage({
     } finally {
       setSaving(false);
     }
+  };
+
+  const prepareLodgingPdf = async () => {
+    if (exportingPdf || saving || dirty) return;
+    setExportingPdf(true);
+    setPreparedPdf(null);
+    setError("");
+    try {
+      const file = await exportLodgingPdf();
+      const bytes = Uint8Array.from(atob(file.base64), (character) => character.charCodeAt(0));
+      setPreparedPdf({
+        blob: new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" }),
+        fileName: file.fileName,
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível preparar a relação em PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const printMap = () => {
+    flushSync(() => setPrintLayout("list"));
+    window.print();
   };
 
   const move = (id: string, roomKey: string) => {
@@ -221,21 +252,20 @@ export function AdminNamedLodgingPage({
               )}
               Salvar alocação
             </Button>
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Button size="sm" variant="outline" onClick={printMap}>
               <Printer className="size-4" />
               Imprimir mapa
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                flushSync(() => setPrintLayout("list"));
-                window.print();
-              }}
-            >
-              <FileDown className="size-4" />
-              Exportar relação (PDF)
+            <Button size="sm" variant="outline" disabled={exportingPdf || saving || dirty} onClick={() => void prepareLodgingPdf()}>
+              {exportingPdf ? <LoaderCircle className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+              {exportingPdf ? "Preparando PDF…" : "Preparar relação (PDF)"}
             </Button>
+            {preparedPdf && (
+              <Button size="sm" variant="outline" onClick={() => void deliverFile(preparedPdf.blob, preparedPdf.fileName)}>
+                <Download className="size-4" />
+                Baixar PDF pronto
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={onSignOut}>
               Sair
             </Button>
