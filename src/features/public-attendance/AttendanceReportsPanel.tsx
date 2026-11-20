@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, MessageCircle, RefreshCw, Share2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Download, MessageCircle, RefreshCw, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEventAttendanceReport } from "@/lib/public-attendance.functions";
 import { deliverFile } from "@/lib/file-download";
@@ -7,77 +7,92 @@ import type { PublicAttendanceActivity } from "./publicAttendance.domain";
 import { buildAttendanceWhatsAppMessage, type AttendanceReport } from "./eventManagement.domain";
 
 type PreparedReport = { report: AttendanceReport; file: { fileName: string; base64: string } };
-type Group = "choirs"|"attended"|"absent"|"van"|"dietary"|"vanUnknown"|"dietaryUnknown";
+type ChoirGroup = { name: string; attended: AttendanceReport["people"]; absent: AttendanceReport["people"] };
+
 export function AttendanceReportsPanel({ activities, initialActivityId, loadReport=getEventAttendanceReport }: {
   activities: PublicAttendanceActivity[]; initialActivityId?: string|null;
   loadReport?: (input:{data:{activityId:string}})=>Promise<PreparedReport>;
 }) {
-  const [activityId,setActivityId]=useState(initialActivityId || activities[0]?.id || "");
-  const [group,setGroup]=useState<Group>("choirs"),[data,setData]=useState<PreparedReport|null>(null);
-  const [file,setFile]=useState<File|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
-  const revision=useRef(0);
-  const load=useCallback(async()=>{
-    if(!activityId)return;const current=++revision.current;setLoading(true);setFile(null);setData(null);setError("");setNotice("");
-    try{const next=await loadReport({data:{activityId}});if(current!==revision.current)return;
-      const bytes=Uint8Array.from(atob(next.file.base64),c=>c.charCodeAt(0));
+  const [activityId,setActivityId]=useState<string|null>(null);
+  const [data,setData]=useState<PreparedReport|null>(null),[file,setFile]=useState<File|null>(null);
+  const [loading,setLoading]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+  const [recipient,setRecipient]=useState("");
+  const selected=activities.find(activity=>activity.id===activityId);
+
+  async function openActivity(id:string){
+    setActivityId(id);setData(null);setFile(null);setError("");setNotice("");setLoading(true);
+    try{
+      const next=await loadReport({data:{activityId:id}});
+      const bytes=Uint8Array.from(atob(next.file.base64),character=>character.charCodeAt(0));
       setFile(new File([bytes],next.file.fileName,{type:"application/pdf"}));setData(next);
-    }catch{if(current===revision.current)setError("Não foi possível preparar o relatório. Confira seu acesso e tente novamente.");}
-    finally{if(current===revision.current)setLoading(false);}
-  },[activityId,loadReport]);
-  useEffect(()=>{void load();return()=>{revision.current++;};},[load]);
-  const report=data?.report;
-  async function share(){
+    }catch{setError("Não foi possível carregar esta chamada. Confira seu acesso e tente novamente.");}
+    finally{setLoading(false);}
+  }
+  function backToActivities(){setActivityId(null);setData(null);setFile(null);setError("");setNotice("");}
+  async function sharePdf(){
     if(!file)return;setNotice("");
     if(navigator.share&&navigator.canShare?.({files:[file]})){
-      try{await navigator.share({files:[file],title:"Relatório do encontro"});return;}
-      catch(cause){if((cause as DOMException).name==="AbortError")return;setNotice("O compartilhamento não abriu. Baixe o PDF e anexe no WhatsApp.");return;}
+      try{await navigator.share({files:[file],title:"Relatório de presença"});return;}
+      catch(cause){if((cause as DOMException).name==="AbortError")return;setNotice("Não foi possível abrir o compartilhamento. Baixe o PDF para anexá-lo.");return;}
     }
-    await deliverFile(file,file.name);setNotice("PDF baixado. Anexe esse arquivo na conversa do WhatsApp.");
+    await deliverFile(file,file.name);setNotice("PDF baixado.");
   }
   function shareAttendanceOnWhatsApp(){
-    if(!report)return;
-    const url=new URL("https://wa.me/");url.searchParams.set("text",buildAttendanceWhatsAppMessage(report));
+    if(!data)return;
+    const digits=recipient.replace(/\D/g,"");
+    if(digits&&(digits.length<10||digits.length>15)){setNotice("Informe o telefone com DDD (até 15 dígitos) ou deixe o campo vazio para escolher o contato no WhatsApp.");return;}
+    const url=new URL(digits?`https://wa.me/${digits}`:"https://wa.me/");
+    url.searchParams.set("text",buildAttendanceWhatsAppMessage(data.report));
     const opened=window.open(url.toString(),"_blank","noopener,noreferrer");
     if(!opened)setNotice("O navegador bloqueou o WhatsApp. Permita a abertura da janela e tente novamente.");
   }
-  const lists=report?{
-    attended:report.people.filter(p=>p.checkedInAt),absent:report.people.filter(p=>!p.checkedInAt),van:report.people.filter(p=>p.usesEventVan===true),
-    dietary:report.people.filter(p=>p.dietaryRestriction===true),vanUnknown:report.people.filter(p=>p.usesEventVan===null),dietaryUnknown:report.people.filter(p=>p.dietaryRestriction===null),
-  }:null;
-  return <section className="attendance-reports" aria-label="Relatórios do evento">
-    <div className="attendance-report-controls">
-      <label className="min-w-0 flex-1 text-xs font-medium">Atividade
-        <select aria-label="Atividade do relatório" className="mt-1 h-11 w-full rounded-md border bg-white px-2 text-sm" value={activityId} onChange={event=>setActivityId(event.target.value)}>
-          {activities.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}
-        </select>
+
+  if(!activityId)return <section className="attendance-reports" aria-label="Chamadas">
+    <h2 className="text-sm font-semibold">Relatórios de presença</h2>
+    <div className="attendance-report-list" aria-label="Atividades e presenças">
+      {activities.map(activity=>{
+        const percent=activity.totalConfirmed?Math.min(100,Math.round(activity.attended/activity.totalConfirmed*100)):0;
+        return <button key={activity.id} type="button" onClick={()=>void openActivity(activity.id)} className="w-full border-b border-zinc-200 bg-white px-3 py-3 text-left last:border-b-0 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-600">
+          <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold">{activity.title}</span><span className="text-xs text-zinc-500">{new Intl.DateTimeFormat("pt-BR",{timeZone:"UTC",day:"2-digit",month:"2-digit"}).format(new Date(`${activity.activityDate}T12:00:00Z`))}</span></div>
+          <p className="mt-1 text-sm tabular-nums"><strong>{activity.attended}</strong> presentes <span className="text-zinc-500">· {activity.totalConfirmed} total</span></p>
+          <progress className="mt-2 block h-1 w-full overflow-hidden rounded bg-zinc-200 accent-zinc-800 [&::-webkit-progress-bar]:bg-zinc-200 [&::-webkit-progress-value]:bg-zinc-800" aria-label={`${percent}% presentes em ${activity.title}`} max={Math.max(1,activity.totalConfirmed)} value={activity.attended}/>
+        </button>;
+      })}
+      {activities.length===0&&<p className="p-4 text-sm text-zinc-600">Nenhuma atividade com chamada disponível.</p>}
+    </div>
+    {initialActivityId&&<p className="text-xs text-zinc-500">Selecione uma atividade para ver as presenças detalhadas.</p>}
+  </section>;
+
+  const report=data?.report;
+  const groups:ChoirGroup[]=report?report.choirs.map(choir=>{
+    const people=report.people.filter(person=>person.choirName===choir.name);
+    return {name:choir.name,attended:people.filter(person=>Boolean(person.checkedInAt)),absent:people.filter(person=>!person.checkedInAt)};
+  }):[];
+
+  return <section className="attendance-reports" aria-label="Detalhes da chamada">
+    <div className="flex items-center gap-2">
+      <Button variant="ghost" size="icon" aria-label="Voltar para os relatórios" className="min-h-9 min-w-9" onClick={backToActivities}><ArrowLeft className="size-4"/></Button>
+      <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{selected?.title??report?.activity.title??"Relatório de presença"}</h2>{report&&<p className="text-xs text-zinc-600">{report.attended} presentes · {report.absent} faltantes · {report.total} confirmados</p>}</div>
+      <Button variant="outline" size="icon" className="min-h-9 min-w-9" aria-label="Atualizar relatório" disabled={loading||!activityId} onClick={()=>void openActivity(activityId)}><RefreshCw className={`size-4 ${loading?"animate-spin":""}`}/></Button>
+    </div>
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="min-w-0 flex-1 text-xs font-medium" htmlFor="attendance-whatsapp-recipient">WhatsApp de destino (opcional)
+        <input id="attendance-whatsapp-recipient" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} placeholder="DDD + telefone; vazio para escolher contato" value={recipient} onChange={event=>setRecipient(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal"/>
       </label>
-      <Button variant="outline" className="min-h-11" aria-label="Atualizar relatório" disabled={loading||!activityId} onClick={()=>void load()}><RefreshCw className="size-4"/></Button>
+      <Button className="min-h-10" disabled={!report||loading} onClick={shareAttendanceOnWhatsApp}><MessageCircle className="size-4"/>Compartilhar no WhatsApp</Button>
     </div>
-    <div className="flex flex-wrap gap-2">
-      <Button className="min-h-11 flex-1" disabled={!report||loading} onClick={shareAttendanceOnWhatsApp}><MessageCircle className="size-4"/>Resumo no WhatsApp</Button>
-      <Button variant="outline" className="min-h-11 flex-1" disabled={!file||loading} onClick={()=>void share()}><Share2 className="size-4"/>Compartilhar PDF</Button>
-      <Button variant="outline" className="min-h-11" disabled={!file||loading} onClick={()=>{if(file)void deliverFile(file,file.name);}}><Download className="size-4"/>Baixar PDF</Button>
+    <div className="flex gap-2">
+      <Button variant="outline" className="min-h-10 flex-1" disabled={!file||loading} onClick={()=>void sharePdf()}><Share2 className="size-4"/>Compartilhar PDF</Button>
+      <Button variant="outline" className="min-h-10" disabled={!file||loading} onClick={()=>{if(file)void deliverFile(file,file.name);}}><Download className="size-4"/>Baixar PDF</Button>
     </div>
-    <p className="text-xs text-zinc-600">O resumo abre no WhatsApp com a atividade, totais e faltantes; van e alimentação são exibidas apenas para os faltantes. O PDF inclui todas as listas.</p>
-    {loading&&<p role="status" className="text-sm text-zinc-600">Preparando relatório e PDF completos…</p>}
+    {loading&&<p role="status" className="text-sm text-zinc-600">Carregando lista detalhada…</p>}
     {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}
     {notice&&<p role="status" className="text-xs text-zinc-600">{notice}</p>}
-    {report&&<>
-      <dl className="attendance-report-metrics">
-        {[["Confirmados",report.total],["Presentes",report.attended],["Ausentes",report.absent],["Van",report.van],["Restrição alimentar",report.dietary]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      </dl>
-      <label className="text-xs font-medium">Exibir lista
-        <select aria-label="Lista do relatório" className="mt-1 h-11 w-full rounded-md border bg-white px-2 text-sm" value={group} onChange={e=>setGroup(e.target.value as Group)}>
-          <option value="choirs">Totais por coro ({report.choirs.length})</option><option value="attended">Presentes ({report.attended})</option><option value="absent">Ausentes ({report.absent})</option>
-          <option value="van">Usarão a van ({report.van})</option><option value="dietary">Restrições alimentares ({report.dietary})</option>
-          <option value="vanUnknown">Van não informada ({report.vanUnknown})</option><option value="dietaryUnknown">Alimentação não informada ({report.dietaryUnknown})</option>
-        </select>
-      </label>
-      <div className="attendance-report-list" tabIndex={0} aria-label="Conteúdo do relatório">
-        {group==="choirs"?<table className="w-full text-left text-xs"><thead className="sticky top-0 bg-white"><tr><th className="p-2">Coro</th><th className="p-2">Total</th><th className="p-2">Pres.</th><th className="p-2">Aus.</th></tr></thead><tbody>{report.choirs.map(c=><tr key={c.name} className="border-t"><td className="p-2">{c.name}</td><td className="p-2 tabular-nums">{c.total}</td><td className="p-2 tabular-nums">{c.attended}</td><td className="p-2 tabular-nums">{c.absent}</td></tr>)}</tbody></table>
-          :<ul className="divide-y">{lists?.[group].map(p=><li key={p.id} className="p-3"><p className="text-sm font-semibold">{p.name}</p><p className="text-xs text-zinc-600">{p.choirName}</p>{group==="dietary"&&<p className="mt-1 text-xs">{p.dietaryDescription}</p>}{group==="attended"&&p.checkedInAt&&<p className="text-xs text-zinc-600">{new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Fortaleza",dateStyle:"short",timeStyle:"short"}).format(new Date(p.checkedInAt))}</p>}</li>)}{lists?.[group].length===0&&<li className="p-3 text-sm text-zinc-600">Nenhum participante nesta lista.</li>}</ul>}
-      </div>
-      <p className="text-xs text-zinc-500">Atualizado às {new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Fortaleza",hour:"2-digit",minute:"2-digit"}).format(new Date(report.generatedAt))}. Van e alimentação consideram todos os confirmados, presentes ou ausentes.</p>
-    </>}
+    {report&&<div className="attendance-report-list" aria-label="Participantes agrupados por coro">
+      {groups.map(group=><section key={group.name} className="border-b border-zinc-200 bg-white p-3 last:border-b-0">
+        <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{group.name}</h3><span className="text-xs tabular-nums text-zinc-600">{group.attended.length} presentes · {group.absent.length} faltantes</span></div>
+        <ul className="space-y-1.5">{[...group.attended.map(person=>({...person,status:"Presente"})),...group.absent.map(person=>({...person,status:"Faltante"}))].map(person=><li key={person.id} className="flex items-center justify-between gap-2 border-t border-zinc-100 pt-1.5 text-sm"><span className="min-w-0 truncate">{person.name}</span><span className={`shrink-0 text-xs ${person.status==="Presente"?"text-emerald-700":"text-zinc-500"}`}>{person.status}</span></li>)}</ul>
+      </section>)}
+    </div>}
   </section>;
 }
