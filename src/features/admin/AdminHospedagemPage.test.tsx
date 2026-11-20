@@ -56,6 +56,97 @@ function bootstrap(plan?: LodgingPlan): AdminHospedagemBootstrap {
 }
 
 describe("admin lodging allocation", () => {
+  it("releases a cancelled occupant before allocating a replacement", async () => {
+    const persistPlan = vi.fn().mockResolvedValue(undefined);
+    const plan: LodgingPlan = {
+      ...emptyLodgingPlan(),
+      namedRooms: [
+        { key: "CP17", name: "CP17", location: "Centro Pastoral", floor: "", notes: "" },
+      ],
+      assignments: { "no-1": "CP17", "no-2": "CP17", "no-3": "CP17" },
+    };
+    const data = bootstrap(plan);
+    data.data!.registrations = registrations.map((row) =>
+      row.id === "no-1" ? { ...row, cancelledAt: "2026-11-20T00:00:00Z" } : row,
+    );
+    render(
+      <AdminHospedagemPage
+        onSignedOut={vi.fn()}
+        onMissingSession={vi.fn()}
+        loadInitialData={async () => data}
+        persistPlan={persistPlan}
+      />,
+    );
+    fireEvent.change(await screen.findByLabelText("Quarto de Com quarto"), {
+      target: { value: "CP17" },
+    });
+    await waitFor(() =>
+      expect(persistPlan).toHaveBeenCalledWith({
+        ...plan,
+        assignments: { "no-2": "CP17", "no-3": "CP17", lodging: "CP17" },
+      }),
+    );
+  });
+
+  it("loads named rooms without replacing their assignments and flags every R$ 80 registration", async () => {
+    const persistPlan = vi.fn().mockResolvedValue(undefined);
+    const plan: LodgingPlan = {
+      ...emptyLodgingPlan(),
+      namedRooms: [
+        {
+          key: "CP17",
+          name: "CP17",
+          location: "Centro Pastoral",
+          floor: "Térreo",
+          notes: "Reserva do mapa",
+        },
+      ],
+      assignments: { "no-1": "CP17", "no-2": "CP17", "no-3": "CP17" },
+    };
+    render(
+      <AdminHospedagemPage
+        onSignedOut={vi.fn()}
+        onMissingSession={vi.fn()}
+        loadInitialData={async () => bootstrap(plan)}
+        persistPlan={persistPlan}
+      />,
+    );
+    const room = await screen.findByRole("region", { name: "Quarto CP17" });
+    expect(within(room).getByText("Sem quarto 1 *")).toBeInTheDocument();
+    expect(screen.getByText("* Não solicitou inscrição com quarto")).toBeInTheDocument();
+    expect(screen.queryByText("Capacidade e disponibilidade")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Quarto de Com quarto"), { target: { value: "CP17" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("CP17 comporta até 3 pessoas");
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+    expect(persistPlan).not.toHaveBeenCalled();
+  });
+
+  it("persists a physical room change while preserving the rest of the map", async () => {
+    const persistPlan = vi.fn().mockResolvedValue(undefined);
+    const plan: LodgingPlan = {
+      ...emptyLodgingPlan(),
+      namedRooms: [{ key: "SEM06", name: "SEM06", location: "Seminário", floor: "", notes: "" }],
+      noLodgingIds: ["no-1", "no-2", "no-3"],
+    };
+    render(
+      <AdminHospedagemPage
+        onSignedOut={vi.fn()}
+        onMissingSession={vi.fn()}
+        loadInitialData={async () => bootstrap(plan)}
+        persistPlan={persistPlan}
+      />,
+    );
+    fireEvent.change(await screen.findByLabelText("Quarto de Com quarto"), {
+      target: { value: "SEM06" },
+    });
+    await waitFor(() =>
+      expect(persistPlan).toHaveBeenCalledWith({ ...plan, assignments: { lodging: "SEM06" } }),
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Quarto SEM06" })).getByText("Com quarto"),
+    ).toBeInTheDocument();
+  });
+
   it("separates R$ 80 registrations and lets an eligible participant opt out and back into lodging", async () => {
     render(
       <AdminHospedagemPage
@@ -133,10 +224,7 @@ describe("admin lodging allocation", () => {
       dataTransfer: { getData: () => "lodging" },
     });
 
-    await waitFor(
-      () => expect(persistPlan).toHaveBeenCalled(),
-      { timeout: 5000 },
-    );
+    await waitFor(() => expect(persistPlan).toHaveBeenCalled(), { timeout: 5000 });
     const saved = persistPlan.mock.calls[0][0] as LodgingPlan;
     expect(Object.values(saved.assignments)).toEqual([lodgingRoomKey("Coro Teste", 0)]);
   });

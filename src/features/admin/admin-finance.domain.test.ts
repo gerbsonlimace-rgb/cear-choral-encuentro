@@ -43,8 +43,8 @@ describe("automatic finance entries", () => {
       ["Outro coro · Rifas", 0],
     ]);
     expect(entries[0].participants).toEqual([
-      { id: "registration-1", name: "Ana Silva", amountCents: 10_000 },
-      { id: "registration-2", name: "Bia", amountCents: 0 },
+      { id: "registration-1", name: "Ana Silva", amountCents: 10_000, registrationStatus: "paid" },
+      { id: "registration-2", name: "Bia", amountCents: 0, registrationStatus: "pending" },
     ]);
   });
 

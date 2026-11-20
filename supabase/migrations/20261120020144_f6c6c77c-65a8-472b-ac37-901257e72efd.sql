@@ -1,0 +1,1 @@
+create index if not exists financial_entries_created_by_idx on public.financial_entries (created_by);
