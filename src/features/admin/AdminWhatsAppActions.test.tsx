@@ -91,6 +91,17 @@ describe("WhatsApp actions in registrations", () => {
     expect(control.send).not.toHaveBeenCalled();
     expect(control.sendSelected).not.toHaveBeenCalled();
   });
+  it("allows selecting an already-sent participant and confirms the selected resend", () => {
+    const control = controller();
+    control.status.registrations[row.id] = "sent";
+    control.selectedIds = [row.id];
+    render(<><AdminWhatsAppSelection row={row} controller={control} /><AdminWhatsAppToolbar controller={control} rows={[row]} /></>);
+    expect(screen.getByRole("checkbox", { name: "Selecionar Ana para envio por WhatsApp" })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar selecionados (1)" }));
+    expect(control.sendSelected).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar reenvio dos selecionados" }));
+    expect(control.sendSelected).toHaveBeenCalledExactlyOnceWith(true);
+  });
   it("keeps selection across pages and selects only eligible participants", async () => {
     const second = { ...row, id: "2eb9f28d-23f9-4f32-9e01-e9459986d8b9", name: "Bia" };
     const pending = { ...row, id: "pending", paymentStatus: "pending" } as AdminRegistrationRow;
