@@ -31,8 +31,6 @@ const loadDomain = async (relativePath) => {
   return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
 };
 const { resolveParticipantCardLodging, buildParticipantCardMessage } = await loadDomain("src/features/public-attendance/participantCardDetails.domain.ts");
-const { CONTACT_PERSON_NAME, CONTACT_PHONE_DISPLAY } = await loadDomain("src/features/contact/event-contact.ts");
-const contact = { name: CONTACT_PERSON_NAME, phoneDisplay: CONTACT_PHONE_DISPLAY };
 
 const [snapshot, plan] = await Promise.all([
   supabase.rpc("admin_registration_snapshot", { p_search: "" }),
@@ -65,7 +63,7 @@ const recipients = roster.map((row) => {
   if (!phone) throw new Error("A paid registration has no valid Brazilian WhatsApp number. Fix it before generating links.");
   const name = card.name || displayName(row);
   const lodging = resolveParticipantCardLodging(row.id, plan.data, roster);
-  const message = buildParticipantCardMessage(name, lodging, contact);
+  const message = buildParticipantCardMessage(name, lodging);
   const waUrl = new URL("https://wa.me/" + phone);
   waUrl.searchParams.set("text", message);
   return {

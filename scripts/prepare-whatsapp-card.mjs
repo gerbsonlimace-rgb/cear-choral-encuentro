@@ -61,8 +61,6 @@ const loadDomain = async (relativePath) => {
   return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
 };
 const { resolveParticipantCardLodging, buildParticipantCardMessage } = await loadDomain("src/features/public-attendance/participantCardDetails.domain.ts");
-const { CONTACT_PERSON_NAME, CONTACT_PHONE_DISPLAY } = await loadDomain("src/features/contact/event-contact.ts");
-const contact = { name: CONTACT_PERSON_NAME, phoneDisplay: CONTACT_PHONE_DISPLAY };
 const progress = existsSync(progressPath) ? JSON.parse(readFileSync(progressPath, "utf8")) : {};
 if (!progress || typeof progress !== "object" || Array.isArray(progress)) throw new Error("Arquivo de progresso inválido.");
 const state = await currentState();
@@ -257,6 +255,6 @@ function prepareRecipient(row, current) {
   const imagePath = realpathSync(path.join(output, "cartoes", card.filename));
   if (path.dirname(imagePath) !== realpathSync(path.join(output, "cartoes")) || statSync(imagePath).size === 0 || readFileSync(imagePath).subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") throw new Error("PNG inválido.");
   const lodging = resolveParticipantCardLodging(row.id, current.plan, current.roster);
-  const message = buildParticipantCardMessage(card.name, lodging, contact);
+  const message = buildParticipantCardMessage(card.name, lodging);
   return { id: row.id, fullName: row.name, filename: card.filename, imagePath, phone: phone(row.phone), message };
 }
