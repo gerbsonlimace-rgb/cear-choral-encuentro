@@ -63,9 +63,6 @@ for i,c in enumerate(manifest['cards']):
     if sequence<1:raise ValueError(f'Missing list sequence number: {c["filename"]}')
     im=Image.new('RGB',(W,H),IVORY);d=ImageDraw.Draw(im)
     d.rectangle((0,0,W,9),fill=GOLD);im.paste(logo,(78,30),logo)
-    d.rounded_rectangle((820,30,1002,154),radius=24,fill=WINE,outline=GOLD,width=4)
-    d.text((911,85),f'{sequence:03d}',font=font(48,'bold'),fill=IVORY,anchor='mm')
-    d.text((911,127),'Nº DA LISTA',font=font(14,'bold'),fill='#F2D68B',anchor='mm')
     d.text((540,203),'II ENCONTRO DE COROS · QUIXADÁ 2026',font=font(22,'bold'),fill=MUTED,anchor='mm')
     d.line((78,241,1002,241),fill='#DDD3C5',width=2)
     diameter=250
@@ -122,10 +119,11 @@ for i,c in enumerate(manifest['cards']):
         if not first_black[0].size:raise ValueError('QR has no modules')
         old_scale=int(first_black[0].min())//4
         module_count=qr.width//old_scale
-        new_scale=700//module_count
+        new_scale=610//module_count
         qr=qr.resize((module_count*new_scale,module_count*new_scale),Image.Resampling.NEAREST)
         d.rounded_rectangle((178,590,902,1314),radius=30,fill='white',outline='#DED6CA',width=2)
-        im.paste(qr,(190+(700-qr.width)//2,602+(700-qr.height)//2))
+        d.text((540,625),f'{sequence:03d}',font=font(72,'bold'),fill='#111111',anchor='mm')
+        im.paste(qr,(235+(610-qr.width)//2,668+(610-qr.height)//2))
         raw=cv2.cvtColor(np.asarray(im),cv2.COLOR_RGB2BGR)
         decoded,_,_=cv2.QRCodeDetector().detectAndDecode(raw)
         phone,_,_=cv2.QRCodeDetector().detectAndDecode(cv2.resize(raw,(540,960),interpolation=cv2.INTER_AREA))

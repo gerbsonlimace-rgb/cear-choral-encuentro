@@ -35,6 +35,7 @@ const rule = rgb(0.8, 0.83, 0.87);
 const headerShade = rgb(0.94, 0.95, 0.96);
 const alternateShade = rgb(0.985, 0.988, 0.992);
 const gold = rgb(0.82, 0.61, 0.03);
+const roomCollator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
 
 function printable(value: string, font: PDFFont) {
   return Array.from(value.normalize("NFC").replace(/[\r\n\t]/g, " "))
@@ -70,6 +71,14 @@ function wrap(value: string, width: number, font: PDFFont, size: number): string
   return lines;
 }
 
+function fitSingleLine(value: string, width: number, font: PDFFont, size: number) {
+  const clean = printable(value || "—", font);
+  if (font.widthOfTextAtSize(clean, size) <= width) return clean;
+  let line = clean;
+  while (line.length > 1 && font.widthOfTextAtSize(`${line}…`, size) > width) line = line.slice(0, -1);
+  return `${line.trimEnd()}…`;
+}
+
 function roomSubline(room: NamedLodgingRoom | null) {
   if (!room) return "";
   if (room.floor.trim()) return room.floor.trim().toLocaleUpperCase("pt-BR");
@@ -78,7 +87,7 @@ function roomSubline(room: NamedLodgingRoom | null) {
 
 function roomLines(person: ReportPerson) {
   if (person.star) return ["INSCRIÇÃO", "SEM", "ACOMODAÇÃO"];
-  if (!person.room) return [];
+  if (!person.room) return ["SEM QUARTO"];
   return [person.room.name.toLocaleUpperCase("pt-BR"), roomSubline(person.room)].filter(Boolean);
 }
 
@@ -391,6 +400,89 @@ function drawPageHeader(
   drawTableHeader(page, bold);
 }
 
+function compareRooms(left: NamedLodgingRoom, right: NamedLodgingRoom) {
+  const locations = ["Centro Pastoral", "Seminário", "Casa dos Professores"];
+  const leftLocation = locations.indexOf(left.location);
+  const rightLocation = locations.indexOf(right.location);
+  const locationOrder = (leftLocation < 0 ? locations.length : leftLocation) -
+    (rightLocation < 0 ? locations.length : rightLocation);
+  return locationOrder || roomCollator.compare(left.name, right.name);
+}
+
+function drawRoomMapPage(
+  doc: PDFDocument,
+  logo: Awaited<ReturnType<PDFDocument["embedPng"]>>,
+  rooms: NamedLodgingRoom[],
+  people: ReportPerson[],
+  font: PDFFont,
+  bold: PDFFont,
+) {
+  const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const logoSize = logo.scaleToFit(118, 72);
+  page.drawImage(logo, { x: LEFT, y: 510, ...logoSize });
+  page.drawText("II ENCONTRO DE COROS DIOCESANOS E LITÚRGICOS", {
+    x: 148, y: 556, font: bold, size: 14, color: ink,
+  });
+  page.drawText("REGIONAL NORDESTE 1 - CNBB  |  QUIXADÁ - CE  |  20 A 22 DE NOVEMBRO DE 2026", {
+    x: 148, y: 537, font, size: 9, color: muted,
+  });
+  page.drawText("MAPA RESUMIDO DE QUARTOS", {
+    x: 148, y: 516, font: bold, size: 14, color: ink,
+  });
+  page.drawLine({ start: { x: LEFT, y: 500 }, end: { x: RIGHT, y: 500 }, thickness: 1.7, color: gold });
+  const unallocated = people.filter((person) => !person.room).length;
+  page.drawText(`QUARTOS EM ORDEM NUMÉRICA · Nº SEQUENCIAL IDENTIFICA CADA QUARTO · NOMES COMPLETOS NAS SEÇÕES POR CORO · SEM QUARTO: ${unallocated}`, {
+    x: LEFT, y: 481, font, size: 7.2, color: muted, maxWidth: CONTENT_WIDTH,
+  });
+
+  const sortedRooms = [...rooms].sort(compareRooms);
+  const roomsPerColumn = Math.ceil(sortedRooms.length / 2);
+  const columnGap = 10;
+  const columnWidth = (CONTENT_WIDTH - columnGap) / 2;
+  const columnXs = [LEFT, LEFT + columnWidth + columnGap];
+  const sequenceWidth = 32;
+  const roomWidth = 56;
+  const rowTop = 449;
+  const rowHeight = 12.2;
+  const headerTop = 465;
+  const occupantsByRoom = new Map<string, string[]>();
+  for (const person of people) {
+    if (!person.room) continue;
+    const occupants = occupantsByRoom.get(person.room.key) ?? [];
+    occupants.push(`${person.badgeName}${person.star ? " *" : ""}`);
+    occupantsByRoom.set(person.room.key, occupants);
+  }
+
+  for (let columnIndex = 0; columnIndex < 2; columnIndex += 1) {
+    const x = columnXs[columnIndex] ?? LEFT;
+    page.drawRectangle({ x, y: headerTop - 16, width: columnWidth, height: 16, color: headerShade, borderColor: rule, borderWidth: 0.55 });
+    page.drawText("SEQ.", { x: x + 4, y: headerTop - 11, font: bold, size: 6.8, color: ink });
+    page.drawText("QUARTO", { x: x + sequenceWidth + 2, y: headerTop - 11, font: bold, size: 6.8, color: ink });
+    page.drawText("OCUPANTES", { x: x + sequenceWidth + roomWidth + 2, y: headerTop - 11, font: bold, size: 6.8, color: ink });
+    const offset = columnIndex * roomsPerColumn;
+    const columnRooms = sortedRooms.slice(offset, offset + roomsPerColumn);
+    columnRooms.forEach((room, rowIndex) => {
+      const index = offset + rowIndex;
+      const y = rowTop - rowIndex * rowHeight;
+      const unavailable = room.key === "CP30" || room.key === "CP32";
+      const background = unavailable ? rgb(0.2, 0.2, 0.2) : rowIndex % 2 ? alternateShade : rgb(1, 1, 1);
+      const foreground = unavailable ? rgb(1, 1, 1) : ink;
+      page.drawRectangle({ x, y: y - rowHeight, width: columnWidth, height: rowHeight, color: background, borderColor: rule, borderWidth: 0.45 });
+      const sequence = String(index + 1).padStart(3, "0");
+      page.drawText(sequence, { x: x + 3, y: y - 8.7, font: bold, size: 6.8, color: foreground });
+      page.drawText(room.name.toLocaleUpperCase("pt-BR"), { x: x + sequenceWidth + 2, y: y - 8.7, font: bold, size: 6.6, color: foreground, maxWidth: roomWidth - 4 });
+      const labels = unavailable ? "INDISPONÍVEL" : (occupantsByRoom.get(room.key) ?? []).join(", ") || "—";
+      page.drawText(fitSingleLine(labels, columnWidth - sequenceWidth - roomWidth - 7, font, 6.4), {
+        x: x + sequenceWidth + roomWidth + 2, y: y - 8.7, font, size: 6.4, color: foreground,
+      });
+    });
+  }
+  if (sortedRooms.length === 0) {
+    page.drawText("Nenhum quarto cadastrado.", { x: LEFT, y: 435, font, size: 9, color: muted });
+  }
+  page.drawText("PÁGINA 1", { x: 748, y: 20, font, size: 8.2, color: muted, maxWidth: 66 });
+}
+
 export async function buildLodgingRegistrationsPdf(
   registrations: AdminRegistrationRow[],
   plan: LodgingPlan,
@@ -414,7 +506,8 @@ export async function buildLodgingRegistrationsPdf(
   }
   if (grouped.size === 0) grouped.set("SEM INSCRITOS", []);
 
-  let pageNumber = 0;
+  drawRoomMapPage(doc, logo, plan.namedRooms ?? [], people, font, bold);
+  let pageNumber = 1;
   for (const [choirName, rows] of grouped) {
     let page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     pageNumber += 1;
