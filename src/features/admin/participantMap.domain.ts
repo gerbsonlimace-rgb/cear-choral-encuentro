@@ -3,7 +3,7 @@ import { DIOCESE_SEATS } from "./cearaGeo";
 import { voicePartOptions } from "@/features/registration/registration.domain";
 
 export type ParticipantCount = { key: string; label: string; value: number };
-export type GenderCount = ParticipantCount & { inferred: number };
+export type GenderGroup = ParticipantCount & { names: string[] };
 
 export type ParticipantChoirMap = {
   choirName: string;
@@ -15,7 +15,7 @@ export type ParticipantChoirMap = {
   regentName: string | null;
   regentPhotoUrl: string | null;
   voices: ParticipantCount[];
-  genders: GenderCount[];
+  genders: ParticipantCount[];
 };
 
 export type ParticipantDioceseMap = {
@@ -30,7 +30,8 @@ export type ParticipantDioceseMap = {
 export type ParticipantMapData = {
   generatedAt: string;
   total: number;
-  genders: GenderCount[];
+  genders: ParticipantCount[];
+  genderGroups: GenderGroup[];
   inferredGenderCount: number;
   voices: ParticipantCount[];
   ageBands: ParticipantCount[];
@@ -122,7 +123,7 @@ function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean 
   }
 }
 
-function countGenders(rows: AdminRegistrationRow[]): { counts: GenderCount[]; inferred: number } {
+function countGenders(rows: AdminRegistrationRow[]): { counts: ParticipantCount[]; inferred: number } {
   const values = new Map<string, number>();
   const inferredValues = new Map<string, number>();
   for (const row of rows) {
@@ -134,7 +135,7 @@ function countGenders(rows: AdminRegistrationRow[]): { counts: GenderCount[]; in
   }
   const counts = GENDER_KEYS.flatMap((key) => {
     const value = values.get(key) ?? 0;
-    return value > 0 ? [{ key, label: GENDER_LABELS[key], value, inferred: inferredValues.get(key) ?? 0 }] : [];
+    return value > 0 ? [{ key, label: GENDER_LABELS[key], value }] : [];
   });
   const inferred = [...inferredValues.values()].reduce((sum, value) => sum + value, 0);
   return { counts, inferred };
@@ -147,6 +148,13 @@ export function buildParticipantMapData(
 ): ParticipantMapData {
   const rows = registrations.filter(isConfirmedParticipant);
   const genderSummary = countGenders(rows);
+  const genderNames = new Map<string, string[]>();
+  for (const row of rows) {
+    const gender = genderFor(row);
+    const name = row.name.trim();
+    const displayName = `${name}${gender.inferred ? " *" : ""}`;
+    genderNames.set(gender.key, [...(genderNames.get(gender.key) ?? []), displayName].filter(Boolean));
+  }
   const voiceCounts = countBy(rows.map((row) => row.voicePart ?? "nao_sei_informar"));
   const ageCounts = countBy(rows.map((row) => ageBandOf(row.birthDate, now)));
 
@@ -214,6 +222,10 @@ export function buildParticipantMapData(
     generatedAt: now.toISOString(),
     total: rows.length,
     genders: genderSummary.counts,
+    genderGroups: genderSummary.counts.map((item) => ({
+      ...item,
+      names: [...(genderNames.get(item.key) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    })),
     inferredGenderCount: genderSummary.inferred,
     voices: orderedCounts(
       voiceCounts,

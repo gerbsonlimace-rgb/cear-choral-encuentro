@@ -8,7 +8,6 @@ import {
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  Treemap,
   XAxis,
   YAxis,
 } from "recharts";
@@ -126,10 +125,6 @@ export function ParticipantMapPage({
         longitude: seat.longitude,
         isCentral: seat.city === "Quixadá",
       })),
-    [data],
-  );
-  const ageTreemap = useMemo(
-    () => (data?.ageBands ?? []).map((item) => ({ name: item.label, size: item.value })),
     [data],
   );
   const voiceChart = useMemo(
@@ -255,22 +250,61 @@ export function ParticipantMapPage({
                     <CardDescription>{countLabel(data.ageBands)}</CardDescription>
                   </CardHeader>
                   <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <Treemap
-                        data={ageTreemap}
-                        dataKey="size"
-                        nameKey="name"
-                        stroke="#fff"
-                        aspectRatio={4 / 3}
-                      >
-                        {ageTreemap.map((item, index) => (
-                          <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Treemap>
-                    </ResponsiveContainer>
+                    <div className="flex h-full w-full gap-1 overflow-hidden rounded-lg border bg-muted/30 p-1">
+                      {data.ageBands.map((band, index) => (
+                        <div
+                          key={band.key}
+                          className="flex min-w-0 flex-col justify-between rounded-md px-2 py-2 text-white shadow-sm"
+                          style={{
+                            flexGrow: Math.max(band.value, 0.6),
+                            flexBasis: 0,
+                            backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                          }}
+                          title={`${band.label}: ${band.value}`}
+                        >
+                          <span className="truncate text-[10px] font-semibold leading-tight">
+                            {band.label}
+                          </span>
+                          <span className="text-lg font-extrabold tabular-nums">{band.value}</span>
+                        </div>
+                      ))}
+                      {data.ageBands.length === 0 && (
+                        <div className="grid w-full place-items-center text-sm text-muted-foreground">
+                          Sem dados de idade
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Nomes por gênero</CardTitle>
+                  <CardDescription>* Gênero estimado pelo naipe vocal; gênero informado prevalece.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  {data.genderGroups.map((group) => (
+                    <div key={group.key} className="rounded-lg border bg-muted/30 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold" style={{ color: GENDER_COLORS[group.key] }}>
+                          {group.label}
+                        </p>
+                        <span className="text-xs font-bold tabular-nums text-muted-foreground">{group.value}</span>
+                      </div>
+                      <ul className="max-h-40 space-y-1 overflow-y-auto pr-1 text-xs text-muted-foreground">
+                        {group.names.map((name, index) => (
+                          <li key={`${name}-${index}`} className="truncate" title={name}>{name}</li>
+                        ))}
+                        {group.names.length === 0 && <li>Sem participantes</li>}
+                      </ul>
+                    </div>
+                  ))}
+                  {data.genderGroups.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhum participante confirmado.</p>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardHeader className="pb-2">

@@ -39,8 +39,8 @@ export function CearaMap({
     >
       <path
         d={CEARA_PATH}
-        fill="#edf2f7"
-        stroke="#18181b"
+        fill="#dbeafe"
+        stroke="#1d4ed8"
         strokeWidth={4}
         strokeLinejoin="round"
       />
@@ -56,16 +56,16 @@ export function CearaMap({
                 cy={position.y}
                 r={radius + 7}
                 fill="none"
-                stroke="#18181b"
-                strokeWidth={3}
+                stroke="#1d4ed8"
+                strokeWidth={4}
               />
             )}
             <circle
               cx={position.x}
               cy={position.y}
               r={radius}
-              fill="#d5a900"
-              stroke="#18181b"
+              fill="#d97706"
+              stroke="#7c2d12"
               strokeWidth={point.isCentral ? 3 : 1.5}
             >
               <title>{`${point.label}: ${point.value}${point.isCentral ? " · sede central do encontro" : ""}`}</title>
@@ -75,7 +75,9 @@ export function CearaMap({
               y={position.y + 1}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill="#18181b"
+              fill="#ffffff"
+              stroke="#7c2d12"
+              strokeWidth={1}
               fontSize={16}
               fontWeight={700}
               pointerEvents="none"
@@ -86,8 +88,8 @@ export function CearaMap({
               <text
                 x={position.x + radius + 8}
                 y={position.y + radius + 12}
-                fill="#18181b"
-                stroke="#edf2f7"
+                fill="#1d4ed8"
+                stroke="#dbeafe"
                 strokeWidth={4}
                 strokeLinejoin="round"
                 paintOrder="stroke"
