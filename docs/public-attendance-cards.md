@@ -70,6 +70,10 @@ nunca recria tokens ou registra presença. A montagem usa Pillow e OpenCV,
 com Node/qrcode para máscaras alternativas quando necessário. As fontes são
 as fontes Segoe UI e Georgia presentes no Windows.
 
+Cada cartão mostra, no alto à direita, o número sequencial de três dígitos da
+relação de hospedagem. A mesma sequência considera inscrições e pessoas avulsas,
+incluindo acompanhantes e motoristas, mesmo que a pessoa avulsa não tenha QR.
+
 As imagens e a planilha ficam em `output/participant-cards/`, ignorado pelo
 Git. Não publicar esse diretório como uma galeria pública: inclui fotos,
 hospedagem e links individuais. O ZIP inclui os PNGs e a planilha, sem fotos

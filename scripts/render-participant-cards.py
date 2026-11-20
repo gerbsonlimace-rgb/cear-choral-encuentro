@@ -59,8 +59,13 @@ logo=Image.open(ROOT/'src/assets/logo-coros-diocesanos-regional.png').convert('R
 logo.thumbnail((300,165),Image.Resampling.LANCZOS)
 validations=[]; issues=[]
 for i,c in enumerate(manifest['cards']):
+    sequence=int(c.get('sequenceNumber',0))
+    if sequence<1:raise ValueError(f'Missing list sequence number: {c["filename"]}')
     im=Image.new('RGB',(W,H),IVORY);d=ImageDraw.Draw(im)
     d.rectangle((0,0,W,9),fill=GOLD);im.paste(logo,(78,30),logo)
+    d.rounded_rectangle((820,30,1002,154),radius=24,fill=WINE,outline=GOLD,width=4)
+    d.text((911,85),f'{sequence:03d}',font=font(48,'bold'),fill=IVORY,anchor='mm')
+    d.text((911,127),'Nº DA LISTA',font=font(14,'bold'),fill='#F2D68B',anchor='mm')
     d.text((540,203),'II ENCONTRO DE COROS · QUIXADÁ 2026',font=font(22,'bold'),fill=MUTED,anchor='mm')
     d.line((78,241,1002,241),fill='#DDD3C5',width=2)
     diameter=250
@@ -139,7 +144,7 @@ for start in range(0,len(manifest['cards']),20):
     for index,c in enumerate(rows):
         thumb=Image.open(OUT/'cartoes'/c['filename']).crop((0,255,1080,745)).resize((300,136))
         x=(index%4)*300;y=(index//4)*240;sheet.paste(thumb,(x,y))
-        sd=ImageDraw.Draw(sheet);block(sd,c['fullName'],(x+8,y+148),282,16,12,3,fill=INK)
+        sd=ImageDraw.Draw(sheet);block(sd,f'{int(c["sequenceNumber"]):03d} · {c["fullName"]}',(x+8,y+148),282,16,12,3,fill=INK)
     sheet.save(OUT/'revisao'/f'contatos-{start//20+1:02}.jpg',quality=90)
 with zipfile.ZipFile(OUT/f'cartoes-{len(manifest["cards"])}-participantes.zip','w',zipfile.ZIP_DEFLATED) as archive:
     for c in manifest['cards']:archive.write(OUT/'cartoes'/c['filename'],'cartoes/'+c['filename'])
