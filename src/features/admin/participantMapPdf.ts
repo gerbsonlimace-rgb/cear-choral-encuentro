@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { adminPdfLogoBase64 } from "./admin-pdf-logo";
-import { CEARA_PATH, CEARA_VIEWBOX, projectCeara } from "./cearaGeo";
+import { CEARA_PATH, projectCeara } from "./cearaGeo";
 import type { ParticipantCount, ParticipantMapData } from "./participantMap.domain";
 
 export type ParticipantMapPdfFile = { fileName: string; base64: string };
@@ -36,14 +36,14 @@ function wrap(value: string, width: number, font: PDFFont, size: number): string
 }
 
 function drawHeader(page: PDFPage, logo: Awaited<ReturnType<PDFDocument["embedPng"]>>, title: string, subtitle: string, font: PDFFont, bold: PDFFont) {
-  const size = logo.scaleToFit(74, 44);
-  page.drawImage(logo, { x: 34, y: 536, ...size });
+  const size = logo.scaleToFit(64, 44);
+  page.drawImage(logo, { x: 34, y: 780, ...size });
   page.drawText(printable("II Encontro de Coros Diocesanos e Litúrgicos do Ceará", font), {
-    x: 120, y: 558, font: bold, size: 13, color: ink,
+    x: 112, y: 810, font: bold, size: 11, color: ink,
   });
-  page.drawText(printable(title, font), { x: 120, y: 539, font: bold, size: 11, color: accent });
-  page.drawText(printable(subtitle, font), { x: 120, y: 523, font, size: 8, color: muted });
-  page.drawLine({ start: { x: 34, y: 512 }, end: { x: 808, y: 512 }, thickness: 1, color: rule });
+  page.drawText(printable(title, font), { x: 112, y: 790, font: bold, size: 10, color: accent });
+  page.drawText(printable(subtitle, font), { x: 112, y: 774, font, size: 7, color: muted });
+  page.drawLine({ start: { x: 34, y: 758 }, end: { x: 561, y: 758 }, thickness: 1, color: rule });
 }
 
 function drawBars(
@@ -71,19 +71,6 @@ function drawBars(
   return y - 20 - Math.min(items.length, 10) * rowHeight;
 }
 
-async function embedRegentPhoto(doc: PDFDocument, url: string | null) {
-  if (!url) return null;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length < 32 || bytes.length > 5_000_000) return null;
-    try { return await doc.embedJpg(bytes); } catch { return await doc.embedPng(bytes); }
-  } catch {
-    return null;
-  }
-}
-
 /** Server-side infographic: summary charts, Ceará map and one section per choir. */
 export async function buildParticipantMapInfographic(data: ParticipantMapData): Promise<ParticipantMapPdfFile> {
   const doc = await PDFDocument.create();
@@ -97,103 +84,157 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
   doc.setCreationDate(new Date(data.generatedAt));
 
   // Page 1 — general overview.
-  let page = doc.addPage([842, 595]);
+  let page = doc.addPage([595, 842]);
   drawHeader(page, logo, "Mapa geral dos participantes", `Emitido em ${date}`, font, bold);
 
   const metrics = [
-    { label: "Participantes confirmados", value: String(data.total) },
+    { label: "Participantes", value: String(data.total) },
     { label: "Coros", value: String(data.choirs.length) },
     { label: "Dioceses", value: String(data.dioceses.length) },
     { label: "Mulheres", value: String(data.genders.find((item) => item.key === "feminino")?.value ?? 0) },
     { label: "Homens", value: String(data.genders.find((item) => item.key === "masculino")?.value ?? 0) },
   ];
   metrics.forEach((metric, index) => {
-    const width = 146;
-    const x = 34 + index * (width + 8);
-    page.drawRectangle({ x, y: 448, width, height: 48, color: shade });
-    page.drawText(printable(metric.label, font), { x: x + 9, y: 479, font, size: 7, color: muted });
-    page.drawText(metric.value, { x: x + 9, y: 458, font: bold, size: 19, color: ink });
+    const width = 101;
+    const x = 34 + index * (width + 5);
+    page.drawRectangle({ x, y: 690, width, height: 48, color: shade });
+    page.drawText(printable(metric.label, font), { x: x + 7, y: 721, font, size: 6.5, color: muted });
+    page.drawText(metric.value, { x: x + 7, y: 699, font: bold, size: 17, color: ink });
   });
 
-  drawBars(page, 34, 424, 214, "Homens e mulheres", data.genders, font, bold, accent, 24);
-  drawBars(page, 278, 424, 214, "Naipes", data.voices, font, bold, accents[1], 21);
-  drawBars(page, 522, 424, 286, "Faixa etária", data.ageBands, font, bold, accents[3], 20);
+  drawBars(page, 34, 628, 164, "Distribuição por gênero", data.genders, font, bold, accent, 19);
+  drawBars(page, 215, 628, 164, "Naipes", data.voices, font, bold, accents[1], 19);
+  drawBars(page, 396, 628, 165, "Faixa etária", data.ageBands, font, bold, accents[3], 19);
+  page.drawText(
+    printable(
+      `${data.inferredGenderCount} gênero(s) estimado(s) pelo nome; o gênero informado tem prioridade.`,
+      font,
+    ),
+    { x: 34, y: 485, font, size: 6.5, color: muted },
+  );
 
-  // Ceará map with one point per diocese seat.
-  const scale = 0.24;
-  const mapX = 45;
-  const mapY = 28;
-  page.drawSvgPath(CEARA_PATH, {
-    x: mapX, y: mapY, scale,
-    color: rgb(0.93, 0.96, 0.99),
-    borderColor: accent,
-    borderWidth: 1,
-  });
-  const largest = Math.max(1, ...data.dioceses.map((item) => item.total));
-  for (const seat of data.dioceses) {
-    const point = projectCeara(seat.latitude, seat.longitude);
-    const cx = mapX + point.x * scale;
-    const cy = mapY + (CEARA_VIEWBOX.height - point.y) * scale;
-    const radius = 5 + (seat.total / largest) * 17;
-    page.drawCircle({ x: cx, y: cy, size: radius, color: rgb(0.86, 0.36, 0.22), opacity: 0.75 });
-    page.drawCircle({ x: cx, y: cy, size: 3, color: rgb(1, 1, 1) });
-  }
-  page.drawText(printable("Participantes por sede diocesana", font), {
-    x: 260, y: 250, font: bold, size: 11, color: ink,
+  // Ceará outline and numbered, compact seat markers.
+  const mapX = 48;
+  const mapY = 146;
+  const coordinates = [...CEARA_PATH.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)]
+    .map((match) => ({ x: Number(match[1]), y: Number(match[2]) }));
+  const minX = Math.min(...coordinates.map((point) => point.x));
+  const maxX = Math.max(...coordinates.map((point) => point.x));
+  const minY = Math.min(...coordinates.map((point) => point.y));
+  const maxY = Math.max(...coordinates.map((point) => point.y));
+  const scale = Math.min(190 / (maxX - minX), 230 / (maxY - minY));
+  coordinates.forEach((point, index) => {
+    const next = coordinates[(index + 1) % coordinates.length];
+    page.drawLine({
+      start: { x: mapX + (point.x - minX) * scale, y: mapY + (maxY - point.y) * scale },
+      end: { x: mapX + (next.x - minX) * scale, y: mapY + (maxY - next.y) * scale },
+      thickness: 1.2,
+      color: accent,
+    });
   });
   data.dioceses.forEach((seat, index) => {
-    const row = 230 - index * 20;
-    if (row < 40) return;
-    page.drawCircle({ x: 266, y: row + 2, size: 4, color: rgb(0.86, 0.36, 0.22) });
-    page.drawText(printable(`${seat.city} · ${seat.diocese}`, font), {
-      x: 278, y: row, font, size: 8, color: ink,
+    const point = projectCeara(seat.latitude, seat.longitude);
+    const cx = mapX + (point.x - minX) * scale;
+    const cy = mapY + (maxY - point.y) * scale;
+    const isCentral = seat.city === "Quixadá";
+    const number = String(index + 1).padStart(2, "0");
+    page.drawCircle({
+      x: cx,
+      y: cy,
+      size: 8,
+      color: isCentral ? accent : rgb(0.86, 0.36, 0.22),
+      borderColor: rgb(1, 1, 1),
+      borderWidth: 1,
+    });
+    page.drawText(number, {
+      x: cx - 5.3,
+      y: cy - 2.3,
+      font: bold,
+      size: 5.8,
+      color: rgb(1, 1, 1),
+    });
+  });
+  page.drawText(printable("Participantes por sede diocesana", font), {
+    x: 286, y: 414, font: bold, size: 10, color: ink,
+  });
+  data.dioceses.forEach((seat, index) => {
+    const row = 390 - index * 23;
+    if (row < 165) return;
+    const isCentral = seat.city === "Quixadá";
+    const number = String(index + 1).padStart(2, "0");
+    page.drawCircle({
+      x: 292,
+      y: row + 2,
+      size: 7,
+      color: isCentral ? accent : rgb(0.86, 0.36, 0.22),
+    });
+    page.drawText(number, { x: 287.2, y: row - 0.2, font: bold, size: 5.2, color: rgb(1, 1, 1) });
+    page.drawText(printable(`${seat.city} · ${seat.diocese}${isCentral ? " · sede central" : ""}`, font), {
+      x: 304, y: row, font: isCentral ? bold : font, size: 7, color: ink,
     });
     page.drawText(`${seat.choirs} coro(s) · ${seat.total}`, {
-      x: 278, y: row - 9, font, size: 7, color: muted,
+      x: 304, y: row - 9, font, size: 6.5, color: muted,
     });
   });
 
-  // Pages 2+ — one card per choir with voices and the regent photo.
-  const perPage = 4;
+  // Pages 2+ — one card per choir, without participant photos.
+  const perPage = 3;
   for (let start = 0; start < data.choirs.length; start += perPage) {
-    page = doc.addPage([842, 595]);
+    page = doc.addPage([595, 842]);
     drawHeader(page, logo, "Participantes por coro", `Página ${Math.floor(start / perPage) + 1} · ${data.choirs.length} coros`, font, bold);
     const group = data.choirs.slice(start, start + perPage);
     for (let index = 0; index < group.length; index += 1) {
       const choir = group[index];
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      const x = 34 + column * 398;
-      const y = 490 - row * 232;
-      page.drawRectangle({ x, y: y - 212, width: 378, height: 212, color: shade });
+      const row = index;
+      const x = 34;
+      const y = 744 - row * 234;
+      page.drawRectangle({ x, y: y - 220, width: 527, height: 220, color: shade });
       page.drawText(printable(choir.choirName, font), { x: x + 14, y: y - 20, font: bold, size: 12, color: ink });
       page.drawText(printable(`${choir.total} participantes · ${choir.diocese ?? "Sem diocese"}`, font), {
         x: x + 14, y: y - 36, font, size: 8, color: muted,
       });
-      let photo: Awaited<ReturnType<PDFDocument["embedJpg"]>> | null = null;
-      if (choir.regentPhotoUrl) photo = await embedRegentPhoto(doc, choir.regentPhotoUrl);
-      if (photo) {
-        const size = photo.scaleToFit(62, 62);
-        page.drawImage(photo, { x: x + 14, y: y - 108, ...size });
-      } else {
-        page.drawRectangle({ x: x + 14, y: y - 108, width: 62, height: 62, color: rgb(0.88, 0.90, 0.93) });
-        const initials = printable((choir.regentName ?? "?").split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase(), font);
-        page.drawText(initials, { x: x + 30, y: y - 80, font: bold, size: 16, color: accent });
-      }
-      page.drawText(printable("Regente", font), { x: x + 88, y: y - 60, font, size: 7, color: muted });
+      page.drawText(printable("Regente", font), { x: x + 14, y: y - 62, font, size: 7, color: muted });
       page.drawText(printable(choir.regentName ?? "Não informado", font), {
-        x: x + 88, y: y - 76, font: bold, size: 10, color: ink,
+        x: x + 14, y: y - 78, font: bold, size: 10, color: ink,
       });
       page.drawText(printable(choir.city ? `Sede: ${choir.city}` : "Sem localização", font), {
-        x: x + 88, y: y - 90, font, size: 8, color: muted,
+        x: x + 14, y: y - 92, font, size: 8, color: muted,
       });
-      drawBars(page, x + 14, y - 122, 348, "Naipes", choir.voices, font, bold, accents[index % accents.length], 16);
+      drawBars(page, x + 14, y - 108, 497, "Naipes", choir.voices, font, bold, accents[index % accents.length], 16);
     }
   }
   if (data.choirs.length === 0) {
-    page = doc.addPage([842, 595]);
+    page = doc.addPage([595, 842]);
     drawHeader(page, logo, "Participantes por coro", "Sem coros confirmados", font, bold);
     page.drawText("Nenhuma inscrição confirmada para exibir.", { x: 40, y: 460, font, size: 12, color: ink });
+  }
+
+  const birthdaysPerPage = 24;
+  const birthdayPageCount = Math.max(1, Math.ceil(data.birthdays.length / birthdaysPerPage));
+  for (let pageIndex = 0; pageIndex < birthdayPageCount; pageIndex += 1) {
+    page = doc.addPage([595, 842]);
+    drawHeader(page, logo, "Aniversariantes de hoje até domingo", "Participantes confirmados · período contado a partir da data de emissão", font, bold);
+    const birthdays = data.birthdays.slice(pageIndex * birthdaysPerPage, (pageIndex + 1) * birthdaysPerPage);
+    if (birthdays.length === 0) {
+      page.drawText("Nenhum aniversariante entre hoje e domingo.", {
+        x: 40, y: 710, font: bold, size: 12, color: ink,
+      });
+      continue;
+    }
+    birthdays.forEach((birthday, index) => {
+      const column = Math.floor(index / 12);
+      const row = index % 12;
+      const x = 34 + column * 267;
+      const y = 710 - row * 52;
+      page.drawRectangle({ x, y: y - 44, width: 260, height: 44, color: shade });
+      page.drawText(printable(birthday.dateLabel, font), {
+        x: x + 10, y: y - 13, font: bold, size: 6.5, color: accent,
+      });
+      const nameLines = wrap(birthday.name, 240, font, 8).slice(0, 2);
+      nameLines.forEach((line, lineIndex) => {
+        page.drawText(line, { x: x + 10, y: y - 27 - lineIndex * 9, font, size: 8, color: ink });
+      });
+    });
   }
 
   const bytes = await doc.save();

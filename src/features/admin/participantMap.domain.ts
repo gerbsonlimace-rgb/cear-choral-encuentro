@@ -27,15 +27,19 @@ export type ParticipantDioceseMap = {
   choirs: number;
 };
 
+export type ParticipantBirthday = { name: string; dateLabel: string; daysUntil: number };
+
 export type ParticipantMapData = {
   generatedAt: string;
   total: number;
   genders: ParticipantCount[];
   genderGroups: GenderGroup[];
+  inferredGenderCount: number;
   voices: ParticipantCount[];
   ageBands: ParticipantCount[];
   choirs: ParticipantChoirMap[];
   dioceses: ParticipantDioceseMap[];
+  birthdays: ParticipantBirthday[];
   unlocated: number;
 };
 
@@ -58,6 +62,13 @@ const CONFIRMED_STATUSES = new Set(["paid", "partially_paid", "exempt"]);
 
 const VOICE_KEYS = voicePartOptions.map((option) => option.value);
 const GENDER_KEYS = ["masculino", "feminino", "nao_informado"] as const;
+const FEMALE_FIRST_NAMES = new Set(
+  "ana alice amanda amelia amanda andrea antonia beatriz bianca camila carla carolina clara claudia cristina daniela debora edigleuma eliane eliana elisabete emilia ester fabiana fatima fernanda francisca gloria helena iracema iris isabel janaina josefa julia juliana lais larissa leticia lucia luciana luiza macrina margarida maria marilene marisa marlene matea neide neusa nelsiana paula paulina raquel rafaela regina rosa ruth socorro valeria vanessa veronica vitoria".split(" "),
+);
+const MALE_FIRST_NAMES = new Set(
+  "alexandre antonio arthur augusto breno caio carlos cesar cicero clayton daniel davi diego domingos edmilson elias emmanuel emanuel euritonio felipe filipe fernando francisco gabriel henrique iury joao jorge jose luca lucas luiz manuel marcelo marcos mateus matheus miguel paulo pedro rafael raimundo ricardo samuel thiago tomas vinicius vitor victor yuri leonys".split(" "),
+);
+const NAME_PREFIXES = new Set(["d", "dom", "frei", "fre", "padre", "pe", "irma", "ir"]);
 
 export function isConfirmedParticipant(row: AdminRegistrationRow): boolean {
   return !row.cancelledAt && CONFIRMED_STATUSES.has(row.financialState?.status ?? row.paymentStatus);
@@ -104,19 +115,95 @@ function seatOf(diocese: string | null) {
   return DIOCESE_SEATS.find((seat) => seat.diocese === diocese) ?? null;
 }
 
+function birthdaysUntilSunday(rows: AdminRegistrationRow[], now: Date): ParticipantBirthday[] {
+  const localDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Fortaleza",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => localDate.find((item) => item.type === type)?.value ?? "0";
+  const year = Number(part("year"));
+  const month = Number(part("month"));
+  const day = Number(part("day"));
+  const today = new Date(Date.UTC(year, month - 1, day));
+  const daysUntilSunday = (7 - today.getUTCDay()) % 7;
+  const dates = new Map<string, number>();
+  for (let offset = 0; offset <= daysUntilSunday; offset += 1) {
+    const date = new Date(Date.UTC(year, month - 1, day + offset));
+    dates.set(`${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`, offset);
+  }
+
+  return rows.flatMap((row) => {
+    const match = row.birthDate?.match(/^\d{4}-(\d{2})-(\d{2})/);
+    if (!match) return [];
+    const daysUntil = dates.get(`${match[1]}-${match[2]}`);
+    if (daysUntil === undefined) return [];
+    const date = new Date(Date.UTC(year, month - 1, day + daysUntil));
+    const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "long" }).format(date);
+    return [{
+      name: row.badgeName?.trim() || row.name.trim(),
+      dateLabel: `${String(date.getUTCDate()).padStart(2, "0")}/${String(date.getUTCMonth() + 1).padStart(2, "0")} · ${weekday}`,
+      daysUntil,
+    }];
+  }).sort((left, right) => left.daysUntil - right.daysUntil || left.name.localeCompare(right.name, "pt-BR"));
+}
+
+function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean } {
+  const declared = row.gender?.trim().toLocaleLowerCase("pt-BR");
+  if (declared && declared in GENDER_LABELS && declared !== "nao_informado") {
+    return { key: declared, inferred: false };
+  }
+  const nameParts = row.name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .map((part) => part.replace(/[^a-z]/g, ""))
+    .filter((part) => part && !NAME_PREFIXES.has(part));
+  const firstName = nameParts[0] ?? "";
+  const knownName = nameParts.find((part) => FEMALE_FIRST_NAMES.has(part) || MALE_FIRST_NAMES.has(part));
+  const key = FEMALE_FIRST_NAMES.has(firstName) || (knownName && FEMALE_FIRST_NAMES.has(knownName))
+    ? "feminino"
+    : MALE_FIRST_NAMES.has(firstName) || (knownName && MALE_FIRST_NAMES.has(knownName))
+      ? "masculino"
+      : firstName.endsWith("a")
+        ? "feminino"
+        : "masculino";
+  return { key, inferred: true };
+}
+
+function countGenders(rows: AdminRegistrationRow[]): { counts: ParticipantCount[]; inferred: number } {
+  const values = new Map<string, number>();
+  const inferredValues = new Map<string, number>();
+  for (const row of rows) {
+    const gender = genderFor(row);
+    values.set(gender.key, (values.get(gender.key) ?? 0) + 1);
+    if (gender.inferred) {
+      inferredValues.set(gender.key, (inferredValues.get(gender.key) ?? 0) + 1);
+    }
+  }
+  const counts = GENDER_KEYS.flatMap((key) => {
+    const value = values.get(key) ?? 0;
+    return value > 0 ? [{ key, label: GENDER_LABELS[key], value }] : [];
+  });
+  const inferred = [...inferredValues.values()].reduce((sum, value) => sum + value, 0);
+  return { counts, inferred };
+}
+
 /** Pure aggregation used by the administrative dashboard and by its PDF export. */
 export function buildParticipantMapData(
   registrations: AdminRegistrationRow[],
   now: Date = new Date(),
 ): ParticipantMapData {
   const rows = registrations.filter(isConfirmedParticipant);
-  const genderOf = (row: AdminRegistrationRow) =>
-    row.gender in GENDER_LABELS ? row.gender : "nao_informado";
-  const genderCounts = countBy(rows.map(genderOf));
+  const genderSummary = countGenders(rows);
   const genderNames = new Map<string, string[]>();
   for (const row of rows) {
-    const key = genderOf(row);
-    genderNames.set(key, [...(genderNames.get(key) ?? []), row.name.trim()].filter(Boolean));
+    const gender = genderFor(row);
+    const name = row.name.trim();
+    const displayName = `${name}${gender.inferred ? " *" : ""}`;
+    genderNames.set(gender.key, [...(genderNames.get(gender.key) ?? []), displayName].filter(Boolean));
   }
   const voiceCounts = countBy(rows.map((row) => row.voicePart ?? "nao_sei_informar"));
   const ageCounts = countBy(rows.map((row) => ageBandOf(row.birthDate, now)));
@@ -133,6 +220,7 @@ export function buildParticipantMapData(
       const dioceseCounts = countBy(members.map((member) => member.diocese || "(não informada)"));
       const diocese = [...dioceseCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
       const seat = seatOf(diocese);
+      const genderSummary = countGenders(members);
       const regent =
         members.find(
           (member) =>
@@ -154,15 +242,7 @@ export function buildParticipantMapData(
           VOICE_KEYS,
           Object.fromEntries(voicePartOptions.map((option) => [option.value, option.label])),
         ),
-        genders: orderedCounts(
-          countBy(
-            members.map((member) =>
-              member.gender in GENDER_LABELS ? member.gender : "nao_informado",
-            ),
-          ),
-          GENDER_KEYS,
-          GENDER_LABELS,
-        ),
+        genders: genderSummary.counts,
       };
     })
     .sort((left, right) => right.total - left.total || left.choirName.localeCompare(right.choirName, "pt-BR"));
@@ -191,13 +271,12 @@ export function buildParticipantMapData(
   return {
     generatedAt: now.toISOString(),
     total: rows.length,
-    genders: orderedCounts(genderCounts, GENDER_KEYS, GENDER_LABELS),
-    genderGroups: GENDER_KEYS.map((key) => ({
-      key,
-      label: GENDER_LABELS[key],
-      value: genderCounts.get(key) ?? 0,
-      names: [...(genderNames.get(key) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    })).filter((group) => group.value > 0),
+    genders: genderSummary.counts,
+    genderGroups: genderSummary.counts.map((item) => ({
+      ...item,
+      names: [...(genderNames.get(item.key) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    })),
+    inferredGenderCount: genderSummary.inferred,
     voices: orderedCounts(
       voiceCounts,
       VOICE_KEYS,
@@ -213,6 +292,7 @@ export function buildParticipantMapData(
     ),
     choirs,
     dioceses,
+    birthdays: birthdaysUntilSunday(rows, now),
     unlocated: rows.length - dioceses.reduce((sum, item) => sum + item.total, 0),
   };
 }

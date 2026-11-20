@@ -113,6 +113,7 @@ export function ParticipantMapPage({
   const male = data?.genders.find((item) => item.key === "masculino")?.value ?? 0;
   const female = data?.genders.find((item) => item.key === "feminino")?.value ?? 0;
   const unknownGender = data?.genders.find((item) => item.key === "nao_informado")?.value ?? 0;
+  const inferredGenderCount = data?.inferredGenderCount ?? 0;
   const topChoirs = useMemo(() => data?.choirs.slice(0, 12) ?? [], [data]);
   const mapPoints = useMemo(
     () =>
@@ -122,6 +123,7 @@ export function ParticipantMapPage({
         value: seat.total,
         latitude: seat.latitude,
         longitude: seat.longitude,
+        isCentral: seat.city === "Quixadá",
       })),
     [data],
   );
@@ -187,19 +189,22 @@ export function ParticipantMapPage({
                   {data.total} confirmações · {data.choirs.length} coros · {data.dioceses.length} dioceses
                 </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 <InternalMetricCard dense label="Participantes" value={String(data.total)} icon={Users} />
                 <InternalMetricCard dense label="Homens" value={String(male)} />
                 <InternalMetricCard dense label="Mulheres" value={String(female)} />
                 <InternalMetricCard dense label="Não informado" value={String(unknownGender)} />
+                <InternalMetricCard dense label="Estimados pelo nome" value={String(inferredGenderCount)} />
                 <InternalMetricCard dense label="Coros" value={String(data.choirs.length)} icon={Music2} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Homens e mulheres</CardTitle>
-                    <CardDescription>{countLabel(data.genders)}</CardDescription>
+                    <CardTitle className="text-base">Distribuição por gênero</CardTitle>
+                    <CardDescription>
+                      {countLabel(data.genders)} · gênero informado prevalece; ausências são estimadas pelo nome.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
@@ -276,7 +281,7 @@ export function ParticipantMapPage({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Nomes por gênero</CardTitle>
-                  <CardDescription>Participantes confirmados, separados pelo gênero informado.</CardDescription>
+                  <CardDescription>* Gênero estimado pelo nome; gênero informado prevalece.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   {data.genderGroups.map((group) => (
@@ -330,7 +335,7 @@ export function ParticipantMapPage({
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      Cada ponto representa a sede da diocese. O tamanho acompanha o número de participantes confirmados.
+                      Os círculos mostram o total confirmado por diocese. Quixadá está destacado como sede central do encontro.
                     </p>
                     <ul className="divide-y rounded-lg border">
                       {data.dioceses.map((seat) => (

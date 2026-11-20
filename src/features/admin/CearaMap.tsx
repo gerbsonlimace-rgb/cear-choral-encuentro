@@ -10,6 +10,7 @@ export type CearaMapPoint = {
   value: number;
   latitude: number;
   longitude: number;
+  isCentral?: boolean;
 };
 
 export function CearaMap({
@@ -24,7 +25,7 @@ export function CearaMap({
   const maxValue = points.reduce((max, point) => Math.max(max, point.value), 0);
   const radiusFor = (value: number) => {
     const normalized = maxValue > 0 ? Math.max(0, Math.min(value / maxValue, 1)) : 0;
-    return 6 + normalized * 28;
+    return 12 + normalized * 22;
   };
 
   return (
@@ -36,22 +37,70 @@ export function CearaMap({
       className={cn("w-full", height == null && "h-auto", className)}
       style={height == null ? undefined : { height }}
     >
-      <path d={CEARA_PATH} fill="#dbeafe" stroke="#1d4ed8" strokeWidth={3} />
+      <path
+        d={CEARA_PATH}
+        fill="#dbeafe"
+        stroke="#1d4ed8"
+        strokeWidth={4}
+        strokeLinejoin="round"
+      />
 
       {points.map((point) => {
         const position = projectCeara(point.latitude, point.longitude);
+        const radius = radiusFor(point.value);
         return (
-          <circle
-            key={point.id}
-            cx={position.x}
-            cy={position.y}
-            r={radiusFor(point.value)}
-            fill="#d97706"
-            stroke="#7c2d12"
-            strokeWidth={2}
-          >
-            <title>{`${point.label}: ${point.value}`}</title>
-          </circle>
+          <g key={point.id}>
+            {point.isCentral && (
+              <circle
+                cx={position.x}
+                cy={position.y}
+                r={radius + 7}
+                fill="none"
+                stroke="#1d4ed8"
+                strokeWidth={4}
+              />
+            )}
+            <circle
+              cx={position.x}
+              cy={position.y}
+              r={radius}
+              fill="#d97706"
+              stroke="#7c2d12"
+              strokeWidth={point.isCentral ? 3 : 1.5}
+            >
+              <title>{`${point.label}: ${point.value}${point.isCentral ? " · sede central do encontro" : ""}`}</title>
+            </circle>
+            <text
+              x={position.x}
+              y={position.y + 1}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#ffffff"
+              stroke="#7c2d12"
+              strokeWidth={1}
+              fontSize={16}
+              fontWeight={700}
+              pointerEvents="none"
+            >
+              {point.value}
+            </text>
+            {point.isCentral && (
+              <text
+                x={position.x + radius + 8}
+                y={position.y + radius + 12}
+                fill="#1d4ed8"
+                stroke="#dbeafe"
+                strokeWidth={4}
+                strokeLinejoin="round"
+                paintOrder="stroke"
+                fontSize={21}
+                fontWeight={700}
+                pointerEvents="none"
+              >
+                Quixadá · sede central
+              </text>
+            )}
+          </g>
         );
       })}
 
