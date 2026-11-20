@@ -1,18 +1,17 @@
-import { useState } from "react";
-import { LoaderCircle, Printer, Save } from "lucide-react";
+import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
+import { FileDown, LoaderCircle, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
-import { validateNamedLodgingPlan, type LodgingPlan } from "./admin-lodging.domain";
+import {
+  validateNamedLodgingPlan,
+  type LodgingPlan,
+  type LodgingRosterEntry,
+} from "./admin-lodging.domain";
+import { AdminNamedLodgingPrintSheet } from "./AdminNamedLodgingPrintSheet";
 
-export type NamedLodgingRegistration = {
-  id: string;
-  name: string;
-  badgeName: string | null;
-  choirName: string;
-  registrationPriceCents: number | null;
-  cancelledAt?: string | null;
-};
+export type NamedLodgingRegistration = LodgingRosterEntry;
 
 type Props = {
   registrations: NamedLodgingRegistration[];
@@ -46,6 +45,7 @@ export function AdminNamedLodgingPage({
   );
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [printLayout, setPrintLayout] = useState<"list" | null>(null);
   const rooms = plan.namedRooms ?? [];
   const capacity = Math.min(plan.roomCapacity, 3);
   const active = registrations.filter((row) => !row.cancelledAt);
@@ -64,6 +64,12 @@ export function AdminNamedLodgingPage({
       .toLocaleLowerCase("pt-BR");
   const term = normalize(search.trim());
   const matches = (text: string) => !term || normalize(text).includes(term);
+
+  useEffect(() => {
+    const finishPrint = () => setPrintLayout(null);
+    window.addEventListener("afterprint", finishPrint);
+    return () => window.removeEventListener("afterprint", finishPrint);
+  }, []);
 
   const save = async (next: LodgingPlan) => {
     try {
@@ -162,8 +168,44 @@ export function AdminNamedLodgingPage({
   );
 
   return (
-    <main className="internal-app named-lodging min-h-svh bg-background text-foreground px-4 pb-16 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
-      <style>{`@media print { .named-lodging { padding: 0 !important; } .named-lodging nav, .named-lodging aside { display: none !important; } .lodging-room { break-inside: avoid; } }`}</style>
+    <main
+      className={`internal-app named-lodging min-h-svh bg-background text-foreground px-4 pb-16 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6 ${printLayout ? "lodging-print-list" : ""}`}
+    >
+      <style>{`@page { size: A4 portrait; margin: 8mm; }
+        @media print {
+          .named-lodging { padding: 0 !important; margin: 0 !important; background: #fff !important; color: #111 !important; }
+          .named-lodging nav, .named-lodging aside { display: none !important; }
+          .lodging-room { break-inside: avoid; }
+          .named-lodging.lodging-print-list > div { display: none !important; }
+          .named-lodging.lodging-print-list > .lodging-print-sheet { display: block !important; }
+          .lodging-print-sheet { color: #111 !important; background: #fff !important; font: 7pt/1.15 Arial, sans-serif !important; }
+          .lodging-print-sheet h1 { margin: 0 0 2mm; font-size: 14pt; line-height: 1.1; text-align: center; }
+          .lodging-print-heading { margin-bottom: 3mm; text-align: center; }
+          .lodging-print-heading p { margin: 1mm 0; font-size: 8pt; }
+          .lodging-print-heading .lodging-print-legend { margin-top: 2mm; font-weight: 700; }
+          .lodging-print-map-table, .lodging-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          .lodging-print-map-table { margin-bottom: 4mm; }
+          .lodging-print-map-table th, .lodging-print-map-table td, .lodging-print-table th, .lodging-print-table td { border: 0.25mm solid #555; padding: 1mm 1.2mm; text-align: left; vertical-align: top; }
+          .lodging-print-map-table thead, .lodging-print-table thead { display: table-header-group; }
+          .lodging-print-map-table > thead > tr:first-child th { background: #e8e8e8; text-align: center; font-size: 8pt; }
+          .lodging-print-map-table > thead > tr:nth-child(2) th { background: #f3f3f3; }
+          .lodging-print-map-table > tbody > tr, .lodging-print-table > tbody > tr { break-inside: avoid; page-break-inside: avoid; }
+          .lodging-print-room-number { width: 9%; font-weight: 700; text-align: center !important; white-space: nowrap; }
+          .lodging-print-map-table .lodging-print-room-number { width: 9%; }
+          .lodging-print-occupants { width: 41%; }
+          .lodging-print-people > div { padding: 0.35mm 0; }
+          .lodging-print-detail, .lodging-print-note { color: #444 !important; font-size: 6pt; }
+          .lodging-print-note { margin-top: 0.7mm; font-style: italic; }
+          .lodging-print-empty { color: #555 !important; }
+          .lodging-print-section { margin: 2mm 0 4mm; }
+          .lodging-print-section h2, .lodging-print-pending h2 { margin: 0 0 1.5mm; font-size: 9pt; }
+          .lodging-print-other-locations { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+          .lodging-print-pending { break-before: page; page-break-before: always; }
+          .lodging-print-pending > div { margin-bottom: 3mm; }
+          .lodging-print-pending h3 { margin: 1mm 0; font-size: 7pt; }
+          .lodging-print-pending-list { margin: 0; padding-left: 4mm; columns: 2; column-gap: 7mm; }
+          .lodging-print-pending-list li { break-inside: avoid; padding: 0.4mm 0; }
+        }`}</style>
       <div className="space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -187,6 +229,17 @@ export function AdminNamedLodgingPage({
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer className="size-4" />
               Imprimir mapa
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                flushSync(() => setPrintLayout("list"));
+                window.print();
+              }}
+            >
+              <FileDown className="size-4" />
+              Exportar relação (PDF)
             </Button>
             <Button size="sm" variant="outline" onClick={onSignOut}>
               Sair
@@ -321,6 +374,7 @@ export function AdminNamedLodgingPage({
         )}
         {pendingSection("Inscrições canceladas", cancelled)}
       </div>
+      <AdminNamedLodgingPrintSheet registrations={registrations} plan={plan} />
     </main>
   );
 }

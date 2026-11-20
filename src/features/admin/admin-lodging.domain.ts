@@ -20,6 +20,15 @@ export type NamedLodgingRoom = {
   notes: string;
 };
 
+export type LodgingRosterEntry = {
+  id: string;
+  name: string;
+  badgeName: string | null;
+  choirName: string;
+  registrationPriceCents: number | null;
+  cancelledAt?: string | null;
+};
+
 export type LodgingExtraPerson = {
   id: string;
   name: string;
