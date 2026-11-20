@@ -26,6 +26,9 @@ supabase/.temp/
 # Generated individual cards contain participant portraits and private card links.
 output/participant-cards/
 
+# Local UI diagnostic output.
+output/event-ui-check.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

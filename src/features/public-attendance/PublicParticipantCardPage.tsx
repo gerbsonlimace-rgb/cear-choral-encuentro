@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Printer } from "lucide-react";
+import { BedDouble, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicParticipantCard } from "@/lib/public-attendance.functions";
 import type { PublicParticipantCard } from "./publicAttendance.domain";
@@ -66,7 +66,11 @@ export function PublicParticipantCardPage({ token, loadCard = getPublicParticipa
                 {card.fullName&&card.fullName!==card.name&&<p className="participant-card-fullname">{card.fullName}</p>}
               </div>
               {card.lodging&&<section className="participant-card-lodging" aria-label="Sua hospedagem">
-                <h2>{card.lodging.room}{card.lodging.location?` — ${card.lodging.location}`:""}</h2>
+                <div className="participant-card-room-heading">
+                  <BedDouble aria-hidden="true" className="participant-card-bed" />
+                  <div><p className="participant-card-room-label">SUA ACOMODAÇÃO</p><h2>{card.lodging.room}</h2></div>
+                </div>
+                {card.lodging.location&&<p className="participant-card-location">{card.lodging.location}</p>}
                 <p>{card.lodging.roommates.length?"Você está hospedado com":"Hospedagem do participante"}</p>
                 {card.lodging.roommates.length>0&&<p className="participant-card-roommates">{card.lodging.roommates.join(" · ")}</p>}
               </section>}

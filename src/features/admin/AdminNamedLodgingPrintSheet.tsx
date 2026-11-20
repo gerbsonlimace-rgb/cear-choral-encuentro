@@ -3,6 +3,7 @@ import type { LodgingPlan, LodgingRosterEntry, NamedLodgingRoom } from "./admin-
 type Person = {
   name: string;
   star: boolean;
+  choirName: string;
 };
 
 type Props = {
@@ -11,6 +12,9 @@ type Props = {
 };
 
 const collator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+const genericChoirs = new Set(["", "ACOMPANHANTE", "ACOMPANHANTES", "AVULSO", "AVULSOS", "AVULSOS E ACOMPANHANTES", "SEM CORO"]);
+function choirKey(value: string) { return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR"); }
+function printName(person: Person) { return `${printName(person)}${person.choirName ? ` (${person.choirName})` : ""}`; }
 
 function roomNumberOrder(left: NamedLodgingRoom, right: NamedLodgingRoom) {
   return collator.compare(left.name, right.name);
@@ -23,7 +27,7 @@ function printedRoomNumber(room: NamedLodgingRoom) {
 
 function RoomCells({ room, people }: { room: NamedLodgingRoom; people: Person[] }) {
   const unavailable = room.key === "CP30" || room.key === "CP32";
-  const displayText = people.map((person) => `${person.name}${person.star ? " *" : ""}`).join(", ");
+  const displayText = people.map((person) => `${printName(person)}`).join(", ");
   return (
     <>
       <th
@@ -61,7 +65,7 @@ function RoomAssignmentList({
               {people.length > 0 && (
                 <>
                   {" - "}
-                  {people.map((person) => `${person.name}${person.star ? " *" : ""}`).join(", ")}
+                  {people.map((person) => `${printName(person)}`).join(", ")}
                 </>
               )}
             </li>
@@ -76,6 +80,20 @@ export function AdminNamedLodgingPrintSheet({ registrations, plan }: Props) {
   const rooms = plan.namedRooms ?? [];
   const activeRegistrations = registrations.filter((row) => !row.cancelledAt);
   const peopleByRoom = new Map<string, Person[]>();
+  const choirsByRoom = new Map<string, Set<string>>();
+  for (const row of activeRegistrations) {
+    const roomKey=plan.assignments[row.id], choir=row.choirName.trim();
+    if(roomKey&&choir&&!genericChoirs.has(choirKey(choir))){const set=choirsByRoom.get(roomKey)??new Set<string>();set.add(choir);choirsByRoom.set(roomKey,set);}
+  }
+  for (const person of plan.extraPeople) {
+    const choir=person.choir.trim();
+    if(person.roomKey&&choir&&!genericChoirs.has(choirKey(choir))){const set=choirsByRoom.get(person.roomKey)??new Set<string>();set.add(choir);choirsByRoom.set(person.roomKey,set);}
+  }
+  const inferChoir=(choir:string,roomKey:string|null|undefined)=>{
+    const clean=choir.trim();if(clean&&!genericChoirs.has(choirKey(clean)))return clean;
+    const roomChoirs=roomKey?choirsByRoom.get(roomKey):undefined;
+    return roomChoirs?.size===1?[...roomChoirs][0]:"";
+  };
 
   for (const room of rooms) {
     const registeredPeople = activeRegistrations
@@ -83,10 +101,11 @@ export function AdminNamedLodgingPrintSheet({ registrations, plan }: Props) {
       .map((row) => ({
         name: row.badgeName || row.name,
         star: row.registrationPriceCents === 8000,
+        choirName: inferChoir(row.choirName,room.key),
       }));
     const extraPeople = plan.extraPeople
       .filter((person) => person.roomKey === room.key)
-      .map((person) => ({ name: person.name, star: false }));
+      .map((person) => ({ name: person.name, star: false, choirName: inferChoir(person.choir,room.key) }));
     peopleByRoom.set(room.key, [...registeredPeople, ...extraPeople]);
   }
 

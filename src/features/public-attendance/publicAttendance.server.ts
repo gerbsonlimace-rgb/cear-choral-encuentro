@@ -1,12 +1,21 @@
 import {
   buildAttendanceCardsCsv, participantCardTokenSchema, participantCardUrl, publicAttendanceInputSchema,
-  type AttendanceCardExportRow, type PublicAttendanceActivity, type PublicAttendanceResult, type PublicParticipantCard,
+  publicAttendanceLogisticsInputSchema,
+  type AttendanceCardExportRow, type DietaryRestrictionKey, type PublicAttendanceActivity, type PublicAttendanceConfirmation,
+  type PublicAttendanceLogisticsInput, type PublicAttendanceLogisticsResult,
+  type PublicAttendanceResult, type PublicParticipantCard,
 } from "./publicAttendance.domain";
 
 export type PublicAttendanceRepository = {
   list(): Promise<PublicAttendanceActivity[]>;
-  findCard(token: string): Promise<Pick<PublicParticipantCard,"name"|"choirName"|"eligible"|"fullName"|"photoUrl"|"lodging"> | null>;
+  findCard(token: string): Promise<Pick<PublicParticipantCard,"name"|"choirName"|"eligible"|"fullName"|"photoUrl"|"lodging"> & {
+    dietaryRestriction?: boolean | null;
+    dietaryRestrictionTypes?: DietaryRestrictionKey[];
+    dietaryRestrictionOther?: string | null;
+    usesEventVan?: boolean | null;
+  } | null>;
   record(input: { activityId: string; token: string }): Promise<PublicAttendanceResult>;
+  saveLogistics?(input: PublicAttendanceLogisticsInput): Promise<PublicAttendanceLogisticsResult>;
   prepareCards(): Promise<AttendanceCardExportRow[]>;
 };
 
@@ -24,7 +33,26 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
         ...(card.lodging !== undefined ? {lodging:card.lodging}:{}),
       };
     },
+    async confirmation(rawToken: string): Promise<PublicAttendanceConfirmation> {
+      const token = participantCardTokenSchema.parse(rawToken);
+      const card = await repository.findCard(token);
+      if (!card) throw new Error("Cartão não encontrado ou inscrição cancelada.");
+      return { name: card.name, choirName: card.choirName,
+        ...(card.fullName !== undefined ? { fullName: card.fullName } : {}),
+        ...(card.photoUrl !== undefined ? { photoUrl: card.photoUrl } : {}),
+        ...(card.lodging !== undefined ? { lodging: card.lodging } : {}),
+        ...(card.dietaryRestriction !== undefined ? { dietaryRestriction: card.dietaryRestriction } : {}),
+        ...(card.dietaryRestrictionTypes !== undefined ? { dietaryRestrictionTypes: card.dietaryRestrictionTypes } : {}),
+        ...(card.dietaryRestrictionOther !== undefined ? { dietaryRestrictionOther: card.dietaryRestrictionOther } : {}),
+        ...(card.usesEventVan !== undefined ? { usesEventVan: card.usesEventVan } : {}),
+      };
+    },
     record: async (input: unknown) => repository.record(publicAttendanceInputSchema.parse(input)),
+    async saveLogistics(input: unknown) {
+      const parsed = publicAttendanceLogisticsInputSchema.parse(input);
+      if (!repository.saveLogistics) throw new Error("Não foi possível salvar as respostas. Tente novamente.");
+      return repository.saveLogistics(parsed);
+    },
     async exportCards(origin: string) {
       const rows = await repository.prepareCards();
       return { csv: buildAttendanceCardsCsv(rows, origin), filename: "cartoes-participantes.csv", count: rows.length };

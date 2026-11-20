@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { deliverFile, openPreparedPdf } from "@/lib/file-download";
+import { dietaryRestrictionLabels } from "@/features/public-attendance/publicAttendance.domain";
 import type { AdminPdfFile } from "./admin-registration-pdf";
 import { InternalMetricCard } from "@/components/internal-app/InternalMetricCard";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,8 @@ import {
   type ManualPaymentRemainder,
 } from "./admin-manual-payment.domain";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { EventReportRoleAction } from "./EventReportRoleAction";
+import { AdminWhatsAppToolbar, AdminRegistrationWhatsAppButton, AdminWhatsAppSelection, useAdminWhatsApp, type AdminWhatsAppController } from "./AdminWhatsAppActions";
 
 type ManualPaymentChoice = {
   amountCents: number;
@@ -563,6 +566,19 @@ function RegistrationDetailsDialog({
             <DetailItem label="Observações" wide>
               {optionalText(row.observations)}
             </DetailItem>
+            <DetailItem label="Restrição alimentar">
+              {row.dietaryRestriction == null ? "Ainda não informado" : row.dietaryRestriction ? "Sim" : "Não"}
+            </DetailItem>
+            <DetailItem label="Tipos de restrição alimentar" wide>
+              {row.dietaryRestriction == null
+                ? "Ainda não informado"
+                : row.dietaryRestriction
+                  ? dietaryRestrictionLabels(row.dietaryRestrictionTypes, row.dietaryRestrictionOther) || "Ainda sem detalhes"
+                  : "Não se aplica"}
+            </DetailItem>
+            <DetailItem label="Usará van para traslado">
+              {row.usesEventVan == null ? "Ainda não informado" : row.usesEventVan ? "Sim" : "Não"}
+            </DetailItem>
           </DetailSection>
 
           {review && (
@@ -667,6 +683,7 @@ function shouldOpenDetails(event: MouseEvent<HTMLElement>) {
 
 function RegistrationViews({
   rows,
+  whatsApp,
   participantActionBusy,
   onReprocess,
   onReset,
@@ -679,8 +696,10 @@ function RegistrationViews({
   onEdit,
   roles,
   onToggleAdmin,
+  onEventReportsChange,
 }: {
   rows: AdminRegistrationRow[];
+  whatsApp: AdminWhatsAppController;
   participantActionBusy: boolean;
   onReprocess: (row: AdminRegistrationRow) => void;
   onReset: (row: AdminRegistrationRow) => Promise<void>;
@@ -697,6 +716,7 @@ function RegistrationViews({
   onEdit?: (row: AdminRegistrationRow) => void;
   roles?: Record<string, RegistrationAdminRole>;
   onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
+  onEventReportsChange?: (id: string, enabled: boolean) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
   const openWithKeyboard = (event: KeyboardEvent<HTMLElement>, row: AdminRegistrationRow) => {
@@ -711,6 +731,7 @@ function RegistrationViews({
         <Table aria-label="Inscrições">
           <TableHeader>
             <TableRow>
+              <TableHead scope="col" className="w-12"><span className="sr-only">Selecionar para WhatsApp</span></TableHead>
               {[
                 "Data e hora",
                 "Coralista",
@@ -739,6 +760,7 @@ function RegistrationViews({
                 }}
                 onKeyDown={(event) => openWithKeyboard(event, row)}
               >
+                <TableCell className="align-top p-1"><AdminWhatsAppSelection row={row} controller={whatsApp} /></TableCell>
                 <TableCell className="whitespace-nowrap align-top">
                   <time dateTime={row.createdAt}>{dateTime(row.createdAt)}</time>
                 </TableCell>
@@ -759,7 +781,10 @@ function RegistrationViews({
                 <TableCell className="min-w-36 align-top">
                   <PaymentSummary row={row} />
                 </TableCell>
-                <TableCell className="max-w-40 align-top">{row.phone}</TableCell>
+                <TableCell className="max-w-44 align-top">
+                  <p>{row.phone}</p>
+                  <AdminRegistrationWhatsAppButton row={row} controller={whatsApp} />
+                </TableCell>
                 <TableCell className="max-w-44 align-top">
                   <p className="break-words font-medium">{row.choirName}</p>
                 </TableCell>
@@ -777,6 +802,7 @@ function RegistrationViews({
                     onEdit={onEdit}
                     role={roles?.[row.id]}
                     onToggleAdmin={onToggleAdmin}
+                    onEventReportsChange={onEventReportsChange}
                     busy={participantActionBusy}
                   />
                 </TableCell>
@@ -800,6 +826,7 @@ function RegistrationViews({
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
+                  <AdminWhatsAppSelection row={row} controller={whatsApp} />
                   <ParticipantAvatar row={row} />
                   <div className="min-w-0">
                     <h2 className="break-words text-sm font-semibold">
@@ -823,6 +850,7 @@ function RegistrationViews({
                   onEdit={onEdit}
                   role={roles?.[row.id]}
                   onToggleAdmin={onToggleAdmin}
+                    onEventReportsChange={onEventReportsChange}
                   busy={participantActionBusy}
                 />
               </div>
@@ -843,7 +871,7 @@ function RegistrationViews({
                 </div>
                 <div>
                   <dt className="text-muted-foreground">WhatsApp</dt>
-                  <dd>{row.phone}</dd>
+                  <dd><p>{row.phone}</p><AdminRegistrationWhatsAppButton row={row} controller={whatsApp} /></dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Coro</dt>
@@ -875,6 +903,7 @@ function RegistrationActions({
   onEdit,
   role,
   onToggleAdmin,
+  onEventReportsChange,
   busy,
 }: {
   row: AdminRegistrationRow;
@@ -893,6 +922,7 @@ function RegistrationActions({
   onEdit?: (row: AdminRegistrationRow) => void;
   role?: RegistrationAdminRole;
   onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
+  onEventReportsChange?: (id: string, enabled: boolean) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
@@ -1010,6 +1040,8 @@ function RegistrationActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <EventReportRoleAction registrationId={row.id} role={role} cancelled={Boolean(row.cancelledAt)} onChanged={onEventReportsChange} />
+          <DropdownMenuSeparator />
           {onEdit && (
             <>
               <DropdownMenuItem onSelect={() => onEdit(row)}>
@@ -1951,6 +1983,7 @@ export function AdminRegistrationsPage({
   >("checking");
   const [gateErrorMessage, setGateErrorMessage] = useState("");
   const [result, setResult] = useState<AdminRegistrationPage | null>(null);
+  const whatsApp = useAdminWhatsApp(gate === "authorized", result?.rows);
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const filterKey = JSON.stringify([query.search, query.paymentStatus, query.choirId, query.musicalProfile, query.loginStatus]);
@@ -2667,6 +2700,7 @@ export function AdminRegistrationsPage({
                 />
               )
             )}
+            <AdminWhatsAppToolbar controller={whatsApp} rows={result?.rows} />
             <form
               onSubmit={search}
               className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end"
@@ -2797,6 +2831,7 @@ export function AdminRegistrationsPage({
               result &&
               (result.rows.length ? (
                 <RegistrationViews
+                  whatsApp={whatsApp}
                   rows={result.rows.map((row) =>
                     row.photoUrl || !photoUrls[row.id] ? row : { ...row, photoUrl: photoUrls[row.id] },
                   )}
@@ -2812,6 +2847,7 @@ export function AdminRegistrationsPage({
                   onEdit={openEditDialog}
                   roles={roles}
                   onToggleAdmin={runToggleAdmin}
+                  onEventReportsChange={(id, enabled) => setRoles(current => ({ ...current, [id]: { ...current[id], isEventReports: enabled } }))}
                 />
               ) : (
                 <Card>

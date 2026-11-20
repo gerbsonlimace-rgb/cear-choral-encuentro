@@ -21,7 +21,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 
 const expectedColumns =
-  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,cancelled_at,cancelled_by,refund_cents,photo_path,participant_accounts(access_status)";
+  "id,created_at,name,badge_name,cpf,birth_date,diocese,choir_name,choir_id,other_choir_name,email,phone,city,institution,role,musical_profile,voice_part,observations,dietary_restriction,dietary_restriction_types,dietary_restriction_other,uses_event_van,include_shirt,shirt_size,shirt_price_cents,pricing_type,standard_price_cents,registration_price_cents,remaining_price_cents,amount_cents,paid_amount_cents,payment_status,payment_method,installments,paid_at,payment_origin,is_free_registration,manual_receipt_path,manual_receipt_file_name,manual_receipt_mime_type,manual_receipt_size_bytes,manual_fee_pending_cents,manual_discount_cents,admin_registration_original_price_cents,admin_payment_reason,cancelled_at,cancelled_by,refund_cents,photo_path,participant_accounts(access_status)";
 const selectedRow = {
   id: "registration-1",
   created_at: "2026-09-07T12:00:00Z",
@@ -155,11 +155,11 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em;Restrição alimentar;Detalhes da restrição alimentar;Usará van",
     );
     // Intl formats pt-BR currency with U+00A0; normalize before comparing.
     expect(lines[1].replaceAll("\u00A0", " ")).toBe(
-      "07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026;Não informado;Não informado;Não informado",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");
@@ -574,31 +574,6 @@ describe("registration summary", () => {
       legacy: 0,
       byChoir: [{ choirName: "Diocese de Quixadá", total: 1 }],
     });
-  });
-
-  it("loads the complete lodging roster through the registration snapshot", async () => {
-    const listSnapshot = vi.fn().mockResolvedValue({
-      candidates: [{ row: selectedRow as RegistrationDatabaseRow, accountStatus: null, regentName: null }],
-      payments: [],
-      reviews: new Map(),
-      loggedInIds: new Set(),
-    });
-    const repository = {
-      listSnapshot,
-      listCandidates: vi.fn(),
-      listComplementPayments: vi.fn(),
-      list: vi.fn(),
-      listAll: vi.fn(),
-      recordExport: vi.fn(),
-    };
-
-    const rows = await createAdminRegistrationService(repository, () => new Date()).lodgingRows();
-
-    expect(rows.map((row) => row.name)).toEqual(["Maria"]);
-    expect(listSnapshot).toHaveBeenCalledTimes(1);
-    expect(listSnapshot).toHaveBeenCalledWith("");
-    expect(repository.list).not.toHaveBeenCalled();
-    expect(repository.listAll).not.toHaveBeenCalled();
   });
 });
 
@@ -1132,6 +1107,10 @@ describe("registration repository list", () => {
           musicalProfile: "coralista",
           voicePart: "soprano",
           observations: "Sem restrições.",
+          dietaryRestriction: null,
+          dietaryRestrictionTypes: [],
+          dietaryRestrictionOther: null,
+          usesEventVan: null,
           includeShirt: false,
           manualFeePendingCents: null,
           manualDiscountCents: null,

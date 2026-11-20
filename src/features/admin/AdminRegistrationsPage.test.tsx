@@ -259,14 +259,15 @@ describe("AdminRegistrationsPage read-only views", () => {
     );
 
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
     const dialog = screen.getByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Marcar inscrição como paga");
+    expect(dialog).toHaveTextContent("Configurar pagamento da inscrição");
+    await user.type(within(dialog).getByLabelText("Valor original da inscrição (R$)"), "100,00");
     await user.upload(
-      within(dialog).getByLabelText("Comprovante de pagamento"),
+      within(dialog).getByLabelText("Comprovante (opcional)"),
       new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
     );
-    await user.click(within(dialog).getByRole("button", { name: "Confirmar pagamento" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar configuração" }));
     await waitFor(() =>
       expect(markPaid).toHaveBeenCalledWith({
         data: {
@@ -278,6 +279,9 @@ describe("AdminRegistrationsPage read-only views", () => {
           },
           amountCents: 10000,
           remainder: "pending",
+          originalRegistrationPriceCents: 10000,
+          rafflePaidCents: undefined,
+          reason: "",
         },
       }),
     );
@@ -291,7 +295,7 @@ describe("AdminRegistrationsPage read-only views", () => {
     });
     const table = await screen.findByRole("table", { name: "Inscrições" });
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
     const dialog = screen.getByRole("alertdialog");
     await user.click(within(dialog).getByRole("heading"));
     await user.click(dialog);
@@ -319,10 +323,11 @@ describe("AdminRegistrationsPage read-only views", () => {
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
     const dialog = screen.getByRole("alertdialog");
     const amount = within(dialog).getByLabelText("Valor recebido (R$)");
     expect(amount).toHaveValue("100,00");
+    await user.type(within(dialog).getByLabelText("Valor original da inscrição (R$)"), "100,00");
 
     await user.clear(amount);
     await user.type(amount, "120,00");
@@ -333,10 +338,10 @@ describe("AdminRegistrationsPage read-only views", () => {
     expect(within(dialog).getByText("Restante: R$ 40,00")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("radio", { name: /Isentar o restante/ }));
     await user.upload(
-      within(dialog).getByLabelText("Comprovante de pagamento"),
+      within(dialog).getByLabelText("Comprovante (opcional)"),
       new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
     );
-    await user.click(within(dialog).getByRole("button", { name: "Confirmar pagamento" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar configuração" }));
 
     await waitFor(() =>
       expect(markPaid).toHaveBeenCalledWith({
@@ -352,10 +357,11 @@ describe("AdminRegistrationsPage read-only views", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets an administrator exempt a pending participant and confirms all values will be zero", async () => {
-    const markExempt = vi.fn().mockResolvedValue({
-      status: "exempt",
+  it("lets an administrator exempt a pending participant by recording a zero payment", async () => {
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
       registrationId: "pending",
+      discountCents: 10000,
     });
     const { user } = setup({
       loadRegistrations: vi.fn().mockResolvedValue({
@@ -364,22 +370,32 @@ describe("AdminRegistrationsPage read-only views", () => {
         page: 1,
         pageSize: 25,
       }),
-      markExempt,
+      markPaid,
     });
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Marcar como isento" }));
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
     const dialog = screen.getByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Todos os valores ficarão em R$ 0,00");
-    await user.click(within(dialog).getByRole("button", { name: "Confirmar isenção" }));
+    expect(dialog).toHaveTextContent("Configurar pagamento da inscrição");
+    await user.type(within(dialog).getByLabelText("Valor original da inscrição (R$)"), "100,00");
+    await user.clear(within(dialog).getByLabelText("Valor recebido (R$)"));
+    await user.type(within(dialog).getByLabelText("Valor recebido (R$)"), "0,00");
+    expect(dialog).toHaveTextContent("Registra isenção total ou parcial da taxa de inscrição.");
+    await user.click(within(dialog).getByRole("radio", { name: /Isentar o restante/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Registrar isenção" }));
 
     await waitFor(() =>
-      expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }),
+      expect(markPaid).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          registrationId: "pending",
+          amountCents: 0,
+          remainder: "discount",
+          originalRegistrationPriceCents: 10000,
+        }),
+      }),
     );
-    expect(
-      await screen.findByText("Participante marcado como isento. Valores zerados."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Isenção total de R\$/)).toBeInTheDocument();
   });
 
   it("approves a free registration without offering payment actions", async () => {
@@ -391,21 +407,36 @@ describe("AdminRegistrationsPage read-only views", () => {
       pricingType: "standard",
       standardPriceCents: 0,
       registrationPriceCents: 0,
+      adminRegistrationOriginalPriceCents: 0,
     };
-    const markExempt = vi.fn().mockResolvedValue({ status: "exempt", registrationId: "pending" });
+    const markPaid = vi.fn().mockResolvedValue({
+      status: "paid",
+      registrationId: "pending",
+      discountCents: 0,
+    });
     const { user } = setup({
       loadRegistrations: vi.fn().mockResolvedValue({ rows: [freePending], total: 1, page: 1, pageSize: 25 }),
-      markExempt,
+      markPaid,
     });
     const table = await screen.findByRole("table", { name: "Inscrições" });
     expect(within(table).getAllByText("Aguardando aprovação").length).toBeGreaterThan(0);
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
     expect(screen.queryByRole("menuitem", { name: "Gerar novo link de pagamento" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("menuitem", { name: "Marcar como pago" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("menuitem", { name: "Aprovar como isento" }));
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Aprovar isenção" }));
-    await waitFor(() => expect(markExempt).toHaveBeenCalledWith({ data: { registrationId: "pending" } }));
-    expect(await screen.findByText("Inscrição aprovada como isenta.")).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Configurar pagamento" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Registrar isenção" }));
+    await waitFor(() =>
+      expect(markPaid).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          registrationId: "pending",
+          amountCents: 0,
+          remainder: "discount",
+          originalRegistrationPriceCents: 0,
+        }),
+      }),
+    );
+    expect(await screen.findByText("Inscrição marcada como paga.")).toBeVisible();
   });
 
   it("shows an approved registration as exempt using the existing exemption state", async () => {
@@ -424,12 +455,12 @@ describe("AdminRegistrationsPage read-only views", () => {
       loadRegistrations: vi.fn().mockResolvedValue({ rows: [approvedFree], total: 1, page: 1, pageSize: 25 }),
     });
     const table = await screen.findByRole("table", { name: "Inscrições" });
-    expect(within(table).getAllByText("Isento").length).toBeGreaterThan(0);
+    expect(within(table).getAllByText("Isenção total").length).toBeGreaterThan(0);
     expect(within(table).queryByText("Gratuito")).not.toBeInTheDocument();
     await user.click(within(table).getByRole("row", { name: "Ver todos os dados de Clara Paga" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Isenção administrativa")).toBeInTheDocument();
-    expect(within(dialog).getAllByText("Isento").length).toBeGreaterThan(0);
+    expect(within(dialog).getByText("Origem do pagamento")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Isenção total").length).toBeGreaterThan(0);
   });
 
   it("requires a receipt and submits its contents with immediate manual payment", async () => {
@@ -449,13 +480,14 @@ describe("AdminRegistrationsPage read-only views", () => {
 
     const table = await screen.findByRole("table", { name: "Inscrições" });
     await user.click(within(table).getByRole("button", { name: "Mais ações para Bruno Pendente" }));
-    await user.click(screen.getByRole("menuitem", { name: "Marcar como pago" }));
+    await user.click(screen.getByRole("menuitem", { name: "Configurar pagamento" }));
     const dialog = screen.getByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", { name: "Confirmar pagamento" });
+    const confirm = within(dialog).getByRole("button", { name: "Salvar configuração" });
     expect(confirm).toBeDisabled();
 
+    await user.type(within(dialog).getByLabelText("Valor original da inscrição (R$)"), "100,00");
     await user.upload(
-      within(dialog).getByLabelText("Comprovante de pagamento"),
+      within(dialog).getByLabelText("Comprovante (opcional)"),
       new File(["%PDF-1.4"], "pix-pendente.pdf", { type: "application/pdf" }),
     );
     await waitFor(() => expect(confirm).toBeEnabled());
@@ -472,6 +504,9 @@ describe("AdminRegistrationsPage read-only views", () => {
           },
           amountCents: 10000,
           remainder: "pending",
+          originalRegistrationPriceCents: 10000,
+          rafflePaidCents: undefined,
+          reason: "",
         },
       }),
     );
@@ -650,6 +685,7 @@ describe("AdminRegistrationsPage read-only views", () => {
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
     ).toEqual([
+      "Selecionar para WhatsApp",
       "Data e hora",
       "Coralista",
       "Função",

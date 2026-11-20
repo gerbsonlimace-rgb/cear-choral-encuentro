@@ -41,6 +41,10 @@ export const adminRegistrationColumns = [
   "musical_profile",
   "voice_part",
   "observations",
+  "dietary_restriction",
+  "dietary_restriction_types",
+  "dietary_restriction_other",
+  "uses_event_van",
   "include_shirt",
   "shirt_size",
   "shirt_price_cents",
@@ -973,17 +977,6 @@ export function createAdminRegistrationService(
               musicalProfile: "all",
             });
       return summarizeAdminRegistrations(completeRows);
-    },
-    async lodgingRows(): Promise<AdminRegistrationRow[]> {
-      const query = {
-        search: "",
-        paymentStatus: "all",
-        choirId: "all",
-        musicalProfile: "all",
-      } as const;
-      return repository.listCandidates && repository.listComplementPayments
-        ? listAllEnriched(query)
-        : repository.listAll(query);
     },
     async financeRows(): Promise<AdminRegistrationRow[]> {
       return repository.listCandidates && repository.listComplementPayments
