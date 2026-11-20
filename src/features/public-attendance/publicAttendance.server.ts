@@ -5,7 +5,7 @@ import {
 
 export type PublicAttendanceRepository = {
   list(): Promise<PublicAttendanceActivity[]>;
-  findCard(token: string): Promise<{ name: string; choirName: string; eligible: boolean } | null>;
+  findCard(token: string): Promise<Pick<PublicParticipantCard,"name"|"choirName"|"eligible"|"fullName"|"photoUrl"|"lodging"> | null>;
   record(input: { activityId: string; token: string }): Promise<PublicAttendanceResult>;
   prepareCards(): Promise<AttendanceCardExportRow[]>;
 };
@@ -18,7 +18,11 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
       const card = await repository.findCard(token);
       if (!card) throw new Error("Cartão não encontrado ou inscrição cancelada. Procure a equipe do evento.");
       const cardUrl = participantCardUrl(token, origin);
-      return { name: card.name, choirName: card.choirName, eligible: card.eligible, cardUrl, qrDataUrl: await renderQr(cardUrl) };
+      return { name: card.name, choirName: card.choirName, eligible: card.eligible, cardUrl, qrDataUrl: await renderQr(cardUrl),
+        ...(card.fullName !== undefined ? {fullName:card.fullName}:{}),
+        ...(card.photoUrl !== undefined ? {photoUrl:card.photoUrl}:{}),
+        ...(card.lodging !== undefined ? {lodging:card.lodging}:{}),
+      };
     },
     record: async (input: unknown) => repository.record(publicAttendanceInputSchema.parse(input)),
     async exportCards(origin: string) {

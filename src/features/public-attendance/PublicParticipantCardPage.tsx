@@ -3,6 +3,8 @@ import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicParticipantCard } from "@/lib/public-attendance.functions";
 import type { PublicParticipantCard } from "./publicAttendance.domain";
+import eventLogo from "@/assets/logo-coros-diocesanos-regional.png";
+import "./participantCard.css";
 
 export function PublicParticipantCardPage({ token, loadCard = getPublicParticipantCard }: {
   token: string; loadCard?: (input: { data: { token: string } }) => Promise<PublicParticipantCard>;
@@ -37,7 +39,7 @@ export function PublicParticipantCardPage({ token, loadCard = getPublicParticipa
   }, [token, loadCard, attempt]);
 
   return (
-    <main className="internal-app flex min-h-svh items-start justify-center bg-[#f7f7f5] px-4 py-8 text-zinc-950 sm:py-12 print:bg-white print:py-0">
+    <main className="internal-app flex min-h-svh items-start justify-center bg-[#eee9e0] px-3 py-4 text-zinc-950 sm:py-8 print:bg-white print:py-0">
       <div className="w-full max-w-sm">
         {!card && !error && <p role="status" className="text-center text-sm text-zinc-600">Abrindo seu cartão…</p>}
         {error && (
@@ -48,21 +50,33 @@ export function PublicParticipantCardPage({ token, loadCard = getPublicParticipa
         )}
         {card && (
           <>
-            <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white print:border-0">
-              <header className="bg-zinc-950 px-5 py-4 text-white print:bg-white print:text-zinc-950">
-                <p className="font-semibold">Encontro de Coros · Ceará</p>
-                <p className="mt-1 text-sm text-zinc-600 print:text-zinc-600">20 a 22 de novembro de 2026</p>
+            <article className="participant-card-art" aria-label={`Cartão de ${card.name}`}>
+              <header className="participant-card-header">
+                <img src={eventLogo} alt="Encontro de Coros Diocesanos e Litúrgicos" className="participant-card-logo"/>
+                <p>II ENCONTRO DE COROS · QUIXADÁ 2026</p>
               </header>
-              <div className="p-5 text-center">
-                <h1 className="break-words text-2xl font-bold tracking-tight">{card.name}</h1>
-                <p className="mt-2 break-words text-sm text-zinc-600">{card.choirName}</p>
-                <img src={card.qrDataUrl} alt={`QR Code individual de ${card.name}`} width={720} height={720} className="mx-auto mt-4 aspect-square w-full"/>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">Apresente este QR Code à equipe na entrada das atividades. O mesmo cartão vale para todo o encontro.</p>
-                {!card.eligible && (
-                  <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Sua inscrição ainda não está confirmada. Procure a equipe antes da chamada.</p>
-                )}
+              <div className="participant-card-photo">
+                {card.photoUrl?<img src={card.photoUrl} alt={`Foto de ${card.name}`} onError={event=>{event.currentTarget.style.display="none";}}/>:null}
+                <span aria-hidden="true">{card.name.split(/\s+/).filter(Boolean).slice(0,2).map(word=>word[0]).join("")}</span>
               </div>
+              <div className={`participant-card-identity ${card.name.length+card.choirName.length+(card.fullName!==card.name?(card.fullName?.length??0):0)>90?"participant-card-identity-dense":""}`}>
+                <p className="participant-card-role">PARTICIPANTE</p>
+                <h1 style={{fontSize:`${card.name.length>32?4.2:card.name.length>22?4.8:5.4}cqw`}}>{card.name}</h1>
+                <p className="participant-card-choir">{card.choirName}</p>
+                {card.fullName&&card.fullName!==card.name&&<p className="participant-card-fullname">{card.fullName}</p>}
+              </div>
+              {card.lodging&&<section className="participant-card-lodging" aria-label="Sua hospedagem">
+                <h2>{card.lodging.room}{card.lodging.location?` — ${card.lodging.location}`:""}</h2>
+                <p>{card.lodging.roommates.length?"Você está hospedado com":"Hospedagem do participante"}</p>
+                {card.lodging.roommates.length>0&&<p className="participant-card-roommates">{card.lodging.roommates.join(" · ")}</p>}
+              </section>}
+              <div className="participant-card-qr">
+                <img src={card.qrDataUrl} alt={`QR Code individual de ${card.name}`} width={720} height={720}/>
+              </div>
+              <p className="participant-card-instruction">Apresente este QR à equipe em cada atividade</p>
+              <footer>20–22 NOV 2026 · QUIXADÁ, CE</footer>
             </article>
+            {!card.eligible&&<p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Sua inscrição ainda não está confirmada. Procure a equipe antes da chamada.</p>}
             <div className="mt-4 grid grid-cols-2 gap-2 print:hidden">
               <Button variant="outline" asChild>
                 <a href={card.qrDataUrl} download="meu-qr-encontro.png">

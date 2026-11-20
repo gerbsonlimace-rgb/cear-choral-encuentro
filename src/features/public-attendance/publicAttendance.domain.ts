@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ParticipantCardLodging } from "./participantCardDetails.domain";
 
 export const participantCardTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, "QR Code de participante inválido.");
 export const publicAttendanceInputSchema = z.object({
@@ -15,6 +16,7 @@ export type PublicAttendanceResult =
   | { status: "invalid_card" | "ineligible" | "activity_unavailable"; message: string };
 export type PublicParticipantCard = {
   name: string; choirName: string; eligible: boolean; cardUrl: string; qrDataUrl: string;
+  fullName?: string; photoUrl?: string | null; lodging?: ParticipantCardLodging | null;
 };
 export type AttendanceCardExportRow = { name: string; choirName: string; token: string };
 

@@ -34,6 +34,15 @@ describe("public participant attendance", () => {
     expect(repository.record).not.toHaveBeenCalled();
   });
 
+  it("includes the approved portrait and lodging details without leaking contact or document data", async () => {
+    const details = { fullName: "Ana Maria", photoUrl: "https://storage.test/signed-photo", lodging: { room: "CP37", location: "Centro de Pastoral", roommates: ["Bia"] } };
+    const repository = { findCard: vi.fn().mockResolvedValue({...card,...details}), record: vi.fn(), list: vi.fn(), prepareCards: vi.fn() };
+    const output = await createPublicAttendanceService(repository, vi.fn().mockResolvedValue("qr")).card(token,"https://evento.test");
+    expect(output).toMatchObject(details);
+    expect(output).not.toHaveProperty("cpf");
+    expect(output).not.toHaveProperty("email");
+  });
+
   it("passes the opaque token directly to the atomic recording operation", async () => {
     const repository = { findCard: vi.fn(), record: vi.fn().mockResolvedValue({ status: "recorded" }), list: vi.fn(), prepareCards: vi.fn() };
     const service = createPublicAttendanceService(repository, vi.fn());
