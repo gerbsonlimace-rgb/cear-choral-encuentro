@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { FileDown, LoaderCircle, Printer, Save } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Download, FileDown, LoaderCircle, Printer, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { deliverFile } from "@/lib/file-download";
+import { exportAdminLodgingPdf } from "@/lib/admin.functions";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
 import {
   validateNamedLodgingPlan,
@@ -12,6 +16,18 @@ import {
 import { AdminNamedLodgingPrintSheet } from "./AdminNamedLodgingPrintSheet";
 
 export type NamedLodgingRegistration = LodgingRosterEntry;
+
+const roomCollator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+const knownLocationOrder = ["Centro Pastoral", "Seminário", "Casa dos Professores"];
+
+function compareRoomLocations(left: string, right: string) {
+  const leftRank = knownLocationOrder.indexOf(left);
+  const rightRank = knownLocationOrder.indexOf(right);
+  if (leftRank >= 0 && rightRank >= 0) return leftRank - rightRank;
+  if (leftRank >= 0) return -1;
+  if (rightRank >= 0) return 1;
+  return roomCollator.compare(left, right);
+}
 
 type Props = {
   registrations: NamedLodgingRegistration[];
@@ -25,7 +41,6 @@ type Props = {
 export function AdminNamedLodgingPage({
   registrations,
   initialPlan,
-  photoUrls,
   persistPlan,
   onSignOut,
   navigateTo,
@@ -45,8 +60,18 @@ export function AdminNamedLodgingPage({
   );
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   const [printLayout, setPrintLayout] = useState<"list" | null>(null);
+  const [preparedPdf, setPreparedPdf] = useState<{ blob: Blob; fileName: string } | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const exportLodgingPdf = useServerFn(exportAdminLodgingPdf);
   const rooms = plan.namedRooms ?? [];
+  const orderedRooms = [...rooms].sort(
+    (left, right) =>
+      compareRoomLocations(left.location, right.location) ||
+      roomCollator.compare(left.name, right.name),
+  );
+  const locations = [...new Set(rooms.map((room) => room.location))].sort(compareRoomLocations);
   const capacity = Math.min(plan.roomCapacity, 3);
   const active = registrations.filter((row) => !row.cancelledAt);
   const cancelled = registrations.filter((row) => row.cancelledAt);
@@ -79,6 +104,7 @@ export function AdminNamedLodgingPage({
       return;
     }
     setPlan(next);
+    setPreparedPdf(null);
     setDirty(true);
     setSaving(true);
     setError("");
@@ -113,59 +139,150 @@ export function AdminNamedLodgingPage({
 
   const destinationSelect = (id: string, name: string, value: string) => (
     <select
-      aria-label={`Quarto de ${name}`}
+      aria-label={`Atribuir ou alterar quarto de ${name}`}
       value={value}
       disabled={saving}
-      onChange={(event) => move(id, event.target.value)}
-      className="mt-2 h-9 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary print:hidden"
+      onChange={(event) => {
+        move(id, event.target.value);
+        setEditingPersonId(null);
+      }}
+      className="h-9 w-36 max-w-[65vw] min-w-0 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden sm:w-44 sm:max-w-44"
     >
       <option value="">Sem quarto</option>
-      {rooms.map((room) => (
+      {orderedRooms.map((room) => (
         <option key={room.key} value={room.key}>
-          {room.name} · {room.location}
+          {room.name}
         </option>
       ))}
     </select>
   );
 
-  const participant = (row: NamedLodgingRegistration) => (
-    <div key={row.id} className="min-w-0 py-2">
-      <div className="flex items-start gap-2">
-        {photoUrls[row.id] && (
-          <img
-            src={photoUrls[row.id]}
-            alt=""
-            className="h-10 w-10 shrink-0 rounded-full object-cover"
-          />
+  const removeAssociation = (id: string, name: string, roomKey: string) => {
+    const roomName = rooms.find((room) => room.key === roomKey)?.name;
+    return (
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        disabled={saving}
+        aria-label={`Excluir ${name} do quarto ${roomName ?? "atual"}`}
+        title="Excluir do quarto"
+        onClick={() => {
+          move(id, "");
+          setEditingPersonId(null);
+        }}
+        className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive print:hidden"
+      >
+        <X />
+      </Button>
+    );
+  };
+
+  const personBadge = ({
+    id,
+    name,
+    roomKey,
+    title,
+    star = false,
+    editable = true,
+  }: {
+    id: string;
+    name: string;
+    roomKey: string;
+    title: string;
+    star?: boolean;
+    editable?: boolean;
+  }) => {
+    const isEditing = editingPersonId === id;
+    return (
+      <Popover
+        key={id}
+        open={isEditing}
+        onOpenChange={(open) => setEditingPersonId(open ? id : null)}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={saving || !editable}
+            aria-label={`${name}${star ? ", não solicitou quarto" : ""}. Opções de hospedagem`}
+            title={title}
+            className="inline-flex h-8 max-w-[48vw] items-center rounded-full border bg-muted/40 px-2.5 text-left text-xs font-semibold uppercase leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-70 sm:max-w-[12rem] print:hidden"
+          >
+            <span className="truncate">
+              {name}
+              {star ? " *" : ""}
+            </span>
+          </button>
+        </PopoverTrigger>
+        {editable && (
+          <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-2">
+            <div className="flex items-center gap-1">
+              {destinationSelect(id, name, roomKey)}
+              {roomKey && removeAssociation(id, name, roomKey)}
+            </div>
+          </PopoverContent>
         )}
-        <div className="min-w-0">
-          <p className="break-words text-sm font-semibold uppercase">
-            {row.badgeName || row.name}
-            {row.registrationPriceCents === 8000 ? " *" : ""}
-          </p>
-          {row.badgeName && row.badgeName !== row.name && (
-            <p className="break-words text-xs text-muted-foreground">{row.name}</p>
-          )}
-          <p className="break-words text-xs text-muted-foreground">{row.choirName || "Sem coro"}</p>
-        </div>
-      </div>
-      {!row.cancelledAt &&
-        destinationSelect(row.id, row.badgeName || row.name, plan.assignments[row.id] ?? "")}
-    </div>
-  );
+      </Popover>
+    );
+  };
+
+  const participant = (row: NamedLodgingRegistration) => {
+    const name = row.badgeName?.trim() || row.name;
+    return personBadge({
+      id: row.id,
+      name,
+      roomKey: plan.assignments[row.id] ?? "",
+      title: `${row.name}${row.choirName ? ` · ${row.choirName}` : ""}`,
+      star: row.registrationPriceCents === 8000,
+      editable: !row.cancelledAt,
+    });
+  };
+
+  const extraParticipant = (person: LodgingPlan["extraPeople"][number]) => {
+    return personBadge({
+      id: person.id,
+      name: person.name,
+      roomKey: person.roomKey ?? "",
+      title: `${person.name} · ${person.role}`,
+    });
+  };
 
   const pendingSection = (title: string, rows: NamedLodgingRegistration[], open = false) => (
     <details className="rounded-xl border bg-card p-4 print:break-before-page" open={open}>
       <summary className="cursor-pointer text-sm font-semibold">
         {title} · {rows.length}
       </summary>
-      <div className="mt-3 grid gap-x-5 divide-y sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         {rows
           .filter((row) => matches(`${row.name} ${row.badgeName} ${row.choirName}`))
           .map(participant)}
       </div>
     </details>
   );
+
+  const printMap = () => {
+    flushSync(() => setPrintLayout("list"));
+    window.print();
+  };
+
+  const prepareLodgingPdf = async () => {
+    if (exportingPdf || saving || dirty) return;
+    setExportingPdf(true);
+    setPreparedPdf(null);
+    setError("");
+    try {
+      const file = await exportLodgingPdf();
+      const bytes = Uint8Array.from(atob(file.base64), (character) => character.charCodeAt(0));
+      setPreparedPdf({
+        blob: new Blob([bytes], { type: "application/pdf" }),
+        fileName: file.fileName,
+      });
+    } catch {
+      setError("Não foi possível preparar a relação em PDF. Tente novamente.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   return (
     <main
@@ -220,21 +337,34 @@ export function AdminNamedLodgingPage({
               )}
               Salvar alocação
             </Button>
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Button size="sm" variant="outline" onClick={printMap}>
               <Printer className="size-4" />
               Imprimir mapa
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                flushSync(() => setPrintLayout("list"));
-                window.print();
-              }}
+              disabled={exportingPdf || saving || dirty}
+              title={dirty ? "Salve a alocação antes de preparar o PDF." : undefined}
+              onClick={() => void prepareLodgingPdf()}
             >
-              <FileDown className="size-4" />
-              Exportar relação (PDF)
+              {exportingPdf ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <FileDown className="size-4" />
+              )}
+              {exportingPdf ? "Preparando PDF…" : "Exportar relação (PDF)"}
             </Button>
+            {preparedPdf && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void deliverFile(preparedPdf.blob, preparedPdf.fileName)}
+              >
+                <Download className="size-4" />
+                Baixar PDF pronto
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={onSignOut}>
               Sair
             </Button>
@@ -280,66 +410,70 @@ export function AdminNamedLodgingPage({
           onChange={(event) => setSearch(event.target.value)}
           className="max-w-lg print:hidden"
         />
-        {[...new Set(rooms.map((room) => room.location))].map((location) => {
-          const visibleRooms = rooms.filter(
-            (room) =>
-              room.location === location &&
-              matches(
-                `${room.name} ${room.location} ${room.notes} ${registrations
-                  .filter((row) => plan.assignments[row.id] === room.key)
-                  .map((row) => `${row.name} ${row.badgeName} ${row.choirName}`)
-                  .join(" ")} ${plan.extraPeople
-                  .filter((person) => person.roomKey === room.key)
-                  .map((person) => person.name)
-                  .join(" ")}`,
-              ),
-          );
+        {locations.map((location) => {
+          const visibleRooms = rooms
+            .filter(
+              (room) =>
+                room.location === location &&
+                matches(
+                  `${room.name} ${room.location} ${room.notes} ${registrations
+                    .filter((row) => plan.assignments[row.id] === room.key)
+                    .map((row) => `${row.name} ${row.badgeName} ${row.choirName}`)
+                    .join(" ")} ${plan.extraPeople
+                    .filter((person) => person.roomKey === room.key)
+                    .map((person) => person.name)
+                    .join(" ")}`,
+                ),
+            )
+            .sort(
+              (left, right) =>
+                roomCollator.compare(left.name, right.name) ||
+                roomCollator.compare(left.key, right.key),
+            );
           if (!visibleRooms.length) return null;
           return (
             <section key={location} className="space-y-3" aria-label={location}>
               <h2 className="text-lg font-bold">{location}</h2>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="rounded-lg border bg-card">
                 {visibleRooms.map((room) => {
-                  const people = allocated.filter((row) => plan.assignments[row.id] === room.key);
-                  const guests = plan.extraPeople.filter((person) => person.roomKey === room.key);
+                  const people = allocated
+                    .filter((row) => plan.assignments[row.id] === room.key)
+                    .sort((left, right) =>
+                      roomCollator.compare(
+                        left.badgeName?.trim() || left.name,
+                        right.badgeName?.trim() || right.name,
+                      ),
+                    );
+                  const guests = plan.extraPeople
+                    .filter((person) => person.roomKey === room.key)
+                    .sort((left, right) => roomCollator.compare(left.name, right.name));
                   const count = people.length + guests.length;
                   return (
                     <section
                       key={room.key}
                       role="region"
                       aria-label={`Quarto ${room.name}`}
-                      className="lodging-room min-w-0 rounded-xl border bg-card p-4"
+                      className="lodging-room grid min-w-0 gap-x-3 gap-y-1.5 border-b px-2.5 py-2 last:border-b-0 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center"
                     >
-                      <div className="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-base font-bold uppercase">{room.name}</h3>
+                      <div className="flex items-center justify-between gap-3 sm:block">
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-bold uppercase tabular-nums">{room.name}</h3>
                           {room.floor && (
                             <p className="text-xs text-muted-foreground">{room.floor}</p>
                           )}
                         </div>
-                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold tabular-nums">
-                          {count}/{capacity}
-                        </span>
                       </div>
-                      <div className="divide-y">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                         {people.map(participant)}
-                        {guests.map((person) => (
-                          <div key={person.id} className="py-2">
-                            <p className="text-sm font-semibold uppercase">{person.name}</p>
-                            <p className="text-xs text-muted-foreground">Avulso · {person.role}</p>
-                            {destinationSelect(person.id, person.name, person.roomKey ?? "")}
-                          </div>
-                        ))}
+                        {guests.map(extraParticipant)}
+                        {count === 0 && (
+                          <p className="self-center py-1 text-xs text-muted-foreground">
+                            Sem ocupantes. Confirme a disponibilidade.
+                          </p>
+                        )}
                       </div>
-                      {count === 0 && (
-                        <p className="py-2 text-xs text-muted-foreground">
-                          Sem ocupante cadastrado. Confirme a disponibilidade.
-                        </p>
-                      )}
                       {room.notes && (
-                        <p className="mt-2 border-t pt-2 text-xs text-muted-foreground">
-                          {room.notes}
-                        </p>
+                        <p className="text-xs text-muted-foreground sm:col-start-2">{room.notes}</p>
                       )}
                     </section>
                   );
@@ -353,16 +487,10 @@ export function AdminNamedLodgingPage({
         {plan.extraPeople.some((person) => !person.roomKey) && (
           <section className="rounded-xl border bg-card p-4" aria-label="Avulsos aguardando quarto">
             <h2 className="text-sm font-semibold">Avulsos aguardando definição de quarto</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-wrap gap-2">
               {plan.extraPeople
                 .filter((person) => !person.roomKey && matches(person.name))
-                .map((person) => (
-                  <div key={person.id} className="py-2">
-                    <p className="text-sm font-semibold">{person.name}</p>
-                    <p className="text-xs text-muted-foreground">{person.role}</p>
-                    {destinationSelect(person.id, person.name, "")}
-                  </div>
-                ))}
+                .map(extraParticipant)}
             </div>
           </section>
         )}
