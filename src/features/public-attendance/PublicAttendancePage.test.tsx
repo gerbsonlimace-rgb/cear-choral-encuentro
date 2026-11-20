@@ -49,4 +49,13 @@ describe("public attendance screen",()=>{
     expect(screen.getByRole("img",{name:"QR Code individual de Ana"})).toBeInTheDocument();
     expect(screen.queryByText(/entrar|senha/i)).not.toBeInTheDocument();
   });
+  it("matches the approved portrait, badge name and lodging card",async()=>{
+    const loadCard=vi.fn().mockResolvedValue({name:"Ana",fullName:"Ana Maria",choirName:"Coro São José",photoUrl:"https://storage.test/ana.jpg",lodging:{room:"CP37",location:"Centro de Pastoral",roommates:["Bia"]},eligible:true,cardUrl:url("a"),qrDataUrl:"data:image/png;base64,AA=="});
+    render(<PublicParticipantCardPage token={"a".repeat(64)} loadCard={loadCard}/>);
+    expect(await screen.findByRole("heading",{name:"Ana"})).toBeInTheDocument();
+    expect(screen.getByRole("img",{name:"Foto de Ana"})).toHaveAttribute("src","https://storage.test/ana.jpg");
+    expect(screen.getByText("Ana Maria")).toBeInTheDocument();
+    expect(screen.getByText(/CP37/)).toBeInTheDocument();
+    expect(screen.getByText("Bia")).toBeInTheDocument();
+  });
 });

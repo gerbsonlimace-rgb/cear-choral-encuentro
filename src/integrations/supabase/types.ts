@@ -479,51 +479,6 @@ export type Database = {
         }
         Relationships: []
       }
-      financial_entries: {
-        Row: {
-          amount_cents: number
-          attachment_file_name: string | null
-          attachment_mime_type: string | null
-          attachment_path: string | null
-          created_at: string
-          created_by: string
-          description: string
-          entry_date: string
-          entry_type: string
-          id: string
-          notes: string
-          responsible: string
-        }
-        Insert: {
-          amount_cents: number
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          created_by: string
-          description: string
-          entry_date: string
-          entry_type: string
-          id?: string
-          notes?: string
-          responsible: string
-        }
-        Update: {
-          amount_cents?: number
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          created_by?: string
-          description?: string
-          entry_date?: string
-          entry_type?: string
-          id?: string
-          notes?: string
-          responsible?: string
-        }
-        Relationships: []
-      }
       lodging_plan: {
         Row: {
           named_rooms: Json
@@ -812,48 +767,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      lodging_plan: {
-        Row: {
-          assignments: Json
-          created_at: string
-          extra_people: Json
-          extra_room_counter: number
-          extra_rooms: Json
-          hidden_rooms: Json
-          id: boolean
-          no_lodging_registration_ids: string[]
-          room_capacity: number
-          rooms_available: number
-          updated_at: string
-        }
-        Insert: {
-          assignments?: Json
-          created_at?: string
-          extra_people?: Json
-          extra_room_counter?: number
-          extra_rooms?: Json
-          hidden_rooms?: Json
-          id?: boolean
-          no_lodging_registration_ids?: string[]
-          room_capacity?: number
-          rooms_available?: number
-          updated_at?: string
-        }
-        Update: {
-          assignments?: Json
-          created_at?: string
-          extra_people?: Json
-          extra_room_counter?: number
-          extra_rooms?: Json
-          hidden_rooms?: Json
-          id?: boolean
-          no_lodging_registration_ids?: string[]
-          room_capacity?: number
-          rooms_available?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       registrations: {
         Row: {

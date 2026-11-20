@@ -2,6 +2,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { PublicAttendanceRepository } from "./publicAttendance.server";
 import type { PublicAttendanceResult } from "./publicAttendance.domain";
+import { resolveParticipantCardLodging, type CardLodgingPlan } from "./participantCardDetails.domain";
 
 const progressSchema = z.object({ total_confirmed: z.number().int().nonnegative(), attended: z.number().int().nonnegative(), revision: z.string() });
 const activitySchema = progressSchema.extend({ id: z.string().uuid(), title: z.string(), activity_date: z.string(), starts_at: z.string().nullable(), ends_at: z.string().nullable() });
@@ -26,12 +27,25 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
     },
     async findCard(token) {
       const { data, error } = await client().from("registration_attendance_cards")
-        .select("registrations(name,badge_name,choir_name,payment_status,cancelled_at)").eq("token", token).maybeSingle();
+        .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path)").eq("token", token).maybeSingle();
       if (error) throw new Error("Não foi possível abrir o cartão. Tente novamente.");
       if (!data) return null;
-      const parsed = z.object({ registrations: z.object({ name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable() }) }).parse(data);
+      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable() }) }).parse(data);
       const row = parsed.registrations;
-      return row.cancelled_at ? null : { name: row.badge_name?.trim() || row.name, choirName: row.choir_name, eligible: row.payment_status === "paid" };
+      if (row.cancelled_at) return null;
+      const [photo, planResult] = await Promise.all([
+        row.photo_path ? supabaseAdmin.storage.from("registration-photos").createSignedUrl(row.photo_path,3600) : Promise.resolve(null),
+        supabaseAdmin.from("lodging_plan").select("assignments,named_rooms,no_lodging_registration_ids,extra_people").maybeSingle(),
+      ]);
+      if(planResult.error) throw new Error("Não foi possível carregar a hospedagem do cartão. Tente novamente.");
+      const plan = planResult.data as CardLodgingPlan | null;
+      const roomKey = plan?.assignments?.[row.id];
+      const roomIds = Object.entries(plan?.assignments ?? {}).filter(([,key])=>key===roomKey).map(([id])=>id);
+      const roommatesResult = roomKey && roomIds.length ? await supabaseAdmin.from("registrations")
+        .select("id,name,badge_name,cancelled_at").in("id",roomIds).is("cancelled_at",null) : {data:[],error:null};
+      if(roommatesResult.error) throw new Error("Não foi possível carregar os colegas de quarto. Tente novamente.");
+      return { name: row.badge_name?.trim() || row.name, fullName:row.name, choirName: row.choir_name, eligible: row.payment_status === "paid",
+        photoUrl:photo?.data?.signedUrl ?? null, lodging:resolveParticipantCardLodging(row.id,plan,roommatesResult.data??[]) };
     },
     async record(input) {
       const { data, error } = await client().rpc("record_public_attendance", { p_activity_id: input.activityId, p_token: input.token });
