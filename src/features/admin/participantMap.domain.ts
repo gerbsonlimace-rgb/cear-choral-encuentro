@@ -117,23 +117,27 @@ function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean 
   if (declared && declared in GENDER_LABELS && declared !== "nao_informado") {
     return { key: declared, inferred: false };
   }
-  const firstName = row.name
+  const nameParts = row.name
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase("pt-BR")
     .split(/\s+/)
     .map((part) => part.replace(/[^a-z]/g, ""))
-    .find((part) => part && !NAME_PREFIXES.has(part)) ?? "";
-  const key = FEMALE_FIRST_NAMES.has(firstName)
+    .filter((part) => part && !NAME_PREFIXES.has(part));
+  const firstName = nameParts[0] ?? "";
+  const knownName = nameParts.find((part) => FEMALE_FIRST_NAMES.has(part) || MALE_FIRST_NAMES.has(part));
+  const key = FEMALE_FIRST_NAMES.has(firstName) || (knownName && FEMALE_FIRST_NAMES.has(knownName))
     ? "feminino"
-    : MALE_FIRST_NAMES.has(firstName)
+    : MALE_FIRST_NAMES.has(firstName) || (knownName && MALE_FIRST_NAMES.has(knownName))
       ? "masculino"
       : firstName.endsWith("a")
         ? "feminino"
         : firstName.endsWith("o")
           ? "masculino"
-      : "nao_informado";
-  return { key, inferred: key !== "nao_informado" };
+          : nameParts.some((part) => part.endsWith("a"))
+            ? "feminino"
+            : "masculino";
+  return { key, inferred: true };
 }
 
 function countGenders(rows: AdminRegistrationRow[]): { counts: ParticipantCount[]; inferred: number } {

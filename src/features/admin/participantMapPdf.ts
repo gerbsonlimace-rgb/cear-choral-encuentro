@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { adminPdfLogoBase64 } from "./admin-pdf-logo";
-import { CEARA_PATH, CEARA_VIEWBOX, projectCeara } from "./cearaGeo";
+import { CEARA_PATH, projectCeara } from "./cearaGeo";
 import type { ParticipantCount, ParticipantMapData } from "./participantMap.domain";
 
 export type ParticipantMapPdfFile = { fileName: string; base64: string };
@@ -126,47 +126,64 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
     { x: 34, y: 315, font, size: 7, color: muted },
   );
 
-  // Ceará map with one point per diocese seat.
-  const scale = 0.24;
-  const mapX = 45;
-  const mapY = 28;
-  page.drawSvgPath(CEARA_PATH, {
-    x: mapX, y: mapY, scale,
-    color: rgb(0.93, 0.96, 0.99),
-    borderColor: accent,
-    borderWidth: 2.5,
+  // Ceará outline and numbered, compact seat markers.
+  const mapX = 48;
+  const mapY = 48;
+  const coordinates = [...CEARA_PATH.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)]
+    .map((match) => ({ x: Number(match[1]), y: Number(match[2]) }));
+  const minX = Math.min(...coordinates.map((point) => point.x));
+  const maxX = Math.max(...coordinates.map((point) => point.x));
+  const minY = Math.min(...coordinates.map((point) => point.y));
+  const maxY = Math.max(...coordinates.map((point) => point.y));
+  const scale = Math.min(190 / (maxX - minX), 230 / (maxY - minY));
+  coordinates.forEach((point, index) => {
+    const next = coordinates[(index + 1) % coordinates.length];
+    page.drawLine({
+      start: { x: mapX + (point.x - minX) * scale, y: mapY + (maxY - point.y) * scale },
+      end: { x: mapX + (next.x - minX) * scale, y: mapY + (maxY - next.y) * scale },
+      thickness: 1.2,
+      color: accent,
+    });
   });
-  const largest = Math.max(1, ...data.dioceses.map((item) => item.total));
-  for (const seat of data.dioceses) {
+  data.dioceses.forEach((seat, index) => {
     const point = projectCeara(seat.latitude, seat.longitude);
-    const cx = mapX + point.x * scale;
-    const cy = mapY + (CEARA_VIEWBOX.height - point.y) * scale;
-    const radius = 5 + (seat.total / largest) * 17;
+    const cx = mapX + (point.x - minX) * scale;
+    const cy = mapY + (maxY - point.y) * scale;
     const isCentral = seat.city === "Quixadá";
-    if (isCentral) {
-      page.drawCircle({ x: cx, y: cy, size: radius + 4, color: accent, opacity: 0.9 });
-    }
-    page.drawCircle({ x: cx, y: cy, size: radius, color: rgb(0.86, 0.36, 0.22), opacity: 0.75 });
-    page.drawCircle({ x: cx, y: cy, size: 3, color: rgb(1, 1, 1) });
-    if (isCentral) {
-      page.drawText("QUIXADA - SEDE CENTRAL", {
-        x: cx + radius + 5,
-        y: cy - 2,
-        font: bold,
-        size: 5.6,
-        color: ink,
-      });
-    }
-  }
+    const number = String(index + 1).padStart(2, "0");
+    page.drawCircle({
+      x: cx,
+      y: cy,
+      size: 8,
+      color: isCentral ? accent : rgb(0.86, 0.36, 0.22),
+      borderColor: rgb(1, 1, 1),
+      borderWidth: 1,
+    });
+    page.drawText(number, {
+      x: cx - 5.3,
+      y: cy - 2.3,
+      font: bold,
+      size: 5.8,
+      color: rgb(1, 1, 1),
+    });
+  });
   page.drawText(printable("Participantes por sede diocesana", font), {
     x: 260, y: 250, font: bold, size: 11, color: ink,
   });
   data.dioceses.forEach((seat, index) => {
     const row = 230 - index * 20;
     if (row < 40) return;
-    page.drawCircle({ x: 266, y: row + 2, size: 4, color: rgb(0.86, 0.36, 0.22) });
-    page.drawText(printable(`${seat.city} · ${seat.diocese}`, font), {
-      x: 278, y: row, font, size: 8, color: ink,
+    const isCentral = seat.city === "Quixadá";
+    const number = String(index + 1).padStart(2, "0");
+    page.drawCircle({
+      x: 266,
+      y: row + 2,
+      size: 7,
+      color: isCentral ? accent : rgb(0.86, 0.36, 0.22),
+    });
+    page.drawText(number, { x: 261.2, y: row - 0.2, font: bold, size: 5.2, color: rgb(1, 1, 1) });
+    page.drawText(printable(`${seat.city} · ${seat.diocese}${isCentral ? " · sede central" : ""}`, font), {
+      x: 278, y: row, font: isCentral ? bold : font, size: 8, color: ink,
     });
     page.drawText(`${seat.choirs} coro(s) · ${seat.total}`, {
       x: 278, y: row - 9, font, size: 7, color: muted,
