@@ -112,7 +112,7 @@ try {
     const url = new URL("https://web.whatsapp.com/send");
     url.searchParams.set("phone", current.phone);
     await page.goto(url.toString(), { waitUntil: "domcontentloaded" });
-    await page.locator('#main footer [contenteditable="true"]').first().waitFor({ state: "visible", timeout: 60000 });
+    await waitForConversationOrUnavailableNumber(page);
     await page.getByRole("dialog").filter({ hasText: /Iniciando conversa|Starting chat/i }).waitFor({ state: "hidden", timeout: 60000 });
     // Pick the photo menu explicitly: a generic image input can create a sticker.
     await page.locator("#main footer").getByRole("button", { name: /^(Anexar|Attach)$/i }).click();
@@ -168,8 +168,9 @@ try {
     report({ phase: "sent", registrationId: current.id, total: selected.length, completed: submitted + failed, failed });
     console.log("Envio registrado. A confirmação de entrega deve ser conferida no WhatsApp.");
     } catch (error) {
-      if (!autoSend) throw error;
       const message = error instanceof Error ? error.message : "Falha ao preparar ou enviar este cartão.";
+      const unavailableNumber = message.startsWith("Número não está no WhatsApp;");
+      if (!autoSend && !unavailableNumber) throw error;
       const previous = progress[recipient.id];
       if (!previous?.attemptStartedAt) {
         progress[recipient.id] = { ...(previous ? { ...previous, history: undefined } : {}), failedAt: new Date().toISOString(), error: message.slice(0,240) };
@@ -211,6 +212,20 @@ async function verifySender(target) {
   }, expected, { timeout: 10000 });
   console.log("Remetente conferido no perfil do WhatsApp.");
 }
+async function waitForConversationOrUnavailableNumber(target) {
+  const conversation = target.locator('#main footer [contenteditable="true"]').first();
+  const unavailable = target.getByText(/(?:O\s+)?n[uú]mero.*(?:não está no WhatsApp|is not on WhatsApp|isn't on WhatsApp)/i).first();
+  const result = await Promise.race([
+    conversation.waitFor({ state: "visible", timeout: 60000 }).then(() => "conversation").catch(() => "timeout"),
+    unavailable.waitFor({ state: "visible", timeout: 60000 }).then(() => "unavailable").catch(() => "timeout"),
+  ]);
+  if (result === "unavailable") {
+    await target.getByRole("button", { name: /^OK$/i }).click({ timeout: 5000 });
+    throw new Error("Número não está no WhatsApp; cartão marcado como falha e o próximo participante será processado.");
+  }
+  if (result !== "conversation") throw new Error("O WhatsApp não abriu a conversa nem confirmou se o número está ativo.");
+}
+
 function saveProgress() {
   const tmp = `${progressPath}.tmp`;
   writeFileSync(tmp, JSON.stringify(progress, null, 2), { mode: 0o600 });
