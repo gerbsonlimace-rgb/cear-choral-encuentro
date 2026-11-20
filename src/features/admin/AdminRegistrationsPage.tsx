@@ -563,6 +563,12 @@ function RegistrationDetailsDialog({
             <DetailItem label="Observações" wide>
               {optionalText(row.observations)}
             </DetailItem>
+            <DetailItem label="Restrição alimentar">
+              {row.dietaryRestriction == null ? "Ainda não informado" : row.dietaryRestriction ? "Sim" : "Não"}
+            </DetailItem>
+            <DetailItem label="Usará van para traslado">
+              {row.usesEventVan == null ? "Ainda não informado" : row.usesEventVan ? "Sim" : "Não"}
+            </DetailItem>
           </DetailSection>
 
           {review && (

@@ -155,11 +155,11 @@ describe("registration export", () => {
     const lines = file.content.split("\r\n");
     expect(lines).toHaveLength(1006);
     expect(lines[0]).toBe(
-      "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em",
+      "\uFEFFData;Nome para o crachá;Nome completo;CPF;Coro/Diocese;E-mail;Telefone;Cidade;Instituição;Função;Situação;Tipo do valor;Valor normal;Valor da inscrição;Valor esperado;Valor pago;Forma de pagamento;Parcelas;Pago em;Restrição alimentar;Usará van",
     );
     // Intl formats pt-BR currency with U+00A0; normalize before comparing.
     expect(lines[1].replaceAll("\u00A0", " ")).toBe(
-      "07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026",
+      "07/09/2026;Maria 0;Maria 0;529.982.247-25;Diocese de Quixadá;maria@example.com;85999999999;Fortaleza;Não informado;Corista;Pago;Normal;R$ 30,00;R$ 30,00;R$ 30,00;R$ 30,00;Pix;1;07/09/2026;Não informado;Não informado",
     );
     expect(lines[1000]).toContain(";Maria 999;");
     expect(lines[1001]).toContain(";Maria 1000;");

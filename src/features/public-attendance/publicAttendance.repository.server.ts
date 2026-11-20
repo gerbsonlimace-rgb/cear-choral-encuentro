@@ -27,10 +27,10 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
     },
     async findCard(token) {
       const { data, error } = await client().from("registration_attendance_cards")
-        .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path)").eq("token", token).maybeSingle();
+        .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path,dietary_restriction,uses_event_van)").eq("token", token).maybeSingle();
       if (error) throw new Error("Não foi possível abrir o cartão. Tente novamente.");
       if (!data) return null;
-      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable() }) }).parse(data);
+      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable(), dietary_restriction:z.boolean().nullable(), uses_event_van:z.boolean().nullable() }) }).parse(data);
       const row = parsed.registrations;
       if (row.cancelled_at) return null;
       const [photo, planResult] = await Promise.all([
@@ -45,7 +45,8 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
         .select("id,name,badge_name,cancelled_at").in("id",roomIds).is("cancelled_at",null) : {data:[],error:null};
       if(roommatesResult.error) throw new Error("Não foi possível carregar os colegas de quarto. Tente novamente.");
       return { name: row.badge_name?.trim() || row.name, fullName:row.name, choirName: row.choir_name, eligible: row.payment_status === "paid",
-        photoUrl:photo?.data?.signedUrl ?? null, lodging:resolveParticipantCardLodging(row.id,plan,roommatesResult.data??[]) };
+        photoUrl:photo?.data?.signedUrl ?? null, lodging:resolveParticipantCardLodging(row.id,plan,roommatesResult.data??[]),
+        dietaryRestriction:row.dietary_restriction, usesEventVan:row.uses_event_van };
     },
     async record(input) {
       const { data, error } = await client().rpc("record_public_attendance", { p_activity_id: input.activityId, p_token: input.token });
@@ -58,6 +59,17 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       }
       const messages = { invalid_card: "QR Code não reconhecido. Apresente o cartão do participante.", ineligible: "Inscrição pendente ou cancelada. Procure a equipe do evento.", activity_unavailable: "Esta atividade não está disponível para chamada." };
       return { status: row.status, message: messages[row.status] } as PublicAttendanceResult;
+    },
+    async saveLogistics(input) {
+      const { data, error } = await client().rpc("save_public_attendance_logistics", {
+        p_token: input.token,
+        p_dietary_restriction: input.dietaryRestriction,
+        p_uses_event_van: input.usesEventVan,
+      });
+      if (error) throw new Error("Não foi possível salvar as respostas. Tente novamente.");
+      const row = z.object({ dietary_restriction: z.boolean(), uses_event_van: z.boolean() })
+        .parse(Array.isArray(data) ? data[0] : data);
+      return { dietaryRestriction: row.dietary_restriction, usesEventVan: row.uses_event_van };
     },
     async prepareCards() {
       const snapshot = await client().rpc("admin_registration_snapshot", { p_search: "" });

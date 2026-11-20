@@ -363,6 +363,8 @@ describe("admin registration history and CSV", () => {
       "Pix",
       "Não informado",
       "Não informado",
+      "Não informado",
+      "Não informado",
     ]);
   });
 
@@ -417,6 +419,8 @@ describe("admin registration history and CSV", () => {
       "Forma de pagamento",
       "Parcelas",
       "Pago em",
+      "Restrição alimentar",
+      "Usará van",
     ]);
     expect(csvRows[3]).toEqual([
       "07/09/2026",
@@ -438,6 +442,8 @@ describe("admin registration history and CSV", () => {
       "Cartão",
       "2",
       "08/09/2026",
+      "Não informado",
+      "Não informado",
     ]);
     expect(csvRows[4][6]).toBe("'  +5585999999999");
     expect(file.content).not.toContain("checkout-secret");

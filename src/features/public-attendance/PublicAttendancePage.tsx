@@ -1,19 +1,84 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, Camera, Check, CheckCheck, ChevronRight, Pause, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { createAttendanceScanQueue, type ScanQueueSnapshot } from "./attendanceScanQueue";
 import { startContinuousQrScanner } from "./continuousQrScanner";
-import { extractParticipantCardToken, mergeAttendanceProgress, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceResult } from "./publicAttendance.domain";
+import { extractParticipantCardToken, mergeAttendanceProgress, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceLogisticsResult, type PublicAttendanceResult } from "./publicAttendance.domain";
 
 type Props = {
   loadActivities?: () => Promise<PublicAttendanceActivity[]>;
   record?: (input: { data: {activityId: string; token: string} }) => Promise<PublicAttendanceResult>;
+  saveLogistics?: (input: {data:{token:string;dietaryRestriction:boolean;usesEventVan:boolean}}) => Promise<PublicAttendanceLogisticsResult>;
   startScanner?: typeof startContinuousQrScanner;
 };
 const emptyQueue: ScanQueueSnapshot = {pending:0,failed:0,active:0,queued:0};
 const dateLabel = (date: string) => new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
-type ScanFeedback = { id: string; result: PublicAttendanceResult; details?: PublicAttendanceConfirmation; detailsPending?: boolean };
+type ScanFeedback = { id: string; token: string; result: PublicAttendanceResult; details?: PublicAttendanceConfirmation; detailsPending?: boolean };
+
+function QuickQuestion({ id, label, value, onChange }: { id: string; label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return <fieldset className="min-w-0 rounded-lg border border-black/10 bg-white/70 px-3 py-2">
+    <legend className="px-1 text-xs font-semibold">{label}</legend>
+    <div className="flex gap-2">
+      {([true, false] as const).map(answer => <label key={String(answer)} className={`flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border px-2 text-sm font-medium ${value===answer?"border-zinc-800 bg-zinc-100":"border-zinc-200 bg-white"}`}>
+        <input className="accent-zinc-900" type="radio" name={id} value={String(answer)} checked={value===answer} onChange={()=>onChange(answer)}/>
+        {answer?"Sim":"Não"}
+      </label>)}
+    </div>
+  </fieldset>;
+}
+
+function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestriction, initialUsesEventVan, save }: {
+  id: string;
+  token: string;
+  loaded: boolean;
+  loading: boolean;
+  initialDietaryRestriction: boolean | null;
+  initialUsesEventVan: boolean | null;
+  save: NonNullable<Props["saveLogistics"]>;
+}) {
+  const [dietaryRestriction,setDietaryRestriction]=useState(false);
+  const [usesEventVan,setUsesEventVan]=useState(false);
+  const [dirty,setDirty]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false);
+  const [error,setError]=useState("");
+  const hydrated=useRef(false);
+  const pendingDietaryRestriction=useRef<boolean|null>(null),pendingUsesEventVan=useRef<boolean|null>(null);
+  useEffect(()=>{
+    if(!loaded||hydrated.current)return;
+    setDietaryRestriction(pendingDietaryRestriction.current??(initialDietaryRestriction===true));
+    setUsesEventVan(pendingUsesEventVan.current??(initialUsesEventVan===true));
+    setSaved(initialDietaryRestriction!==null&&initialUsesEventVan!==null&&pendingDietaryRestriction.current===null&&pendingUsesEventVan.current===null);
+    hydrated.current=true;
+  },[loaded,initialDietaryRestriction,initialUsesEventVan]);
+  const change=(field:"dietary"|"van",value:boolean)=>{
+    setDirty(true);setSaved(false);setError("");
+    if(!hydrated.current){if(field==="dietary")pendingDietaryRestriction.current=value;else pendingUsesEventVan.current=value;}
+    if(field==="dietary")setDietaryRestriction(value);else setUsesEventVan(value);
+  };
+  const submit=async(event:FormEvent<HTMLFormElement>)=>{
+    event.preventDefault();setSaving(true);setError("");
+    try{
+      const response=await save({data:{token,dietaryRestriction,usesEventVan}});
+      setDietaryRestriction(response.dietaryRestriction);setUsesEventVan(response.usesEventVan);
+      setDirty(false);setSaved(true);
+    }catch{setError("Não foi possível salvar. Confira a conexão e tente novamente.");}
+    finally{setSaving(false);}
+  };
+  const canSave=loaded&&!saving&&(dirty||!saved);
+  return <form onSubmit={event=>void submit(event)} className="mt-3 space-y-2 pl-7">
+    <div className="grid gap-2 sm:grid-cols-2">
+      <QuickQuestion id={`food-${id}`} label="Tem restrição alimentar?" value={dietaryRestriction} onChange={value=>change("dietary",value)}/>
+      <QuickQuestion id={`van-${id}`} label="Usará a van para traslado?" value={usesEventVan} onChange={value=>change("van",value)}/>
+    </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="submit" size="sm" variant="outline" disabled={!canSave}>{saving?"Salvando…":saved&&!dirty?"Respostas salvas":"Salvar respostas"}</Button>
+      {!loaded&&loading&&<span className="text-xs text-zinc-600">Carregando respostas existentes…</span>}
+      {!loaded&&!loading&&<span className="text-xs text-red-700">Não foi possível carregar os dados da inscrição.</span>}
+      {saved&&!dirty&&<span role="status" className="text-xs text-zinc-600">Salvas na inscrição</span>}
+      {error&&<span role="alert" className="text-xs text-red-700">{error}</span>}
+    </div>
+  </form>;
+}
 
 function Progress({activity}: {activity: PublicAttendanceActivity}) {
   const percent=activity.totalConfirmed ? Math.min(100,Math.round(activity.attended/activity.totalConfirmed*100)) : 0;
@@ -23,7 +88,7 @@ function Progress({activity}: {activity: PublicAttendanceActivity}) {
   </div>;
 }
 
-export function PublicAttendancePage({loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,startScanner=startContinuousQrScanner}: Props) {
+export function PublicAttendancePage({loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
   const [activities,setActivities]=useState<PublicAttendanceActivity[]|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [running,setRunning]=useState(false),[cameraReady,setCameraReady]=useState(false);
@@ -31,6 +96,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
   const [pending,setPending]=useState(emptyQueue),[sound,setSound]=useState(true);
   const [feedback,setFeedback]=useState<ScanFeedback[]>([]);
   const video=useRef<HTMLVideoElement>(null);
+  const feedbackSequence=useRef(0);
   const queue=useRef<ReturnType<typeof createAttendanceScanQueue<PublicAttendanceResult>>|null>(null);
   const audio=useRef<AudioContext|null>(null), soundEnabled=useRef(sound);
   const lastInvalid=useRef("");
@@ -56,11 +122,12 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
       submit:token=>record({data:{activityId:selectedId,token}}),onChange:setPending,
       onResult:(result,token)=>{
         const confirmed=result.status==="recorded"||result.status==="already_recorded";
-        setFeedback(items=>[{id:token,result,detailsPending:confirmed},...items].slice(0,4));
+        const feedbackId=String(++feedbackSequence.current);
+        setFeedback(items=>[{id:feedbackId,token,result,detailsPending:confirmed},...items].slice(0,4));
         if(confirmed) void getPublicAttendanceConfirmation({data:{token}}).then(details=>{
-          setFeedback(items=>items.map(item=>item.id===token?{...item,details,detailsPending:false}:item));
+          setFeedback(items=>items.map(item=>item.id===feedbackId?{...item,details,detailsPending:false}:item));
         }).catch(()=>{
-          setFeedback(items=>items.map(item=>item.id===token?{...item,detailsPending:false}:item));
+          setFeedback(items=>items.map(item=>item.id===feedbackId?{...item,detailsPending:false}:item));
         });
         if(result.status==="recorded"||result.status==="already_recorded") {
           setActivities(items=>items?.map(item=>mergeAttendanceProgress(item,result.activity))??null);
@@ -137,7 +204,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
         </section>
         {pending.pending>0&&<section className={`rounded-lg p-3 text-sm ${pending.failed?"bg-amber-50 text-amber-950":"bg-zinc-200 text-zinc-800"}`} aria-live="polite"><p>{pending.pending} leitura{pending.pending===1?"":"s"} aguardando confirmação{pending.failed?` · ${pending.failed} com falha de conexão`:"…"}</p>{pending.failed>0&&<Button className="mt-2" variant="outline" onClick={()=>queue.current?.retryFailed()}>Tentar pendentes novamente</Button>}</section>}
         <section aria-label="Últimas leituras" aria-live="polite" className="space-y-2">
-          {feedback.map(({id,result:item,details,detailsPending})=>{const success=item.status==="recorded",duplicate=item.status==="already_recorded";return <div key={id} className={`rounded-xl border p-3 sm:p-4 ${success?"border-emerald-200 bg-emerald-50 text-emerald-950":duplicate?"border-amber-200 bg-amber-50 text-amber-950":"border-red-200 bg-red-50 text-red-800"}`}>
+          {feedback.map(({id,token,result:item,details,detailsPending})=>{const success=item.status==="recorded",duplicate=item.status==="already_recorded";return <div key={id} className={`rounded-xl border p-3 sm:p-4 ${success?"border-emerald-200 bg-emerald-50 text-emerald-950":duplicate?"border-amber-200 bg-amber-50 text-amber-950":"border-red-200 bg-red-50 text-red-800"}`}>
             {"participantName" in item?<div className="flex items-center gap-3">
               <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/10 sm:size-20">
                 {details?.photoUrl?<img src={details.photoUrl} alt={`Foto de ${item.participantName}`} className="size-full object-cover" onError={event=>{event.currentTarget.style.display="none";}}/>:<div className="grid size-full place-items-center text-lg font-semibold text-zinc-500" aria-label="Foto indisponível">{item.participantName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join("").toLocaleUpperCase("pt-BR")}</div>}
@@ -145,6 +212,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2">{success?<Check className="mt-0.5 size-5 shrink-0"/>:<CheckCheck className="mt-0.5 size-5 shrink-0"/>}<div className="min-w-0"><p className="font-bold leading-tight">{details?.fullName??item.participantName}</p>{details?.fullName&&details.fullName!==item.participantName&&<p className="text-sm">Crachá: {item.participantName}</p>}<p className="mt-1 text-sm font-semibold">{success?"Presença confirmada":"Já registrado · não conta novamente"}</p></div></div>
                 <div className="mt-2 space-y-0.5 pl-7 text-sm"><p className="font-medium">{details?.choirName??(detailsPending?"Carregando coro…":"Coro indisponível")}</p>{detailsPending? <p>Carregando acomodação…</p> : details?.lodging?<p>Quarto/apartamento: {details.lodging.room}{details.lodging.location?` · ${details.lodging.location}`:""}</p>:details&&<p>Sem quarto/apartamento atribuído</p>}</div>
+                <LogisticsAnswers id={id} token={token} loaded={details!==undefined} loading={Boolean(detailsPending)} initialDietaryRestriction={details?.dietaryRestriction??null} initialUsesEventVan={details?.usesEventVan??null} save={saveLogistics}/>
               </div>
             </div>:<div className="flex items-center gap-3"><p className="text-sm">{item.message}</p></div>}</div>;})}
           {feedback.length===0&&<p className="text-center text-sm text-zinc-600">Aproxime o QR Code do cartão. A câmera continua aberta após cada leitura.</p>}

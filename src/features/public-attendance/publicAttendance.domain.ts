@@ -5,6 +5,11 @@ export const participantCardTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, "QR
 export const publicAttendanceInputSchema = z.object({
   activityId: z.string().uuid(), token: participantCardTokenSchema,
 }).strict();
+export const publicAttendanceLogisticsInputSchema = z.object({
+  token: participantCardTokenSchema,
+  dietaryRestriction: z.boolean(),
+  usesEventVan: z.boolean(),
+}).strict();
 
 export type PublicAttendanceActivity = {
   id: string; title: string; activityDate: string; startsAt: string | null; endsAt: string | null;
@@ -18,7 +23,15 @@ export type PublicParticipantCard = {
   name: string; choirName: string; eligible: boolean; cardUrl: string; qrDataUrl: string;
   fullName?: string; photoUrl?: string | null; lodging?: ParticipantCardLodging | null;
 };
-export type PublicAttendanceConfirmation = Pick<PublicParticipantCard, "name" | "fullName" | "choirName" | "photoUrl" | "lodging">;
+export type PublicAttendanceConfirmation = Pick<PublicParticipantCard, "name" | "fullName" | "choirName" | "photoUrl" | "lodging"> & {
+  dietaryRestriction?: boolean | null;
+  usesEventVan?: boolean | null;
+};
+export type PublicAttendanceLogisticsInput = z.infer<typeof publicAttendanceLogisticsInputSchema>;
+export type PublicAttendanceLogisticsResult = {
+  dietaryRestriction: boolean;
+  usesEventVan: boolean;
+};
 export type AttendanceCardExportRow = { name: string; choirName: string; token: string };
 
 export function extractParticipantCardToken(value: string): string {

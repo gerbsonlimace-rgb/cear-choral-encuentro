@@ -41,6 +41,8 @@ export const adminRegistrationColumns = [
   "musical_profile",
   "voice_part",
   "observations",
+  "dietary_restriction",
+  "uses_event_van",
   "include_shirt",
   "shirt_size",
   "shirt_price_cents",
