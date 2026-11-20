@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Camera, ClipboardList, ChevronRight, Pause, RefreshCw, Volume2, VolumeX, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Camera, ClipboardList, ChevronRight, Check, Pause, RefreshCw, Volume2, VolumeX, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { AttendanceReportsPanel } from "./AttendanceReportsPanel";
@@ -22,19 +22,19 @@ const emptyQueue: ScanQueueSnapshot = {pending:0,failed:0,active:0,queued:0};
 const dateLabel = (date: string) => new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
 type ScanFeedback = { id: string; token: string; result: PublicAttendanceResult; details?: PublicAttendanceConfirmation; detailsPending?: boolean };
 
-function QuickQuestion({ id, label, value, onChange }: { id: string; label: string; value: boolean; onChange: (value: boolean) => void }) {
+function QuickQuestion({ id, label, value, onChange }: { id: string; label: string; value: boolean | null; onChange: (value: boolean) => void }) {
   return <fieldset className="min-w-0 rounded-lg border border-black/10 bg-white/70 px-3 py-2">
-    <legend className="px-1 text-xs font-semibold">{label}</legend>
+    <legend className="px-1 text-sm font-semibold">{label}</legend>
     <div className="flex gap-2">
-      {([true, false] as const).map(answer => <label key={String(answer)} className={`flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border px-2 text-sm font-medium ${value===answer?"border-zinc-800 bg-zinc-100":"border-zinc-200 bg-white"}`}>
-        <input className="accent-zinc-900" type="radio" name={id} value={String(answer)} checked={value===answer} onChange={()=>onChange(answer)}/>
+      {([true, false] as const).map(answer => <label key={String(answer)} className={`flex min-h-14 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-2 text-lg font-bold transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-amber-700 ${value===answer?"border-zinc-900 bg-amber-200 text-zinc-950":"border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"}`}>
+        <input className="size-5 accent-zinc-900" type="radio" name={id} value={String(answer)} checked={value===answer} onChange={()=>onChange(answer)}/>
         {answer?"Sim":"Não"}
       </label>)}
     </div>
   </fieldset>;
 }
 
-function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestriction, initialDietaryRestrictionTypes, initialDietaryRestrictionOther, initialUsesEventVan, save }: {
+function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestriction, initialDietaryRestrictionTypes, initialDietaryRestrictionOther, initialUsesEventVan, save, onConfirmNext }: {
   id: string;
   token: string;
   loaded: boolean;
@@ -44,11 +44,12 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
   initialDietaryRestrictionOther: string | null;
   initialUsesEventVan: boolean | null;
   save: NonNullable<Props["saveLogistics"]>;
+  onConfirmNext: () => void;
 }) {
-  const [dietaryRestriction,setDietaryRestriction]=useState(false);
+  const [dietaryRestriction,setDietaryRestriction]=useState<boolean|null>(null);
   const [dietaryRestrictionTypes,setDietaryRestrictionTypes]=useState<DietaryRestrictionKey[]>([]);
   const [dietaryRestrictionOther,setDietaryRestrictionOther]=useState("");
-  const [usesEventVan,setUsesEventVan]=useState(false);
+  const [usesEventVan,setUsesEventVan]=useState<boolean|null>(null);
   const [dirty,setDirty]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false);
   const [error,setError]=useState("");
   const hydrated=useRef(false);
@@ -56,10 +57,10 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
   const pendingTypes=useRef<DietaryRestrictionKey[]|null>(null),pendingOther=useRef<string|null>(null);
   useEffect(()=>{
     if(!loaded||hydrated.current)return;
-    setDietaryRestriction(pendingDietaryRestriction.current??(initialDietaryRestriction===true));
+    setDietaryRestriction(pendingDietaryRestriction.current??initialDietaryRestriction);
     setDietaryRestrictionTypes(pendingTypes.current??initialDietaryRestrictionTypes);
     setDietaryRestrictionOther(pendingOther.current??(initialDietaryRestrictionOther??""));
-    setUsesEventVan(pendingUsesEventVan.current??(initialUsesEventVan===true));
+    setUsesEventVan(pendingUsesEventVan.current??initialUsesEventVan);
     setSaved(initialDietaryRestriction!==null&&initialUsesEventVan!==null&&pendingDietaryRestriction.current===null&&pendingUsesEventVan.current===null&&pendingTypes.current===null&&pendingOther.current===null);
     hydrated.current=true;
   },[loaded,initialDietaryRestriction,initialDietaryRestrictionTypes,initialDietaryRestrictionOther,initialUsesEventVan]);
@@ -87,14 +88,15 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
     if(!hydrated.current)pendingUsesEventVan.current=value;
     setUsesEventVan(value);
   };
-  const validationError=dietaryRestriction&&dietaryRestrictionTypes.length===0
+  const validationError=dietaryRestriction===true&&dietaryRestrictionTypes.length===0
     ? "Selecione ao menos uma restrição alimentar."
     : dietaryRestrictionTypes.includes("outra")&&!dietaryRestrictionOther.trim()
       ? "Descreva a outra restrição alimentar."
       : "";
   const submit=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    if(validationError||!loaded)return;
+    if(validationError||!loaded||dietaryRestriction===null||usesEventVan===null)return;
+    if(saved&&!dirty){onConfirmNext();return;}
     setSaving(true);setError("");
     const types=dietaryRestrictionOptions.map(option=>option.value).filter(value=>dietaryRestrictionTypes.includes(value));
     try{
@@ -104,11 +106,12 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
       setDietaryRestrictionOther(response.dietaryRestrictionOther??"");
       setUsesEventVan(response.usesEventVan);
       setDirty(false);setSaved(true);
+      onConfirmNext();
     }catch(cause){setError(cause instanceof Error&&cause.message.includes("migração")?cause.message:"Não foi possível salvar. Confira a conexão e tente novamente.");}
     finally{setSaving(false);}
   };
-  const canSave=loaded&&!saving&&!validationError&&(dirty||!saved);
-  return <form onSubmit={event=>void submit(event)} className="attendance-logistics mt-3 space-y-2">
+  const canSave=loaded&&!saving&&!validationError&&dietaryRestriction!==null&&usesEventVan!==null;
+  return <form onSubmit={event=>void submit(event)} className="attendance-logistics">
     <div className="grid grid-cols-2 gap-2">
       <QuickQuestion id={`food-${id}`} label="Tem restrição alimentar?" value={dietaryRestriction} onChange={changeDietary}/>
       <QuickQuestion id={`van-${id}`} label="Usará a van para traslado?" value={usesEventVan} onChange={changeVan}/>
@@ -126,14 +129,14 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
         <input className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm font-normal" value={dietaryRestrictionOther} maxLength={280} onChange={event=>changeOther(event.target.value)}/>
       </label>}
     </fieldset>}
-    <div className="flex flex-wrap items-center gap-2">
-      <Button type="submit" size="sm" variant="outline" disabled={!canSave}>{saving?"Salvando…":saved&&!dirty?"Respostas salvas":"Salvar respostas"}</Button>
-      {!loaded&&loading&&<span className="text-xs text-zinc-600">Carregando respostas existentes…</span>}
-      {!loaded&&!loading&&<span className="text-xs text-red-700">Não foi possível carregar os dados da inscrição.</span>}
-      {saved&&!dirty&&<span role="status" className="text-xs text-zinc-600">Salvas na inscrição</span>}
-      {validationError&&<span role="alert" className="text-xs text-red-700">{validationError}</span>}
-      {error&&<span role="alert" className="text-xs text-red-700">{error}</span>}
-    </div>
+    {!loaded&&loading&&<p role="status" className="text-xs text-zinc-600">Carregando as respostas…</p>}
+    {!loaded&&!loading&&<p role="alert" className="text-xs text-red-700">Não foi possível carregar os dados. Retome a câmera e tente novamente.</p>}
+    {(dietaryRestriction===null||usesEventVan===null)&&loaded&&<p className="text-xs text-zinc-600">Selecione Sim ou Não nas duas perguntas.</p>}
+    {validationError&&<p role="alert" className="text-xs text-red-700">{validationError}</p>}
+    {error&&<p role="alert" className="text-xs text-red-700">{error}</p>}
+    <Button type="submit" className="attendance-confirm-button" disabled={!canSave}>
+      <Check className="size-5" aria-hidden="true"/>{saving?"Salvando…":saved&&!dirty?"Confirmar e continuar":"Confirmar"}
+    </Button>
   </form>;
 }
 
@@ -157,6 +160,7 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
   const video=useRef<HTMLVideoElement>(null);
   const feedbackSequence=useRef(0);
   const queue=useRef<ReturnType<typeof createAttendanceScanQueue<PublicAttendanceResult>>|null>(null);
+  const awaitingConfirmation=useRef(false);
   const audio=useRef<AudioContext|null>(null), soundEnabled=useRef(sound);
   const lastInvalid=useRef("");
   const resumeAfterSearch=useRef(false);
@@ -182,6 +186,8 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
       submit:token=>record({data:{activityId:selectedId,token}}),onChange:setPending,
       onResult:(result,token)=>{
         const confirmed=result.status==="recorded"||result.status==="already_recorded";
+        awaitingConfirmation.current=confirmed;
+        setRunning(!confirmed);
         const feedbackId=String(++feedbackSequence.current);
         setFeedback(items=>[{id:feedbackId,token,result,detailsPending:confirmed},...items].slice(0,4));
         if(confirmed) void getPublicAttendanceConfirmation({data:{token}}).then(details=>{
@@ -210,12 +216,13 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
     const abort=new AbortController();let stop:(()=>void)|undefined;
     setCameraReady(false);setError("");
     void startScanner(video.current,raw=>{
+      if(awaitingConfirmation.current)return;
       let token: string;
       try {token=extractParticipantCardToken(raw);lastInvalid.current="";}
       catch {if(lastInvalid.current!==raw){lastInvalid.current=raw;setError("Este QR não é um cartão de participante. Apresente o cartão individual do evento.");}return;}
       const state=queue.current?.enqueue(token);
       if(state==="full") {setRunning(false);setError("Há muitas leituras aguardando a internet. Confirme as pendentes e apresente este cartão novamente.");}
-      else if(state==="queued")setError("");
+      else if(state==="queued"){awaitingConfirmation.current=true;setError("");setRunning(false);}
     },abort.signal,undefined,caught=>{setError(caught.message);setRunning(false);})
       .then(cleanup=>{stop=cleanup;if(abort.signal.aborted)cleanup();else setCameraReady(true);})
       .catch(caught=>{if(abort.signal.aborted)return;setRunning(false);setError(caught?.name==="NotAllowedError"?"Permita o acesso à câmera no navegador e toque em Retomar câmera.":"Não foi possível abrir a câmera. Confira a permissão e tente novamente.");});
@@ -228,8 +235,8 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
   useEffect(()=>()=>{void audio.current?.close().catch(()=>{});},[]);
 
   const enableAudio=(force=false)=>{if(!sound&&!force)return;try{if(!audio.current&&typeof AudioContext!=="undefined")audio.current=new AudioContext();void audio.current?.resume().catch(()=>{});}catch{/* Sound is optional. */}};
-  const choose=(id:string)=>{enableAudio();setSelectedId(id);setRunning(true);};
-  const back=()=>{if(queue.current?.snapshot().pending&&!window.confirm("Ainda há leituras sem confirmação. Sair descarta essas pendências deste aparelho. Deseja sair?"))return;setRunning(false);setSelectedId(null);setFeedback([]);setPending(emptyQueue);void refresh();};
+  const choose=(id:string)=>{enableAudio();awaitingConfirmation.current=false;setSelectedId(id);setRunning(true);};
+  const back=()=>{if(queue.current?.snapshot().pending&&!window.confirm("Ainda há leituras sem confirmação. Sair descarta essas pendências deste aparelho. Deseja sair?"))return;awaitingConfirmation.current=false;setRunning(false);setSelectedId(null);setFeedback([]);setPending(emptyQueue);void refresh();};
 
   const currentFeedback=feedback[0];
   const switchTab=(next:"scanner"|"reports")=>{if(next===tab)return;setRunning(false);setTab(next);};
@@ -261,16 +268,16 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
           </button>)}
         </section>}
         {selected&&<>
-          <section aria-label="Progresso da chamada" className="shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
-          <AttendanceNameSearch key={selected.id} activityId={selected.id} attendedTokens={feedback.filter(item=>item.result.status==="recorded"||item.result.status==="already_recorded").map(item=>item.token)} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();const state=queue.current?.enqueue(token);if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
+          <section aria-label="Progresso da chamada" className="attendance-scanner-progress shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
           <div className="attendance-scanner-workspace">
           <div className="attendance-scanner-capture">
           <section className="attendance-camera" aria-label="Leitor QR">
             <video ref={video} muted playsInline autoPlay aria-label="Câmera para leitura contínua de QR Codes"/>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true"><div className="attendance-target"/></div>
-            <p role="status" className="absolute inset-x-0 bottom-0 bg-black/75 px-2 py-1 text-center text-xs text-white">{running?(cameraReady?"Leitura contínua · próximo cartão":"Abrindo câmera…"):"Câmera pausada"}</p>
+            <p role="status" className="absolute inset-x-0 bottom-0 bg-black/75 px-2 py-1 text-center text-xs text-white">{running?(cameraReady?"Câmera ativa · aproxime o QR":"Abrindo câmera…"):currentFeedback&&"participantName" in currentFeedback.result?"Confira a pessoa e confirme para continuar":"Câmera pausada"}</p>
           </section>
-          <div className="attendance-controls"><Button className="min-h-11 flex-1" onClick={()=>{enableAudio();setRunning(value=>!value);}}>{running?<Pause className="size-4"/>:<Camera className="size-4"/>}{running?"Pausar câmera":"Retomar câmera"}</Button>
+          <div className="attendance-controls"><Button className="min-h-11 flex-1" disabled={Boolean(currentFeedback&&"participantName" in currentFeedback.result&&(currentFeedback.detailsPending||currentFeedback.details))} onClick={()=>{enableAudio();awaitingConfirmation.current=false;setRunning(value=>!value);}}>{running?<Pause className="size-4"/>:<Camera className="size-4"/>}{running?"Pausar câmera":"Retomar câmera"}</Button>
+            <AttendanceNameSearch key={selected.id} activityId={selected.id} attendedTokens={feedback.filter(item=>item.result.status==="recorded"||item.result.status==="already_recorded").map(item=>item.token)} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();resumeAfterSearch.current=false;const state=queue.current?.enqueue(token);if(state==="queued"){awaitingConfirmation.current=true;setRunning(false);}if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
             <Button variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={sound?"Desligar som":"Ligar som"} aria-pressed={sound} onClick={()=>{setSound(value=>!value);if(!sound)enableAudio(true);}}>{sound?<Volume2 className="size-5"/>:<VolumeX className="size-5"/>}</Button></div>
           </div>
           <div className="attendance-scanner-results" role="region" aria-label="Identificação e perguntas do participante" tabIndex={0}>
@@ -279,10 +286,10 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
             {currentFeedback?<div className="attendance-feedback" data-state={currentFeedback.result.status==="recorded"?"success":currentFeedback.result.status==="already_recorded"?"duplicate":"error"}>
               {"participantName" in currentFeedback.result?<>
                 <div className="identity">{currentFeedback.details?.photoUrl?<img src={currentFeedback.details.photoUrl} width={96} height={96} loading="eager" decoding="async" fetchPriority="high" alt={`Foto de ${currentFeedback.result.participantName}`}/>:<div className="attendance-avatar grid place-items-center text-sm font-bold" aria-label="Foto indisponível">{currentFeedback.result.participantName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div>}
-                <div className="min-w-0 flex-1"><h2>{currentFeedback.details?.fullName??currentFeedback.result.participantName}</h2><p>{currentFeedback.result.status==="recorded"?"Presença confirmada":"Já registrado · não conta novamente"}</p><p>{currentFeedback.details?.choirName??(currentFeedback.detailsPending?"Carregando coro…":"Coro indisponível")}</p><p>{currentFeedback.details?.lodging?`Quarto: ${currentFeedback.details.lodging.room}`:currentFeedback.detailsPending?"Carregando acomodação…":"Sem quarto/apartamento atribuído"}</p></div></div>
-                <LogisticsAnswers key={currentFeedback.id} id={currentFeedback.id} token={currentFeedback.token} loaded={currentFeedback.details!==undefined} loading={Boolean(currentFeedback.detailsPending)} initialDietaryRestriction={currentFeedback.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={currentFeedback.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={currentFeedback.details?.dietaryRestrictionOther??null} initialUsesEventVan={currentFeedback.details?.usesEventVan??null} save={saveLogistics}/>
+                <div className="min-w-0 flex-1"><h2>{currentFeedback.details?.name??currentFeedback.result.participantName}</h2>{currentFeedback.details?.fullName&&currentFeedback.details.fullName!==currentFeedback.details.name&&<p>{currentFeedback.details.fullName}</p>}<p>{currentFeedback.result.status==="recorded"?"Presença confirmada":"Presença já confirmada"}</p><p>{currentFeedback.details?.choirName??(currentFeedback.detailsPending?"Carregando coro…":"Coro indisponível")}</p></div></div>
+                <LogisticsAnswers key={currentFeedback.id} id={currentFeedback.id} token={currentFeedback.token} loaded={currentFeedback.details!==undefined} loading={Boolean(currentFeedback.detailsPending)} initialDietaryRestriction={currentFeedback.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={currentFeedback.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={currentFeedback.details?.dietaryRestrictionOther??null} initialUsesEventVan={currentFeedback.details?.usesEventVan??null} save={saveLogistics} onConfirmNext={()=>{awaitingConfirmation.current=false;setFeedback([]);setError("");setRunning(true);}}/>
               </>:<p>{currentFeedback.result.message}</p>}
-            </div>:<p className="p-2 text-center text-xs text-zinc-600">Aproxime o QR do cartão. A câmera continua aberta após cada leitura.</p>}
+            </div>:<p className="p-2 text-center text-xs text-zinc-600">Aproxime o QR. Confirme as respostas para chamar a próxima pessoa.</p>}
           </section>
           </div>
           </div>
