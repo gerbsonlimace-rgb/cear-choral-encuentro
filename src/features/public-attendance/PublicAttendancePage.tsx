@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, Check, CheckCheck, ChevronRight, Pause, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPublicAttendanceActivities, recordPublicAttendance } from "@/lib/public-attendance.functions";
+import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { createAttendanceScanQueue, type ScanQueueSnapshot } from "./attendanceScanQueue";
 import { startContinuousQrScanner } from "./continuousQrScanner";
-import { extractParticipantCardToken, mergeAttendanceProgress, type PublicAttendanceActivity, type PublicAttendanceResult } from "./publicAttendance.domain";
+import { extractParticipantCardToken, mergeAttendanceProgress, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceResult } from "./publicAttendance.domain";
 
 type Props = {
   loadActivities?: () => Promise<PublicAttendanceActivity[]>;
@@ -13,6 +13,7 @@ type Props = {
 };
 const emptyQueue: ScanQueueSnapshot = {pending:0,failed:0,active:0,queued:0};
 const dateLabel = (date: string) => new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"short",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
+type ScanFeedback = { id: string; result: PublicAttendanceResult; details?: PublicAttendanceConfirmation; detailsPending?: boolean };
 
 function Progress({activity}: {activity: PublicAttendanceActivity}) {
   const percent=activity.totalConfirmed ? Math.min(100,Math.round(activity.attended/activity.totalConfirmed*100)) : 0;
@@ -28,7 +29,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
   const [running,setRunning]=useState(false),[cameraReady,setCameraReady]=useState(false);
   const [error,setError]=useState(""),[refreshing,setRefreshing]=useState(false);
   const [pending,setPending]=useState(emptyQueue),[sound,setSound]=useState(true);
-  const [feedback,setFeedback]=useState<PublicAttendanceResult[]>([]);
+  const [feedback,setFeedback]=useState<ScanFeedback[]>([]);
   const video=useRef<HTMLVideoElement>(null);
   const queue=useRef<ReturnType<typeof createAttendanceScanQueue<PublicAttendanceResult>>|null>(null);
   const audio=useRef<AudioContext|null>(null), soundEnabled=useRef(sound);
@@ -53,8 +54,14 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
     if(!selectedId) return;
     const current=createAttendanceScanQueue<PublicAttendanceResult>({
       submit:token=>record({data:{activityId:selectedId,token}}),onChange:setPending,
-      onResult:result=>{
-        setFeedback(items=>[result,...items].slice(0,4));
+      onResult:(result,token)=>{
+        const confirmed=result.status==="recorded"||result.status==="already_recorded";
+        setFeedback(items=>[{id:token,result,detailsPending:confirmed},...items].slice(0,4));
+        if(confirmed) void getPublicAttendanceConfirmation({data:{token}}).then(details=>{
+          setFeedback(items=>items.map(item=>item.id===token?{...item,details,detailsPending:false}:item));
+        }).catch(()=>{
+          setFeedback(items=>items.map(item=>item.id===token?{...item,detailsPending:false}:item));
+        });
         if(result.status==="recorded"||result.status==="already_recorded") {
           setActivities(items=>items?.map(item=>mergeAttendanceProgress(item,result.activity))??null);
           if(soundEnabled.current&&audio.current?.state==="running") {
@@ -130,8 +137,16 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
         </section>
         {pending.pending>0&&<section className={`rounded-lg p-3 text-sm ${pending.failed?"bg-amber-50 text-amber-950":"bg-zinc-200 text-zinc-800"}`} aria-live="polite"><p>{pending.pending} leitura{pending.pending===1?"":"s"} aguardando confirmação{pending.failed?` · ${pending.failed} com falha de conexão`:"…"}</p>{pending.failed>0&&<Button className="mt-2" variant="outline" onClick={()=>queue.current?.retryFailed()}>Tentar pendentes novamente</Button>}</section>}
         <section aria-label="Últimas leituras" aria-live="polite" className="space-y-2">
-          {feedback.map((item,index)=>{const success=item.status==="recorded",duplicate=item.status==="already_recorded";return <div key={`${index}-${"checkedInAt" in item?item.checkedInAt:item.status}`} className={`flex items-center gap-3 rounded-lg px-4 py-3 ${success?"bg-emerald-100 text-emerald-950":duplicate?"bg-amber-100 text-amber-950":"bg-red-50 text-red-800"}`}>
-            {success?<Check className="size-6 shrink-0"/>:duplicate?<CheckCheck className="size-6 shrink-0"/>:null}<div>{"participantName" in item?<><p className="font-semibold">{item.participantName}</p><p className="text-sm">{success?"Presença confirmada":"Já registrado · não conta novamente"}</p></>:<p className="text-sm">{item.message}</p>}</div></div>;})}
+          {feedback.map(({id,result:item,details,detailsPending})=>{const success=item.status==="recorded",duplicate=item.status==="already_recorded";return <div key={id} className={`rounded-xl border p-3 sm:p-4 ${success?"border-emerald-200 bg-emerald-50 text-emerald-950":duplicate?"border-amber-200 bg-amber-50 text-amber-950":"border-red-200 bg-red-50 text-red-800"}`}>
+            {"participantName" in item?<div className="flex items-center gap-3">
+              <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/10 sm:size-20">
+                {details?.photoUrl?<img src={details.photoUrl} alt={`Foto de ${item.participantName}`} className="size-full object-cover" onError={event=>{event.currentTarget.style.display="none";}}/>:<div className="grid size-full place-items-center text-lg font-semibold text-zinc-500" aria-label="Foto indisponível">{item.participantName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join("").toLocaleUpperCase("pt-BR")}</div>}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2">{success?<Check className="mt-0.5 size-5 shrink-0"/>:<CheckCheck className="mt-0.5 size-5 shrink-0"/>}<div className="min-w-0"><p className="font-bold leading-tight">{details?.fullName??item.participantName}</p>{details?.fullName&&details.fullName!==item.participantName&&<p className="text-sm">Crachá: {item.participantName}</p>}<p className="mt-1 text-sm font-semibold">{success?"Presença confirmada":"Já registrado · não conta novamente"}</p></div></div>
+                <div className="mt-2 space-y-0.5 pl-7 text-sm"><p className="font-medium">{details?.choirName??(detailsPending?"Carregando coro…":"Coro indisponível")}</p>{detailsPending? <p>Carregando acomodação…</p> : details?.lodging?<p>Quarto/apartamento: {details.lodging.room}{details.lodging.location?` · ${details.lodging.location}`:""}</p>:details&&<p>Sem quarto/apartamento atribuído</p>}</div>
+              </div>
+            </div>:<div className="flex items-center gap-3"><p className="text-sm">{item.message}</p></div>}</div>;})}
           {feedback.length===0&&<p className="text-center text-sm text-zinc-600">Aproxime o QR Code do cartão. A câmera continua aberta após cada leitura.</p>}
         </section>
       </>}

@@ -1,6 +1,6 @@
 import {
   buildAttendanceCardsCsv, participantCardTokenSchema, participantCardUrl, publicAttendanceInputSchema,
-  type AttendanceCardExportRow, type PublicAttendanceActivity, type PublicAttendanceResult, type PublicParticipantCard,
+  type AttendanceCardExportRow, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceResult, type PublicParticipantCard,
 } from "./publicAttendance.domain";
 
 export type PublicAttendanceRepository = {
@@ -22,6 +22,16 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
         ...(card.fullName !== undefined ? {fullName:card.fullName}:{}),
         ...(card.photoUrl !== undefined ? {photoUrl:card.photoUrl}:{}),
         ...(card.lodging !== undefined ? {lodging:card.lodging}:{}),
+      };
+    },
+    async confirmation(rawToken: string): Promise<PublicAttendanceConfirmation> {
+      const token = participantCardTokenSchema.parse(rawToken);
+      const card = await repository.findCard(token);
+      if (!card) throw new Error("Cartão não encontrado ou inscrição cancelada.");
+      return { name: card.name, choirName: card.choirName,
+        ...(card.fullName !== undefined ? { fullName: card.fullName } : {}),
+        ...(card.photoUrl !== undefined ? { photoUrl: card.photoUrl } : {}),
+        ...(card.lodging !== undefined ? { lodging: card.lodging } : {}),
       };
     },
     record: async (input: unknown) => repository.record(publicAttendanceInputSchema.parse(input)),

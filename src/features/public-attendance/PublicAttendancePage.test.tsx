@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/public-attendance.functions",()=>({getPublicAttendanceActivities:vi.fn(),recordPublicAttendance:vi.fn(),getPublicParticipantCard:vi.fn(),prepareAdminAttendanceCards:vi.fn()}));
+vi.mock("@/lib/public-attendance.functions",()=>({getPublicAttendanceActivities:vi.fn(),recordPublicAttendance:vi.fn(),getPublicAttendanceConfirmation:vi.fn().mockResolvedValue({name:"Ana",fullName:"Ana Maria",choirName:"Coro São José",photoUrl:null,lodging:{room:"CP37",location:"Centro de Pastoral",roommates:[]}}),getPublicParticipantCard:vi.fn(),prepareAdminAttendanceCards:vi.fn()}));
 import { PublicAttendancePage } from "./PublicAttendancePage";
 import { PublicParticipantCardPage } from "./PublicParticipantCardPage";
 import type { PublicAttendanceResult } from "./publicAttendance.domain";
