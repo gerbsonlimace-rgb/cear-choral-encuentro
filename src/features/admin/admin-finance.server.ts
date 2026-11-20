@@ -30,7 +30,7 @@ export async function getAdminFinanceSnapshot(): Promise<{
     (async () => {
       const all: Array<{
         id: string;
-        entry_type: "income" | "expense";
+        entry_type: string;
         entry_date: string;
         description: string;
         responsible: string;
@@ -62,7 +62,7 @@ export async function getAdminFinanceSnapshot(): Promise<{
     ...buildFinanceAutoEntries(registrations, asOfDate),
     ...manual.rows.map((row) => ({
       id: row.id,
-      type: row.entry_type,
+      type: row.entry_type === "expense" ? ("expense" as const) : ("income" as const),
       source: "manual" as const,
       date: row.entry_date,
       description: row.description,
