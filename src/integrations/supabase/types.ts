@@ -434,6 +434,51 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_entries: {
+        Row: {
+          amount_cents: number
+          attachment_file_name: string | null
+          attachment_mime_type: string | null
+          attachment_path: string | null
+          created_at: string
+          created_by: string
+          description: string
+          entry_date: string
+          entry_type: string
+          id: string
+          notes: string
+          responsible: string
+        }
+        Insert: {
+          amount_cents: number
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          entry_date: string
+          entry_type: string
+          id?: string
+          notes?: string
+          responsible: string
+        }
+        Update: {
+          amount_cents?: number
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          notes?: string
+          responsible?: string
+        }
+        Relationships: []
+      }
       lodging_plan: {
         Row: {
           assignments: Json
