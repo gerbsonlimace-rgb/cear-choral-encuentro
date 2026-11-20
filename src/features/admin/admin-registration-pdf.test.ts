@@ -98,6 +98,7 @@ describe("registration PDF", () => {
       {
         name: "Francilene Carneiro Lima",
         badgeName: "Irmã Macrina",
+        cpf: "070.406.704-00",
         choirName: "Coro Diocesano de Quixadá",
         choirId: "all",
         musicalProfile: "coralista",
@@ -114,6 +115,8 @@ describe("registration PDF", () => {
     const text = await pdfText(file.base64);
     expect(text).toContain("Nome no crachá");
     expect(text).toContain("Nome completo");
+    expect(text).toContain("CPF");
+    expect(text).toContain("070.406.704-00");
     expect(text).toContain("Irmã Macrina");
     expect(text).toContain("Francilene Carneiro Lima");
   });
