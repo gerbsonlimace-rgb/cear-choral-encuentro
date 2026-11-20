@@ -71,51 +71,6 @@ export type Database = {
         }
         Relationships: []
       }
-      financial_entries: {
-        Row: {
-          id: string
-          entry_type: "income" | "expense"
-          entry_date: string
-          description: string
-          responsible: string
-          notes: string
-          amount_cents: number
-          attachment_path: string | null
-          attachment_file_name: string | null
-          attachment_mime_type: string | null
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          entry_type: "income" | "expense"
-          entry_date: string
-          description: string
-          responsible: string
-          notes?: string
-          amount_cents: number
-          attachment_path?: string | null
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          entry_type?: "income" | "expense"
-          entry_date?: string
-          description?: string
-          responsible?: string
-          notes?: string
-          amount_cents?: number
-          attachment_path?: string | null
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          created_by?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       choir_regents: {
         Row: {
           choir_id: string
@@ -313,7 +268,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
-          participant_account_id: string
+          participant_account_id: string | null
           position_collected_at: string | null
           qr_version: number
           registration_id: string
@@ -326,7 +281,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
-          participant_account_id: string
+          participant_account_id?: string | null
           position_collected_at?: string | null
           qr_version: number
           registration_id: string
@@ -339,7 +294,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
-          participant_account_id?: string
+          participant_account_id?: string | null
           position_collected_at?: string | null
           qr_version?: number
           registration_id?: string
@@ -479,9 +434,53 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_entries: {
+        Row: {
+          amount_cents: number
+          attachment_file_name: string | null
+          attachment_mime_type: string | null
+          attachment_path: string | null
+          created_at: string
+          created_by: string
+          description: string
+          entry_date: string
+          entry_type: string
+          id: string
+          notes: string
+          responsible: string
+        }
+        Insert: {
+          amount_cents: number
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          entry_date: string
+          entry_type: string
+          id?: string
+          notes?: string
+          responsible: string
+        }
+        Update: {
+          amount_cents?: number
+          attachment_file_name?: string | null
+          attachment_mime_type?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          notes?: string
+          responsible?: string
+        }
+        Relationships: []
+      }
       lodging_plan: {
         Row: {
-          named_rooms: Json
           assignments: Json
           created_at: string
           extra_people: Json
@@ -489,13 +488,13 @@ export type Database = {
           extra_rooms: Json
           hidden_rooms: Json
           id: boolean
+          named_rooms: Json
           no_lodging_registration_ids: string[]
           room_capacity: number
           rooms_available: number
           updated_at: string
         }
         Insert: {
-          named_rooms?: Json
           assignments?: Json
           created_at?: string
           extra_people?: Json
@@ -503,13 +502,13 @@ export type Database = {
           extra_rooms?: Json
           hidden_rooms?: Json
           id?: boolean
+          named_rooms?: Json
           no_lodging_registration_ids?: string[]
           room_capacity?: number
           rooms_available?: number
           updated_at?: string
         }
         Update: {
-          named_rooms?: Json
           assignments?: Json
           created_at?: string
           extra_people?: Json
@@ -517,6 +516,7 @@ export type Database = {
           extra_rooms?: Json
           hidden_rooms?: Json
           id?: boolean
+          named_rooms?: Json
           no_lodging_registration_ids?: string[]
           room_capacity?: number
           rooms_available?: number
@@ -611,6 +611,32 @@ export type Database = {
             foreignKeyName: "participant_accounts_registration_id_fkey"
             columns: ["registration_id"]
             isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registration_attendance_cards: {
+        Row: {
+          created_at: string
+          registration_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          registration_id: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          registration_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_attendance_cards_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: true
             referencedRelation: "registrations"
             referencedColumns: ["id"]
           },
@@ -784,6 +810,7 @@ export type Database = {
           city: string | null
           cpf: string | null
           created_at: string
+          dietary_restriction: boolean | null
           diocese: string
           email: string | null
           exempted_at: string | null
@@ -823,6 +850,7 @@ export type Database = {
           shirt_price_cents: number | null
           shirt_size: string | null
           standard_price_cents: number | null
+          uses_event_van: boolean | null
           voice_part: string | null
         }
         Insert: {
@@ -840,6 +868,7 @@ export type Database = {
           city?: string | null
           cpf?: string | null
           created_at?: string
+          dietary_restriction?: boolean | null
           diocese: string
           email?: string | null
           exempted_at?: string | null
@@ -879,6 +908,7 @@ export type Database = {
           shirt_price_cents?: number | null
           shirt_size?: string | null
           standard_price_cents?: number | null
+          uses_event_van?: boolean | null
           voice_part?: string | null
         }
         Update: {
@@ -896,6 +926,7 @@ export type Database = {
           city?: string | null
           cpf?: string | null
           created_at?: string
+          dietary_restriction?: boolean | null
           diocese?: string
           email?: string | null
           exempted_at?: string | null
@@ -935,6 +966,7 @@ export type Database = {
           shirt_price_cents?: number | null
           shirt_size?: string | null
           standard_price_cents?: number | null
+          uses_event_van?: boolean | null
           voice_part?: string | null
         }
         Relationships: [
@@ -1082,6 +1114,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      prepare_attendance_cards: {
+        Args: { p_registration_ids: string[] }
+        Returns: {
+          registration_id: string
+          token: string
+        }[]
+      }
+      public_attendance_overview: {
+        Args: never
+        Returns: {
+          activity_date: string
+          attended: number
+          ends_at: string
+          id: string
+          revision: string
+          starts_at: string
+          title: string
+          total_confirmed: number
+        }[]
+      }
       record_event_activity_attendance: {
         Args: {
           p_accuracy_meters?: number
@@ -1098,6 +1150,17 @@ export type Database = {
           checked_in_at: string
           distance_meters: number
           status: string
+        }[]
+      }
+      record_public_attendance: {
+        Args: { p_activity_id: string; p_token: string }
+        Returns: {
+          attended: number
+          checked_in_at: string
+          participant_name: string
+          revision: string
+          status: string
+          total_confirmed: number
         }[]
       }
       release_choir_regent_admin_password_candidate_operation: {
@@ -1284,6 +1347,17 @@ export type Database = {
           p_registration_id: string
         }
         Returns: boolean
+      }
+      save_public_attendance_logistics: {
+        Args: {
+          p_dietary_restriction: boolean
+          p_token: string
+          p_uses_event_van: boolean
+        }
+        Returns: {
+          dietary_restriction: boolean
+          uses_event_van: boolean
+        }[]
       }
       verify_choir_regent_password_operation_candidate: {
         Args: {
