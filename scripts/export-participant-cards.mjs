@@ -13,6 +13,9 @@ const client = createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVIC
 const source=ts.transpileModule(readFileSync("src/features/public-attendance/participantCardDetails.domain.ts","utf8"),
   {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const {resolveParticipantCardLodging}=await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const sequenceSource=ts.transpileModule(readFileSync("src/features/admin/admin-lodging-sequence.domain.ts","utf8"),
+  {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {buildLodgingPersonSequence}=await import(`data:text/javascript;base64,${Buffer.from(sequenceSource).toString("base64")}`);
 const results=await Promise.all([
   client.rpc("admin_registration_snapshot",{p_search:""}),
   client.from("lodging_plan").select("assignments,named_rooms,no_lodging_registration_ids,extra_people").maybeSingle(),
@@ -20,6 +23,11 @@ const results=await Promise.all([
 for(const r of results)if(r.error)throw new Error(r.error.message);
 const all=results[0].data.registrations;
 if(!Array.isArray(all))throw new Error("Invalid admin snapshot.");
+const planData=results[1].data ?? {};
+const sequenceRows=all.map(row=>({id:row.id,name:row.name,badgeName:row.badge_name,choirName:row.choir_name,cancelledAt:row.cancelled_at}));
+const sequencePlan={assignments:planData.assignments ?? {},extraPeople:planData.extra_people ?? []};
+const sequenceByRegistrationId=new Map(buildLodgingPersonSequence(sequenceRows,sequencePlan)
+  .filter(person=>person.kind==="registration").map(person=>[person.id,person.sequenceNumber]));
 const roster=all.filter(row=>row.payment_status==="paid"&&!row.cancelled_at)
   .sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
 const tokens=new Map();
@@ -39,6 +47,8 @@ await Promise.all(Array.from({length:6},async()=>{
     if(!token||!/^[a-f0-9]{64}$/.test(token))throw new Error(`Persisted card unavailable: ${row.id}`);
     const url=new URL("/cartao",origin);url.searchParams.set("token",token);
     const name=row.badge_name?.trim()||row.name;
+    const sequenceNumber=sequenceByRegistrationId.get(row.id);
+    if(!Number.isInteger(sequenceNumber)||sequenceNumber<1)throw new Error(`Sequence number unavailable for card: ${row.id}`);
     const slug=name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"participante";
     const filename=`${slug}-${row.id.slice(0,8)}.png`;
     const photoFile=path.join(out,"source","photos",row.id);
@@ -54,12 +64,12 @@ await Promise.all(Array.from({length:6},async()=>{
     const scale=Math.floor(900/(qr.modules.size+8));
     const qrFile=path.join(out,"source","qr",filename);
     await QRCode.toFile(qrFile,url.toString(),{errorCorrectionLevel:"M",margin:4,scale,color:{dark:"#000000",light:"#ffffff"}});
-    cards.push({id:row.id,name,fullName:row.name,choirName:row.choir_name,filename,cardUrl:url.toString(),
+    cards.push({id:row.id,sequenceNumber,name,fullName:row.name,choirName:row.choir_name,filename,cardUrl:url.toString(),
       photoPath,qrPath:qrFile,lodging:resolveParticipantCardLodging(row.id,results[1].data,all)});
   }
 }));
-cards.sort((a,b)=>a.fullName.localeCompare(b.fullName,"pt-BR"));
+cards.sort((a,b)=>a.sequenceNumber-b.sequenceNumber);
 writeFileSync(path.join(out,"source","manifest.json"),JSON.stringify({generatedAt:new Date().toISOString(),origin,count:cards.length,cards},null,2));
 const cell=value=>`"${(/^[\s]*[=+@\-\t\r]/.test(value)?"'":"")+value.replaceAll('"','""')}"`;
-writeFileSync(path.join(out,"links-cartoes.csv"),"\uFEFF"+[["Nome de crachá","Nome completo","Coro","Quarto","Arquivo","Link"],...cards.map(c=>[c.name,c.fullName,c.choirName,c.lodging?.room||"",c.filename,c.cardUrl])].map(row=>row.map(cell).join(";")).join("\r\n"));
+writeFileSync(path.join(out,"links-cartoes.csv"),"\uFEFF"+[["Nº da lista","Nome de crachá","Nome completo","Coro","Quarto","Arquivo","Link"],...cards.map(c=>[String(c.sequenceNumber).padStart(3,"0"),c.name,c.fullName,c.choirName,c.lodging?.room||"",c.filename,c.cardUrl])].map(row=>row.map(cell).join(";")).join("\r\n"));
 console.log(JSON.stringify({output:out,cards:cards.length,photos:cards.filter(c=>c.photoPath).length,photoFailures,withLodging:cards.filter(c=>c.lodging).length,uniqueLinks:new Set(cards.map(c=>c.cardUrl)).size}));

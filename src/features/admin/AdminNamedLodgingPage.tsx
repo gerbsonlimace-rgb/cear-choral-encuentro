@@ -192,6 +192,7 @@ export function AdminNamedLodgingPage({
           .lodging-print-map-table > tbody > tr { break-inside: avoid; page-break-inside: avoid; }
           .lodging-print-room-number { width: 8%; font-size: 8.5pt; font-weight: 500; text-align: left !important; white-space: nowrap; }
           .lodging-print-occupants { width: 42%; font-size: 7.5pt; overflow-wrap: anywhere; }
+          .lodging-print-sequence { color: #672c3e !important; font-weight: 700 !important; }
           .lodging-print-blocked { background: #333 !important; color: #fff !important; }
           .lodging-print-unconfirmed { font-style: italic; }
           .lodging-print-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; margin-top: 7mm; }

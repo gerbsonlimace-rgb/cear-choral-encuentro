@@ -1,6 +1,9 @@
 import type { LodgingPlan, LodgingRosterEntry, NamedLodgingRoom } from "./admin-lodging.domain";
+import { buildLodgingPersonSequence } from "./admin-lodging-sequence.domain";
 
 type Person = {
+  key: string;
+  sequenceNumber: number;
   name: string;
   star: boolean;
   choirName: string;
@@ -12,9 +15,13 @@ type Props = {
 };
 
 const collator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
-const genericChoirs = new Set(["", "ACOMPANHANTE", "ACOMPANHANTES", "AVULSO", "AVULSOS", "AVULSOS E ACOMPANHANTES", "SEM CORO"]);
-function choirKey(value: string) { return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR"); }
 function printName(person: Person): string { return `${person.name}${person.star ? " *" : ""}${person.choirName ? ` (${person.choirName})` : ""}`; }
+
+function PersonLabels({ people }: { people: Person[] }) {
+  return <>{people.map((person, index) => (
+    <span key={person.key}>{index > 0 ? ", " : ""}<strong className="lodging-print-sequence">{String(person.sequenceNumber).padStart(3, "0")}</strong> {printName(person)}</span>
+  ))}</>;
+}
 
 function roomNumberOrder(left: NamedLodgingRoom, right: NamedLodgingRoom) {
   return collator.compare(left.name, right.name);
@@ -27,7 +34,6 @@ function printedRoomNumber(room: NamedLodgingRoom) {
 
 function RoomCells({ room, people }: { room: NamedLodgingRoom; people: Person[] }) {
   const unavailable = room.key === "CP30" || room.key === "CP32";
-  const displayText = people.map((person) => `${printName(person)}`).join(", ");
   return (
     <>
       <th
@@ -38,7 +44,7 @@ function RoomCells({ room, people }: { room: NamedLodgingRoom; people: Person[] 
       </th>
       <td className={`lodging-print-occupants ${unavailable ? "lodging-print-blocked" : ""}`}>
         {!unavailable &&
-          (displayText || (room.key === "CP52" && "Paulinas (ocupantes a confirmar)"))}
+          (people.length > 0 ? <PersonLabels people={people} /> : (room.key === "CP52" && "Paulinas (ocupantes a confirmar)"))}
       </td>
     </>
   );
@@ -65,7 +71,7 @@ function RoomAssignmentList({
               {people.length > 0 && (
                 <>
                   {" - "}
-                  {people.map((person) => `${printName(person)}`).join(", ")}
+                  <PersonLabels people={people} />
                 </>
               )}
             </li>
@@ -78,35 +84,22 @@ function RoomAssignmentList({
 
 export function AdminNamedLodgingPrintSheet({ registrations, plan }: Props) {
   const rooms = plan.namedRooms ?? [];
-  const activeRegistrations = registrations.filter((row) => !row.cancelledAt);
   const peopleByRoom = new Map<string, Person[]>();
-  const choirsByRoom = new Map<string, Set<string>>();
-  for (const row of activeRegistrations) {
-    const roomKey=plan.assignments[row.id], choir=row.choirName.trim();
-    if(roomKey&&choir&&!genericChoirs.has(choirKey(choir))){const set=choirsByRoom.get(roomKey)??new Set<string>();set.add(choir);choirsByRoom.set(roomKey,set);}
-  }
-  for (const person of plan.extraPeople) {
-    const choir=person.choir.trim();
-    if(person.roomKey&&choir&&!genericChoirs.has(choirKey(choir))){const set=choirsByRoom.get(person.roomKey)??new Set<string>();set.add(choir);choirsByRoom.set(person.roomKey,set);}
-  }
-  const inferChoir=(choir:string,roomKey:string|null|undefined)=>{
-    const clean=choir.trim();if(clean&&!genericChoirs.has(choirKey(clean)))return clean;
-    const roomChoirs=roomKey?choirsByRoom.get(roomKey):undefined;
-    return roomChoirs?.size===1?[...roomChoirs][0]:"";
-  };
-
-  for (const room of rooms) {
-    const registeredPeople = activeRegistrations
-      .filter((row) => plan.assignments[row.id] === room.key)
-      .map((row) => ({
-        name: row.badgeName || row.name,
-        star: row.registrationPriceCents === 8000,
-        choirName: inferChoir(row.choirName,room.key),
-      }));
-    const extraPeople = plan.extraPeople
-      .filter((person) => person.roomKey === room.key)
-      .map((person) => ({ name: person.name, star: false, choirName: inferChoir(person.choir,room.key) }));
-    peopleByRoom.set(room.key, [...registeredPeople, ...extraPeople]);
+  const registrationsById = new Map(registrations.map((row) => [row.id, row]));
+  const extraPeopleById = new Map(plan.extraPeople.map((person) => [person.id, person]));
+  for (const entry of buildLodgingPersonSequence(registrations, plan)) {
+    if (!entry.roomKey) continue;
+    const row = entry.kind === "registration" ? registrationsById.get(entry.id) : undefined;
+    const extra = entry.kind === "extra" ? extraPeopleById.get(entry.id) : undefined;
+    const person: Person = {
+      key: `${entry.kind}:${entry.id}`,
+      sequenceNumber: entry.sequenceNumber,
+      name: entry.badgeName,
+      star: row?.registrationPriceCents === 8000,
+      choirName: entry.choirName,
+    };
+    const roomPeople = peopleByRoom.get(entry.roomKey) ?? [];
+    if (row || extra) peopleByRoom.set(entry.roomKey, [...roomPeople, person]);
   }
 
   const pastoralRooms = rooms.filter((room) => room.location === "Centro Pastoral");
