@@ -39,3 +39,10 @@ test("an explicit resend repeats only that paid, active person even after a sent
   assert.deepEqual(selectJobRegistrationIds(rows, { c: "sent" }, { registrationIds: ["c"], resend: true }), []);
   assert.deepEqual(selectJobRegistrationIds([{ id: a, payment_status: "pending", cancelled_at: null }], { [a]: "sent" }, resendA), []);
 });
+
+test("explicit selected resends include only the chosen people and never become all", () => {
+  const selection = parseJobSelection({ resendRegistrationIds: [a, b] });
+  assert.deepEqual(selection, { registrationIds: [a, b], resend: true });
+  assert.deepEqual(selectJobRegistrationIds([{ id: a, payment_status: 'paid' }, { id: b, payment_status: 'pending' }], {[a]:'sent'}, selection), [a]);
+  assert.throws(() => parseJobSelection({resendRegistrationIds:[]}));
+});

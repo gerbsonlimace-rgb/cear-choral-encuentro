@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export type RegistrationAdminRole = { hasAccount: boolean; isAdmin: boolean; isSelf: boolean };
+export type RegistrationAdminRole = { hasAccount: boolean; isAdmin: boolean; isSelf: boolean; isEventReports?: boolean };
 export type AdminRoleResult = { status: "granted" | "revoked"; registrationId: string };
 
 async function findAccountUser(registrationId: string) {
@@ -37,14 +37,16 @@ export async function listRegistrationAdminRoles(
     if (adminError) throw new Error("Não foi possível consultar os administradores.");
     for (const row of rows ?? []) admins.add(row.user_id);
   }
-  for (const account of accounts ?? []) {
+  const { hasEventReportAccessForAccount } = await import("@/features/public-attendance/eventManagement-access.server");
+  await Promise.all((accounts ?? []).map(async (account) => {
     const userId = account.user_id;
     result[account.registration_id] = {
       hasAccount: Boolean(userId) && account.access_status === "active",
       isAdmin: Boolean(userId && admins.has(userId)),
       isSelf: userId === actorId,
+      isEventReports: userId ? await hasEventReportAccessForAccount(userId,account.registration_id) : false,
     };
-  }
+  }));
   return result;
 }
 

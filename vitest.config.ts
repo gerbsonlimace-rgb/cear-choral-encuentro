@@ -13,7 +13,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
-    exclude: ["**/node_modules/**", "**/.worktrees/**"],
+    // scripts/*.test.mjs use node:test and run through `npm run test:scripts`.
+    exclude: ["**/node_modules/**", "**/.worktrees/**", "**/tmp/**", "scripts/**/*.test.mjs"],
     restoreMocks: true,
     clearMocks: true,
   },

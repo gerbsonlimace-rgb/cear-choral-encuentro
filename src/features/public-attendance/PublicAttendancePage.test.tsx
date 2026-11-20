@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/public-attendance.functions",()=>({getPublicAttendanceActivities:vi.fn(),recordPublicAttendance:vi.fn(),getPublicAttendanceConfirmation:vi.fn().mockResolvedValue({name:"Ana",fullName:"Ana Maria",choirName:"Coro São José",photoUrl:null,lodging:{room:"CP37",location:"Centro de Pastoral",roommates:[]}}),getPublicParticipantCard:vi.fn(),prepareAdminAttendanceCards:vi.fn()}));
+vi.mock("@/lib/public-attendance.functions",()=>({searchEventAttendanceParticipants:vi.fn(),getPublicAttendanceActivities:vi.fn(),recordPublicAttendance:vi.fn(),getEventAttendanceReport:vi.fn(),lockEventManagement:vi.fn(),getPublicAttendanceConfirmation:vi.fn().mockResolvedValue({name:"Ana",fullName:"Ana Maria",choirName:"Coro São José",photoUrl:null,lodging:{room:"CP37",location:"Centro de Pastoral",roommates:[]}}),getPublicParticipantCard:vi.fn(),prepareAdminAttendanceCards:vi.fn()}));
 import { PublicAttendancePage } from "./PublicAttendancePage";
 import { PublicParticipantCardPage } from "./PublicParticipantCardPage";
 import type { PublicAttendanceResult } from "./publicAttendance.domain";
@@ -11,6 +11,13 @@ const url=(char:string)=>`https://evento.test/cartao?token=${char.repeat(64)}`;
 const result=(n:number):PublicAttendanceResult=>({status:"recorded",participantName:n===1?"Ana":"Bia",checkedInAt:"2026-11-20T10:00:01Z",activity:{id:activity.id,totalConfirmed:157,attended:n,revision:`2026-11-20T10:00:0${n}.000000Z`}});
 
 describe("public attendance screen",()=>{
+  it("does not expose the scanner to report-only users or reports to scanner-only users",async()=>{
+    const loadActivities=vi.fn().mockResolvedValue([activity]);
+    const {rerender}=render(<PublicAttendancePage canScan={true} canReport={false} loadActivities={loadActivities}/>);
+    await screen.findByRole("button",{name:/Credenciamento/});expect(screen.queryByRole("tab",{name:"Relatórios"})).toBeNull();
+    rerender(<PublicAttendancePage canScan={false} canReport={false} loadActivities={loadActivities}/>);
+    expect(screen.queryByRole("tab",{name:"Atividades e leitor QR"})).toBeNull();
+  });
   it("lists activities without login and continuously scans while confirmations are pending",async()=>{
     const user=userEvent.setup(); let read!:(raw:string)=>void;
     const stop=vi.fn(), startScanner=vi.fn(async(_v,onRead)=>{read=onRead;return stop;});

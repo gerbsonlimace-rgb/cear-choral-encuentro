@@ -18,7 +18,7 @@ const registrationId = option("registration");
 const autoSend = process.argv.includes("--send");
 const startNow = process.argv.includes("--start");
 const managed = process.argv.includes("--managed");
-// Only the admin "Reenviar cartão" action passes --resend, always for a single registration.
+// Only explicitly confirmed resend requests pass --resend with specific IDs.
 const resend = process.argv.includes("--resend");
 let pauseRequested = false;
 process.on("message", (message) => { if (message?.type === "pause") pauseRequested = true; });
@@ -43,7 +43,7 @@ if (!Number.isInteger(batch) || batch < 1 || batch > (managed ? 1000 : 10)) thro
 if (!participant && !registrationId && !option("batch")) throw new Error("Informe --participant, --registration ou --batch.");
 const requestedIds = option("ids-file") ? JSON.parse(readFileSync(option("ids-file"), "utf8")) : null;
 if (requestedIds && (!Array.isArray(requestedIds) || requestedIds.some((id) => typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id)))) throw new Error("Lista de inscrições inválida.");
-if (resend && (!requestedIds || requestedIds.length !== 1)) throw new Error("O reenvio é feito para uma inscrição por vez.");
+if (resend && (!requestedIds || requestedIds.length < 1 || requestedIds.length > 1000)) throw new Error("O reenvio exige uma lista explícita de inscrições.");
 const localRequire = createRequire(path.join(runtime, "package.json"));
 let chromium;
 try { ({ chromium } = localRequire("playwright-core")); }
