@@ -71,51 +71,6 @@ export type Database = {
         }
         Relationships: []
       }
-      financial_entries: {
-        Row: {
-          id: string
-          entry_type: "income" | "expense"
-          entry_date: string
-          description: string
-          responsible: string
-          notes: string
-          amount_cents: number
-          attachment_path: string | null
-          attachment_file_name: string | null
-          attachment_mime_type: string | null
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          entry_type: "income" | "expense"
-          entry_date: string
-          description: string
-          responsible: string
-          notes?: string
-          amount_cents: number
-          attachment_path?: string | null
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          entry_type?: "income" | "expense"
-          entry_date?: string
-          description?: string
-          responsible?: string
-          notes?: string
-          amount_cents?: number
-          attachment_path?: string | null
-          attachment_file_name?: string | null
-          attachment_mime_type?: string | null
-          created_by?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       choir_regents: {
         Row: {
           choir_id: string
@@ -479,6 +434,48 @@ export type Database = {
         }
         Relationships: []
       }
+      lodging_plan: {
+        Row: {
+          assignments: Json
+          created_at: string
+          extra_people: Json
+          extra_room_counter: number
+          extra_rooms: Json
+          hidden_rooms: Json
+          id: boolean
+          no_lodging_registration_ids: string[]
+          room_capacity: number
+          rooms_available: number
+          updated_at: string
+        }
+        Insert: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Update: {
+          assignments?: Json
+          created_at?: string
+          extra_people?: Json
+          extra_room_counter?: number
+          extra_rooms?: Json
+          hidden_rooms?: Json
+          id?: boolean
+          no_lodging_registration_ids?: string[]
+          room_capacity?: number
+          rooms_available?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       participant_access_events: {
         Row: {
           admin_user_id: string | null
@@ -722,48 +719,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      lodging_plan: {
-        Row: {
-          assignments: Json
-          created_at: string
-          extra_people: Json
-          extra_room_counter: number
-          extra_rooms: Json
-          hidden_rooms: Json
-          id: boolean
-          no_lodging_registration_ids: string[]
-          room_capacity: number
-          rooms_available: number
-          updated_at: string
-        }
-        Insert: {
-          assignments?: Json
-          created_at?: string
-          extra_people?: Json
-          extra_room_counter?: number
-          extra_rooms?: Json
-          hidden_rooms?: Json
-          id?: boolean
-          no_lodging_registration_ids?: string[]
-          room_capacity?: number
-          rooms_available?: number
-          updated_at?: string
-        }
-        Update: {
-          assignments?: Json
-          created_at?: string
-          extra_people?: Json
-          extra_room_counter?: number
-          extra_rooms?: Json
-          hidden_rooms?: Json
-          id?: boolean
-          no_lodging_registration_ids?: string[]
-          room_capacity?: number
-          rooms_available?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       registrations: {
         Row: {
@@ -1231,12 +1186,12 @@ export type Database = {
           room_capacity: number
           rooms_available: number
           updated_at: string
-        }[]
+        }
         SetofOptions: {
           from: "*"
           to: "lodging_plan"
-          isOneToOne: false
-          isSetofReturn: true
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       replace_pending_registration_checkout: {
