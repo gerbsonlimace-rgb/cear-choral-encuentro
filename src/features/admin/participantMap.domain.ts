@@ -3,6 +3,7 @@ import { DIOCESE_SEATS } from "./cearaGeo";
 import { voicePartOptions } from "@/features/registration/registration.domain";
 
 export type ParticipantCount = { key: string; label: string; value: number };
+export type GenderGroup = ParticipantCount & { names: string[] };
 
 export type ParticipantChoirMap = {
   choirName: string;
@@ -30,6 +31,7 @@ export type ParticipantMapData = {
   generatedAt: string;
   total: number;
   genders: ParticipantCount[];
+  genderGroups: GenderGroup[];
   voices: ParticipantCount[];
   ageBands: ParticipantCount[];
   choirs: ParticipantChoirMap[];
@@ -108,9 +110,14 @@ export function buildParticipantMapData(
   now: Date = new Date(),
 ): ParticipantMapData {
   const rows = registrations.filter(isConfirmedParticipant);
-  const genderCounts = countBy(
-    rows.map((row) => (row.gender in GENDER_LABELS ? row.gender : "nao_informado")),
-  );
+  const genderOf = (row: AdminRegistrationRow) =>
+    row.gender in GENDER_LABELS ? row.gender : "nao_informado";
+  const genderCounts = countBy(rows.map(genderOf));
+  const genderNames = new Map<string, string[]>();
+  for (const row of rows) {
+    const key = genderOf(row);
+    genderNames.set(key, [...(genderNames.get(key) ?? []), row.name.trim()].filter(Boolean));
+  }
   const voiceCounts = countBy(rows.map((row) => row.voicePart ?? "nao_sei_informar"));
   const ageCounts = countBy(rows.map((row) => ageBandOf(row.birthDate, now)));
 
@@ -185,6 +192,12 @@ export function buildParticipantMapData(
     generatedAt: now.toISOString(),
     total: rows.length,
     genders: orderedCounts(genderCounts, GENDER_KEYS, GENDER_LABELS),
+    genderGroups: GENDER_KEYS.map((key) => ({
+      key,
+      label: GENDER_LABELS[key],
+      value: genderCounts.get(key) ?? 0,
+      names: [...(genderNames.get(key) ?? [])].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    })).filter((group) => group.value > 0),
     voices: orderedCounts(
       voiceCounts,
       VOICE_KEYS,
