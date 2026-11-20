@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { AttendanceReportsPanel } from "./AttendanceReportsPanel";
 import { AttendanceNameSearch } from "./AttendanceNameSearch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { lockEventManagement } from "@/lib/public-attendance.functions";
 import "./attendanceApp.css";
 import { createAttendanceScanQueue, type ScanQueueSnapshot } from "./attendanceScanQueue";
@@ -109,8 +108,8 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
     finally{setSaving(false);}
   };
   const canSave=loaded&&!saving&&!validationError&&(dirty||!saved);
-  return <form onSubmit={event=>void submit(event)} className="mt-3 space-y-2 pl-7">
-    <div className="grid gap-2 sm:grid-cols-2">
+  return <form onSubmit={event=>void submit(event)} className="attendance-logistics mt-3 space-y-2">
+    <div className="grid grid-cols-2 gap-2">
       <QuickQuestion id={`food-${id}`} label="Tem restrição alimentar?" value={dietaryRestriction} onChange={changeDietary}/>
       <QuickQuestion id={`van-${id}`} label="Usará a van para traslado?" value={usesEventVan} onChange={changeVan}/>
     </div>
@@ -148,7 +147,6 @@ function Progress({activity}: {activity: PublicAttendanceActivity}) {
 
 export function PublicAttendancePage({canScan=true,canReport=true,loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
   const [tab,setTab]=useState<"scanner"|"reports">(canScan?"scanner":"reports");
-  const [expandedId,setExpandedId]=useState<string|null>(null);
   const [locking,setLocking]=useState(false);
   const [activities,setActivities]=useState<PublicAttendanceActivity[]|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
@@ -234,7 +232,6 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
   const back=()=>{if(queue.current?.snapshot().pending&&!window.confirm("Ainda há leituras sem confirmação. Sair descarta essas pendências deste aparelho. Deseja sair?"))return;setRunning(false);setSelectedId(null);setFeedback([]);setPending(emptyQueue);void refresh();};
 
   const currentFeedback=feedback[0];
-  const expanded=feedback.find(item=>item.id===expandedId);
   const switchTab=(next:"scanner"|"reports")=>{if(next===tab)return;setRunning(false);setTab(next);};
   return <main className="internal-app attendance-theme attendance-app">
     <div className="attendance-shell">
@@ -266,6 +263,8 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
         {selected&&<>
           <section aria-label="Progresso da chamada" className="shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
           <AttendanceNameSearch key={selected.id} activityId={selected.id} attendedTokens={feedback.filter(item=>item.result.status==="recorded"||item.result.status==="already_recorded").map(item=>item.token)} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();const state=queue.current?.enqueue(token);if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
+          <div className="attendance-scanner-workspace">
+          <div className="attendance-scanner-capture">
           <section className="attendance-camera" aria-label="Leitor QR">
             <video ref={video} muted playsInline autoPlay aria-label="Câmera para leitura contínua de QR Codes"/>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true"><div className="attendance-target"/></div>
@@ -273,23 +272,23 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
           </section>
           <div className="attendance-controls"><Button className="min-h-11 flex-1" onClick={()=>{enableAudio();setRunning(value=>!value);}}>{running?<Pause className="size-4"/>:<Camera className="size-4"/>}{running?"Pausar câmera":"Retomar câmera"}</Button>
             <Button variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={sound?"Desligar som":"Ligar som"} aria-pressed={sound} onClick={()=>{setSound(value=>!value);if(!sound)enableAudio(true);}}>{sound?<Volume2 className="size-5"/>:<VolumeX className="size-5"/>}</Button></div>
+          </div>
+          <div className="attendance-scanner-results" role="region" aria-label="Identificação e perguntas do participante" tabIndex={0}>
           {pending.pending>0&&<section className="shrink-0 rounded-lg bg-amber-50 p-2 text-xs text-amber-950" aria-live="polite"><p>{pending.pending} leitura{pending.pending===1?"":"s"} aguardando confirmação{pending.failed?` · ${pending.failed} com falha`:"…"}</p>{pending.failed>0&&<Button className="mt-1 min-h-11" size="sm" variant="outline" onClick={()=>queue.current?.retryFailed()}>Tentar pendentes novamente</Button>}</section>}
-          <section aria-label="Últimas leituras" aria-live="polite" className="shrink-0">
+          <section aria-label="Últimas leituras" aria-live="polite" className="attendance-latest-read">
             {currentFeedback?<div className="attendance-feedback" data-state={currentFeedback.result.status==="recorded"?"success":currentFeedback.result.status==="already_recorded"?"duplicate":"error"}>
               {"participantName" in currentFeedback.result?<>
                 <div className="identity">{currentFeedback.details?.photoUrl?<img src={currentFeedback.details.photoUrl} alt={`Foto de ${currentFeedback.result.participantName}`}/>:<div className="attendance-avatar grid place-items-center text-sm font-bold" aria-label="Foto indisponível">{currentFeedback.result.participantName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div>}
                 <div className="min-w-0 flex-1"><h2>{currentFeedback.details?.fullName??currentFeedback.result.participantName}</h2><p>{currentFeedback.result.status==="recorded"?"Presença confirmada":"Já registrado · não conta novamente"}</p><p>{currentFeedback.details?.choirName??(currentFeedback.detailsPending?"Carregando coro…":"Coro indisponível")}</p><p>{currentFeedback.details?.lodging?`Quarto: ${currentFeedback.details.lodging.room}`:currentFeedback.detailsPending?"Carregando acomodação…":"Sem quarto/apartamento atribuído"}</p></div></div>
-                <Button size="sm" variant="ghost" className="mt-1 min-h-11 w-full" onClick={()=>{setRunning(false);setExpandedId(currentFeedback.id);}}>Dados, van e alimentação</Button>
+                <LogisticsAnswers key={currentFeedback.id} id={currentFeedback.id} token={currentFeedback.token} loaded={currentFeedback.details!==undefined} loading={Boolean(currentFeedback.detailsPending)} initialDietaryRestriction={currentFeedback.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={currentFeedback.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={currentFeedback.details?.dietaryRestrictionOther??null} initialUsesEventVan={currentFeedback.details?.usesEventVan??null} save={saveLogistics}/>
               </>:<p>{currentFeedback.result.message}</p>}
             </div>:<p className="p-2 text-center text-xs text-zinc-600">Aproxime o QR do cartão. A câmera continua aberta após cada leitura.</p>}
           </section>
+          </div>
+          </div>
         </>}
         {selectedId&&!selected&&activities!==null&&<div><p className="text-sm">Atividade indisponível.</p><Button onClick={back}>Voltar às atividades</Button></div>}
       </div>}
     </div>
-    <Dialog open={Boolean(expanded)} onOpenChange={open=>{if(!open)setExpandedId(null);}}><DialogContent className="internal-app attendance-theme max-h-[90dvh] overflow-y-auto bg-white">
-      <DialogHeader><DialogTitle>{expanded&&"participantName" in expanded.result?expanded.result.participantName:"Dados do participante"}</DialogTitle><DialogDescription>Van e restrições alimentares são salvas na inscrição. A câmera fica pausada durante esta revisão.</DialogDescription></DialogHeader>
-      {expanded&&<LogisticsAnswers id={expanded.id} token={expanded.token} loaded={expanded.details!==undefined} loading={Boolean(expanded.detailsPending)} initialDietaryRestriction={expanded.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={expanded.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={expanded.details?.dietaryRestrictionOther??null} initialUsesEventVan={expanded.details?.usesEventVan??null} save={saveLogistics}/>}
-    </DialogContent></Dialog>
   </main>;
 }

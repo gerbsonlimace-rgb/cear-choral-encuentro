@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/public-attendance.functions",()=>({searchEventAttendanceParticipants:vi.fn(),getPublicAttendanceActivities:vi.fn(),recordPublicAttendance:vi.fn(),getEventAttendanceReport:vi.fn(),lockEventManagement:vi.fn(),getPublicAttendanceConfirmation:vi.fn().mockResolvedValue({name:"Ana",fullName:"Ana Maria",choirName:"Coro São José",photoUrl:null,lodging:{room:"CP37",location:"Centro de Pastoral",roommates:[]}}),getPublicParticipantCard:vi.fn(),prepareAdminAttendanceCards:vi.fn()}));
@@ -36,6 +36,28 @@ describe("public attendance screen",()=>{
     expect(startScanner).toHaveBeenCalledTimes(1); expect(stop).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button",{name:"Pausar câmera"}));
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+  it("shows and saves logistics inline without stopping the reader and resets answers for the next participant",async()=>{
+    const user=userEvent.setup();let read!:(raw:string)=>void;
+    const stop=vi.fn(),startScanner=vi.fn(async(_v,onRead)=>{read=onRead;return stop;});
+    const record=vi.fn().mockResolvedValueOnce(result(1)).mockResolvedValueOnce(result(2));
+    const saveLogistics=vi.fn(async({data})=>({...data,dietaryRestrictionTypes:[],dietaryRestrictionOther:null}));
+    render(<PublicAttendancePage loadActivities={vi.fn().mockResolvedValue([activity])} record={record} startScanner={startScanner} saveLogistics={saveLogistics}/>);
+    await user.click(await screen.findByRole("button",{name:/Credenciamento/}));
+    await waitFor(()=>expect(startScanner).toHaveBeenCalledTimes(1));
+    act(()=>read(url("a")));
+    const van=await screen.findByRole("group",{name:"Usará a van para traslado?"});
+    expect(screen.getByRole("group",{name:"Tem restrição alimentar?"})).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(within(van).getByRole("radio",{name:"Sim"}));
+    await user.click(screen.getByRole("button",{name:"Salvar respostas"}));
+    await waitFor(()=>expect(saveLogistics).toHaveBeenCalledWith({data:{token:"a".repeat(64),dietaryRestriction:false,dietaryRestrictionTypes:[],dietaryRestrictionOther:null,usesEventVan:true}}));
+    expect(await screen.findByRole("button",{name:"Respostas salvas"})).toBeDisabled();
+    expect(stop).not.toHaveBeenCalled();
+    act(()=>read(url("b")));
+    await screen.findByText("2 de 157 presentes");
+    await waitFor(()=>expect(within(screen.getByRole("group",{name:"Usará a van para traslado?"})).getByRole("radio",{name:"Não"})).toBeChecked());
+    expect(startScanner).toHaveBeenCalledTimes(1);
   });
   it("retains failed reads for retry and counts only server confirmations",async()=>{
     const user=userEvent.setup();let read!:(raw:string)=>void;
