@@ -233,16 +233,16 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
 
   const currentFeedback=feedback[0];
   const switchTab=(next:"scanner"|"reports")=>{if(next===tab)return;setRunning(false);setTab(next);};
-  return <main className="internal-app attendance-theme attendance-app">
+  return <main className={`internal-app attendance-theme attendance-app${tab==="scanner"&&selected?" attendance-app-scanning":""}`}>
     <div className="attendance-shell">
       <header className="attendance-header">
         <div className="flex min-w-0 items-center gap-1">
-          {tab==="scanner"&&selectedId&&<Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label="Voltar às atividades" onClick={back}><ArrowLeft className="size-5"/></Button>}
+          {tab==="scanner"&&selectedId&&<Button variant="ghost" size="icon" className="min-h-8 min-w-8" aria-label="Voltar às atividades" onClick={back}><ArrowLeft className="size-4"/></Button>}
           <div className="min-w-0"><h1>{tab==="scanner"&&selected?selected.title:"Gerenciamento do evento"}</h1><p className="text-xs text-zinc-600">{selected&&tab==="scanner"?`${dateLabel(selected.activityDate)} · ${selected.startsAt??"Sem horário"}`:"II Encontro de Coros"}</p></div>
         </div>
         <div className="flex gap-1">
-          <Button size="icon" variant="outline" className="min-h-11 min-w-11" aria-label="Atualizar contagem" disabled={refreshing} onClick={()=>void refresh()}><RefreshCw className={`size-4 ${refreshing?"animate-spin":""}`}/></Button>
-          <Button size="icon" variant="ghost" className="min-h-11 min-w-11" aria-label="Bloquear aplicativo" disabled={locking} onClick={()=>{if(queue.current?.snapshot().pending&&!window.confirm("Há leituras pendentes. Deseja bloquear mesmo assim?"))return;setRunning(false);setLocking(true);void lockEventManagement().then(()=>window.location.reload()).catch(()=>{setLocking(false);setError("Não foi possível bloquear. Tente novamente.");});}}><LockKeyhole className="size-4"/></Button>
+          <Button size="icon" variant="outline" className="min-h-8 min-w-8" aria-label="Atualizar contagem" disabled={refreshing} onClick={()=>void refresh()}><RefreshCw className={`size-4 ${refreshing?"animate-spin":""}`}/></Button>
+          <Button size="icon" variant="ghost" className="min-h-8 min-w-8" aria-label="Bloquear aplicativo" disabled={locking} onClick={()=>{if(queue.current?.snapshot().pending&&!window.confirm("Há leituras pendentes. Deseja bloquear mesmo assim?"))return;setRunning(false);setLocking(true);void lockEventManagement().then(()=>window.location.reload()).catch(()=>{setLocking(false);setError("Não foi possível bloquear. Tente novamente.");});}}><LockKeyhole className="size-4"/></Button>
         </div>
       </header>
       <div className="attendance-tabs" role="tablist" aria-label="Gerenciamento do evento">
@@ -278,7 +278,7 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
           <section aria-label="Últimas leituras" aria-live="polite" className="attendance-latest-read">
             {currentFeedback?<div className="attendance-feedback" data-state={currentFeedback.result.status==="recorded"?"success":currentFeedback.result.status==="already_recorded"?"duplicate":"error"}>
               {"participantName" in currentFeedback.result?<>
-                <div className="identity">{currentFeedback.details?.photoUrl?<img src={currentFeedback.details.photoUrl} alt={`Foto de ${currentFeedback.result.participantName}`}/>:<div className="attendance-avatar grid place-items-center text-sm font-bold" aria-label="Foto indisponível">{currentFeedback.result.participantName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div>}
+                <div className="identity">{currentFeedback.details?.photoUrl?<img src={currentFeedback.details.photoUrl} width={96} height={96} loading="eager" decoding="async" fetchPriority="high" alt={`Foto de ${currentFeedback.result.participantName}`}/>:<div className="attendance-avatar grid place-items-center text-sm font-bold" aria-label="Foto indisponível">{currentFeedback.result.participantName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div>}
                 <div className="min-w-0 flex-1"><h2>{currentFeedback.details?.fullName??currentFeedback.result.participantName}</h2><p>{currentFeedback.result.status==="recorded"?"Presença confirmada":"Já registrado · não conta novamente"}</p><p>{currentFeedback.details?.choirName??(currentFeedback.detailsPending?"Carregando coro…":"Coro indisponível")}</p><p>{currentFeedback.details?.lodging?`Quarto: ${currentFeedback.details.lodging.room}`:currentFeedback.detailsPending?"Carregando acomodação…":"Sem quarto/apartamento atribuído"}</p></div></div>
                 <LogisticsAnswers key={currentFeedback.id} id={currentFeedback.id} token={currentFeedback.token} loaded={currentFeedback.details!==undefined} loading={Boolean(currentFeedback.detailsPending)} initialDietaryRestriction={currentFeedback.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={currentFeedback.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={currentFeedback.details?.dietaryRestrictionOther??null} initialUsesEventVan={currentFeedback.details?.usesEventVan??null} save={saveLogistics}/>
               </>:<p>{currentFeedback.result.message}</p>}
