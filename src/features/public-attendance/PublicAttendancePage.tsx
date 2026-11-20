@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { createAttendanceScanQueue, type ScanQueueSnapshot } from "./attendanceScanQueue";
 import { startContinuousQrScanner } from "./continuousQrScanner";
-import { extractParticipantCardToken, mergeAttendanceProgress, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceLogisticsResult, type PublicAttendanceResult } from "./publicAttendance.domain";
+import { dietaryRestrictionOptions, extractParticipantCardToken, mergeAttendanceProgress, type DietaryRestrictionKey, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceLogisticsInput, type PublicAttendanceLogisticsResult, type PublicAttendanceResult } from "./publicAttendance.domain";
 
 type Props = {
   loadActivities?: () => Promise<PublicAttendanceActivity[]>;
   record?: (input: { data: {activityId: string; token: string} }) => Promise<PublicAttendanceResult>;
-  saveLogistics?: (input: {data:{token:string;dietaryRestriction:boolean;usesEventVan:boolean}}) => Promise<PublicAttendanceLogisticsResult>;
+  saveLogistics?: (input: {data: PublicAttendanceLogisticsInput}) => Promise<PublicAttendanceLogisticsResult>;
   startScanner?: typeof startContinuousQrScanner;
 };
 const emptyQueue: ScanQueueSnapshot = {pending:0,failed:0,active:0,queued:0};
@@ -28,53 +28,104 @@ function QuickQuestion({ id, label, value, onChange }: { id: string; label: stri
   </fieldset>;
 }
 
-function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestriction, initialUsesEventVan, save }: {
+function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestriction, initialDietaryRestrictionTypes, initialDietaryRestrictionOther, initialUsesEventVan, save }: {
   id: string;
   token: string;
   loaded: boolean;
   loading: boolean;
   initialDietaryRestriction: boolean | null;
+  initialDietaryRestrictionTypes: DietaryRestrictionKey[];
+  initialDietaryRestrictionOther: string | null;
   initialUsesEventVan: boolean | null;
   save: NonNullable<Props["saveLogistics"]>;
 }) {
   const [dietaryRestriction,setDietaryRestriction]=useState(false);
+  const [dietaryRestrictionTypes,setDietaryRestrictionTypes]=useState<DietaryRestrictionKey[]>([]);
+  const [dietaryRestrictionOther,setDietaryRestrictionOther]=useState("");
   const [usesEventVan,setUsesEventVan]=useState(false);
   const [dirty,setDirty]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false);
   const [error,setError]=useState("");
   const hydrated=useRef(false);
   const pendingDietaryRestriction=useRef<boolean|null>(null),pendingUsesEventVan=useRef<boolean|null>(null);
+  const pendingTypes=useRef<DietaryRestrictionKey[]|null>(null),pendingOther=useRef<string|null>(null);
   useEffect(()=>{
     if(!loaded||hydrated.current)return;
     setDietaryRestriction(pendingDietaryRestriction.current??(initialDietaryRestriction===true));
+    setDietaryRestrictionTypes(pendingTypes.current??initialDietaryRestrictionTypes);
+    setDietaryRestrictionOther(pendingOther.current??(initialDietaryRestrictionOther??""));
     setUsesEventVan(pendingUsesEventVan.current??(initialUsesEventVan===true));
-    setSaved(initialDietaryRestriction!==null&&initialUsesEventVan!==null&&pendingDietaryRestriction.current===null&&pendingUsesEventVan.current===null);
+    setSaved(initialDietaryRestriction!==null&&initialUsesEventVan!==null&&pendingDietaryRestriction.current===null&&pendingUsesEventVan.current===null&&pendingTypes.current===null&&pendingOther.current===null);
     hydrated.current=true;
-  },[loaded,initialDietaryRestriction,initialUsesEventVan]);
-  const change=(field:"dietary"|"van",value:boolean)=>{
-    setDirty(true);setSaved(false);setError("");
-    if(!hydrated.current){if(field==="dietary")pendingDietaryRestriction.current=value;else pendingUsesEventVan.current=value;}
-    if(field==="dietary")setDietaryRestriction(value);else setUsesEventVan(value);
+  },[loaded,initialDietaryRestriction,initialDietaryRestrictionTypes,initialDietaryRestrictionOther,initialUsesEventVan]);
+  const markDirty=()=>{setDirty(true);setSaved(false);setError("");};
+  const changeDietary=(value:boolean)=>{
+    markDirty();
+    if(!hydrated.current){pendingDietaryRestriction.current=value;if(!value){pendingTypes.current=[];pendingOther.current="";}}
+    setDietaryRestriction(value);
+    if(!value){setDietaryRestrictionTypes([]);setDietaryRestrictionOther("");}
   };
+  const changeType=(value:boolean,key:DietaryRestrictionKey)=>{
+    markDirty();
+    const next=value ? [...dietaryRestrictionTypes,key] : dietaryRestrictionTypes.filter(item=>item!==key);
+    if(!hydrated.current){pendingTypes.current=next;if(!value&&key==="outra")pendingOther.current="";}
+    setDietaryRestrictionTypes(next);
+    if(!value&&key==="outra")setDietaryRestrictionOther("");
+  };
+  const changeOther=(value:string)=>{
+    markDirty();
+    if(!hydrated.current)pendingOther.current=value;
+    setDietaryRestrictionOther(value);
+  };
+  const changeVan=(value:boolean)=>{
+    markDirty();
+    if(!hydrated.current)pendingUsesEventVan.current=value;
+    setUsesEventVan(value);
+  };
+  const validationError=dietaryRestriction&&dietaryRestrictionTypes.length===0
+    ? "Selecione ao menos uma restrição alimentar."
+    : dietaryRestrictionTypes.includes("outra")&&!dietaryRestrictionOther.trim()
+      ? "Descreva a outra restrição alimentar."
+      : "";
   const submit=async(event:FormEvent<HTMLFormElement>)=>{
-    event.preventDefault();setSaving(true);setError("");
+    event.preventDefault();
+    if(validationError||!loaded)return;
+    setSaving(true);setError("");
+    const types=dietaryRestrictionOptions.map(option=>option.value).filter(value=>dietaryRestrictionTypes.includes(value));
     try{
-      const response=await save({data:{token,dietaryRestriction,usesEventVan}});
-      setDietaryRestriction(response.dietaryRestriction);setUsesEventVan(response.usesEventVan);
+      const response=await save({data:{token,dietaryRestriction,dietaryRestrictionTypes:types,dietaryRestrictionOther:types.includes("outra")?dietaryRestrictionOther.trim():null,usesEventVan}});
+      setDietaryRestriction(response.dietaryRestriction);
+      setDietaryRestrictionTypes(response.dietaryRestrictionTypes??[]);
+      setDietaryRestrictionOther(response.dietaryRestrictionOther??"");
+      setUsesEventVan(response.usesEventVan);
       setDirty(false);setSaved(true);
     }catch{setError("Não foi possível salvar. Confira a conexão e tente novamente.");}
     finally{setSaving(false);}
   };
-  const canSave=loaded&&!saving&&(dirty||!saved);
+  const canSave=loaded&&!saving&&!validationError&&(dirty||!saved);
   return <form onSubmit={event=>void submit(event)} className="mt-3 space-y-2 pl-7">
     <div className="grid gap-2 sm:grid-cols-2">
-      <QuickQuestion id={`food-${id}`} label="Tem restrição alimentar?" value={dietaryRestriction} onChange={value=>change("dietary",value)}/>
-      <QuickQuestion id={`van-${id}`} label="Usará a van para traslado?" value={usesEventVan} onChange={value=>change("van",value)}/>
+      <QuickQuestion id={`food-${id}`} label="Tem restrição alimentar?" value={dietaryRestriction} onChange={changeDietary}/>
+      <QuickQuestion id={`van-${id}`} label="Usará a van para traslado?" value={usesEventVan} onChange={changeVan}/>
     </div>
+    {dietaryRestriction&&<fieldset className="rounded-lg border border-black/10 bg-white/70 px-3 py-2">
+      <legend className="px-1 text-xs font-semibold">Quais restrições alimentares?</legend>
+      <div className="grid gap-1 sm:grid-cols-2">
+        {dietaryRestrictionOptions.map(option=><label key={option.value} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-white px-2 text-sm">
+          <input className="accent-zinc-900" type="checkbox" checked={dietaryRestrictionTypes.includes(option.value)} onChange={event=>changeType(event.target.checked,option.value)}/>
+          {option.label}
+        </label>)}
+      </div>
+      {dietaryRestrictionTypes.includes("outra")&&<label className="mt-2 block text-xs font-medium">
+        Descreva a outra restrição
+        <input className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm font-normal" value={dietaryRestrictionOther} maxLength={280} onChange={event=>changeOther(event.target.value)}/>
+      </label>}
+    </fieldset>}
     <div className="flex flex-wrap items-center gap-2">
       <Button type="submit" size="sm" variant="outline" disabled={!canSave}>{saving?"Salvando…":saved&&!dirty?"Respostas salvas":"Salvar respostas"}</Button>
       {!loaded&&loading&&<span className="text-xs text-zinc-600">Carregando respostas existentes…</span>}
       {!loaded&&!loading&&<span className="text-xs text-red-700">Não foi possível carregar os dados da inscrição.</span>}
       {saved&&!dirty&&<span role="status" className="text-xs text-zinc-600">Salvas na inscrição</span>}
+      {validationError&&<span role="alert" className="text-xs text-red-700">{validationError}</span>}
       {error&&<span role="alert" className="text-xs text-red-700">{error}</span>}
     </div>
   </form>;
@@ -212,7 +263,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2">{success?<Check className="mt-0.5 size-5 shrink-0"/>:<CheckCheck className="mt-0.5 size-5 shrink-0"/>}<div className="min-w-0"><p className="font-bold leading-tight">{details?.fullName??item.participantName}</p>{details?.fullName&&details.fullName!==item.participantName&&<p className="text-sm">Crachá: {item.participantName}</p>}<p className="mt-1 text-sm font-semibold">{success?"Presença confirmada":"Já registrado · não conta novamente"}</p></div></div>
                 <div className="mt-2 space-y-0.5 pl-7 text-sm"><p className="font-medium">{details?.choirName??(detailsPending?"Carregando coro…":"Coro indisponível")}</p>{detailsPending? <p>Carregando acomodação…</p> : details?.lodging?<p>Quarto/apartamento: {details.lodging.room}{details.lodging.location?` · ${details.lodging.location}`:""}</p>:details&&<p>Sem quarto/apartamento atribuído</p>}</div>
-                <LogisticsAnswers id={id} token={token} loaded={details!==undefined} loading={Boolean(detailsPending)} initialDietaryRestriction={details?.dietaryRestriction??null} initialUsesEventVan={details?.usesEventVan??null} save={saveLogistics}/>
+                <LogisticsAnswers id={id} token={token} loaded={details!==undefined} loading={Boolean(detailsPending)} initialDietaryRestriction={details?.dietaryRestriction??null} initialDietaryRestrictionTypes={details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={details?.dietaryRestrictionOther??null} initialUsesEventVan={details?.usesEventVan??null} save={saveLogistics}/>
               </div>
             </div>:<div className="flex items-center gap-3"><p className="text-sm">{item.message}</p></div>}</div>;})}
           {feedback.length===0&&<p className="text-center text-sm text-zinc-600">Aproxime o QR Code do cartão. A câmera continua aberta após cada leitura.</p>}

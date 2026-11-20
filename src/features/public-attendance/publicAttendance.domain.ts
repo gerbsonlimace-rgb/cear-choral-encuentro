@@ -5,11 +5,60 @@ export const participantCardTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, "QR
 export const publicAttendanceInputSchema = z.object({
   activityId: z.string().uuid(), token: participantCardTokenSchema,
 }).strict();
+const dietaryRestrictionKeys = [
+  "sem_lactose",
+  "sem_gluten",
+  "vegetariana",
+  "vegana",
+  "amendoim_castanhas",
+  "ovo",
+  "soja",
+  "peixes_frutos_do_mar",
+  "outra",
+] as const;
+
+export const dietaryRestrictionKeySchema = z.enum(dietaryRestrictionKeys);
+export type DietaryRestrictionKey = z.infer<typeof dietaryRestrictionKeySchema>;
+
+export const dietaryRestrictionOptions = [
+  { value: "sem_lactose", label: "Leite ou lactose" },
+  { value: "sem_gluten", label: "Glúten" },
+  { value: "vegetariana", label: "Vegetariana" },
+  { value: "vegana", label: "Vegana" },
+  { value: "amendoim_castanhas", label: "Amendoim ou castanhas" },
+  { value: "ovo", label: "Ovos" },
+  { value: "soja", label: "Soja" },
+  { value: "peixes_frutos_do_mar", label: "Peixes ou frutos do mar" },
+  { value: "outra", label: "Outra" },
+] as const satisfies readonly { value: DietaryRestrictionKey; label: string }[];
+
+export function dietaryRestrictionLabels(keys: string[] | null | undefined, other: string | null | undefined) {
+  return (keys ?? []).map(key => {
+    const option = dietaryRestrictionOptions.find(item => item.value === key);
+    return key === "outra" && other?.trim() ? `Outra: ${other.trim()}` : option?.label ?? key;
+  }).join(", ");
+}
+
 export const publicAttendanceLogisticsInputSchema = z.object({
   token: participantCardTokenSchema,
   dietaryRestriction: z.boolean(),
+  dietaryRestrictionTypes: z.array(dietaryRestrictionKeySchema).max(dietaryRestrictionOptions.length),
+  dietaryRestrictionOther: z.string().trim().max(280).nullable(),
   usesEventVan: z.boolean(),
-}).strict();
+}).strict().superRefine((input, context) => {
+  if (!input.dietaryRestriction && (input.dietaryRestrictionTypes.length > 0 || input.dietaryRestrictionOther)) {
+    context.addIssue({ code: "custom", path: ["dietaryRestrictionTypes"], message: "Respostas alimentares só podem ser informadas quando há restrição." });
+  }
+  if (input.dietaryRestriction && input.dietaryRestrictionTypes.length === 0) {
+    context.addIssue({ code: "custom", path: ["dietaryRestrictionTypes"], message: "Selecione ao menos uma restrição alimentar." });
+  }
+  if (input.dietaryRestrictionTypes.includes("outra") && !input.dietaryRestrictionOther?.trim()) {
+    context.addIssue({ code: "custom", path: ["dietaryRestrictionOther"], message: "Descreva a outra restrição alimentar." });
+  }
+  if (!input.dietaryRestrictionTypes.includes("outra") && input.dietaryRestrictionOther) {
+    context.addIssue({ code: "custom", path: ["dietaryRestrictionOther"], message: "A descrição só pode ser preenchida para Outra." });
+  }
+});
 
 export type PublicAttendanceActivity = {
   id: string; title: string; activityDate: string; startsAt: string | null; endsAt: string | null;
@@ -25,11 +74,15 @@ export type PublicParticipantCard = {
 };
 export type PublicAttendanceConfirmation = Pick<PublicParticipantCard, "name" | "fullName" | "choirName" | "photoUrl" | "lodging"> & {
   dietaryRestriction?: boolean | null;
+  dietaryRestrictionTypes?: DietaryRestrictionKey[];
+  dietaryRestrictionOther?: string | null;
   usesEventVan?: boolean | null;
 };
 export type PublicAttendanceLogisticsInput = z.infer<typeof publicAttendanceLogisticsInputSchema>;
 export type PublicAttendanceLogisticsResult = {
   dietaryRestriction: boolean;
+  dietaryRestrictionTypes: DietaryRestrictionKey[];
+  dietaryRestrictionOther: string | null;
   usesEventVan: boolean;
 };
 export type AttendanceCardExportRow = { name: string; choirName: string; token: string };

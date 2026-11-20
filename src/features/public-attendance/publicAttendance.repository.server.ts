@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { PublicAttendanceRepository } from "./publicAttendance.server";
-import type { PublicAttendanceResult } from "./publicAttendance.domain";
+import type { DietaryRestrictionKey, PublicAttendanceResult } from "./publicAttendance.domain";
 import { resolveParticipantCardLodging, type CardLodgingPlan } from "./participantCardDetails.domain";
 
 const progressSchema = z.object({ total_confirmed: z.number().int().nonnegative(), attended: z.number().int().nonnegative(), revision: z.string() });
@@ -27,14 +27,14 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
     },
     async findCard(token) {
       const { data, error } = await client().from("registration_attendance_cards")
-        .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path,dietary_restriction,uses_event_van)").eq("token", token).maybeSingle();
+        .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path,dietary_restriction,dietary_restriction_types,dietary_restriction_other,uses_event_van)").eq("token", token).maybeSingle();
       if (error) throw new Error("Não foi possível abrir o cartão. Tente novamente.");
       if (!data) return null;
-      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable(), dietary_restriction:z.boolean().nullable(), uses_event_van:z.boolean().nullable() }) }).parse(data);
+      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable(), dietary_restriction:z.boolean().nullable(), dietary_restriction_types:z.array(z.string()).nullable(), dietary_restriction_other:z.string().nullable(), uses_event_van:z.boolean().nullable() }) }).parse(data);
       const row = parsed.registrations;
       if (row.cancelled_at) return null;
       const [photo, planResult] = await Promise.all([
-        row.photo_path ? supabaseAdmin.storage.from("registration-photos").createSignedUrl(row.photo_path,3600) : Promise.resolve(null),
+        row.photo_path ? supabaseAdmin.storage.from("registration-photos").createSignedUrl(row.photo_path,3600,{transform:{width:320,height:320,resize:"cover",quality:70}}) : Promise.resolve(null),
         supabaseAdmin.from("lodging_plan").select("assignments,named_rooms,no_lodging_registration_ids,extra_people").maybeSingle(),
       ]);
       if(planResult.error) throw new Error("Não foi possível carregar a hospedagem do cartão. Tente novamente.");
@@ -46,7 +46,8 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       if(roommatesResult.error) throw new Error("Não foi possível carregar os colegas de quarto. Tente novamente.");
       return { name: row.badge_name?.trim() || row.name, fullName:row.name, choirName: row.choir_name, eligible: row.payment_status === "paid",
         photoUrl:photo?.data?.signedUrl ?? null, lodging:resolveParticipantCardLodging(row.id,plan,roommatesResult.data??[]),
-        dietaryRestriction:row.dietary_restriction, usesEventVan:row.uses_event_van };
+        dietaryRestriction:row.dietary_restriction, dietaryRestrictionTypes:(row.dietary_restriction_types??[]) as DietaryRestrictionKey[],
+        dietaryRestrictionOther:row.dietary_restriction_other, usesEventVan:row.uses_event_van };
     },
     async record(input) {
       const { data, error } = await client().rpc("record_public_attendance", { p_activity_id: input.activityId, p_token: input.token });
@@ -64,12 +65,15 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       const { data, error } = await client().rpc("save_public_attendance_logistics", {
         p_token: input.token,
         p_dietary_restriction: input.dietaryRestriction,
+        p_dietary_restriction_types: input.dietaryRestrictionTypes,
+        p_dietary_restriction_other: input.dietaryRestrictionOther,
         p_uses_event_van: input.usesEventVan,
       });
       if (error) throw new Error("Não foi possível salvar as respostas. Tente novamente.");
-      const row = z.object({ dietary_restriction: z.boolean(), uses_event_van: z.boolean() })
+      const row = z.object({ dietary_restriction: z.boolean(), dietary_restriction_types:z.array(z.string()), dietary_restriction_other:z.string().nullable(), uses_event_van: z.boolean() })
         .parse(Array.isArray(data) ? data[0] : data);
-      return { dietaryRestriction: row.dietary_restriction, usesEventVan: row.uses_event_van };
+      return { dietaryRestriction: row.dietary_restriction, dietaryRestrictionTypes:row.dietary_restriction_types as DietaryRestrictionKey[],
+        dietaryRestrictionOther:row.dietary_restriction_other, usesEventVan: row.uses_event_van };
     },
     async prepareCards() {
       const snapshot = await client().rpc("admin_registration_snapshot", { p_search: "" });

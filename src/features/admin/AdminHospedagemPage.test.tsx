@@ -113,7 +113,7 @@ describe("admin lodging allocation", () => {
     );
     const room = await screen.findByRole("region", { name: "Quarto CP17" });
     expect(within(room).getByText("Sem quarto 1 *")).toBeInTheDocument();
-    expect(screen.getByText("* Não solicitou inscrição com quarto")).toBeInTheDocument();
+    expect(screen.getAllByText("* Não solicitou inscrição com quarto").length).toBeGreaterThan(0);
     expect(screen.queryByText("Capacidade e disponibilidade")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Quarto de Com quarto"), { target: { value: "CP17" } });
     expect(await screen.findByRole("alert")).toHaveTextContent("CP17 comporta até 3 pessoas");

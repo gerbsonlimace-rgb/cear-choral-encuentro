@@ -1,4 +1,5 @@
 export type ParticipantCardLodging = { room: string; location: string; roommates: string[] };
+export type ParticipantCardContact = { name: string; phoneDisplay: string };
 type RosterPerson = {id: string; name: string; badge_name?: string | null; cancelled_at?: string | null};
 export type CardLodgingPlan = {
   assignments?: Record<string,string>;
@@ -17,4 +18,13 @@ export function resolveParticipantCardLodging(registrationId: string, plan: Card
     .map(person => person.badge_name?.trim() || person.name);
   for (const person of plan.extra_people ?? []) if (person.id !== registrationId && person.roomKey === key && person.name.trim()) roommates.push(person.name.trim());
   return {room: room.name, location: room.location?.trim() || "", roommates};
+}
+
+export function buildParticipantCardMessage(name: string, lodging: ParticipantCardLodging | null, contact: ParticipantCardContact): string {
+  return `Olá, ${name}! 👋\nSeja bem-vindo(a) ao II Encontro de Coros 🎶\n\n🎟️ Este é seu cartão de participante. Apresente o QR Code no credenciamento para registrar sua presença e receber seu kit de participante.` +
+    (lodging
+      ? `\n\n🏨 Sua inscrição inclui hospedagem. Confira sua acomodação e quem ficará com você:\n\n*Acomodação:* ${lodging.room}\n*Com você:* ${lodging.roommates.length ? lodging.roommates.join(", ") : "Sem outros participantes na acomodação."}\n\nPara dúvidas sobre a hospedagem, procure o regente do seu coro.`
+      : "\n\n🏨 Sua inscrição não inclui hospedagem.") +
+    `\n\nSe alguma informação não estiver correta, fale com ${contact.name} pelo WhatsApp: ${contact.phoneDisplay}.` +
+    "\n\nDesde já, aguardamos sua participação! 🤗";
 }

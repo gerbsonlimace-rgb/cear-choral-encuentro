@@ -365,6 +365,7 @@ describe("admin registration history and CSV", () => {
       "Não informado",
       "Não informado",
       "Não informado",
+      "Não informado",
     ]);
   });
 
@@ -420,6 +421,7 @@ describe("admin registration history and CSV", () => {
       "Parcelas",
       "Pago em",
       "Restrição alimentar",
+      "Detalhes da restrição alimentar",
       "Usará van",
     ]);
     expect(csvRows[3]).toEqual([
@@ -442,6 +444,7 @@ describe("admin registration history and CSV", () => {
       "Cartão",
       "2",
       "08/09/2026",
+      "Não informado",
       "Não informado",
       "Não informado",
     ]);

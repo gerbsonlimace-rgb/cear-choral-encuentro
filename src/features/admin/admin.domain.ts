@@ -10,6 +10,7 @@ import {
 import { dioceseSchema } from "@/features/dioceses/diocese.domain";
 import type { Tables } from "@/integrations/supabase/types";
 import type { ComplementPaymentRow } from "@/features/regent/regent-payments.domain";
+import { dietaryRestrictionLabels, type DietaryRestrictionKey } from "@/features/public-attendance/publicAttendance.domain";
 import {
   deriveRegistrationFinancialState,
   type RegistrationFinancialState,
@@ -205,6 +206,8 @@ export type AdminRegistrationQuery = z.infer<typeof adminRegistrationQuerySchema
 export type AdminRegistrationExportQuery = z.infer<typeof adminRegistrationExportSchema>;
 export type RegistrationDatabaseRow = Tables<"registrations"> & {
   dietary_restriction?: boolean | null;
+  dietary_restriction_types?: DietaryRestrictionKey[] | null;
+  dietary_restriction_other?: string | null;
   uses_event_van?: boolean | null;
 };
 
@@ -239,6 +242,8 @@ export type AdminRegistrationRow = {
   voicePart: string | null;
   observations: string | null;
   dietaryRestriction?: boolean | null;
+  dietaryRestrictionTypes?: DietaryRestrictionKey[] | null;
+  dietaryRestrictionOther?: string | null;
   usesEventVan?: boolean | null;
   includeShirt: boolean;
   shirtSize: string | null;
@@ -380,6 +385,8 @@ export function mapAdminRegistrationRow(
     voicePart: row.voice_part,
     observations: row.observations,
     dietaryRestriction: row.dietary_restriction ?? null,
+    dietaryRestrictionTypes: row.dietary_restriction_types ?? [],
+    dietaryRestrictionOther: row.dietary_restriction_other ?? null,
     usesEventVan: row.uses_event_van ?? null,
     includeShirt: Boolean(row.include_shirt),
     shirtSize: row.shirt_size,
@@ -693,6 +700,7 @@ const csvHeaders = [
   "Parcelas",
   "Pago em",
   "Restrição alimentar",
+  "Detalhes da restrição alimentar",
   "Usará van",
 ];
 
@@ -804,6 +812,9 @@ export function buildRegistrationsCsv(rows: AdminRegistrationRow[], now: Date): 
       row.installments === null ? "Não informado" : String(row.installments),
       displayDate(row.paidAt),
       row.dietaryRestriction == null ? "Não informado" : row.dietaryRestriction ? "Sim" : "Não",
+      row.dietaryRestriction == null ? "Não informado" : row.dietaryRestriction
+        ? dietaryRestrictionLabels(row.dietaryRestrictionTypes, row.dietaryRestrictionOther) || "Sem detalhes informados"
+        : "Não se aplica",
       row.usesEventVan == null ? "Não informado" : row.usesEventVan ? "Sim" : "Não",
     ]),
   ];
