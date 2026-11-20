@@ -38,7 +38,7 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       const row = parsed.registrations;
       if (row.cancelled_at) return null;
       const [photo, planResult] = await Promise.all([
-        row.photo_path ? supabaseAdmin.storage.from("registration-photos").createSignedUrl(row.photo_path,3600,{transform:{width:320,height:320,resize:"cover",quality:70}}) : Promise.resolve(null),
+        row.photo_path ? supabaseAdmin.storage.from("registration-photos").createSignedUrl(row.photo_path,3600,{transform:{width:128,height:128,resize:"cover",quality:50}}) : Promise.resolve(null),
         supabaseAdmin.from("lodging_plan").select("assignments,named_rooms,no_lodging_registration_ids,extra_people").maybeSingle(),
       ]);
       if(planResult.error) throw new Error("Não foi possível carregar a hospedagem do cartão. Tente novamente.");

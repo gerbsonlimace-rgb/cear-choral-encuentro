@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, RefreshCw, Share2 } from "lucide-react";
+import { Download, MessageCircle, RefreshCw, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEventAttendanceReport } from "@/lib/public-attendance.functions";
 import { deliverFile } from "@/lib/file-download";
 import type { PublicAttendanceActivity } from "./publicAttendance.domain";
-import type { AttendanceReport } from "./eventManagement.domain";
+import { buildAttendanceWhatsAppMessage, type AttendanceReport } from "./eventManagement.domain";
 
 type PreparedReport = { report: AttendanceReport; file: { fileName: string; base64: string } };
 type Group = "choirs"|"attended"|"absent"|"van"|"dietary"|"vanUnknown"|"dietaryUnknown";
@@ -25,6 +25,7 @@ export function AttendanceReportsPanel({ activities, initialActivityId, loadRepo
     finally{if(current===revision.current)setLoading(false);}
   },[activityId,loadReport]);
   useEffect(()=>{void load();return()=>{revision.current++;};},[load]);
+  const report=data?.report;
   async function share(){
     if(!file)return;setNotice("");
     if(navigator.share&&navigator.canShare?.({files:[file]})){
@@ -33,7 +34,12 @@ export function AttendanceReportsPanel({ activities, initialActivityId, loadRepo
     }
     await deliverFile(file,file.name);setNotice("PDF baixado. Anexe esse arquivo na conversa do WhatsApp.");
   }
-  const report=data?.report;
+  function shareAttendanceOnWhatsApp(){
+    if(!report)return;
+    const url=new URL("https://wa.me/");url.searchParams.set("text",buildAttendanceWhatsAppMessage(report));
+    const opened=window.open(url.toString(),"_blank","noopener,noreferrer");
+    if(!opened)setNotice("O navegador bloqueou o WhatsApp. Permita a abertura da janela e tente novamente.");
+  }
   const lists=report?{
     attended:report.people.filter(p=>p.checkedInAt),absent:report.people.filter(p=>!p.checkedInAt),van:report.people.filter(p=>p.usesEventVan===true),
     dietary:report.people.filter(p=>p.dietaryRestriction===true),vanUnknown:report.people.filter(p=>p.usesEventVan===null),dietaryUnknown:report.people.filter(p=>p.dietaryRestriction===null),
@@ -48,10 +54,11 @@ export function AttendanceReportsPanel({ activities, initialActivityId, loadRepo
       <Button variant="outline" className="min-h-11" aria-label="Atualizar relatório" disabled={loading||!activityId} onClick={()=>void load()}><RefreshCw className="size-4"/></Button>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button className="min-h-11 flex-1" disabled={!file||loading} onClick={()=>void share()}><Share2 className="size-4"/>Compartilhar PDF</Button>
+      <Button className="min-h-11 flex-1" disabled={!report||loading} onClick={shareAttendanceOnWhatsApp}><MessageCircle className="size-4"/>Resumo no WhatsApp</Button>
+      <Button variant="outline" className="min-h-11 flex-1" disabled={!file||loading} onClick={()=>void share()}><Share2 className="size-4"/>Compartilhar PDF</Button>
       <Button variant="outline" className="min-h-11" disabled={!file||loading} onClick={()=>{if(file)void deliverFile(file,file.name);}}><Download className="size-4"/>Baixar PDF</Button>
     </div>
-    <p className="text-xs text-zinc-600">No celular, escolha WhatsApp no menu de compartilhamento. O PDF inclui todas as listas da atividade.</p>
+    <p className="text-xs text-zinc-600">O resumo abre no WhatsApp com a atividade, totais e faltantes; van e alimentação são exibidas apenas para os faltantes. O PDF inclui todas as listas.</p>
     {loading&&<p role="status" className="text-sm text-zinc-600">Preparando relatório e PDF completos…</p>}
     {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}
     {notice&&<p role="status" className="text-xs text-zinc-600">{notice}</p>}

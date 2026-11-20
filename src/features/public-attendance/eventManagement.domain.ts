@@ -38,3 +38,28 @@ export function summarizeAttendanceReport(activity: AttendanceReport["activity"]
     choirs: [...choirs.values()].sort((a,b) => a.name.localeCompare(b.name,"pt-BR")),
   };
 }
+
+export function buildAttendanceWhatsAppMessage(report: AttendanceReport): string {
+  const absentees = report.people.filter(person => !person.checkedInAt);
+  const activityDate = report.activity.activityDate.slice(0, 10);
+  const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(activityDate)
+    ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", dateStyle: "long" }).format(new Date(`${activityDate}T12:00:00Z`))
+    : report.activity.activityDate;
+  const absenteeLines = absentees.map(person => {
+    const van = person.usesEventVan === null ? "Não informado" : person.usesEventVan ? "Sim" : "Não";
+    const dietary = person.dietaryRestriction === null
+      ? "Não informado"
+      : person.dietaryRestriction
+        ? person.dietaryDescription || "Tipo não informado"
+        : "Nenhuma";
+    return `- ${person.name} | Van: ${van} | Restrição alimentar: ${dietary}`;
+  });
+
+  return [
+    `Atividade: ${report.activity.title}`,
+    `Data: ${dateLabel}`,
+    `Total de presenças: ${report.attended} | Total de faltas: ${report.absent}`,
+    "Faltantes:",
+    ...(absenteeLines.length ? absenteeLines : ["Nenhum participante faltou."]),
+  ].join("\n");
+}

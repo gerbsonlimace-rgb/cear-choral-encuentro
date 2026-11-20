@@ -46,3 +46,16 @@
 .attendance-latest-read p{font-size:.875rem;line-height:1.35}
 .attendance-scanner-results:focus-visible{outline:2px solid #a77e00;outline-offset:2px}
 @media(min-width:768px){.attendance-scanner-workspace{gap:12px;grid-template-rows:minmax(120px,1fr) minmax(0,1fr)}.attendance-scanner-capture{gap:12px}}
+.attendance-app-scanning{padding-top:max(3px,env(safe-area-inset-top));padding-bottom:max(4px,env(safe-area-inset-bottom))}
+.attendance-app-scanning .attendance-shell,.attendance-app-scanning .attendance-view{gap:4px}
+.attendance-app-scanning .attendance-header{min-height:30px}
+.attendance-app-scanning .attendance-header h1{font-size:.8125rem;line-height:1}
+.attendance-app-scanning .attendance-header p{display:none}
+.attendance-app-scanning .attendance-tabs{order:0;gap:2px;border-top:0;border-bottom:1px solid #d4d4d8}
+.attendance-app-scanning .attendance-tabs button{min-height:30px;flex-direction:row;gap:5px;font-size:.6875rem;border-top:0;border-bottom:2px solid transparent}
+.attendance-app-scanning .attendance-tabs button[aria-selected=true]{border-bottom-color:#18181b}
+.attendance-app-scanning .attendance-view{flex:1}
+.attendance-app-scanning .attendance-camera{min-height:0;flex:1 1 0%;border-radius:8px}
+.attendance-app-scanning .attendance-target{height:min(74%,42svh)}
+.attendance-app-scanning .attendance-error{max-height:40px;padding:5px}
+@media(min-width:768px){.attendance-app-scanning{padding:4px 16px}.attendance-app-scanning .attendance-shell{gap:4px}.attendance-app-scanning .attendance-camera{max-height:none}.attendance-app-scanning .attendance-header h1{font-size:.875rem}}

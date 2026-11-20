@@ -148,6 +148,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { EventReportRoleAction } from "./EventReportRoleAction";
 import { AdminWhatsAppToolbar, AdminRegistrationWhatsAppButton, AdminWhatsAppSelection, useAdminWhatsApp, type AdminWhatsAppController } from "./AdminWhatsAppActions";
+import { AdminBrevoCardEmail } from "./AdminBrevoCardEmail";
 
 type ManualPaymentChoice = {
   amountCents: number;
@@ -2733,6 +2734,7 @@ export function AdminRegistrationsPage({
               )
             )}
             <AdminWhatsAppToolbar controller={whatsApp} rows={whatsAppFilteredRows} />
+            <AdminBrevoCardEmail enabled={gate === "authorized"} />
             <form
               onSubmit={search}
               className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end"
