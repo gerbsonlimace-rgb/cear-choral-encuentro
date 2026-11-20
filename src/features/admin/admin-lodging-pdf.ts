@@ -4,7 +4,7 @@ import { adminPdfLogoBase64 } from "./admin-pdf-logo";
 import type { LodgingPlan, NamedLodgingRoom } from "./admin-lodging.domain";
 import { buildLodgingPersonSequence } from "./admin-lodging-sequence.domain";
 
-export type AdminLodgingPdfFile = { fileName: string; base64: string };
+export type AdminLodgingPdfFile = { fileName: string; base64: string; warnings: string[] };
 
 type ReportPerson = {
   sequenceNumber: number;
@@ -99,10 +99,6 @@ function buildPeople(registrations: AdminRegistrationRow[], plan: LodgingPlan): 
   const registrationsById = new Map(registrations.map((row) => [row.id, row]));
   const extrasById = new Map(plan.extraPeople.map((person) => [person.id, person]));
   const sequence = buildLodgingPersonSequence(registrations, plan);
-  const ungrouped = sequence.filter((person) => !person.choirName.trim());
-  if (ungrouped.length) {
-    throw new Error(`Defina o coro de ${ungrouped.map((person) => person.badgeName).join(", ")} antes de exportar.`);
-  }
   return sequence.map((person) => {
     const row = person.kind === "registration" ? registrationsById.get(person.id) : undefined;
     const extra = person.kind === "extra" ? extrasById.get(person.id) : undefined;
@@ -112,7 +108,7 @@ function buildPeople(registrations: AdminRegistrationRow[], plan: LodgingPlan): 
       name: person.name,
       cpf: row?.cpf ?? extra?.cpf ?? "",
       phone: row?.phone ?? "",
-      choirName: person.choirName,
+      choirName: person.choirName.trim() || "Coro a confirmar",
       room: roomByKey.get(person.roomKey ?? "") ?? null,
       star: row?.registrationPriceCents === 8000,
     };
@@ -409,6 +405,7 @@ export async function buildLodgingRegistrationsPdf(
   doc.setCreationDate(now);
 
   const people = buildPeople(registrations, plan);
+  const warnings = [...new Set(people.filter((person) => person.choirName === "Coro a confirmar").map((person) => person.badgeName))];
   const grouped = new Map<string, ReportPerson[]>();
   for (const person of people) {
     const group = grouped.get(person.choirName) ?? [];
@@ -457,5 +454,6 @@ export async function buildLodgingRegistrationsPdf(
   return {
     fileName: `relacao-hospedagem-${stamp}.pdf`,
     base64: await doc.saveAsBase64(),
+    warnings,
   };
 }

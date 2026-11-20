@@ -51,6 +51,7 @@ export function AdminNamedLodgingPage({
   const [printLayout, setPrintLayout] = useState<"list" | null>(null);
   const [preparedPdf, setPreparedPdf] = useState<{ blob: Blob; fileName: string } | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfWarning, setPdfWarning] = useState("");
   const exportLodgingPdf = useServerFn(exportAdminLodgingPdf);
   const rooms = plan.namedRooms ?? [];
   const capacity = Math.min(plan.roomCapacity, 3);
@@ -86,6 +87,7 @@ export function AdminNamedLodgingPage({
     }
     setPlan(next);
     setPreparedPdf(null);
+    setPdfWarning("");
     setDirty(true);
     setSaving(true);
     setError("");
@@ -105,6 +107,7 @@ export function AdminNamedLodgingPage({
     if (exportingPdf || saving || dirty) return;
     setExportingPdf(true);
     setPreparedPdf(null);
+    setPdfWarning("");
     setError("");
     try {
       const file = await exportLodgingPdf();
@@ -113,6 +116,9 @@ export function AdminNamedLodgingPage({
         blob: new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" }),
         fileName: file.fileName,
       });
+      if (file.warnings.length) {
+        setPdfWarning(`PDF pronto. Sem coro identificado: ${file.warnings.join(", ")}. Essas pessoas estão no grupo “Coro a confirmar”.`);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível preparar a relação em PDF.");
     } finally {
@@ -280,6 +286,11 @@ export function AdminNamedLodgingPage({
             className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
           >
             {error}
+          </p>
+        )}
+        {pdfWarning && (
+          <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900">
+            {pdfWarning}
           </p>
         )}
         <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl border bg-card p-4 text-sm tabular-nums">
