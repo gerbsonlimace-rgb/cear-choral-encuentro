@@ -32,6 +32,7 @@ const legacyRow: RegistrationDatabaseRow = {
   created_at: "2025-08-22T14:00:00.000Z",
   name: "Ana Histórica",
   cpf: "52998224725",
+  gender: "nao_informado",
   birth_date: "1990-01-01",
   choir_id: null,
   choir_name: "Diocese de Sobral",

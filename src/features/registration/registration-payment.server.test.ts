@@ -1727,6 +1727,7 @@ describe("Supabase registration repository", () => {
           name: "Maria da Silva",
           badge_name: "Maria Silva",
           cpf: "52998224725",
+          gender: "nao_informado",
           photo_path: registrationPhotoPath,
           musical_profile: "coralista",
           voice_part: "soprano",

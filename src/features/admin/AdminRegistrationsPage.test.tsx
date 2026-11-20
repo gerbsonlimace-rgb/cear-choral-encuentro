@@ -60,6 +60,7 @@ const legacy: AdminRegistrationRow = {
   name: "Ana Histórica",
   badgeName: "Ana",
   cpf: "529.982.247-25",
+  gender: "nao_informado",
   birthDate: "1990-01-02",
   diocese: "Diocese de Quixadá",
   choirName: "Diocese de Quixadá",

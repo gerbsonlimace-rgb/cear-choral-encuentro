@@ -52,6 +52,7 @@ import {
   birthDateSchema,
   cpfSchema,
   dioceseOptions,
+  genderOptions,
   isValidBrazilianMobilePhone,
   musicalProfileOptions,
   registrationLookupSchema,
@@ -60,6 +61,7 @@ import {
   type RegistrationInput,
   type RegistrationPhotoInput,
   type Diocese,
+  type Gender,
   type MusicalProfile,
   type ParticipationType,
   type VoicePart,
@@ -102,6 +104,7 @@ type RegistrationForm = Omit<
   diocese: "" | Diocese;
   raffleChoice: "" | RaffleChoice;
   musicalProfile: MusicalProfile | "";
+  gender: Gender;
   voicePart: VoicePart | "";
 };
 
@@ -164,6 +167,7 @@ const initialForm: Omit<RegistrationForm, "photo"> = {
   participationType: "complete",
   raffleChoice: "",
   musicalProfile: "",
+  gender: "nao_informado",
   voicePart: "",
 };
 
@@ -391,7 +395,11 @@ export function RegistrationSection({
     mounted.current = true;
     const draft = loadRegistrationDraft();
     if (draft) {
-      setForm({ ...draft.form, participationType: draft.form.participationType ?? "complete" });
+      setForm({
+        ...draft.form,
+        gender: "nao_informado",
+        participationType: draft.form.participationType ?? "complete",
+      });
       setBirthDateInput(draft.birthDateInput ?? formatBirthDateInput(draft.form.birthDate));
       setPhoto(draft.photo);
       setPhotoFileName(draft.photoFileName);
@@ -406,7 +414,9 @@ export function RegistrationSection({
 
   useEffect(() => {
     if (!draftReady) return;
-    saveRegistrationDraft({ form, photo, photoFileName, birthDateInput, currentStep });
+    // The persisted draft schema predates gender; keep it out of local storage.
+    const { gender: _gender, ...draftForm } = form;
+    saveRegistrationDraft({ form: draftForm, photo, photoFileName, birthDateInput, currentStep });
   }, [birthDateInput, currentStep, draftReady, form, photo, photoFileName]);
 
   const selectedChoir = useMemo(
@@ -1537,6 +1547,60 @@ export function RegistrationSection({
                         )}
                       </div>
 
+                      <div className="space-y-1.5">
+                        <div className="registration-voice-heading">
+                          <UserRound className="size-4" aria-hidden="true" />
+                          <span id="gender-label" className="font-semibold">
+                            Gênero
+                          </span>
+                        </div>
+                        <div
+                          role="radiogroup"
+                          aria-labelledby="gender-label"
+                          data-selection-layout="list"
+                          className="registration-voice-list mt-3"
+                        >
+                          {genderOptions.map((option) => {
+                            const selected = form.gender === option.value;
+                            return (
+                              <label
+                                key={option.value}
+                                data-surface="clear"
+                                className={`registration-voice-option ${selected ? "registration-voice-option--selected" : ""}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="gender"
+                                  value={option.value}
+                                  aria-label={option.label}
+                                  checked={selected}
+                                  onChange={() => handleChange("gender", option.value)}
+                                  className="sr-only"
+                                />
+                                <span className="flex min-w-0 items-center gap-3">
+                                  <span className="registration-icon-box size-8" aria-hidden="true">
+                                    {option.value === "nao_informado" ? (
+                                      <CircleHelp className="size-4" />
+                                    ) : (
+                                      <UserRound className="size-4" />
+                                    )}
+                                  </span>
+                                  <span className="text-sm font-bold text-registration-ink">
+                                    {option.label}
+                                  </span>
+                                </span>
+                                <span className="registration-radio-indicator" aria-hidden="true">
+                                  {selected && <Check className="size-3.5" />}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Escolha “Não informado” se preferir não responder.
+                        </p>
+                      </div>
+
                       {currentStep === 3 && displayedChoir?.pricingType !== "free" && (
                         <fieldset
                           id="raffleChoice"
@@ -1892,6 +1956,11 @@ export function RegistrationSection({
                             : "",
                         ],
                         ["Diocese", form.diocese],
+                        [
+                          "Gênero",
+                          genderOptions.find((option) => option.value === form.gender)?.label ??
+                            "Não informado",
+                        ],
                         ["Coro", displayedChoir?.name ?? ""],
                         [
                           "Perfil musical",

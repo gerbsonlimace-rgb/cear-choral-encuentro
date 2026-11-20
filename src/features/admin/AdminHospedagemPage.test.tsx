@@ -24,6 +24,7 @@ const registrations = [
   voicePart: "tenor",
   createdAt: "2026-11-01T10:00:00Z",
   cpf: "000.000.000-00",
+  gender: "nao_informado",
   birthDate: "1990-01-01",
   diocese: "Diocese do Teste",
   email: "participante@example.com",

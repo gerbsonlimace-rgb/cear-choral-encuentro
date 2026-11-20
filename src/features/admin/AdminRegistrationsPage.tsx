@@ -111,8 +111,10 @@ import { getPublicRegistrationConfiguration } from "@/lib/choir-pricing.function
 import type { PublicChoirOption } from "@/features/choirs/choir-pricing.domain";
 import { dioceseOptions, type Diocese } from "@/features/dioceses/diocese.domain";
 import {
+  genderOptions,
   musicalProfileOptions,
   voicePartOptions,
+  type Gender,
   type MusicalProfile,
   type VoicePart,
 } from "@/features/registration/registration.domain";
@@ -1527,6 +1529,9 @@ function EditRegistrationForm({
   const validVoicePart = voicePartOptions.some((option) => option.value === row.voicePart)
     ? (row.voicePart as VoicePart)
     : "";
+  const validGender = genderOptions.some((option) => option.value === row.gender)
+    ? (row.gender as Gender)
+    : "nao_informado";
 
   const [name, setName] = useState(row.name);
   const [badgeName, setBadgeName] = useState(row.badgeName ?? "");
@@ -1543,6 +1548,7 @@ function EditRegistrationForm({
   const [institution, setInstitution] = useState(editBlank(row.institution));
   const [role, setRole] = useState(editBlank(row.role));
   const [musicalProfile, setMusicalProfile] = useState<MusicalProfile>(validProfile);
+  const [gender, setGender] = useState<Gender>(validGender);
   const [voicePart, setVoicePart] = useState<VoicePart | "">(validVoicePart);
   const [observations, setObservations] = useState(editBlank(row.observations));
   const [error, setError] = useState("");
@@ -1571,6 +1577,7 @@ function EditRegistrationForm({
       institution,
       role,
       musicalProfile,
+      gender,
       voicePart: musicalProfile === "coralista" && voicePart !== "" ? voicePart : null,
       observations,
     });
@@ -1741,6 +1748,25 @@ function EditRegistrationForm({
             </SelectTrigger>
             <SelectContent>
               {musicalProfileOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-gender">Gênero</Label>
+          <Select
+            value={gender}
+            disabled={busy}
+            onValueChange={(value) => setGender(value as Gender)}
+          >
+            <SelectTrigger id="edit-gender">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {genderOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

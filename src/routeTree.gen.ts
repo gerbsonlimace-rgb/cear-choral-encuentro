@@ -29,6 +29,7 @@ import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
 import { Route as AdminHospedagemRouteImport } from './routes/admin.hospedagem'
 import { Route as AdminInscricoesRouteImport } from './routes/admin.inscricoes'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminMapaParticipantesRouteImport } from './routes/admin.mapa-participantes'
 import { Route as AdminPagamentoRouteImport } from './routes/admin.pagamento'
 import { Route as AdminPatrocinadoresRouteImport } from './routes/admin.patrocinadores'
 import { Route as AdminResumoRouteImport } from './routes/admin.resumo'
@@ -146,6 +147,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMapaParticipantesRoute = AdminMapaParticipantesRouteImport.update({
+  id: '/admin/mapa-participantes',
+  path: '/admin/mapa-participantes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPagamentoRoute = AdminPagamentoRouteImport.update({
   id: '/admin/pagamento',
   path: '/admin/pagamento',
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mapa-participantes': typeof AdminMapaParticipantesRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mapa-participantes': typeof AdminMapaParticipantesRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/admin/hospedagem': typeof AdminHospedagemRoute
   '/admin/inscricoes': typeof AdminInscricoesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mapa-participantes': typeof AdminMapaParticipantesRoute
   '/admin/pagamento': typeof AdminPagamentoRoute
   '/admin/patrocinadores': typeof AdminPatrocinadoresRoute
   '/admin/resumo': typeof AdminResumoRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/mapa-participantes'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/mapa-participantes'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin/hospedagem'
     | '/admin/inscricoes'
     | '/admin/login'
+    | '/admin/mapa-participantes'
     | '/admin/pagamento'
     | '/admin/patrocinadores'
     | '/admin/resumo'
@@ -476,6 +488,7 @@ export interface RootRouteChildren {
   AdminHospedagemRoute: typeof AdminHospedagemRoute
   AdminInscricoesRoute: typeof AdminInscricoesRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminMapaParticipantesRoute: typeof AdminMapaParticipantesRoute
   AdminPagamentoRoute: typeof AdminPagamentoRoute
   AdminPatrocinadoresRoute: typeof AdminPatrocinadoresRoute
   AdminResumoRoute: typeof AdminResumoRoute
@@ -624,6 +637,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/mapa-participantes': {
+      id: '/admin/mapa-participantes'
+      path: '/admin/mapa-participantes'
+      fullPath: '/admin/mapa-participantes'
+      preLoaderRoute: typeof AdminMapaParticipantesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/pagamento': {
@@ -802,6 +822,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminHospedagemRoute: AdminHospedagemRoute,
   AdminInscricoesRoute: AdminInscricoesRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminMapaParticipantesRoute: AdminMapaParticipantesRoute,
   AdminPagamentoRoute: AdminPagamentoRoute,
   AdminPatrocinadoresRoute: AdminPatrocinadoresRoute,
   AdminResumoRoute: AdminResumoRoute,
