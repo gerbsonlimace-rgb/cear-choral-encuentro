@@ -36,7 +36,7 @@ export function CearaMap({
       className={cn("w-full", height == null && "h-auto", className)}
       style={height == null ? undefined : { height }}
     >
-      <path d={CEARA_PATH} className="fill-primary/10 stroke-primary/40" strokeWidth={3} />
+      <path d={CEARA_PATH} fill="#dbeafe" stroke="#1d4ed8" strokeWidth={3} />
 
       {points.map((point) => {
         const position = projectCeara(point.latitude, point.longitude);
@@ -46,7 +46,8 @@ export function CearaMap({
             cx={position.x}
             cy={position.y}
             r={radiusFor(point.value)}
-            className="fill-brand-gold stroke-brand-ink/50"
+            fill="#d97706"
+            stroke="#7c2d12"
             strokeWidth={2}
           >
             <title>{`${point.label}: ${point.value}`}</title>

@@ -69,6 +69,7 @@ describe("participant map aggregation", () => {
       { key: "feminino", label: "Feminino", value: 2 },
       { key: "nao_informado", label: "Não informado", value: 1 },
     ]);
+    expect(data.genderGroups.find((item) => item.key === "feminino")?.names).toEqual(["Participante", "Participante"]);
     expect(data.voices.find((item) => item.key === "soprano")?.value).toBe(2);
     expect(data.ageBands.find((item) => item.key === "ate-17")?.value).toBe(1);
     expect(data.ageBands.find((item) => item.key === "36-45")?.value).toBe(1);
