@@ -26,11 +26,15 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       }));
     },
     async findCard(token) {
-      const { data, error } = await client().from("registration_attendance_cards")
+      let { data, error } = await client().from("registration_attendance_cards")
         .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path,dietary_restriction,dietary_restriction_types,dietary_restriction_other,uses_event_van)").eq("token", token).maybeSingle();
+      if (error && /dietary_restriction_types|dietary_restriction_other/.test(error.message)) {
+        ({data,error}=await client().from("registration_attendance_cards")
+          .select("registrations(id,name,badge_name,choir_name,payment_status,cancelled_at,photo_path,dietary_restriction,uses_event_van)").eq("token",token).maybeSingle());
+      }
       if (error) throw new Error("Não foi possível abrir o cartão. Tente novamente.");
       if (!data) return null;
-      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable(), dietary_restriction:z.boolean().nullable(), dietary_restriction_types:z.array(z.string()).nullable(), dietary_restriction_other:z.string().nullable(), uses_event_van:z.boolean().nullable() }) }).parse(data);
+      const parsed = z.object({ registrations: z.object({ id:z.string().uuid(), name: z.string(), badge_name: z.string().nullable(), choir_name: z.string(), payment_status: z.string(), cancelled_at: z.string().nullable(), photo_path:z.string().nullable(), dietary_restriction:z.boolean().nullable(), dietary_restriction_types:z.array(z.string()).nullable().optional(), dietary_restriction_other:z.string().nullable().optional(), uses_event_van:z.boolean().nullable() }) }).parse(data);
       const row = parsed.registrations;
       if (row.cancelled_at) return null;
       const [photo, planResult] = await Promise.all([
@@ -47,7 +51,7 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
       return { name: row.badge_name?.trim() || row.name, fullName:row.name, choirName: row.choir_name, eligible: row.payment_status === "paid",
         photoUrl:photo?.data?.signedUrl ?? null, lodging:resolveParticipantCardLodging(row.id,plan,roommatesResult.data??[]),
         dietaryRestriction:row.dietary_restriction, dietaryRestrictionTypes:(row.dietary_restriction_types??[]) as DietaryRestrictionKey[],
-        dietaryRestrictionOther:row.dietary_restriction_other, usesEventVan:row.uses_event_van };
+        dietaryRestrictionOther:row.dietary_restriction_other??null, usesEventVan:row.uses_event_van };
     },
     async record(input) {
       const { data, error } = await client().rpc("record_public_attendance", { p_activity_id: input.activityId, p_token: input.token });
@@ -69,7 +73,7 @@ export function createPublicAttendanceRepository(): PublicAttendanceRepository {
         p_dietary_restriction_other: input.dietaryRestrictionOther,
         p_uses_event_van: input.usesEventVan,
       });
-      if (error) throw new Error("Não foi possível salvar as respostas. Tente novamente.");
+      if (error) throw new Error(/save_public_attendance_logistics|dietary_restriction_types/.test(error.message)?"Aplique a migração de restrições alimentares no Supabase para salvar os tipos de restrição.":"Não foi possível salvar as respostas. Tente novamente.");
       const row = z.object({ dietary_restriction: z.boolean(), dietary_restriction_types:z.array(z.string()), dietary_restriction_other:z.string().nullable(), uses_event_van: z.boolean() })
         .parse(Array.isArray(data) ? data[0] : data);
       return { dietaryRestriction: row.dietary_restriction, dietaryRestrictionTypes:row.dietary_restriction_types as DietaryRestrictionKey[],

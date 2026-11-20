@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import json, sys, zipfile, subprocess
 import cv2
+import numpy as np
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=Path(sys.argv[1] if len(sys.argv)>1 else ROOT/'output/participant-cards').resolve()
@@ -45,6 +46,15 @@ def block(draw,text,xy,width,start=30,minsize=18,maxlines=2,style='regular',fill
         draw.text((xy[0],y),line,font=f,fill=fill,anchor='lt');y+=round(f.size*leading)
     return y
 
+def bed_icon(draw,x,y):
+    # Same simple double-bed geometry as the public card's Lucide BedDouble.
+    draw.rounded_rectangle((x+7,y+9,x+61,y+37),radius=5,outline=WINE,width=4)
+    draw.rounded_rectangle((x,y+31,x+68,y+59),radius=5,outline=WINE,width=4)
+    draw.line((x,y+47,x+68,y+47),fill=WINE,width=4)
+    draw.line((x,y+58,x,y+67),fill=WINE,width=4)
+    draw.line((x+68,y+58,x+68,y+67),fill=WINE,width=4)
+    draw.line((x+34,y+12,x+34,y+29),fill=WINE,width=4)
+
 logo=Image.open(ROOT/'src/assets/logo-coros-diocesanos-regional.png').convert('RGBA')
 logo.thumbnail((300,165),Image.Resampling.LANCZOS)
 validations=[]; issues=[]
@@ -82,24 +92,35 @@ for i,c in enumerate(manifest['cards']):
             d.text((385,y),line,font=f,fill=fill,anchor='lt');y+=round(f.size*1.15)
     lodging=c.get('lodging')
     if lodging:
-        label=lodging['room']+(' — '+lodging['location'] if lodging.get('location') else '')
-        end=block(d,label,(78,586),924,31,23,1,'bold')
+        d.line((78,1384,1002,1384),fill=GOLD,width=2)
+        bed_icon(d,78,1415)
+        d.text((168,1408),'SUA ACOMODAÇÃO',font=font(21,'bold'),fill=WINE,anchor='lt')
+        end=block(d,lodging['room'],(168,1441),834,56,34,2,'bold',fill=WINE)
+        if lodging.get('location'):
+            end=block(d,lodging['location'],(78,end+15),924,28,22,2)
         roommates=' · '.join(lodging.get('roommates',[]))
         if roommates:
-            d.text((78,end+12),'Você está hospedado com',font=font(23),fill=MUTED,anchor='lt')
-            end=block(d,roommates,(78,end+46),924,29,18,2,'bold')
-        if end>737:raise ValueError(f'Lodging overlaps QR: {c["filename"]}')
-    d.text((540,1715),'APRESENTE À EQUIPE EM CADA ATIVIDADE',font=font(22,'bold'),fill=WINE,anchor='mm')
+            d.text((78,end+16),'Você está hospedado com',font=font(25),fill=MUTED,anchor='lt')
+            end=block(d,roommates,(78,end+53),924,30,20,4,'bold')
+        if end>1780:raise ValueError(f'Lodging overlaps footer: {c["filename"]}')
+    d.text((540,1345),'APRESENTE À EQUIPE EM CADA ATIVIDADE',font=font(22,'bold'),fill=WINE,anchor='mm')
     d.text((540,1835),'20–22 NOV 2026 · QUIXADÁ, CE',font=font(24),fill=MUTED,anchor='mm')
     output=OUT/'cartoes'/c['filename']; selected_mask=None
     for mask in [None,*range(8)]:
         if mask is not None:
             subprocess.run(['node',str(ROOT/'scripts/write-participant-qr.mjs'),c['cardUrl'],c['qrPath'],str(mask)],check=True,capture_output=True)
         qr=Image.open(c['qrPath']).convert('RGB')
-        if max(qr.size)>900:raise ValueError('Oversized QR')
-        d.rounded_rectangle((78,755,1002,1679),radius=30,fill='white',outline='#DED6CA',width=2)
-        im.paste(qr,(90+(900-qr.width)//2,767+(900-qr.height)//2))
-        import numpy as np
+        # Integer module scaling keeps the smaller QR crisp and its quiet zone intact.
+        # Source images always include the four-module border from write-participant-qr.
+        source=np.asarray(qr)
+        first_black=np.where(source[0:source.shape[0]//2,:,0]<128)
+        if not first_black[0].size:raise ValueError('QR has no modules')
+        old_scale=int(first_black[0].min())//4
+        module_count=qr.width//old_scale
+        new_scale=700//module_count
+        qr=qr.resize((module_count*new_scale,module_count*new_scale),Image.Resampling.NEAREST)
+        d.rounded_rectangle((178,590,902,1314),radius=30,fill='white',outline='#DED6CA',width=2)
+        im.paste(qr,(190+(700-qr.width)//2,602+(700-qr.height)//2))
         raw=cv2.cvtColor(np.asarray(im),cv2.COLOR_RGB2BGR)
         decoded,_,_=cv2.QRCodeDetector().detectAndDecode(raw)
         phone,_,_=cv2.QRCodeDetector().detectAndDecode(cv2.resize(raw,(540,960),interpolation=cv2.INTER_AREA))
@@ -120,7 +141,7 @@ for start in range(0,len(manifest['cards']),20):
         x=(index%4)*300;y=(index//4)*240;sheet.paste(thumb,(x,y))
         sd=ImageDraw.Draw(sheet);block(sd,c['fullName'],(x+8,y+148),282,16,12,3,fill=INK)
     sheet.save(OUT/'revisao'/f'contatos-{start//20+1:02}.jpg',quality=90)
-with zipfile.ZipFile(OUT/'cartoes-157-participantes.zip','w',zipfile.ZIP_DEFLATED) as archive:
+with zipfile.ZipFile(OUT/f'cartoes-{len(manifest["cards"])}-participantes.zip','w',zipfile.ZIP_DEFLATED) as archive:
     for c in manifest['cards']:archive.write(OUT/'cartoes'/c['filename'],'cartoes/'+c['filename'])
     archive.write(OUT/'links-cartoes.csv','links-cartoes.csv')
 report={'count':len(validations),'qrVerified':sum(x['qrVerified'] for x in validations),'uniqueLinks':len({c['cardUrl'] for c in manifest['cards']}),'cards':validations}

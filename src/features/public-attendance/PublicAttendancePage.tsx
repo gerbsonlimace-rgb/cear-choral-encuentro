@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Camera, Check, CheckCheck, ChevronRight, Pause, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Camera, ClipboardList, ChevronRight, Pause, RefreshCw, Volume2, VolumeX, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
+import { AttendanceReportsPanel } from "./AttendanceReportsPanel";
+import { AttendanceNameSearch } from "./AttendanceNameSearch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { lockEventManagement } from "@/lib/public-attendance.functions";
+import "./attendanceApp.css";
 import { createAttendanceScanQueue, type ScanQueueSnapshot } from "./attendanceScanQueue";
 import { startContinuousQrScanner } from "./continuousQrScanner";
 import { dietaryRestrictionOptions, extractParticipantCardToken, mergeAttendanceProgress, type DietaryRestrictionKey, type PublicAttendanceActivity, type PublicAttendanceConfirmation, type PublicAttendanceLogisticsInput, type PublicAttendanceLogisticsResult, type PublicAttendanceResult } from "./publicAttendance.domain";
 
 type Props = {
+  canScan?: boolean;
+  canReport?: boolean;
   loadActivities?: () => Promise<PublicAttendanceActivity[]>;
   record?: (input: { data: {activityId: string; token: string} }) => Promise<PublicAttendanceResult>;
   saveLogistics?: (input: {data: PublicAttendanceLogisticsInput}) => Promise<PublicAttendanceLogisticsResult>;
@@ -98,7 +105,7 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
       setDietaryRestrictionOther(response.dietaryRestrictionOther??"");
       setUsesEventVan(response.usesEventVan);
       setDirty(false);setSaved(true);
-    }catch{setError("Não foi possível salvar. Confira a conexão e tente novamente.");}
+    }catch(cause){setError(cause instanceof Error&&cause.message.includes("migração")?cause.message:"Não foi possível salvar. Confira a conexão e tente novamente.");}
     finally{setSaving(false);}
   };
   const canSave=loaded&&!saving&&!validationError&&(dirty||!saved);
@@ -139,7 +146,10 @@ function Progress({activity}: {activity: PublicAttendanceActivity}) {
   </div>;
 }
 
-export function PublicAttendancePage({loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
+export function PublicAttendancePage({canScan=true,canReport=true,loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
+  const [tab,setTab]=useState<"scanner"|"reports">(canScan?"scanner":"reports");
+  const [expandedId,setExpandedId]=useState<string|null>(null);
+  const [locking,setLocking]=useState(false);
   const [activities,setActivities]=useState<PublicAttendanceActivity[]|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [running,setRunning]=useState(false),[cameraReady,setCameraReady]=useState(false);
@@ -151,6 +161,7 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
   const queue=useRef<ReturnType<typeof createAttendanceScanQueue<PublicAttendanceResult>>|null>(null);
   const audio=useRef<AudioContext|null>(null), soundEnabled=useRef(sound);
   const lastInvalid=useRef("");
+  const resumeAfterSearch=useRef(false);
   soundEnabled.current=sound;
   const selected=activities?.find(a=>a.id===selectedId);
 
@@ -218,58 +229,67 @@ export function PublicAttendancePage({loadActivities=getPublicAttendanceActiviti
   },[]);
   useEffect(()=>()=>{void audio.current?.close().catch(()=>{});},[]);
 
-  const enableAudio=()=>{if(!sound)return;try{if(!audio.current&&typeof AudioContext!=="undefined")audio.current=new AudioContext();void audio.current?.resume().catch(()=>{});}catch{/* Sound is optional. */}};
+  const enableAudio=(force=false)=>{if(!sound&&!force)return;try{if(!audio.current&&typeof AudioContext!=="undefined")audio.current=new AudioContext();void audio.current?.resume().catch(()=>{});}catch{/* Sound is optional. */}};
   const choose=(id:string)=>{enableAudio();setSelectedId(id);setRunning(true);};
   const back=()=>{if(queue.current?.snapshot().pending&&!window.confirm("Ainda há leituras sem confirmação. Sair descarta essas pendências deste aparelho. Deseja sair?"))return;setRunning(false);setSelectedId(null);setFeedback([]);setPending(emptyQueue);void refresh();};
 
-  return <main className="internal-app min-h-svh bg-[#f7f7f5] px-4 py-5 text-zinc-950 sm:py-8">
-    <div className="mx-auto max-w-2xl space-y-5">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          {selectedId&&<Button variant="ghost" size="icon" aria-label="Voltar às atividades" onClick={back}><ArrowLeft className="size-5"/></Button>}
-          <div><h1 className="text-2xl font-bold tracking-tight">{selected?.title??"Chamada do encontro"}</h1>
-            <p className="mt-1 text-sm text-zinc-600">{selected?`${dateLabel(selected.activityDate)} · ${selected.startsAt??"Sem horário"}`:"Escolha a atividade e leia os cartões dos participantes."}</p></div>
+  const currentFeedback=feedback[0];
+  const expanded=feedback.find(item=>item.id===expandedId);
+  const switchTab=(next:"scanner"|"reports")=>{if(next===tab)return;setRunning(false);setTab(next);};
+  return <main className="internal-app attendance-theme attendance-app">
+    <div className="attendance-shell">
+      <header className="attendance-header">
+        <div className="flex min-w-0 items-center gap-1">
+          {tab==="scanner"&&selectedId&&<Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label="Voltar às atividades" onClick={back}><ArrowLeft className="size-5"/></Button>}
+          <div className="min-w-0"><h1>{tab==="scanner"&&selected?selected.title:"Gerenciamento do evento"}</h1><p className="text-xs text-zinc-600">{selected&&tab==="scanner"?`${dateLabel(selected.activityDate)} · ${selected.startsAt??"Sem horário"}`:"II Encontro de Coros"}</p></div>
         </div>
-        <Button size="icon" variant="outline" aria-label="Atualizar contagem" disabled={refreshing} onClick={()=>void refresh()}><RefreshCw className={`size-4 ${refreshing?"animate-spin":""}`}/></Button>
+        <div className="flex gap-1">
+          <Button size="icon" variant="outline" className="min-h-11 min-w-11" aria-label="Atualizar contagem" disabled={refreshing} onClick={()=>void refresh()}><RefreshCw className={`size-4 ${refreshing?"animate-spin":""}`}/></Button>
+          <Button size="icon" variant="ghost" className="min-h-11 min-w-11" aria-label="Bloquear aplicativo" disabled={locking} onClick={()=>{if(queue.current?.snapshot().pending&&!window.confirm("Há leituras pendentes. Deseja bloquear mesmo assim?"))return;setRunning(false);setLocking(true);void lockEventManagement().then(()=>window.location.reload()).catch(()=>{setLocking(false);setError("Não foi possível bloquear. Tente novamente.");});}}><LockKeyhole className="size-4"/></Button>
+        </div>
       </header>
-      {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-      {activities===null&&<p role="status" className="py-8 text-sm text-zinc-600">Carregando atividades…</p>}
-      {!selectedId&&activities&&<section className="overflow-hidden rounded-xl border border-zinc-200 bg-white" aria-label="Atividades com presença">
-        {activities.length===0&&<p className="p-5 text-sm text-zinc-600">Nenhuma atividade está com presença habilitada.</p>}
-        {activities.map(activity=><button key={activity.id} type="button" onClick={()=>choose(activity.id)} className="block w-full border-b border-zinc-200 p-4 text-left transition-colors last:border-0 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#d5a900] sm:p-5">
-          <div className="mb-3 flex items-start justify-between gap-4"><div><h2 className="font-semibold leading-snug">{activity.title}</h2><p className="mt-1 text-sm text-zinc-600">{dateLabel(activity.activityDate)} · {activity.startsAt??"Sem horário"}{activity.endsAt?`–${activity.endsAt}`:""}</p></div><ChevronRight className="mt-1 size-5 shrink-0 text-zinc-500"/></div>
-          <Progress activity={activity}/>
-        </button>)}
-      </section>}
-      {selected&&<>
-        <section className="rounded-xl border border-zinc-200 bg-white p-4" aria-label="Progresso da chamada">
-          <Progress activity={selected}/><div className="mt-3 flex justify-between gap-4 text-sm text-zinc-600"><span className="tabular-nums">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes</span><span>Somente inscrições confirmadas</span></div>
-        </section>
-        <section className="overflow-hidden rounded-xl bg-zinc-950">
-          <div className="relative"><video ref={video} muted playsInline autoPlay className="aspect-[4/3] max-h-[44svh] w-full object-cover" aria-label="Câmera para leitura contínua de QR Codes"/>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true"><div className="aspect-square w-[58%] rounded-xl border-2 border-white/80"/></div>
-            <p role="status" className="absolute bottom-0 left-0 right-0 bg-black/75 px-3 py-2 text-center text-sm text-white">{running?(cameraReady?"Leitura contínua · apresente o próximo cartão":"Abrindo câmera…"):"Câmera pausada"}</p>
-          </div>
-          <div className="flex gap-2 p-3"><Button className="flex-1 bg-white text-zinc-950 hover:bg-zinc-200" onClick={()=>{enableAudio();setRunning(value=>!value);}}>{running?<Pause className="size-4"/>:<Camera className="size-4"/>}{running?"Pausar câmera":"Retomar câmera"}</Button>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-zinc-800 hover:text-white" aria-label={sound?"Desligar som":"Ligar som"} aria-pressed={sound} onClick={()=>{setSound(value=>!value);if(!sound){try{if(!audio.current&&typeof AudioContext!=="undefined")audio.current=new AudioContext();void audio.current?.resume().catch(()=>{});}catch{}}}}>{sound?<Volume2 className="size-5"/>:<VolumeX className="size-5"/>}</Button></div>
-        </section>
-        {pending.pending>0&&<section className={`rounded-lg p-3 text-sm ${pending.failed?"bg-amber-50 text-amber-950":"bg-zinc-200 text-zinc-800"}`} aria-live="polite"><p>{pending.pending} leitura{pending.pending===1?"":"s"} aguardando confirmação{pending.failed?` · ${pending.failed} com falha de conexão`:"…"}</p>{pending.failed>0&&<Button className="mt-2" variant="outline" onClick={()=>queue.current?.retryFailed()}>Tentar pendentes novamente</Button>}</section>}
-        <section aria-label="Últimas leituras" aria-live="polite" className="space-y-2">
-          {feedback.map(({id,token,result:item,details,detailsPending})=>{const success=item.status==="recorded",duplicate=item.status==="already_recorded";return <div key={id} className={`rounded-xl border p-3 sm:p-4 ${success?"border-emerald-200 bg-emerald-50 text-emerald-950":duplicate?"border-amber-200 bg-amber-50 text-amber-950":"border-red-200 bg-red-50 text-red-800"}`}>
-            {"participantName" in item?<div className="flex items-center gap-3">
-              <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/10 sm:size-20">
-                {details?.photoUrl?<img src={details.photoUrl} alt={`Foto de ${item.participantName}`} className="size-full object-cover" onError={event=>{event.currentTarget.style.display="none";}}/>:<div className="grid size-full place-items-center text-lg font-semibold text-zinc-500" aria-label="Foto indisponível">{item.participantName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join("").toLocaleUpperCase("pt-BR")}</div>}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">{success?<Check className="mt-0.5 size-5 shrink-0"/>:<CheckCheck className="mt-0.5 size-5 shrink-0"/>}<div className="min-w-0"><p className="font-bold leading-tight">{details?.fullName??item.participantName}</p>{details?.fullName&&details.fullName!==item.participantName&&<p className="text-sm">Crachá: {item.participantName}</p>}<p className="mt-1 text-sm font-semibold">{success?"Presença confirmada":"Já registrado · não conta novamente"}</p></div></div>
-                <div className="mt-2 space-y-0.5 pl-7 text-sm"><p className="font-medium">{details?.choirName??(detailsPending?"Carregando coro…":"Coro indisponível")}</p>{detailsPending? <p>Carregando acomodação…</p> : details?.lodging?<p>Quarto/apartamento: {details.lodging.room}{details.lodging.location?` · ${details.lodging.location}`:""}</p>:details&&<p>Sem quarto/apartamento atribuído</p>}</div>
-                <LogisticsAnswers id={id} token={token} loaded={details!==undefined} loading={Boolean(detailsPending)} initialDietaryRestriction={details?.dietaryRestriction??null} initialDietaryRestrictionTypes={details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={details?.dietaryRestrictionOther??null} initialUsesEventVan={details?.usesEventVan??null} save={saveLogistics}/>
-              </div>
-            </div>:<div className="flex items-center gap-3"><p className="text-sm">{item.message}</p></div>}</div>;})}
-          {feedback.length===0&&<p className="text-center text-sm text-zinc-600">Aproxime o QR Code do cartão. A câmera continua aberta após cada leitura.</p>}
-        </section>
-      </>}
-      {selectedId&&!selected&&activities!==null&&<div className="space-y-3"><p>Esta atividade não está mais disponível.</p><Button onClick={back}>Voltar às atividades</Button></div>}
+      <div className="attendance-tabs" role="tablist" aria-label="Gerenciamento do evento">
+        {canScan&&<button type="button" role="tab" id="attendance-scanner-tab" aria-label="Atividades e leitor QR" aria-selected={tab==="scanner"} aria-controls="attendance-scanner-panel" onClick={()=>switchTab("scanner")}><Camera aria-hidden="true" className="size-5"/><span>Leitor QR</span></button>}
+        {canReport&&<button type="button" role="tab" id="attendance-reports-tab" aria-selected={tab==="reports"} aria-controls="attendance-reports-panel" onClick={()=>switchTab("reports")}><ClipboardList aria-hidden="true" className="size-5"/><span>Relatórios</span></button>}
+      </div>
+      {error&&<p role="alert" className="attendance-error">{error}</p>}
+      {activities===null&&<p role="status" className="text-sm text-zinc-600">Carregando atividades…</p>}
+      {tab==="reports"&&canReport&&activities&&<div role="tabpanel" id="attendance-reports-panel" aria-labelledby="attendance-reports-tab" className="attendance-view"><AttendanceReportsPanel activities={activities} initialActivityId={selectedId}/></div>}
+      {tab==="scanner"&&canScan&&<div role="tabpanel" id="attendance-scanner-panel" aria-labelledby="attendance-scanner-tab" className="attendance-view">
+        {!selectedId&&activities&&<section className="attendance-activities" aria-label="Atividades com presença">
+          {activities.length===0&&<p className="p-4 text-sm text-zinc-600">Nenhuma atividade com presença habilitada.</p>}
+          {activities.map(activity=><button key={activity.id} type="button" onClick={()=>choose(activity.id)} className="attendance-activity">
+            <div className="mb-2 flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">{activity.title}</h2><p className="mt-1 text-xs text-zinc-600">{dateLabel(activity.activityDate)} · {activity.startsAt??"Sem horário"}</p></div><ChevronRight className="size-5 shrink-0"/></div>
+            <Progress activity={activity}/>
+          </button>)}
+        </section>}
+        {selected&&<>
+          <section aria-label="Progresso da chamada" className="shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
+          <AttendanceNameSearch key={selected.id} activityId={selected.id} attendedTokens={feedback.filter(item=>item.result.status==="recorded"||item.result.status==="already_recorded").map(item=>item.token)} onOpenChange={open=>{if(open){resumeAfterSearch.current=running;setRunning(false);}else setRunning(resumeAfterSearch.current);}} onSelect={token=>{enableAudio();const state=queue.current?.enqueue(token);if(state==="full")setError("Há muitas leituras pendentes. Aguarde a confirmação e tente novamente.");}}/>
+          <section className="attendance-camera" aria-label="Leitor QR">
+            <video ref={video} muted playsInline autoPlay aria-label="Câmera para leitura contínua de QR Codes"/>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true"><div className="attendance-target"/></div>
+            <p role="status" className="absolute inset-x-0 bottom-0 bg-black/75 px-2 py-1 text-center text-xs text-white">{running?(cameraReady?"Leitura contínua · próximo cartão":"Abrindo câmera…"):"Câmera pausada"}</p>
+          </section>
+          <div className="attendance-controls"><Button className="min-h-11 flex-1" onClick={()=>{enableAudio();setRunning(value=>!value);}}>{running?<Pause className="size-4"/>:<Camera className="size-4"/>}{running?"Pausar câmera":"Retomar câmera"}</Button>
+            <Button variant="outline" size="icon" className="min-h-11 min-w-11" aria-label={sound?"Desligar som":"Ligar som"} aria-pressed={sound} onClick={()=>{setSound(value=>!value);if(!sound)enableAudio(true);}}>{sound?<Volume2 className="size-5"/>:<VolumeX className="size-5"/>}</Button></div>
+          {pending.pending>0&&<section className="shrink-0 rounded-lg bg-amber-50 p-2 text-xs text-amber-950" aria-live="polite"><p>{pending.pending} leitura{pending.pending===1?"":"s"} aguardando confirmação{pending.failed?` · ${pending.failed} com falha`:"…"}</p>{pending.failed>0&&<Button className="mt-1 min-h-11" size="sm" variant="outline" onClick={()=>queue.current?.retryFailed()}>Tentar pendentes novamente</Button>}</section>}
+          <section aria-label="Últimas leituras" aria-live="polite" className="shrink-0">
+            {currentFeedback?<div className="attendance-feedback" data-state={currentFeedback.result.status==="recorded"?"success":currentFeedback.result.status==="already_recorded"?"duplicate":"error"}>
+              {"participantName" in currentFeedback.result?<>
+                <div className="identity">{currentFeedback.details?.photoUrl?<img src={currentFeedback.details.photoUrl} alt={`Foto de ${currentFeedback.result.participantName}`}/>:<div className="attendance-avatar grid place-items-center text-sm font-bold" aria-label="Foto indisponível">{currentFeedback.result.participantName.split(/\s+/).slice(0,2).map(part=>part[0]).join("")}</div>}
+                <div className="min-w-0 flex-1"><h2>{currentFeedback.details?.fullName??currentFeedback.result.participantName}</h2><p>{currentFeedback.result.status==="recorded"?"Presença confirmada":"Já registrado · não conta novamente"}</p><p>{currentFeedback.details?.choirName??(currentFeedback.detailsPending?"Carregando coro…":"Coro indisponível")}</p><p>{currentFeedback.details?.lodging?`Quarto: ${currentFeedback.details.lodging.room}`:currentFeedback.detailsPending?"Carregando acomodação…":"Sem quarto/apartamento atribuído"}</p></div></div>
+                <Button size="sm" variant="ghost" className="mt-1 min-h-11 w-full" onClick={()=>{setRunning(false);setExpandedId(currentFeedback.id);}}>Dados, van e alimentação</Button>
+              </>:<p>{currentFeedback.result.message}</p>}
+            </div>:<p className="p-2 text-center text-xs text-zinc-600">Aproxime o QR do cartão. A câmera continua aberta após cada leitura.</p>}
+          </section>
+        </>}
+        {selectedId&&!selected&&activities!==null&&<div><p className="text-sm">Atividade indisponível.</p><Button onClick={back}>Voltar às atividades</Button></div>}
+      </div>}
     </div>
+    <Dialog open={Boolean(expanded)} onOpenChange={open=>{if(!open)setExpandedId(null);}}><DialogContent className="internal-app attendance-theme max-h-[90dvh] overflow-y-auto bg-white">
+      <DialogHeader><DialogTitle>{expanded&&"participantName" in expanded.result?expanded.result.participantName:"Dados do participante"}</DialogTitle><DialogDescription>Van e restrições alimentares são salvas na inscrição. A câmera fica pausada durante esta revisão.</DialogDescription></DialogHeader>
+      {expanded&&<LogisticsAnswers id={expanded.id} token={expanded.token} loaded={expanded.details!==undefined} loading={Boolean(expanded.detailsPending)} initialDietaryRestriction={expanded.details?.dietaryRestriction??null} initialDietaryRestrictionTypes={expanded.details?.dietaryRestrictionTypes??[]} initialDietaryRestrictionOther={expanded.details?.dietaryRestrictionOther??null} initialUsesEventVan={expanded.details?.usesEventVan??null} save={saveLogistics}/>}
+    </DialogContent></Dialog>
   </main>;
 }
