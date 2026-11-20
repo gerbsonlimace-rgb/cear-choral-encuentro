@@ -71,19 +71,6 @@ function drawBars(
   return y - 20 - Math.min(items.length, 10) * rowHeight;
 }
 
-async function embedRegentPhoto(doc: PDFDocument, url: string | null) {
-  if (!url) return null;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length < 32 || bytes.length > 5_000_000) return null;
-    try { return await doc.embedJpg(bytes); } catch { return await doc.embedPng(bytes); }
-  } catch {
-    return null;
-  }
-}
-
 /** Server-side infographic: summary charts, Ceará map and one section per choir. */
 export async function buildParticipantMapInfographic(data: ParticipantMapData): Promise<ParticipantMapPdfFile> {
   const doc = await PDFDocument.create();
@@ -190,7 +177,7 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
     });
   });
 
-  // Pages 2+ — one card per choir with voices and the regent photo.
+  // Pages 2+ — one card per choir, without participant photos.
   const perPage = 3;
   for (let start = 0; start < data.choirs.length; start += perPage) {
     page = doc.addPage([595, 842]);
@@ -206,24 +193,14 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
       page.drawText(printable(`${choir.total} participantes · ${choir.diocese ?? "Sem diocese"}`, font), {
         x: x + 14, y: y - 36, font, size: 8, color: muted,
       });
-      let photo: Awaited<ReturnType<PDFDocument["embedJpg"]>> | null = null;
-      if (choir.regentPhotoUrl) photo = await embedRegentPhoto(doc, choir.regentPhotoUrl);
-      if (photo) {
-        const size = photo.scaleToFit(62, 62);
-        page.drawImage(photo, { x: x + 14, y: y - 108, ...size });
-      } else {
-        page.drawRectangle({ x: x + 14, y: y - 108, width: 62, height: 62, color: rgb(0.88, 0.90, 0.93) });
-        const initials = printable((choir.regentName ?? "?").split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase(), font);
-        page.drawText(initials, { x: x + 30, y: y - 80, font: bold, size: 16, color: accent });
-      }
-      page.drawText(printable("Regente", font), { x: x + 88, y: y - 60, font, size: 7, color: muted });
+      page.drawText(printable("Regente", font), { x: x + 14, y: y - 62, font, size: 7, color: muted });
       page.drawText(printable(choir.regentName ?? "Não informado", font), {
-        x: x + 88, y: y - 76, font: bold, size: 10, color: ink,
+        x: x + 14, y: y - 78, font: bold, size: 10, color: ink,
       });
       page.drawText(printable(choir.city ? `Sede: ${choir.city}` : "Sem localização", font), {
-        x: x + 88, y: y - 90, font, size: 8, color: muted,
+        x: x + 14, y: y - 92, font, size: 8, color: muted,
       });
-      drawBars(page, x + 14, y - 122, 497, "Naipes", choir.voices, font, bold, accents[index % accents.length], 16);
+      drawBars(page, x + 14, y - 108, 497, "Naipes", choir.voices, font, bold, accents[index % accents.length], 16);
     }
   }
   if (data.choirs.length === 0) {
