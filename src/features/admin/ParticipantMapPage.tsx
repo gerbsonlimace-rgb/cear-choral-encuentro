@@ -194,7 +194,7 @@ export function ParticipantMapPage({
                 <InternalMetricCard dense label="Homens" value={String(male)} />
                 <InternalMetricCard dense label="Mulheres" value={String(female)} />
                 <InternalMetricCard dense label="Não informado" value={String(unknownGender)} />
-                <InternalMetricCard dense label="Estimados pelo naipe" value={String(inferredGenderCount)} />
+                <InternalMetricCard dense label="Estimados pelo nome" value={String(inferredGenderCount)} />
                 <InternalMetricCard dense label="Coros" value={String(data.choirs.length)} icon={Music2} />
               </div>
 
@@ -203,7 +203,7 @@ export function ParticipantMapPage({
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Distribuição por gênero</CardTitle>
                     <CardDescription>
-                      {countLabel(data.genders)} · gênero informado prevalece; ausências são estimadas pelo naipe vocal.
+                      {countLabel(data.genders)} · gênero informado prevalece; ausências são estimadas pelo nome.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="h-64">
@@ -281,7 +281,7 @@ export function ParticipantMapPage({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Nomes por gênero</CardTitle>
-                  <CardDescription>* Gênero estimado pelo naipe vocal; gênero informado prevalece.</CardDescription>
+                  <CardDescription>* Gênero estimado pelo nome; gênero informado prevalece.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   {data.genderGroups.map((group) => (

@@ -120,7 +120,7 @@ export async function buildParticipantMapInfographic(data: ParticipantMapData): 
   drawBars(page, 522, 424, 286, "Faixa etária", data.ageBands, font, bold, accents[3], 20);
   page.drawText(
     printable(
-      `${data.inferredGenderCount} gênero(s) estimado(s) pelo naipe vocal; o gênero informado tem prioridade.`,
+      `${data.inferredGenderCount} gênero(s) estimado(s) pelo nome; o gênero informado tem prioridade.`,
       font,
     ),
     { x: 34, y: 315, font, size: 7, color: muted },

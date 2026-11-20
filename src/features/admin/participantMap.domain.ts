@@ -59,6 +59,13 @@ const CONFIRMED_STATUSES = new Set(["paid", "partially_paid", "exempt"]);
 
 const VOICE_KEYS = voicePartOptions.map((option) => option.value);
 const GENDER_KEYS = ["masculino", "feminino", "nao_informado"] as const;
+const FEMALE_FIRST_NAMES = new Set(
+  "ana alice amanda amelia amanda andrea antonia beatriz bianca camila carla carolina clara claudia cristina daniela debora edigleuma eliane eliana elisabete emilia ester fabiana fatima fernanda francisca gloria helena iracema iris isabel janaina josefa julia juliana lais larissa leticia lucia luciana luiza macrina margarida maria marilene marisa marlene matea neide neusa nelsiana paula paulina raquel rafaela regina rosa ruth socorro valeria vanessa veronica vitoria".split(" "),
+);
+const MALE_FIRST_NAMES = new Set(
+  "alexandre antonio arthur augusto breno caio carlos cesar cicero clayton daniel davi diego domingos edmilson elias emmanuel emanuel euritonio felipe filipe fernando francisco gabriel henrique iury joao jorge jose luca lucas luiz manuel marcelo marcos mateus matheus miguel paulo pedro rafael raimundo ricardo samuel thiago tomas vinicius vitor victor yuri leonys".split(" "),
+);
+const NAME_PREFIXES = new Set(["d", "dom", "frei", "fre", "padre", "pe", "irma", "ir"]);
 
 export function isConfirmedParticipant(row: AdminRegistrationRow): boolean {
   return !row.cancelledAt && CONFIRMED_STATUSES.has(row.financialState?.status ?? row.paymentStatus);
@@ -110,17 +117,23 @@ function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean 
   if (declared && declared in GENDER_LABELS && declared !== "nao_informado") {
     return { key: declared, inferred: false };
   }
-
-  switch (row.voicePart?.trim().toLocaleLowerCase("pt-BR")) {
-    case "soprano":
-    case "contralto":
-      return { key: "feminino", inferred: true };
-    case "tenor":
-    case "baixo":
-      return { key: "masculino", inferred: true };
-    default:
-      return { key: "nao_informado", inferred: false };
-  }
+  const firstName = row.name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .map((part) => part.replace(/[^a-z]/g, ""))
+    .find((part) => part && !NAME_PREFIXES.has(part)) ?? "";
+  const key = FEMALE_FIRST_NAMES.has(firstName)
+    ? "feminino"
+    : MALE_FIRST_NAMES.has(firstName)
+      ? "masculino"
+      : firstName.endsWith("a")
+        ? "feminino"
+        : firstName.endsWith("o")
+          ? "masculino"
+      : "nao_informado";
+  return { key, inferred: key !== "nao_informado" };
 }
 
 function countGenders(rows: AdminRegistrationRow[]): { counts: ParticipantCount[]; inferred: number } {
