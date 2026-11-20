@@ -146,7 +146,7 @@ import {
   type ManualPaymentRemainder,
 } from "./admin-manual-payment.domain";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { EventReportRoleAction } from "./EventReportRoleAction";
+import { EventManagementRoleActions } from "./EventManagementRoleActions";
 import { AdminWhatsAppToolbar, AdminRegistrationWhatsAppButton, AdminWhatsAppSelection, useAdminWhatsApp, type AdminWhatsAppController } from "./AdminWhatsAppActions";
 import { AdminBrevoCardEmail } from "./AdminBrevoCardEmail";
 
@@ -699,7 +699,7 @@ function RegistrationViews({
   onEdit,
   roles,
   onToggleAdmin,
-  onEventReportsChange,
+  onEventManagementPermissionChange,
 }: {
   rows: AdminRegistrationRow[];
   whatsApp: AdminWhatsAppController;
@@ -719,7 +719,7 @@ function RegistrationViews({
   onEdit?: (row: AdminRegistrationRow) => void;
   roles?: Record<string, RegistrationAdminRole>;
   onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
-  onEventReportsChange?: (id: string, enabled: boolean) => void;
+  onEventManagementPermissionChange?: (id: string, permission: "reports" | "scan" | "archive", enabled: boolean) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<AdminRegistrationRow | null>(null);
   const openWithKeyboard = (event: KeyboardEvent<HTMLElement>, row: AdminRegistrationRow) => {
@@ -805,7 +805,7 @@ function RegistrationViews({
                     onEdit={onEdit}
                     role={roles?.[row.id]}
                     onToggleAdmin={onToggleAdmin}
-                    onEventReportsChange={onEventReportsChange}
+                    onEventManagementPermissionChange={onEventManagementPermissionChange}
                     busy={participantActionBusy}
                   />
                 </TableCell>
@@ -853,7 +853,7 @@ function RegistrationViews({
                   onEdit={onEdit}
                   role={roles?.[row.id]}
                   onToggleAdmin={onToggleAdmin}
-                    onEventReportsChange={onEventReportsChange}
+                    onEventManagementPermissionChange={onEventManagementPermissionChange}
                   busy={participantActionBusy}
                 />
               </div>
@@ -906,7 +906,7 @@ function RegistrationActions({
   onEdit,
   role,
   onToggleAdmin,
-  onEventReportsChange,
+  onEventManagementPermissionChange,
   busy,
 }: {
   row: AdminRegistrationRow;
@@ -925,7 +925,7 @@ function RegistrationActions({
   onEdit?: (row: AdminRegistrationRow) => void;
   role?: RegistrationAdminRole;
   onToggleAdmin?: (row: AdminRegistrationRow, makeAdmin: boolean) => Promise<void>;
-  onEventReportsChange?: (id: string, enabled: boolean) => void;
+  onEventManagementPermissionChange?: (id: string, permission: "reports" | "scan" | "archive", enabled: boolean) => void;
   busy: boolean;
 }) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState(false);
@@ -1043,7 +1043,7 @@ function RegistrationActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <EventReportRoleAction registrationId={row.id} role={role} cancelled={Boolean(row.cancelledAt)} onChanged={onEventReportsChange} />
+          <EventManagementRoleActions registrationId={row.id} role={role} cancelled={Boolean(row.cancelledAt)} onChanged={onEventManagementPermissionChange} />
           <DropdownMenuSeparator />
           {onEdit && (
             <>
@@ -2896,7 +2896,7 @@ export function AdminRegistrationsPage({
                   onEdit={openEditDialog}
                   roles={roles}
                   onToggleAdmin={runToggleAdmin}
-                  onEventReportsChange={(id, enabled) => setRoles(current => ({ ...current, [id]: { ...current[id], isEventReports: enabled } }))}
+                  onEventManagementPermissionChange={(id, permission, enabled) => setRoles(current => ({ ...current, [id]: { ...current[id], [permission === "reports" ? "isEventReports" : permission === "scan" ? "isEventScanner" : "isEventArchiver"]: enabled } }))}
                 />
               ) : (
                 <Card>

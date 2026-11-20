@@ -20,20 +20,26 @@ export async function unlockEventManagement(cpf:string) {
   const account=await supabaseAdmin.from("participant_accounts").select("user_id,access_status").eq("registration_id",result.data.id).maybeSingle();
   if(account.error||!account.data?.user_id||account.data.access_status!=="active")throw new Error("CPF não liberado para o Gerenciamento do evento.");
   const access=await getEventManagementAccess(account.data.user_id);
-  if(!access.canReport&&!access.canScan)throw new Error("CPF não liberado para o Gerenciamento do evento.");
-  const payload=encode(new TextEncoder().encode(JSON.stringify({userId:account.data.user_id,exp:Math.floor(now/1000)+duration})));
+  if(!access.canReport&&!access.canScan&&!access.canArchive)throw new Error("CPF não liberado para o Gerenciamento do evento.");
+  const payload=encode(new TextEncoder().encode(JSON.stringify({userId:account.data.user_id,registrationId:result.data.id,exp:Math.floor(now/1000)+duration})));
   const signature=encode(new Uint8Array(await crypto.subtle.sign("HMAC",await key(),new TextEncoder().encode(payload))));
   setCookie(cookieName,`${payload}.${signature}`,{httpOnly:true,sameSite:"strict",secure:new URL(request.url).protocol==="https:",path:"/",maxAge:duration});
   attempts.delete(ip);return access;
 }
-export async function readEventManagementPass() {
+export async function readEventManagementPassIdentity(): Promise<{ userId: string; registrationId: string } | null> {
   try{
-    const value=getCookie(cookieName);if(!value)return {canScan:false,canReport:false};
+    const value=getCookie(cookieName);if(!value)return null;
     const [payload,signature,...rest]=value.split(".");if(rest.length||!payload||!signature)throw new Error();
     if(!await crypto.subtle.verify("HMAC",await key(),decode(signature),new TextEncoder().encode(payload)))throw new Error();
     const parsed=JSON.parse(new TextDecoder().decode(decode(payload)));
-    if(typeof parsed.userId!=="string"||typeof parsed.exp!=="number"||parsed.exp<Date.now()/1000)throw new Error();
-    return await getEventManagementAccess(parsed.userId);
-  }catch{return {canScan:false,canReport:false};}
+    if(typeof parsed.userId!=="string"||typeof parsed.registrationId!=="string"||typeof parsed.exp!=="number"||parsed.exp<Date.now()/1000)throw new Error();
+    return {userId:parsed.userId,registrationId:parsed.registrationId};
+  }catch{return null;}
+}
+export async function readEventManagementPass() {
+  const identity=await readEventManagementPassIdentity();
+  if(!identity)return {canScan:false,canReport:false,canArchive:false};
+  try{return await getEventManagementAccess(identity.userId);}
+  catch{return {canScan:false,canReport:false,canArchive:false};}
 }
 export function lockEventManagement(){deleteCookie(cookieName,{path:"/"});}

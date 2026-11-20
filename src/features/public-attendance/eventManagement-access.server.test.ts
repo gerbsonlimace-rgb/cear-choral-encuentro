@@ -10,11 +10,16 @@ const account = {
 describe("independent scanner and report access", () => {
   it("administration alone never bypasses the explicit report permission", () => {
     expect(evaluateEventManagementAccess({ app_metadata: { user_metadata_report: "registration" } }, account, true))
-      .toEqual({ canScan: true, canReport: false });
+      .toEqual({ canScan: true, canReport: false, canArchive: false });
   });
   it("reports permission grants no scanner or administrative access", () => {
     expect(evaluateEventManagementAccess({ app_metadata: { event_report_registration_id: "registration" } }, account, false))
-      .toEqual({ canScan: false, canReport: true });
+      .toEqual({ canScan: false, canReport: true, canArchive: false });
+  });
+  it("grants scanner and archive capabilities only for their assigned registration", () => {
+    expect(evaluateEventManagementAccess({ app_metadata: { event_scan_registration_id: "registration", event_archive_registration_id: "registration" } }, account, false))
+      .toEqual({ canScan: true, canReport: false, canArchive: true });
+    expect(evaluateEventManagementAccess({ app_metadata: { event_archive_registration_id: "other" } }, account, false).canArchive).toBe(false);
   });
   it("cancelled and inactive accounts do not receive report access", () => {
     expect(evaluateEventManagementAccess(

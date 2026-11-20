@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Camera, ClipboardList, ChevronRight, Check, Pause, RefreshCw, Volume2, VolumeX, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Archive, Camera, ClipboardList, ChevronRight, Check, Pause, RefreshCw, Volume2, VolumeX, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
+import { archivePublicAttendanceCall, getPublicAttendanceActivities, getPublicAttendanceConfirmation, recordPublicAttendance } from "@/lib/public-attendance.functions";
 import { AttendanceReportsPanel } from "./AttendanceReportsPanel";
 import { AttendanceNameSearch } from "./AttendanceNameSearch";
 import { lockEventManagement } from "@/lib/public-attendance.functions";
@@ -13,6 +13,7 @@ import { dietaryRestrictionOptions, extractParticipantCardToken, mergeAttendance
 type Props = {
   canScan?: boolean;
   canReport?: boolean;
+  canArchive?: boolean;
   loadActivities?: () => Promise<PublicAttendanceActivity[]>;
   record?: (input: { data: {activityId: string; token: string} }) => Promise<PublicAttendanceResult>;
   saveLogistics?: (input: {data: PublicAttendanceLogisticsInput}) => Promise<PublicAttendanceLogisticsResult>;
@@ -143,14 +144,15 @@ function LogisticsAnswers({ id, token, loaded, loading, initialDietaryRestrictio
 function Progress({activity}: {activity: PublicAttendanceActivity}) {
   const percent=activity.totalConfirmed ? Math.min(100,Math.round(activity.attended/activity.totalConfirmed*100)) : 0;
   return <div>
-    <div className="flex items-baseline justify-between gap-3"><p className="font-semibold tabular-nums">{activity.attended} de {activity.totalConfirmed} presentes</p><span className="text-sm tabular-nums text-zinc-600">{percent}%</span></div>
-    <progress className="mt-2 h-2 w-full overflow-hidden rounded bg-zinc-200 accent-zinc-950 [&::-webkit-progress-bar]:bg-zinc-200 [&::-webkit-progress-value]:bg-zinc-950" aria-label={`Progresso de ${activity.title}`} max={Math.max(1,activity.totalConfirmed)} value={activity.attended}/>
+    <div className="flex items-baseline justify-between gap-3"><p className="font-semibold tabular-nums">{activity.attended} presentes <span className="font-normal text-zinc-600">/ {activity.totalConfirmed} total</span></p><span className="text-xs tabular-nums text-zinc-600">{percent}%</span></div>
+    <progress className="mt-1 h-1 w-full overflow-hidden rounded bg-zinc-200 accent-zinc-950 [&::-webkit-progress-bar]:bg-zinc-200 [&::-webkit-progress-value]:bg-zinc-950" aria-label={`Progresso de ${activity.title}`} max={Math.max(1,activity.totalConfirmed)} value={activity.attended}/>
   </div>;
 }
 
-export function PublicAttendancePage({canScan=true,canReport=true,loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
-  const [tab,setTab]=useState<"scanner"|"reports">(canScan?"scanner":"reports");
+export function PublicAttendancePage({canScan=true,canReport=true,canArchive=false,loadActivities=getPublicAttendanceActivities,record=recordPublicAttendance,saveLogistics=async(input)=>(await import("@/lib/public-attendance.functions")).savePublicAttendanceLogistics(input),startScanner=startContinuousQrScanner}: Props) {
+  const [tab,setTab]=useState<"scanner"|"reports">(canScan||canArchive?"scanner":"reports");
   const [locking,setLocking]=useState(false);
+  const [archiving,setArchiving]=useState(false),[archiveMessage,setArchiveMessage]=useState("");
   const [activities,setActivities]=useState<PublicAttendanceActivity[]|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [running,setRunning]=useState(false),[cameraReady,setCameraReady]=useState(false);
@@ -235,7 +237,7 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
   useEffect(()=>()=>{void audio.current?.close().catch(()=>{});},[]);
 
   const enableAudio=(force=false)=>{if(!sound&&!force)return;try{if(!audio.current&&typeof AudioContext!=="undefined")audio.current=new AudioContext();void audio.current?.resume().catch(()=>{});}catch{/* Sound is optional. */}};
-  const choose=(id:string)=>{enableAudio();awaitingConfirmation.current=false;setSelectedId(id);setRunning(true);};
+  const choose=(id:string)=>{if(canScan)enableAudio();awaitingConfirmation.current=false;setSelectedId(id);setRunning(canScan);setArchiveMessage("");};
   const back=()=>{if(queue.current?.snapshot().pending&&!window.confirm("Ainda há leituras sem confirmação. Sair descarta essas pendências deste aparelho. Deseja sair?"))return;awaitingConfirmation.current=false;setRunning(false);setSelectedId(null);setFeedback([]);setPending(emptyQueue);void refresh();};
 
   const currentFeedback=feedback[0];
@@ -253,13 +255,13 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
         </div>
       </header>
       <div className="attendance-tabs" role="tablist" aria-label="Gerenciamento do evento">
-        {canScan&&<button type="button" role="tab" id="attendance-scanner-tab" aria-label="Atividades e leitor QR" aria-selected={tab==="scanner"} aria-controls="attendance-scanner-panel" onClick={()=>switchTab("scanner")}><Camera aria-hidden="true" className="size-5"/><span>Leitor QR</span></button>}
+        {(canScan||canArchive)&&<button type="button" role="tab" id="attendance-scanner-tab" aria-label="Atividades e leitor QR" aria-selected={tab==="scanner"} aria-controls="attendance-scanner-panel" onClick={()=>switchTab("scanner")}><Camera aria-hidden="true" className="size-5"/><span>{canScan?"Leitor QR":"Chamadas"}</span></button>}
         {canReport&&<button type="button" role="tab" id="attendance-reports-tab" aria-selected={tab==="reports"} aria-controls="attendance-reports-panel" onClick={()=>switchTab("reports")}><ClipboardList aria-hidden="true" className="size-5"/><span>Relatórios</span></button>}
       </div>
       {error&&<p role="alert" className="attendance-error">{error}</p>}
       {activities===null&&<p role="status" className="text-sm text-zinc-600">Carregando atividades…</p>}
       {tab==="reports"&&canReport&&activities&&<div role="tabpanel" id="attendance-reports-panel" aria-labelledby="attendance-reports-tab" className="attendance-view"><AttendanceReportsPanel activities={activities} initialActivityId={selectedId}/></div>}
-      {tab==="scanner"&&canScan&&<div role="tabpanel" id="attendance-scanner-panel" aria-labelledby="attendance-scanner-tab" className="attendance-view">
+      {tab==="scanner"&&(canScan||canArchive)&&<div role="tabpanel" id="attendance-scanner-panel" aria-labelledby="attendance-scanner-tab" className="attendance-view">
         {!selectedId&&activities&&<section className="attendance-activities" aria-label="Atividades com presença">
           {activities.length===0&&<p className="p-4 text-sm text-zinc-600">Nenhuma atividade com presença habilitada.</p>}
           {activities.map(activity=><button key={activity.id} type="button" onClick={()=>choose(activity.id)} className="attendance-activity">
@@ -268,6 +270,21 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
           </button>)}
         </section>}
         {selected&&<>
+          {canArchive&&<section className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white p-2">
+            <div><p className="text-sm font-semibold">Arquivar e zerar chamada</p><p className="text-xs text-zinc-600">Guarda o histórico e reinicia a contagem. A câmera permanece ligada.</p></div>
+            <Button size="sm" variant="outline" disabled={archiving||pending.pending>0} onClick={()=>{
+              if(pending.pending>0){setError("Aguarde a confirmação das leituras pendentes antes de arquivar.");return;}
+              if(!window.confirm(`Arquivar ${selected.title} e zerar a contagem ativa? O histórico ficará guardado e a câmera continuará ligada.`))return;
+              setArchiving(true);setArchiveMessage("");setError("");
+              void archivePublicAttendanceCall({data:{activityId:selected.id}}).then(result=>{
+                setActivities(items=>items?.map(item=>item.id===selected.id?{...item,attended:0,revision:result.revision}:item)??null);
+                setFeedback([]);awaitingConfirmation.current=false;setArchiveMessage(`Chamada arquivada. ${result.archivedCount} presença(s) foram guardadas no histórico; a contagem ativa foi zerada.`);
+                if(canScan)setRunning(true);
+              }).catch(cause=>setError(cause instanceof Error?cause.message:"Não foi possível arquivar a chamada.")).finally(()=>setArchiving(false));
+            }}><Archive className="size-4"/>{archiving?"Arquivando…":"Arquivar e zerar"}</Button>
+          </section>}
+          {archiveMessage&&<p role="status" className="rounded-md bg-emerald-50 p-2 text-sm text-emerald-900">{archiveMessage}</p>}
+          {canScan&&<>
           <section aria-label="Progresso da chamada" className="attendance-scanner-progress shrink-0 rounded-xl border bg-white px-3 py-2"><Progress activity={selected}/><p className="text-xs text-zinc-600">{Math.max(0,selected.totalConfirmed-selected.attended)} faltantes · inscrições confirmadas</p></section>
           <div className="attendance-scanner-workspace">
           <div className="attendance-scanner-capture">
@@ -293,6 +310,7 @@ export function PublicAttendancePage({canScan=true,canReport=true,loadActivities
           </section>
           </div>
           </div>
+          </>}
         </>}
         {selectedId&&!selected&&activities!==null&&<div><p className="text-sm">Atividade indisponível.</p><Button onClick={back}>Voltar às atividades</Button></div>}
       </div>}

@@ -15,6 +15,7 @@ export type PublicAttendanceRepository = {
     usesEventVan?: boolean | null;
   } | null>;
   record(input: { activityId: string; token: string }): Promise<PublicAttendanceResult>;
+  archiveCall(input: { activityId: string; registrationId: string }): Promise<{ archivedCount: number; revision: string }>;
   saveLogistics?(input: PublicAttendanceLogisticsInput): Promise<PublicAttendanceLogisticsResult>;
   prepareCards(): Promise<AttendanceCardExportRow[]>;
 };
@@ -48,6 +49,7 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
       };
     },
     record: async (input: unknown) => repository.record(publicAttendanceInputSchema.parse(input)),
+    archiveCall: (input: { activityId: string; registrationId: string }) => repository.archiveCall(input),
     async saveLogistics(input: unknown) {
       const parsed = publicAttendanceLogisticsInputSchema.parse(input);
       if (!repository.saveLogistics) throw new Error("Não foi possível salvar as respostas. Tente novamente.");
