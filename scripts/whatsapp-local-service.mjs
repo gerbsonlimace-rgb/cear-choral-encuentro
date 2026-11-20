@@ -84,7 +84,7 @@ const server = createServer(async (request, response) => {
       job = { phase: "connecting", total: ids.length, completed: 0, pauseRequested: false };
       try {
         worker = fork(path.join(root, "scripts/prepare-whatsapp-card.mjs"), [
-          `--batch=${ids.length}`, `--ids-file=${idsPath}`, "--managed", "--start", "--send",
+          `--batch=${ids.length}`, `--ids-file=${idsPath}`, "--managed", "--start", "--send", ...(selection.resend ? ["--resend"] : []),
         ], { cwd: root, env: process.env, stdio: ["ignore", "ignore", "ignore", "ipc"], windowsHide: true });
       } catch (error) { unlinkSync(idsPath); throw error; }
       const currentWorker = worker;

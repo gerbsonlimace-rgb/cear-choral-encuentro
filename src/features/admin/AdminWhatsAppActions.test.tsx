@@ -7,7 +7,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: { getSessio
 afterEach(cleanup);
 const row = { id: "5bf18595-a8bb-4d54-bfb1-1ffd2e385304", name: "Ana", paymentStatus: "paid", cancelledAt: null } as AdminRegistrationRow;
 function controller(): AdminWhatsAppController {
-  return { connected: true, requesting: false, error: "", refresh: vi.fn(), pause: vi.fn(), send: vi.fn(),
+  return { connected: true, requesting: false, error: "", refresh: vi.fn(), pause: vi.fn(), send: vi.fn(), resend: vi.fn(),
     selectedIds: [], sendSelected: vi.fn(), toggleSelected: vi.fn(), selectPage: vi.fn(), clearSelection: vi.fn(),
     status: { phase: "idle", total: 0, completed: 0, busy: false, registrations: {} } } as unknown as AdminWhatsAppController;
 }
@@ -27,13 +27,31 @@ describe("WhatsApp actions in registrations", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar todos" }));
     expect(control.send).toHaveBeenCalledExactlyOnceWith();
   });
-  it.each(["offline", "pending", "cancelled", "sent", "review", "busy"])("prevents individual sends when %s", (condition) => {
+  it.each(["sent", "review"] as const)("resends a %s card only after confirmation", (state) => {
+    const control = controller();
+    control.status.registrations[row.id] = state;
+    render(<AdminRegistrationWhatsAppButton row={row} controller={control} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reenviar cartão pelo WhatsApp para Ana" }));
+    expect(control.resend).not.toHaveBeenCalled();
+    expect(control.send).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Reenviar cartão" }));
+    expect(control.resend).toHaveBeenCalledExactlyOnceWith(row.id);
+    expect(control.send).not.toHaveBeenCalled();
+  });
+  it("cancelling the resend confirmation sends nothing", () => {
+    const control = controller();
+    control.status.registrations[row.id] = "sent";
+    render(<AdminRegistrationWhatsAppButton row={row} controller={control} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reenviar cartão pelo WhatsApp para Ana" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(control.resend).not.toHaveBeenCalled();
+  });
+  it.each(["offline", "pending", "cancelled", "busy"])("prevents individual sends when %s", (condition) => {
     const control = controller();
     const participant = { ...row };
     if (condition === "offline") control.connected = false;
     if (condition === "pending") participant.paymentStatus = "pending";
     if (condition === "cancelled") participant.cancelledAt = "2026-11-20T08:00:00Z";
-    if (condition === "sent" || condition === "review") control.status.registrations[row.id] = condition;
     if (condition === "busy") control.status.busy = true;
     render(<AdminRegistrationWhatsAppButton row={participant} controller={control} />);
     expect(screen.getByRole("button")).toBeDisabled();

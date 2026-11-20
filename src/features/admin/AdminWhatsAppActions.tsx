@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, Pause, RefreshCw } from "lucide-react";
+import { MessageCircle, Pause, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import type { AdminRegistrationRow } from "./admin.domain";
@@ -98,6 +102,8 @@ export function useAdminWhatsApp(enabled: boolean, visibleRows: AdminRegistratio
     clearSelection: () => setSelectedIds([]),
     sendSelected: () => selectedIds.length ? command("/jobs", { registrationIds: selectedIds }) : Promise.resolve(),
     send: (registrationId?: string) => command("/jobs", registrationId ? { registrationId } : { scope: "all" }),
+    // Resending is a separate, single-person request so batch sends keep skipping delivered cards.
+    resend: (registrationId: string) => command("/jobs", { resendRegistrationId: registrationId }),
     pause: () => command("/pause", {}),
   };
 }
@@ -150,7 +156,7 @@ export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller
       </div>
       {!connected && <p className="text-xs text-muted-foreground">Neste computador, abra <strong>scripts/iniciar-whatsapp-inscricoes.cmd</strong> e clique em “Conectar serviço”. Se o Chrome pedir acesso à rede local, permita para conectar ao serviço deste computador.</p>}
       {connected && <div role="status" aria-live="polite" className="space-y-1 text-xs text-muted-foreground">
-        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} enviados nesta execução` : ""}. Os cartões já enviados são pulados; tentativas inconclusivas exigem revisão.</p>
+        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} enviados nesta execução` : ""}. Os cartões já enviados são pulados nos envios em lote; para mandar de novo, use “Reenviar cartão” na linha da pessoa.</p>
         {status.total > 0 && <progress aria-label="Progresso dos envios" className="h-2 w-full max-w-md accent-primary" max={status.total} value={status.completed} />}
       </div>}
       {(error || status.error) && <p role="alert" className="text-sm text-destructive">{error || status.error}</p>}
@@ -168,13 +174,39 @@ export function AdminWhatsAppSelection({ row, controller }: { row: AdminRegistra
 }
 
 export function AdminRegistrationWhatsAppButton({ row, controller }: { row: AdminRegistrationRow; controller: AdminWhatsAppController }) {
+  const [confirming, setConfirming] = useState(false);
   const state = controller.status.registrations[row.id];
   const eligible = row.paymentStatus === "paid" && !row.cancelledAt;
   const sending = controller.status.busy && controller.status.registrationId === row.id;
-  return <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11"
-    disabled={!eligible || !controller.connected || controller.status.busy || controller.requesting || state === "sent" || state === "review"}
-    title={!eligible ? "Disponível para inscrições confirmadas e não canceladas" : state === "review" ? "Confira a conversa antes de repetir esta tentativa" : !controller.connected ? "Conecte o serviço local acima da lista" : undefined}
-    aria-label={`Enviar cartão pelo WhatsApp para ${row.name}`} onClick={() => void controller.send(row.id)}>
-    <MessageCircle className="size-4" aria-hidden="true" />{sending ? "Enviando…" : state === "sent" ? "Enviado" : state === "review" ? "Revisar envio" : "Enviar cartão"}
-  </Button>;
+  const alreadyProcessed = state === "sent" || state === "review";
+  const disabled = !eligible || !controller.connected || controller.status.busy || controller.requesting;
+  const title = !eligible ? "Disponível para inscrições confirmadas e não canceladas"
+    : !controller.connected ? "Conecte o serviço local acima da lista"
+    : state === "review" ? "A última tentativa não foi confirmada. Confira a conversa antes de reenviar"
+    : state === "sent" ? "Cartão já enviado. Clique para reenviar" : undefined;
+  return <>
+    <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11" disabled={disabled} title={title}
+      aria-label={`${alreadyProcessed ? "Reenviar" : "Enviar"} cartão pelo WhatsApp para ${row.name}`}
+      onClick={(event) => { event.stopPropagation(); if (alreadyProcessed) setConfirming(true); else void controller.send(row.id); }}>
+      {alreadyProcessed ? <RotateCcw className="size-4" aria-hidden="true" /> : <MessageCircle className="size-4" aria-hidden="true" />}
+      {sending ? "Enviando…" : alreadyProcessed ? "Reenviar cartão" : "Enviar cartão"}
+    </Button>
+    {alreadyProcessed && <p className="mt-1 text-xs text-muted-foreground">{state === "sent" ? "Já enviado" : "Tentativa em revisão"}</p>}
+    <AlertDialog open={confirming} onOpenChange={setConfirming}>
+      <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reenviar cartão para {row.name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {state === "review"
+              ? "A última tentativa não teve confirmação. Abra a conversa no WhatsApp e confira se o cartão já chegou, para não mandar duas vezes."
+              : "Esta pessoa já recebeu o cartão. Um novo cartão, com a mensagem atualizada, será enviado na mesma conversa do WhatsApp."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="min-h-11">Cancelar</AlertDialogCancel>
+          <AlertDialogAction className="min-h-11" onClick={() => void controller.resend(row.id)}>Reenviar cartão</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>;
 }
