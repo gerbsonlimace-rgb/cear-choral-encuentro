@@ -2010,6 +2010,12 @@ export function AdminRegistrationsPage({
   const [gateErrorMessage, setGateErrorMessage] = useState("");
   const [result, setResult] = useState<AdminRegistrationPage | null>(null);
   const whatsApp = useAdminWhatsApp(gate === "authorized", result?.rows);
+  const [whatsAppStatusFilter, setWhatsAppStatusFilter] = useState<"all" | "received" | "sent" | "pending" | "failed" | "review">("all");
+  const whatsAppFilteredRows = (result?.rows ?? []).filter((row) => {
+    if (whatsAppStatusFilter === "all") return true;
+    const delivery = whatsApp.status.registrations[row.id] ?? "pending";
+    return delivery === whatsAppStatusFilter;
+  });
   const [summary, setSummary] = useState<AdminRegistrationSummary | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const filterKey = JSON.stringify([query.search, query.paymentStatus, query.choirId, query.musicalProfile, query.loginStatus]);
@@ -2726,7 +2732,7 @@ export function AdminRegistrationsPage({
                 />
               )
             )}
-            <AdminWhatsAppToolbar controller={whatsApp} rows={result?.rows} />
+            <AdminWhatsAppToolbar controller={whatsApp} rows={whatsAppFilteredRows} />
             <form
               onSubmit={search}
               className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end"
@@ -2836,6 +2842,21 @@ export function AdminRegistrationsPage({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2 sm:w-48">
+                <Label htmlFor="registration-whatsapp-status">Envio pelo WhatsApp</Label>
+                <Select value={whatsAppStatusFilter} disabled={!whatsApp.connected} onValueChange={(value: typeof whatsAppStatusFilter) => setWhatsAppStatusFilter(value)}>
+                  <SelectTrigger id="registration-whatsapp-status"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="received">Recebimento confirmado</SelectItem>
+                    <SelectItem value="sent">Enviado, sem confirmação</SelectItem>
+                    <SelectItem value="pending">Não enviado</SelectItem>
+                    <SelectItem value="failed">Falhou antes do envio</SelectItem>
+                    <SelectItem value="review">Tentativa sem confirmação</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Filtra a página atual. “Enviado” não confirma entrega ou leitura.</p>
+              </div>
             </form>
             {loading && result && (
               <p role="status" className="text-xs text-muted-foreground">Atualizando…</p>
@@ -2855,10 +2876,10 @@ export function AdminRegistrationsPage({
               </Card>
             ) : (
               result &&
-              (result.rows.length ? (
+              (whatsAppFilteredRows.length ? (
                 <RegistrationViews
                   whatsApp={whatsApp}
-                  rows={result.rows.map((row) =>
+                  rows={whatsAppFilteredRows.map((row) =>
                     row.photoUrl || !photoUrls[row.id] ? row : { ...row, photoUrl: photoUrls[row.id] },
                   )}
                   participantActionBusy={participantActionBusy}
@@ -2915,7 +2936,7 @@ export function AdminRegistrationsPage({
                 className="flex flex-wrap items-center justify-between gap-3"
               >
                 <p className="text-xs text-muted-foreground">
-                  Página {result.page} de {pages}
+                    Página {result.page} de {pages}{whatsAppStatusFilter !== "all" ? ` · filtro WhatsApp: ${whatsAppFilteredRows.length} resultado(s) nesta página` : ""}
                 </p>
                 <div className="flex gap-2">
                   <Button

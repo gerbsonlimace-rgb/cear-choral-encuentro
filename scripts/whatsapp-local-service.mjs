@@ -27,7 +27,8 @@ function originAllowed(origin) {
 function progress() {
   const records = existsSync(progressPath) ? JSON.parse(readFileSync(progressPath, "utf8")) : {};
   return Object.fromEntries(Object.entries(records).map(([id, record]) => [id,
-    record.submittedAt || record.manuallySentAt ? "sent" : record.attemptStartedAt ? "review" : "pending"]));
+    record.deliveryConfirmed === true || record.readConfirmed === true ? "received" :
+      record.submittedAt || record.manuallySentAt ? "sent" : record.attemptStartedAt ? "review" : record.failedAt ? "failed" : "pending"]));
 }
 async function authorize(request) {
   const token = request.headers.authorization?.match(/^Bearer (.+)$/)?.[1];

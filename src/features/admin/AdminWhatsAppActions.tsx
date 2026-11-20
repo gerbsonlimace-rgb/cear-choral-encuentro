@@ -17,7 +17,9 @@ type Status = {
   registrationId?: string;
   pauseRequested?: boolean;
   error?: string;
-  registrations: Record<string, "pending" | "sent" | "review">;
+  registrations: Record<string, "pending" | "sent" | "received" | "review" | "failed">;
+  failed?: number;
+  lastFailure?: string;
 };
 const endpoint = "http://127.0.0.1:4319";
 const initial: Status = { phase: "idle", busy: false, total: 0, completed: 0, registrations: {} };
@@ -119,12 +121,13 @@ export type AdminWhatsAppController = ReturnType<typeof useAdminWhatsApp>;
 export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller: AdminWhatsAppController; rows?: AdminRegistrationRow[] }) {
   const { status, connected, requesting, error } = controller;
   const [confirmSelected, setConfirmSelected] = useState(false);
-  const processedSelected = controller.selectedIds.filter(id => ["sent", "review"].includes(status.registrations[id])).length;
+  const processedSelected = controller.selectedIds.filter(id => ["sent", "received", "review"].includes(status.registrations[id])).length;
   const eligibleRows = rows.filter((row) => canSelectWhatsAppRegistration(row, status.registrations));
   const selectedOnPage = eligibleRows.filter((row) => controller.selectedIds.includes(row.id)).length;
   const phaseLabels: Record<string, string> = {
     idle: "Pronto para enviar", connecting: "Abrindo o WhatsApp no Chrome…",
     preparing: "Preparando o próximo cartão…", sending: "Enviando cartão…",
+    skipped: "Falha neste cartão; seguindo para o próximo…",
     sent: "Cartão enviado", complete: "Envios concluídos", paused: "Envio pausado", error: "Envio interrompido",
   };
   return (
@@ -164,7 +167,8 @@ export function AdminWhatsAppToolbar({ controller, rows = noRows }: { controller
       </div>
       {!connected && <p className="text-xs text-muted-foreground">Neste computador, abra <strong>scripts/iniciar-whatsapp-inscricoes.cmd</strong> e clique em “Conectar serviço”. Se o Chrome pedir acesso à rede local, permita para conectar ao serviço deste computador.</p>}
       {connected && <div role="status" aria-live="polite" className="space-y-1 text-xs text-muted-foreground">
-        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} enviados nesta execução` : ""}. “Enviar todos” pula quem já recebeu. Para reenviar, selecione as pessoas e confirme o reenvio, ou use “Reenviar cartão”.</p>
+        <p>{phaseLabels[status.phase] || "Acompanhando envios"}{status.total > 0 ? ` · ${status.completed} de ${status.total} processados · ${Math.max(0,status.completed-(status.failed??0))} cliques registrados · ${status.failed??0} pulados` : ""}. Falhas antes do clique ficam marcadas e o lote segue. Tentativas sem confirmação são marcadas para revisão, sem repetir automaticamente.</p>
+        {status.lastFailure&&<p role="alert">Última falha: {status.lastFailure}</p>}
         {status.total > 0 && <progress aria-label="Progresso dos envios" className="h-2 w-full max-w-md accent-primary" max={status.total} value={status.completed} />}
       </div>}
       {(error || status.error) && <p role="alert" className="text-sm text-destructive">{error || status.error}</p>}
@@ -193,12 +197,13 @@ export function AdminRegistrationWhatsAppButton({ row, controller }: { row: Admi
   const state = controller.status.registrations[row.id];
   const eligible = row.paymentStatus === "paid" && !row.cancelledAt;
   const sending = controller.status.busy && controller.status.registrationId === row.id;
-  const alreadyProcessed = state === "sent" || state === "review";
+  const alreadyProcessed = state === "sent" || state === "received" || state === "review";
   const disabled = !eligible || !controller.connected || controller.status.busy || controller.requesting;
   const title = !eligible ? "Disponível para inscrições confirmadas e não canceladas"
     : !controller.connected ? "Conecte o serviço local acima da lista"
     : state === "review" ? "A última tentativa não foi confirmada. Confira a conversa antes de reenviar"
-    : state === "sent" ? "Cartão já enviado. Clique para reenviar" : undefined;
+    : state === "received" ? "Recebimento confirmado pelo WhatsApp. Clique para reenviar"
+    : state === "sent" ? "Cartão enviado, mas sem confirmação de entrega. Clique para reenviar" : undefined;
   return <>
     <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11" disabled={disabled} title={title}
       aria-label={`${alreadyProcessed ? "Reenviar" : "Enviar"} cartão pelo WhatsApp para ${row.name}`}
@@ -206,7 +211,7 @@ export function AdminRegistrationWhatsAppButton({ row, controller }: { row: Admi
       {alreadyProcessed ? <RotateCcw className="size-4" aria-hidden="true" /> : <MessageCircle className="size-4" aria-hidden="true" />}
       {sending ? "Enviando…" : alreadyProcessed ? "Reenviar cartão" : "Enviar cartão"}
     </Button>
-    {alreadyProcessed && <p className="mt-1 text-xs text-muted-foreground">{state === "sent" ? "Já enviado" : "Tentativa em revisão"}</p>}
+    {alreadyProcessed && <p className="mt-1 text-xs text-muted-foreground">{state === "received" ? "Recebimento confirmado" : state === "sent" ? "Enviado · entrega sem confirmação" : "Tentativa em revisão"}</p>}
     <AlertDialog open={confirming} onOpenChange={setConfirming}>
       <AlertDialogContent onClick={(event) => event.stopPropagation()}>
         <AlertDialogHeader>
