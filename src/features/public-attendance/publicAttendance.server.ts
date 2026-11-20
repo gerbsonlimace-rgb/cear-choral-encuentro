@@ -1,7 +1,7 @@
 import {
   buildAttendanceCardsCsv, participantCardTokenSchema, participantCardUrl, publicAttendanceInputSchema,
   publicAttendanceLogisticsInputSchema,
-  type AttendanceCardExportRow, type PublicAttendanceActivity, type PublicAttendanceConfirmation,
+  type AttendanceCardExportRow, type DietaryRestrictionKey, type PublicAttendanceActivity, type PublicAttendanceConfirmation,
   type PublicAttendanceLogisticsInput, type PublicAttendanceLogisticsResult,
   type PublicAttendanceResult, type PublicParticipantCard,
 } from "./publicAttendance.domain";
@@ -10,6 +10,8 @@ export type PublicAttendanceRepository = {
   list(): Promise<PublicAttendanceActivity[]>;
   findCard(token: string): Promise<Pick<PublicParticipantCard,"name"|"choirName"|"eligible"|"fullName"|"photoUrl"|"lodging"> & {
     dietaryRestriction?: boolean | null;
+    dietaryRestrictionTypes?: DietaryRestrictionKey[];
+    dietaryRestrictionOther?: string | null;
     usesEventVan?: boolean | null;
   } | null>;
   record(input: { activityId: string; token: string }): Promise<PublicAttendanceResult>;
@@ -40,6 +42,8 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
         ...(card.photoUrl !== undefined ? { photoUrl: card.photoUrl } : {}),
         ...(card.lodging !== undefined ? { lodging: card.lodging } : {}),
         ...(card.dietaryRestriction !== undefined ? { dietaryRestriction: card.dietaryRestriction } : {}),
+        ...(card.dietaryRestrictionTypes !== undefined ? { dietaryRestrictionTypes: card.dietaryRestrictionTypes } : {}),
+        ...(card.dietaryRestrictionOther !== undefined ? { dietaryRestrictionOther: card.dietaryRestrictionOther } : {}),
         ...(card.usesEventVan !== undefined ? { usesEventVan: card.usesEventVan } : {}),
       };
     },

@@ -42,6 +42,8 @@ export const adminRegistrationColumns = [
   "voice_part",
   "observations",
   "dietary_restriction",
+  "dietary_restriction_types",
+  "dietary_restriction_other",
   "uses_event_van",
   "include_shirt",
   "shirt_size",

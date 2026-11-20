@@ -65,7 +65,7 @@ describe("AdminDocumentsPage", () => {
     const { user } = setup({ getSession: undefined, loadBootstrap });
     await screen.findByRole("heading", { name: "Documentos" });
     expect(loadBootstrap).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole("button", { name: "Cadastrar documento" }));
+    await user.click(await screen.findByRole("button", { name: "Cadastrar documento" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(loadBootstrap).toHaveBeenCalledTimes(1);
   });
