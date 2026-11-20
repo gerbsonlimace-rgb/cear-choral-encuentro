@@ -59,3 +59,28 @@
 .attendance-app-scanning .attendance-target{height:min(74%,42svh)}
 .attendance-app-scanning .attendance-error{max-height:40px;padding:5px}
 @media(min-width:768px){.attendance-app-scanning{padding:4px 16px}.attendance-app-scanning .attendance-shell{gap:4px}.attendance-app-scanning .attendance-camera{max-height:none}.attendance-app-scanning .attendance-header h1{font-size:.875rem}}
+
+/* In the scan state, keep the live QR preview above a focused participant panel. */
+.attendance-app-scanning .attendance-tabs,.attendance-app-scanning .attendance-scanner-progress{display:none}
+.attendance-app-scanning .attendance-view{gap:4px}
+.attendance-app-scanning .attendance-scanner-workspace{grid-template-rows:minmax(210px,43svh) minmax(0,1fr);gap:6px}
+.attendance-app-scanning .attendance-scanner-capture{gap:5px}
+.attendance-app-scanning .attendance-camera{min-height:0;flex:1}
+.attendance-app-scanning .attendance-target{height:min(78%,40svh);border-color:#f3d676;border-width:3px}
+.attendance-app-scanning .attendance-controls{gap:5px}
+.attendance-app-scanning .attendance-controls>button{min-height:44px}
+.attendance-app-scanning .attendance-scanner-results{gap:5px}
+.attendance-app-scanning .attendance-latest-read{display:flex;flex-direction:column}
+.attendance-app-scanning .attendance-feedback{display:flex;flex:1;flex-direction:column;gap:10px;padding:10px;border-color:#d4d4d8;background:#fff;color:#18181b}
+.attendance-app-scanning .attendance-feedback .identity img,.attendance-app-scanning .attendance-feedback .identity .attendance-avatar{width:clamp(64px,18vw,84px);height:clamp(64px,18vw,84px)}
+.attendance-app-scanning .attendance-feedback .identity{align-items:center;gap:12px}
+.attendance-app-scanning .attendance-feedback h2{font-size:1.25rem;line-height:1.15}
+.attendance-app-scanning .attendance-feedback p{font-size:.8125rem;line-height:1.3;margin-top:2px;color:#52525b}
+.attendance-app-scanning .attendance-logistics{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
+.attendance-app-scanning .attendance-logistics>div:first-child{gap:8px}
+.attendance-app-scanning .attendance-logistics fieldset{border-color:#d4d4d8;background:#fff;padding:8px}
+.attendance-app-scanning .attendance-logistics legend{font-size:.8125rem}
+.attendance-app-scanning .attendance-logistics label:not(:has(input[type=radio])){min-height:44px}
+.attendance-app-scanning .attendance-confirm-button{position:sticky;bottom:0;z-index:1;min-height:58px;width:100%;flex:none;background:#18181b;color:#fff;font-size:1rem;font-weight:700}
+@media(max-height:720px){.attendance-app-scanning .attendance-scanner-workspace{grid-template-rows:minmax(170px,38svh) minmax(0,1fr)}.attendance-app-scanning .attendance-feedback{gap:6px;padding:8px}.attendance-app-scanning .attendance-logistics{gap:5px}}
+@media(min-width:768px){.attendance-app-scanning .attendance-shell{max-width:720px}.attendance-app-scanning .attendance-scanner-workspace{grid-template-rows:minmax(260px,43svh) minmax(0,1fr)}.attendance-app-scanning .attendance-scanner-results{max-width:720px;width:100%;margin-inline:auto}.attendance-app-scanning .attendance-feedback{padding:14px}}
