@@ -55,7 +55,7 @@ export function createPublicAttendanceService(repository: PublicAttendanceReposi
     },
     async exportCards(origin: string) {
       const rows = await repository.prepareCards();
-      return { csv: buildAttendanceCardsCsv(rows, origin), filename: "cartoes-participantes.csv", count: rows.length };
+      return { csv: buildAttendanceCardsCsv(rows, origin), filename: "cartoes-participantes.csv", count: rows.length, cards: rows };
     },
   };
 }
