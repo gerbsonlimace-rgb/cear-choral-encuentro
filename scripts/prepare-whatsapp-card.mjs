@@ -52,9 +52,14 @@ if (cards.size !== manifest.cards.length) throw new Error("Cartões duplicados n
 const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const helperJs = ts.transpileModule(readFileSync(path.join(root, "src/features/public-attendance/participantCardDetails.domain.ts"), "utf8"),
-  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { resolveParticipantCardLodging } = await import(`data:text/javascript;base64,${Buffer.from(helperJs).toString("base64")}`);
+const loadDomain = async (relativePath) => {
+  const source = readFileSync(path.join(root, relativePath), "utf8");
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+};
+const { resolveParticipantCardLodging, buildParticipantCardMessage } = await loadDomain("src/features/public-attendance/participantCardDetails.domain.ts");
+const { CONTACT_PERSON_NAME, CONTACT_PHONE_DISPLAY } = await loadDomain("src/features/contact/event-contact.ts");
+const contact = { name: CONTACT_PERSON_NAME, phoneDisplay: CONTACT_PHONE_DISPLAY };
 const progress = existsSync(progressPath) ? JSON.parse(readFileSync(progressPath, "utf8")) : {};
 if (!progress || typeof progress !== "object" || Array.isArray(progress)) throw new Error("Arquivo de progresso inválido.");
 const state = await currentState();
@@ -212,8 +217,6 @@ function prepareRecipient(row, current) {
   const imagePath = realpathSync(path.join(output, "cartoes", card.filename));
   if (path.dirname(imagePath) !== realpathSync(path.join(output, "cartoes")) || statSync(imagePath).size === 0 || readFileSync(imagePath).subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") throw new Error("PNG inválido.");
   const lodging = resolveParticipantCardLodging(row.id, current.plan, current.roster);
-  const message = `Olá, ${card.name}! 👋\nSeja bem-vindo(a) ao II Encontro de Coros 🎶\n\n🎟️ Este é seu cartão de participante. Apresente o QR Code no credenciamento para registrar sua presença e receber seu kit de participante.` +
-    (lodging ? `\n\n🏨 Sua inscrição inclui hospedagem. Confira sua acomodação e quem ficará com você:\n\n*Acomodação:* ${lodging.room}\n*Com você:* ${lodging.roommates.length ? lodging.roommates.join(", ") : "Sem outros participantes na acomodação."}\n\nPara dúvidas sobre a hospedagem, procure o regente do seu coro.` : "") +
-    "\n\nDesde já, aguardamos sua participação! 🤗";
+  const message = buildParticipantCardMessage(card.name, lodging, contact);
   return { id: row.id, fullName: row.name, filename: card.filename, imagePath, phone: phone(row.phone), message };
 }

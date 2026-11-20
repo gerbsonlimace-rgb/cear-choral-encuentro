@@ -3,7 +3,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(getOption("output") || "output/participant-cards");
 const manifestPath = path.join(output, "source", "manifest.json");
 const cardsPath = path.join(output, "cartoes");
@@ -22,12 +25,25 @@ if (!Array.isArray(manifest.cards)) throw new Error("The card manifest has no ca
 const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const { data, error } = await supabase.rpc("admin_registration_snapshot", { p_search: "" });
-if (error) throw new Error("Could not load the admin registration snapshot: " + error.message);
-if (!Array.isArray(data?.registrations)) throw new Error("The admin snapshot did not return registrations.");
+const loadDomain = async (relativePath) => {
+  const source = readFileSync(path.join(root, relativePath), "utf8");
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+};
+const { resolveParticipantCardLodging, buildParticipantCardMessage } = await loadDomain("src/features/public-attendance/participantCardDetails.domain.ts");
+const { CONTACT_PERSON_NAME, CONTACT_PHONE_DISPLAY } = await loadDomain("src/features/contact/event-contact.ts");
+const contact = { name: CONTACT_PERSON_NAME, phoneDisplay: CONTACT_PHONE_DISPLAY };
+
+const [snapshot, plan] = await Promise.all([
+  supabase.rpc("admin_registration_snapshot", { p_search: "" }),
+  supabase.from("lodging_plan").select("assignments,named_rooms,no_lodging_registration_ids,extra_people").maybeSingle(),
+]);
+if (snapshot.error) throw new Error("Could not load the admin registration snapshot: " + snapshot.error.message);
+if (plan.error) throw new Error("Could not load the lodging plan: " + plan.error.message);
+if (!Array.isArray(snapshot.data?.registrations)) throw new Error("The admin snapshot did not return registrations.");
 
 // The public card and check-in flow currently accepts paid, non-cancelled registrations.
-const roster = data.registrations
+const roster = snapshot.data.registrations
   .filter((row) => row.payment_status === "paid" && !row.cancelled_at)
   .sort((a, b) => displayName(a).localeCompare(displayName(b), "pt-BR"));
 const cardById = new Map(manifest.cards.map((card) => [card.id, card]));
@@ -48,9 +64,8 @@ const recipients = roster.map((row) => {
   const phone = normalizeBrazilianPhone(row.phone);
   if (!phone) throw new Error("A paid registration has no valid Brazilian WhatsApp number. Fix it before generating links.");
   const name = card.name || displayName(row);
-  const message =
-    "🎶 Olá, " + name + "! Seu cartão do II Encontro de Coros está pronto. " +
-    "Apresente o QR Code no credenciamento. Até breve!";
+  const lodging = resolveParticipantCardLodging(row.id, plan.data, roster);
+  const message = buildParticipantCardMessage(name, lodging, contact);
   const waUrl = new URL("https://wa.me/" + phone);
   waUrl.searchParams.set("text", message);
   return {
