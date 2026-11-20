@@ -27,6 +27,8 @@ export type ParticipantDioceseMap = {
   choirs: number;
 };
 
+export type ParticipantBirthday = { name: string; dateLabel: string; daysUntil: number };
+
 export type ParticipantMapData = {
   generatedAt: string;
   total: number;
@@ -37,6 +39,7 @@ export type ParticipantMapData = {
   ageBands: ParticipantCount[];
   choirs: ParticipantChoirMap[];
   dioceses: ParticipantDioceseMap[];
+  birthdays: ParticipantBirthday[];
   unlocated: number;
 };
 
@@ -110,6 +113,40 @@ function orderedCounts(
 
 function seatOf(diocese: string | null) {
   return DIOCESE_SEATS.find((seat) => seat.diocese === diocese) ?? null;
+}
+
+function birthdaysUntilSunday(rows: AdminRegistrationRow[], now: Date): ParticipantBirthday[] {
+  const localDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Fortaleza",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => localDate.find((item) => item.type === type)?.value ?? "0";
+  const year = Number(part("year"));
+  const month = Number(part("month"));
+  const day = Number(part("day"));
+  const today = new Date(Date.UTC(year, month - 1, day));
+  const daysUntilSunday = (7 - today.getUTCDay()) % 7;
+  const dates = new Map<string, number>();
+  for (let offset = 0; offset <= daysUntilSunday; offset += 1) {
+    const date = new Date(Date.UTC(year, month - 1, day + offset));
+    dates.set(`${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`, offset);
+  }
+
+  return rows.flatMap((row) => {
+    const match = row.birthDate?.match(/^\d{4}-(\d{2})-(\d{2})/);
+    if (!match) return [];
+    const daysUntil = dates.get(`${match[1]}-${match[2]}`);
+    if (daysUntil === undefined) return [];
+    const date = new Date(Date.UTC(year, month - 1, day + daysUntil));
+    const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "long" }).format(date);
+    return [{
+      name: row.badgeName?.trim() || row.name.trim(),
+      dateLabel: `${String(date.getUTCDate()).padStart(2, "0")}/${String(date.getUTCMonth() + 1).padStart(2, "0")} · ${weekday}`,
+      daysUntil,
+    }];
+  }).sort((left, right) => left.daysUntil - right.daysUntil || left.name.localeCompare(right.name, "pt-BR"));
 }
 
 function genderFor(row: AdminRegistrationRow): { key: string; inferred: boolean } {
@@ -255,6 +292,7 @@ export function buildParticipantMapData(
     ),
     choirs,
     dioceses,
+    birthdays: birthdaysUntilSunday(rows, now),
     unlocated: rows.length - dioceses.reduce((sum, item) => sum + item.total, 0),
   };
 }
