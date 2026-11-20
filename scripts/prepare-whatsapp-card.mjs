@@ -83,6 +83,7 @@ const terminal = createInterface({ input: process.stdin, output: process.stdout 
 let context;
 let page;
 let submitted = 0;
+let failed = 0;
 try {
   console.log(`${selected.length} cartões. Modo: ${autoSend ? "ENVIO AUTOMÁTICO" : "envio manual"}. Remetente: +${sender}`);
   report({ phase: "connecting", total: selected.length, completed: 0 });
@@ -100,6 +101,7 @@ try {
   await verifySender(page);
   for (const recipient of selected) {
     if (pauseRequested) break;
+    try {
     report({ phase: "preparing", registrationId: recipient.id, total: selected.length, completed: submitted });
     const fresh = await currentState();
     const row = eligible(fresh.roster).find((item) => item.id === recipient.id);
@@ -135,7 +137,7 @@ try {
       const history = previous ? [...(previous.history || []), { ...previous, history: undefined }] : undefined;
       progress[current.id] = { attemptStartedAt: new Date().toISOString(), sender, filename: current.filename, ...(resend ? { resend: true } : {}), ...(history ? { history } : {}) };
       saveProgress();
-      report({ phase: "sending", registrationId: current.id, total: selected.length, completed: submitted });
+      report({ phase: "sending", registrationId: current.id, total: selected.length, completed: submitted + failed, failed });
       await send.click();
       await page.waitForFunction(
         ({ previousIds, caption }) => {
@@ -163,11 +165,28 @@ try {
       progress[current.id] = { manuallySentAt: new Date().toISOString(), sender };
     }
     saveProgress();
-    report({ phase: "sent", registrationId: current.id, total: selected.length, completed: submitted });
+    report({ phase: "sent", registrationId: current.id, total: selected.length, completed: submitted + failed, failed });
     console.log("Envio registrado. A confirmação de entrega deve ser conferida no WhatsApp.");
+    } catch (error) {
+      if (!autoSend) throw error;
+      const message = error instanceof Error ? error.message : "Falha ao preparar ou enviar este cartão.";
+      const previous = progress[recipient.id];
+      if (!previous?.attemptStartedAt) {
+        progress[recipient.id] = { ...(previous ? { ...previous, history: undefined } : {}), failedAt: new Date().toISOString(), error: message.slice(0,240) };
+        saveProgress();
+      }
+      failed += 1;
+      report({ phase: "skipped", registrationId: recipient.id, total: selected.length, completed: submitted + failed, failed,
+        lastFailure: previous?.attemptStartedAt ? "Tentativa sem confirmação, marcada para revisão" : message.slice(0,160) });
+      console.error(`Falha neste cartão; seguindo para o próximo. ${message}`);
+      if (page && !page.isClosed()) {
+        await page.goto("https://web.whatsapp.com", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+        await page.locator("#pane-side").waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
+      }
+    }
   }
-  console.log(`Finalizado. Cliques automáticos de envio: ${submitted}. Feche a janela do script quando terminar.`);
-  report({ phase: pauseRequested ? "paused" : "complete", total: selected.length, completed: submitted });
+  console.log(`Finalizado. ${submitted} envios registrados; ${failed} cartões pulados por falha. Feche a janela do script quando terminar.`);
+  report({ phase: pauseRequested ? "paused" : "complete", total: selected.length, completed: submitted + failed, failed });
 } catch (error) {
   if (page && !page.isClosed()) await page.screenshot({ path: path.join(output, "whatsapp-error.png") }).catch(() => {});
   console.error(error instanceof Error ? error.message : "Falha ao preparar o cartão.");
