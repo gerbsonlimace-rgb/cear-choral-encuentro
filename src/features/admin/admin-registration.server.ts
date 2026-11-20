@@ -974,6 +974,17 @@ export function createAdminRegistrationService(
             });
       return summarizeAdminRegistrations(completeRows);
     },
+    async lodgingRows(): Promise<AdminRegistrationRow[]> {
+      const query = {
+        search: "",
+        paymentStatus: "all",
+        choirId: "all",
+        musicalProfile: "all",
+      } as const;
+      return repository.listCandidates && repository.listComplementPayments
+        ? listAllEnriched(query)
+        : repository.listAll(query);
+    },
     async financeRows(): Promise<AdminRegistrationRow[]> {
       return repository.listCandidates && repository.listComplementPayments
         ? listAllEnriched()
