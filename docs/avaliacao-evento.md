@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. A página usa a logo e a fotografia oficiais existentes, com espaços reduzidos e controles de pelo menos 44px para celular.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. A página usa a logo e a fotografia oficiais existentes, com espaçamento original e controles de pelo menos 44px para celular.
 
 ## Situação
 
