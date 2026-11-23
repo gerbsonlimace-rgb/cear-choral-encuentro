@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventFeedbackPage } from "./EventFeedbackPage";
 
+async function identify(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByRole("textbox", { name: "CPF ou e-mail" }), "pessoa@exemplo.com");
+}
+
 async function complete(user: ReturnType<typeof userEvent.setup>) {
+  await identify(user);
   await user.click(screen.getByRole("radio", { name: "Excelente" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
   for (const group of screen.getAllByRole("group")) {
@@ -18,6 +23,7 @@ describe("public mobile event feedback", () => {
   it("shows clickable numbered emoji squares with one selected score and unused only for food and lodging", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    await identify(user);
     const overall = screen.getByRole("group", { name: "Avaliação geral" });
     await user.click(within(overall).getByRole("radio", { name: "Bom" }));
     expect(overall.querySelectorAll(".feedback-score-face")).toHaveLength(5);
@@ -37,6 +43,19 @@ describe("public mobile event feedback", () => {
       }),
     ).not.toBeInTheDocument();
   });
+  it("requires a valid control identifier and explains the purpose and anonymity", async () => {
+    const user = userEvent.setup();
+    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    expect(screen.getByText(/equipe organizadora do próximo encontro/)).toBeVisible();
+    expect(screen.getByText(/sem CPF ou e-mail/)).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Bom" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("CPF ou e-mail válido");
+    await user.type(screen.getByRole("textbox", { name: "CPF ou e-mail" }), "11111111111");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("CPF ou e-mail válido");
+    expect(screen.getByText("Etapa 1 de 3")).toBeVisible();
+  });
   it("shows real totals without a WhatsApp sharing invitation", async () => {
     const loadStats = vi.fn().mockResolvedValue({ registrations: 245, responses: 18 });
     render(<EventFeedbackPage onSubmit={vi.fn()} loadStats={loadStats} />);
@@ -49,6 +68,7 @@ describe("public mobile event feedback", () => {
   it("shows the event logo and validates a required answer without authentication", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    await identify(user);
     expect(screen.getByAltText("II Encontro de Coros Diocesanos e Litúrgicos")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Escolha uma opção");
@@ -57,6 +77,7 @@ describe("public mobile event feedback", () => {
   it("keeps selected answers when returning to the previous step", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    await identify(user);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Voltar" }));
@@ -65,6 +86,7 @@ describe("public mobile event feedback", () => {
   it("shows six criteria without fellowship or contribution and describes the venue organization", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    await identify(user);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByText("Etapa 2 de 3")).toBeVisible();
@@ -113,7 +135,10 @@ describe("public mobile event feedback", () => {
       overall: 5,
       suggestion: "Mais momentos de troca.",
     });
-    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("email");
+    expect(onSubmit.mock.calls[0][0]).toHaveProperty("identity", "pessoa@exemplo.com");
+    expect(sessionStorage.getItem("encontro-coros:feedback:2026")).not.toContain(
+      "pessoa@exemplo.com",
+    );
   });
   it("restores an uncertain submission after a mobile reload and sends edited answers with the same UUID", async () => {
     const user = userEvent.setup();
@@ -126,7 +151,11 @@ describe("public mobile event feedback", () => {
     first.unmount();
     const retry = vi.fn().mockResolvedValue({ saved: true });
     render(<EventFeedbackPage onSubmit={retry} />);
-    await user.type(await screen.findByRole("textbox"), "Sugestão atualizada");
+    expect(screen.getByRole("textbox", { name: "CPF ou e-mail" })).toHaveValue("");
+    await identify(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.type(screen.getByRole("textbox", { name: /Sua sugestão/ }), "Sugestão atualizada");
     await user.click(screen.getByRole("button", { name: "Enviar avaliação" }));
     expect(retry).toHaveBeenCalledWith(
       expect.objectContaining({ submissionId: previousId, suggestion: "Sugestão atualizada" }),

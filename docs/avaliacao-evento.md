@@ -19,13 +19,19 @@ Publicada em 23/11/2026 pelo projeto Lovable original. Link: https://encontrocor
 
 ## Persistência e privacidade
 
-O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP na avaliação. O comentário é opcional e limitado a 1.000 caracteres. Apenas Alimentação e Hospedagem permitem `NULL` para “Não utilizei”; os outros quatro critérios exigem nota de 1 a 5 no servidor e no banco.
+O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A primeira etapa solicita CPF ou e-mail válido para controle de repetições. O servidor normaliza o identificador e usa `save_anonymous_event_feedback` para gravar o código de controle e as opiniões atomicamente. O código é protegido por segredo aleatório permanente do banco e fica em tabela privada sem UUID da avaliação ou data. CPF/e-mail em texto não são gravados nem guardados no sessionStorage. Repetições do mesmo identificador são recusadas; retries com o mesmo UUID atualizam a única avaliação.
+
+A equipe destinatária recebe opiniões sem identificação. O controle é pseudonimizado: o proprietário do banco pode correlacionar metadados transacionais e tem acesso ao segredo, portanto não se promete anonimato contra esse administrador. O campo livre orienta a não incluir dados pessoais. Não há login, comprovação de titularidade ou unificação automática entre CPF e e-mail da mesma pessoa.
+
+A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP nas linhas de opiniões. O comentário é opcional e limitado a 1.000 caracteres. Apenas Alimentação e Hospedagem permitem `NULL` para “Não utilizei”; os outros quatro critérios exigem nota de 1 a 5 no servidor e no banco.
 
 O navegador mantém o snapshot de um envio tentado na sessão para recuperar recargas após perda de conexão. O servidor salva por upsert atômico com o mesmo UUID, evitando duplicação e preservando alterações de uma nova tentativa. A confirmação só aparece após sucesso do servidor. Isso não impõe unicidade por pessoa: a avaliação continua anônima.
 
 Os totais públicos são consultas de contagem, sem retornar inscrições ou avaliações: inscrições não canceladas e total de avaliações salvas. Um total indisponível aparece como “—”, nunca como zero inventado. O contador é atualizado após um envio bem-sucedido.
 
 O convite e o botão de compartilhamento foram removidos a pedido do usuário. A rota mantém metadados Open Graph e Twitter renderizados no servidor, URL canônica pública e a imagem oficial JPEG de 1200×630 para a prévia do link no WhatsApp. A prévia real em aplicativos externos só estará disponível após a publicação da rota.
+
+Atualização do compartilhamento em 23/11: o HTML de produção já respondia com metadados corretos a WhatsApp e Facebook Crawler, com imagem JPEG pública e robots permitindo acesso. Para renovar a prévia antiga observada pelo usuário, o título passou a destacar “Avalie o II Encontro de Coros”, a imagem recebeu URL própria `/og-avaliacao-encontro-2026-v2.jpg` e o link para um teste novo é `/avaliacao?convite=avaliacao-2026-v2`. O canônico permanece `/avaliacao`. A renderização dentro do WhatsApp não é garantida pelo site e não foi simulada enviando mensagens.
 
 ## Verificação realizada
 

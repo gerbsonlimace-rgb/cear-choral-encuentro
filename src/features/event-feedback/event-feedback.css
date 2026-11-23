@@ -1043,3 +1043,45 @@
   line-height: 1;
   font-weight: inherit;
 }
+
+.feedback-identity {
+  margin: 20px 0 24px;
+  max-width: 520px;
+}
+.feedback-identity > label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+.feedback-identity > input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid #a1a1aa;
+  border-radius: 8px;
+  color: var(--fb-ink);
+  background: var(--fb-white);
+  font: inherit;
+  font-size: 1rem;
+  caret-color: #816500;
+}
+.feedback-identity > input::placeholder {
+  color: #666;
+}
+.feedback-identity > input:focus-visible {
+  outline: 3px solid var(--fb-gold);
+  outline-offset: 2px;
+}
+.feedback-identity > p {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fb-muted);
+  margin: 10px 0 0;
+}
+@media (max-height: 800px) {
+  .feedback-identity {
+    margin: 12px 0 16px;
+  }
+}
