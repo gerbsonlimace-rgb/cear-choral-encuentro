@@ -252,17 +252,7 @@
   font-weight: 500;
   background: transparent;
 }
-.feedback-contribution {
-  margin-top: 28px;
-}
-.feedback-contribution h2 {
-  margin: 0 0 18px;
-  font-size: 1.25rem;
-  line-height: 1.4;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-}
+
 .feedback-suggestion > label {
   display: block;
   margin-bottom: 10px;
@@ -631,14 +621,7 @@
   line-height: 1.35;
   margin-top: 3px;
 }
-.feedback-contribution {
-  margin-top: 20px;
-}
-.feedback-contribution h2 {
-  font-size: 1.125rem;
-  line-height: 1.35;
-  margin: 0 0 10px;
-}
+
 .feedback-suggestion textarea {
   min-height: 90px;
   height: clamp(90px, 19dvh, 150px);
@@ -769,13 +752,7 @@
   .feedback-aspects {
     gap: 10px;
   }
-  .feedback-contribution {
-    margin-top: 16px;
-  }
-  .feedback-contribution h2 {
-    font-size: 1rem;
-    margin-bottom: 8px;
-  }
+
   .feedback-thanks > h1 {
     font-size: 1.5rem;
   }
@@ -854,9 +831,7 @@
   .feedback-aspect-page {
     display: none;
   }
-  .feedback-contribution {
-    margin-top: 12px;
-  }
+
   .feedback-thanks-mark,
   .feedback-thanks-note {
     display: none;
@@ -915,15 +890,7 @@
   padding: 10px 7px;
   font-size: 0.875rem;
 }
-.feedback-contribution {
-  margin-top: 24px;
-}
-.feedback-contribution h2 {
-  margin-bottom: 14px;
-}
-.feedback-contribution .feedback-options {
-  grid-template-columns: 1fr;
-}
+
 .feedback-actions {
   background: var(--fb-paper);
   padding-top: 12px;

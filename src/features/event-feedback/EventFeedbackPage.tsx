@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   GraduationCap,
   Church,
-  Users,
   Building2,
   Utensils,
   BedDouble,
@@ -38,7 +37,6 @@ const aspectIcons = {
   organization: ClipboardCheck,
   formation: GraduationCap,
   celebrations: Church,
-  fellowship: Users,
   venue: Building2,
   food: Utensils,
   lodging: BedDouble,
@@ -137,7 +135,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
-  const [contribution, setContribution] = useState<number | null>(null);
   const [returnIntent, setReturnIntent] = useState<EventFeedback["returnIntent"] | null>(null);
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
@@ -170,7 +167,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
       submissionId.current = feedback.submissionId;
       setOverall(feedback.overall as Rating);
       setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
-      setContribution(feedback.contribution);
       setReturnIntent(feedback.returnIntent);
       setSuggestion(feedback.suggestion);
       setStep(titles.length - 1);
@@ -205,22 +201,13 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
     if (inFlight.current) return;
     const missingAspect =
       step === 1 && FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined);
-    const missingContribution = step === 1 && !contribution;
     const missing =
-      step === 0
-        ? !overall
-        : step === 1
-          ? missingAspect || missingContribution
-          : step === 2
-            ? !returnIntent
-            : false;
+      step === 0 ? !overall : step === 1 ? missingAspect : step === 2 ? !returnIntent : false;
     if (missing) {
       setError(
         missingAspect
           ? "Avalie todos os aspectos ou marque que não participou / não utilizou."
-          : missingContribution
-            ? "Selecione a contribuição para o seu coro."
-            : "Escolha uma opção para continuar.",
+          : "Escolha uma opção para continuar.",
       );
       return;
     }
@@ -237,7 +224,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
         submissionId: submissionId.current,
         overall: overall!,
         aspects: aspects as EventFeedback["aspects"],
-        contribution: contribution!,
         returnIntent: returnIntent!,
         suggestion,
       };
@@ -415,40 +401,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                       );
                     })}
                   </div>
-                )}
-
-                {step === 1 && (
-                  <section
-                    className="feedback-contribution"
-                    aria-labelledby="feedback-contribution-title"
-                  >
-                    <h2 id="feedback-contribution-title">
-                      Quanto o encontro contribuiu para sua atuação no coro?
-                    </h2>
-                    <fieldset className="feedback-options" aria-label="Contribuição para o coro">
-                      {["Nada", "Pouco", "Razoavelmente", "Muito"].map((label, index) => (
-                        <Choice
-                          key={label}
-                          name="contribution"
-                          value={String(index + 1)}
-                          checked={contribution === index + 1}
-                          onChange={() => {
-                            setContribution(index + 1);
-                            setError("");
-                          }}
-                        >
-                          <span>{label}</span>
-                          <span className="feedback-choice-end">
-                            {contribution === index + 1 ? (
-                              <Check size={20} aria-hidden="true" />
-                            ) : (
-                              <span className="feedback-radio-mark" />
-                            )}
-                          </span>
-                        </Choice>
-                      ))}
-                    </fieldset>
-                  </section>
                 )}
 
                 {step === 2 && (

@@ -4,8 +4,11 @@ export const FEEDBACK_ASPECTS = [
   { key: "organization", label: "Organização", description: "Orientações e acolhida" },
   { key: "formation", label: "Formação", description: "Conteúdo musical e litúrgico" },
   { key: "celebrations", label: "Celebrações", description: "Momentos de fé e oração" },
-  { key: "fellowship", label: "Convivência", description: "Encontro e troca entre os coros" },
-  { key: "venue", label: "Estrutura", description: "Espaços utilizados no encontro" },
+  {
+    key: "venue",
+    label: "Estrutura",
+    description: "Organização do espaço e dos materiais do encontro",
+  },
   { key: "food", label: "Alimentação", description: "Refeições oferecidas" },
   { key: "lodging", label: "Hospedagem", description: "Acomodação durante o evento" },
 ] as const;
@@ -25,13 +28,11 @@ export const eventFeedbackSchema = z
         organization: rating,
         formation: rating,
         celebrations: rating,
-        fellowship: rating,
         venue: rating,
         food: aspectRating,
         lodging: aspectRating,
       })
       .strict(),
-    contribution: z.number().int().min(1).max(4),
     returnIntent: z.enum(["yes", "maybe", "no"]),
     suggestion: z.string().trim().max(1000).default(""),
   })

@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco quadros clicáveis com emojis e notas de 1 a 5, apenas um selecionado por vez, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; seis aspectos; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco quadros clicáveis com emojis e notas de 1 a 5, apenas um selecionado por vez, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
 
 ## Situação
 
@@ -17,7 +17,7 @@ Implementação preparada na branch `codex/avaliacao-evento`, sobre a configura�
 
 ## Persistência e privacidade
 
-O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP na avaliação. O comentário é opcional e limitado a 1.000 caracteres. Apenas Alimentação e Hospedagem permitem `NULL` para “Não utilizei”; os outros cinco critérios exigem nota de 1 a 5 no servidor e no banco.
+O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP na avaliação. O comentário é opcional e limitado a 1.000 caracteres. Apenas Alimentação e Hospedagem permitem `NULL` para “Não utilizei”; os outros quatro critérios exigem nota de 1 a 5 no servidor e no banco.
 
 O navegador mantém o snapshot de um envio tentado na sessão para recuperar recargas após perda de conexão. O servidor salva por upsert atômico com o mesmo UUID, evitando duplicação e preservando alterações de uma nova tentativa. A confirmação só aparece após sucesso do servidor. Isso não impõe unicidade por pessoa: a avaliação continua anônima.
 

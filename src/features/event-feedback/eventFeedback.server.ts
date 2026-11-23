@@ -6,11 +6,9 @@ type FeedbackRow = {
   organization: number | null;
   formation: number | null;
   celebrations: number | null;
-  fellowship: number | null;
   venue: number | null;
   food: number | null;
   lodging: number | null;
-  contribution: number;
   return_intent: string;
   suggestion: string;
 };
@@ -39,7 +37,6 @@ export async function saveEventFeedback(
     submission_id: data.submissionId,
     overall: data.overall,
     ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
-    contribution: data.contribution,
     return_intent: data.returnIntent,
     suggestion: data.suggestion,
   });

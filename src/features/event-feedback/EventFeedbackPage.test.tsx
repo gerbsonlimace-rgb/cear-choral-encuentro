@@ -6,13 +6,10 @@ import { EventFeedbackPage } from "./EventFeedbackPage";
 async function complete(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("radio", { name: "Excelente" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
-  for (const group of screen
-    .getAllByRole("group")
-    .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
+  for (const group of screen.getAllByRole("group")) {
     const unused = within(group).queryByRole("radio", { name: "Não utilizei" });
     await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
   }
-  await user.click(screen.getByRole("radio", { name: "Muito" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
   await user.click(screen.getByRole("radio", { name: "Sim, quero participar" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -67,28 +64,27 @@ describe("public mobile event feedback", () => {
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByRole("radio", { name: "Bom" })).toBeChecked();
   });
-  it("groups contribution with the seven aspects and requires its answer before continuing", async () => {
+  it("shows six criteria without fellowship or contribution and describes the venue organization", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByText("Etapa 2 de 4")).toBeVisible();
     expect(screen.queryByText("Transporte")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Convivência" })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", {
-        name: "Quanto o encontro contribuiu para sua atuação no coro?",
-      }),
+      screen.queryByText("Quanto o encontro contribuiu para sua atuação no coro?"),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("group")).toHaveLength(6);
+    expect(
+      within(screen.getByRole("group", { name: "Estrutura" })).getByText(
+        "Organização do espaço e dos materiais do encontro",
+      ),
     ).toBeVisible();
-    expect(screen.getAllByRole("group")).toHaveLength(8);
-    for (const group of screen
-      .getAllByRole("group")
-      .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
+    for (const group of screen.getAllByRole("group")) {
       const unused = within(group).queryByRole("radio", { name: "Não utilizei" });
       await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
     }
-    await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("contribuição");
-    await user.click(screen.getByRole("radio", { name: "Muito" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("heading", { name: "Nos encontramos na próxima?" })).toBeVisible();
   });
@@ -114,7 +110,6 @@ describe("public mobile event feedback", () => {
     expect(onSubmit.mock.calls[0][0].submissionId).toBe(onSubmit.mock.calls[1][0].submissionId);
     expect(onSubmit.mock.calls[0][0]).toMatchObject({
       overall: 5,
-      contribution: 4,
       returnIntent: "yes",
       suggestion: "Mais momentos de troca.",
     });

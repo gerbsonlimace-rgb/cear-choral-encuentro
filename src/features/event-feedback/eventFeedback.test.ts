@@ -9,12 +9,10 @@ export const validFeedback = {
     organization: 4,
     formation: 5,
     celebrations: 5,
-    fellowship: 4,
     venue: 3,
     food: 4,
     lodging: "not_used",
   },
-  contribution: 4,
   returnIntent: "yes",
   suggestion: "Mais tempo de convivência.",
 };
@@ -29,7 +27,7 @@ describe("anonymous event feedback", () => {
   it("rejects incomplete, out-of-range, oversized and identifying payloads", () => {
     for (const input of [
       { ...validFeedback, overall: 0 },
-      { ...validFeedback, contribution: 5 },
+      { ...validFeedback, aspects: { ...validFeedback.aspects, venue: 0 } },
       { ...validFeedback, aspects: { ...validFeedback.aspects, venue: undefined } },
       { ...validFeedback, aspects: { ...validFeedback.aspects, formation: "not_used" } },
       { ...validFeedback, suggestion: "a".repeat(1001) },

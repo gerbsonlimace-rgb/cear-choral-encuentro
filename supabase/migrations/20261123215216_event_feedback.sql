@@ -6,11 +6,9 @@ create table public.event_feedback (
   organization smallint not null check (organization between 1 and 5),
   formation smallint not null check (formation between 1 and 5),
   celebrations smallint not null check (celebrations between 1 and 5),
-  fellowship smallint not null check (fellowship between 1 and 5),
   venue smallint not null check (venue between 1 and 5),
   food smallint check (food between 1 and 5),
   lodging smallint check (lodging between 1 and 5),
-  contribution smallint not null check (contribution between 1 and 4),
   return_intent text not null check (return_intent in ('yes', 'maybe', 'no')),
   suggestion text not null default '' check (char_length(suggestion) <= 1000)
 );

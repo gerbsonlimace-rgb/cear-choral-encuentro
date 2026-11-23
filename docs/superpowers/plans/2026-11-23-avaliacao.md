@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Execute inline with verification at each task.
 
-**Goal:** Página pública mobile em `/avaliacao` com cinco perguntas e persistência anônima.
+**Goal:** Página pública mobile em `/avaliacao` com quatro perguntas e persistência anônima.
 **Architecture:** React/TanStack Start; schema Zod compartilhado; handler público POST com import dinâmico de repositório server-only; tabela independente Supabase com RLS e acesso service-role.
 **Tech Stack:** React, TypeScript, CSS, Vitest, Supabase/Postgres.
 **Spec:** `docs/superpowers/specs/2026-11-23-avaliacao-design.md`
@@ -38,3 +38,5 @@
 - Estrelas substituem notas numéricas, com preenchimento acumulado, hover e teclado. Ícones por critério. “Não utilizei” restrito a Alimentação/Hospedagem em UI, schema e migração ainda não aplicada. Novo teste RED→GREEN; treze testes passaram, build e SQL descartável passaram. Em 320×568, estrelas têm alvos de aproximadamente 51×48px e os botões permanecem fora da área rolável.
 
 - Usuário substituiu estrelas por quadros clicáveis numerados e pediu emojis: escala 😞/🙁/😐/🙂/🤩 com notas 1–5, uma seleção por critério. Ícones, opção Não utilizei restrita e navegação fixa preservados. Teste ajustado RED→GREEN; treze testes e build passaram; quadros de aproximadamente 49×49px em 320×568.
+
+- Usuário removeu Convivência e a pergunta de contribuição para o coro. Restam seis critérios; Estrutura agora descreve organização do espaço e dos materiais do encontro. Campos removidos também do payload, schema, serviço e migração ainda não publicada; treze testes, SQL descartável e build passaram. Link localhost enviado por engano foi desconsiderado.
