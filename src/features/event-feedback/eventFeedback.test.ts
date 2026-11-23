@@ -13,7 +13,6 @@ export const validFeedback = {
     venue: 3,
     food: 4,
     lodging: "not_used",
-    transport: "not_used",
   },
   contribution: 4,
   returnIntent: "yes",

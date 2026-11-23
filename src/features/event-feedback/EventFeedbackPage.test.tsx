@@ -6,10 +6,11 @@ import { EventFeedbackPage } from "./EventFeedbackPage";
 async function complete(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("radio", { name: "Excelente" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
-  for (const group of screen.getAllByRole("group")) {
+  for (const group of screen
+    .getAllByRole("group")
+    .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
     await user.click(within(group).getByRole("radio", { name: "Não participei / Não utilizei" }));
   }
-  await user.click(screen.getByRole("button", { name: "Continuar" }));
   await user.click(screen.getByRole("radio", { name: "Muito" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
   await user.click(screen.getByRole("radio", { name: "Sim, quero participar" }));
@@ -33,6 +34,30 @@ describe("public mobile event feedback", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByRole("radio", { name: "Bom" })).toBeChecked();
+  });
+  it("groups contribution with the seven aspects and requires its answer before continuing", async () => {
+    const user = userEvent.setup();
+    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    await user.click(screen.getByRole("radio", { name: "Bom" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByText("Etapa 2 de 4")).toBeVisible();
+    expect(screen.queryByText("Transporte")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Quanto o encontro contribuiu para sua atuação no coro?",
+      }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("group")).toHaveLength(8);
+    for (const group of screen
+      .getAllByRole("group")
+      .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
+      await user.click(within(group).getByRole("radio", { name: "Não participei / Não utilizei" }));
+    }
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("contribuição");
+    await user.click(screen.getByRole("radio", { name: "Muito" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("heading", { name: "Nos encontramos na próxima?" })).toBeVisible();
   });
   it("submits anonymous answers, preserves them on failure and retries with the same UUID", async () => {
     const user = userEvent.setup();

@@ -8,7 +8,6 @@ export const FEEDBACK_ASPECTS = [
   { key: "venue", label: "Estrutura", description: "Espaços utilizados no encontro" },
   { key: "food", label: "Alimentação", description: "Refeições oferecidas" },
   { key: "lodging", label: "Hospedagem", description: "Acomodação durante o evento" },
-  { key: "transport", label: "Transporte", description: "Deslocamentos oferecidos pelo evento" },
 ] as const;
 
 export type AspectKey = (typeof FEEDBACK_ASPECTS)[number]["key"];
@@ -30,7 +29,6 @@ export const eventFeedbackSchema = z
         venue: aspectRating,
         food: aspectRating,
         lodging: aspectRating,
-        transport: aspectRating,
       })
       .strict(),
     contribution: z.number().int().min(1).max(4),

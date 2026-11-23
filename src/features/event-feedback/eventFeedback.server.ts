@@ -10,7 +10,6 @@ type FeedbackRow = {
   venue: number | null;
   food: number | null;
   lodging: number | null;
-  transport: number | null;
   contribution: number;
   return_intent: string;
   suggestion: string;

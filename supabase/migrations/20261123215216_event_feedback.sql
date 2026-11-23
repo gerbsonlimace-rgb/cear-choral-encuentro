@@ -10,7 +10,6 @@ create table public.event_feedback (
   venue smallint check (venue between 1 and 5),
   food smallint check (food between 1 and 5),
   lodging smallint check (lodging between 1 and 5),
-  transport smallint check (transport between 1 and 5),
   contribution smallint not null check (contribution between 1 and 4),
   return_intent text not null check (return_intent in ('yes', 'maybe', 'no')),
   suggestion text not null default '' check (char_length(suggestion) <= 1000)

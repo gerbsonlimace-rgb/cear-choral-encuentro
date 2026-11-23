@@ -32,3 +32,4 @@
 - Build de produção passou. `tsc` permanece bloqueado por erros preexistentes em gender, BlobPart e mocks de presença; nenhum erro nos novos arquivos.
 - Layout inspecionado em desktop, 390px e 320px. Em 320px: sem overflow horizontal, notas com alvos de aproximadamente 49×49px. Detector executado; apenas avisos de escalas e tons já intencionais para legibilidade/contraste nesta superfície.
 - Usuário solicitou deixar a implementação pronta para publicar depois. Nenhuma migração remota, push ou publicação executados.
+- Ajustes solicitados: remover Transporte, reunir contribuição com os sete aspectos na mesma etapa e compactar o layout mantendo alvos de 44px. Fluxo reduzido para quatro etapas; teste do agrupamento e validação observado RED→GREEN, nove testes passaram.

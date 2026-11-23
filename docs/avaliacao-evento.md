@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Cinco etapas com avaliação geral, oito aspectos, contribuição para o coro, intenção de voltar e sugestão opcional. A página usa a logo e a fotografia oficiais existentes.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. A página usa a logo e a fotografia oficiais existentes, com espaços reduzidos e controles de pelo menos 44px para celular.
 
 ## Situação
 
@@ -23,7 +23,7 @@ O navegador mantém o snapshot de um envio tentado na sessão para recuperar rec
 
 ## Verificação realizada
 
-- `npx vitest run src/features/event-feedback`: 8 testes passaram.
+- `npx vitest run src/features/event-feedback`: 9 testes passaram.
 - `npm run build`: passou.
 - Migração executada em Postgres descartável via `scripts/verify-event-feedback.mjs`, com RLS, permissões, limites e retries verificados.
 - Inspeção visual em desktop e celulares de 390px e 320px; controles de nota acima de 44px e sem rolagem horizontal.

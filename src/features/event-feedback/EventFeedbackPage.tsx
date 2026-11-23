@@ -34,14 +34,12 @@ const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
   "Como foi o encontro para você?",
   "Vamos olhar para os detalhes?",
-  "O que você leva para o seu coro?",
   "Nos encontramos na próxima?",
   "O que podemos fazer melhor?",
 ];
 const descriptions = [
   "Pense na sua experiência como um todo.",
   "Avalie cada aspecto. Se não participou ou não utilizou, é só indicar.",
-  "Quanto o encontro contribuiu para sua atuação no coro?",
   "Você participaria de uma próxima edição do encontro?",
   "Deixe uma sugestão para a próxima edição. Este campo é opcional.",
 ];
@@ -107,7 +105,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
       setContribution(feedback.contribution);
       setReturnIntent(feedback.returnIntent);
       setSuggestion(feedback.suggestion);
-      setStep(4);
+      setStep(titles.length - 1);
       setSaved(stored.saved === true);
     } catch {
       /* Storage may be unavailable in private browsing. */
@@ -134,25 +132,28 @@ export function EventFeedbackPage({ onSubmit }: Props) {
   async function advance(event: FormEvent) {
     event.preventDefault();
     if (inFlight.current) return;
+    const missingAspect =
+      step === 1 && FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined);
+    const missingContribution = step === 1 && !contribution;
     const missing =
       step === 0
         ? !overall
         : step === 1
-          ? FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined)
+          ? missingAspect || missingContribution
           : step === 2
-            ? !contribution
-            : step === 3
-              ? !returnIntent
-              : false;
+            ? !returnIntent
+            : false;
     if (missing) {
       setError(
-        step === 1
+        missingAspect
           ? "Avalie todos os aspectos ou marque que não participou / não utilizou."
-          : "Escolha uma opção para continuar.",
+          : missingContribution
+            ? "Escolha quanto o encontro contribuiu para sua atuação no coro na pergunta de contribuição."
+            : "Escolha uma opção para continuar.",
       );
       return;
     }
-    if (step < 4) {
+    if (step < titles.length - 1) {
       move(step + 1);
       return;
     }
@@ -258,14 +259,16 @@ export function EventFeedbackPage({ onSubmit }: Props) {
             <nav className="feedback-progress" aria-label="Progresso da avaliação">
               <div className="feedback-progress-heading">
                 <span>Avaliação do encontro</span>
-                <span>Etapa {step + 1} de 5</span>
+                <span>
+                  Etapa {step + 1} de {titles.length}
+                </span>
               </div>
               <div
                 className="feedback-progress-track"
                 role="progressbar"
                 aria-label="Etapas da avaliação"
                 aria-valuemin={1}
-                aria-valuemax={5}
+                aria-valuemax={titles.length}
                 aria-valuenow={step + 1}
               >
                 {titles.map((title, index) => (
@@ -372,38 +375,41 @@ export function EventFeedbackPage({ onSubmit }: Props) {
                   </div>
                 )}
 
-                {step === 2 && (
-                  <fieldset className="feedback-options" aria-label="Contribuição para o coro">
-                    {["Nada", "Pouco", "Razoavelmente", "Muito"].map((label, index) => (
-                      <Choice
-                        key={label}
-                        name="contribution"
-                        value={String(index + 1)}
-                        checked={contribution === index + 1}
-                        onChange={() => {
-                          setContribution(index + 1);
-                          setError("");
-                        }}
-                      >
-                        <span className="feedback-contribution-icon" aria-hidden="true">
-                          {Array.from({ length: index + 1 }, (_, n) => (
-                            <span key={n} />
-                          ))}
-                        </span>
-                        <span>{label}</span>
-                        <span className="feedback-choice-end">
-                          {contribution === index + 1 ? (
-                            <Check size={20} aria-hidden="true" />
-                          ) : (
-                            <span className="feedback-radio-mark" />
-                          )}
-                        </span>
-                      </Choice>
-                    ))}
-                  </fieldset>
+                {step === 1 && (
+                  <section
+                    className="feedback-contribution"
+                    aria-labelledby="feedback-contribution-title"
+                  >
+                    <h2 id="feedback-contribution-title">
+                      Quanto o encontro contribuiu para sua atuação no coro?
+                    </h2>
+                    <fieldset className="feedback-options" aria-label="Contribuição para o coro">
+                      {["Nada", "Pouco", "Razoavelmente", "Muito"].map((label, index) => (
+                        <Choice
+                          key={label}
+                          name="contribution"
+                          value={String(index + 1)}
+                          checked={contribution === index + 1}
+                          onChange={() => {
+                            setContribution(index + 1);
+                            setError("");
+                          }}
+                        >
+                          <span>{label}</span>
+                          <span className="feedback-choice-end">
+                            {contribution === index + 1 ? (
+                              <Check size={20} aria-hidden="true" />
+                            ) : (
+                              <span className="feedback-radio-mark" />
+                            )}
+                          </span>
+                        </Choice>
+                      ))}
+                    </fieldset>
+                  </section>
                 )}
 
-                {step === 3 && (
+                {step === 2 && (
                   <fieldset
                     className="feedback-options"
                     aria-label="Participação na próxima edição"
@@ -463,7 +469,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
                   </fieldset>
                 )}
 
-                {step === 4 && (
+                {step === 3 && (
                   <div className="feedback-suggestion">
                     <label htmlFor="feedback-suggestion">
                       Sua sugestão <span>(opcional)</span>
@@ -507,7 +513,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
                       <LoaderCircle size={18} className="feedback-spinner" aria-hidden="true" />
                       Enviando…
                     </>
-                  ) : step === 4 ? (
+                  ) : step === titles.length - 1 ? (
                     "Enviar avaliação"
                   ) : (
                     "Continuar"
