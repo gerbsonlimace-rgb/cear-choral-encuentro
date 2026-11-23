@@ -4,14 +4,14 @@ Rota: `/avaliacao`. Não exige login. Três etapas: avaliação geral; seis aspe
 
 ## Situação
 
-Implementação preparada na branch `codex/avaliacao-evento`, sobre a configuração atual de `origin/main`. Publicação adiada a pedido do usuário. O banco atual é `fppmdkcwtnrvpqtfurdn`; o banco antigo `mtkjsrbywymwixwscosf` e a cópia Lovable com banco `fszpjxrpzlnsddgvxonc` não devem receber esta migração por engano.
+Publicação autorizada em 23/11/2026. Migrações aplicadas no projeto `fppmdkcwtnrvpqtfurdn` pelo SQL Editor do Supabase, em uma única transação. A migração de arquivamento recebeu a versão exclusiva `20261120130001`, corrigindo a duplicidade anterior. As definições já existentes foram reconciliadas sem remover dados. O banco antigo `mtkjsrbywymwixwscosf` e a cópia Lovable com banco `fszpjxrpzlnsddgvxonc` não receberam alterações.
 
 ## Antes de publicar
 
-1. Resolver a migração anterior pendente no projeto Lovable original `e6f04773-e2dc-44c3-a483-34df39d64822`, conforme o trabalho que a originou. Não aprová-la automaticamente como parte desta avaliação.
-2. Aplicar `supabase/migrations/20261123215216_event_feedback.sql` no banco atual. A tabela é nova e independente; não altera inscrições, Auth, presenças ou finanças.
+1. A solicitação antiga de gênero no Lovable corresponde à migração já aplicada; evitar reaplicações desnecessárias.
+2. Migrações `20261120120000`, `20261120130000`, `20261120130001` e `20261123215216` aplicadas e registradas. A tabela de avaliação é independente; não altera inscrições, Auth, presenças ou finanças.
 3. Confirmar no ambiente do servidor `SUPABASE_URL=https://fppmdkcwtnrvpqtfurdn.supabase.co` e `SUPABASE_SERVICE_ROLE_KEY` desse mesmo projeto. A chave de serviço nunca deve receber prefixo `VITE_`. Uma chave antiga em `.env.local` precisa ser substituída antes de um teste integrado.
-4. Resolver os erros de tipos preexistentes que o build do Lovable possa exigir: campos `gender`, `BlobPart` na geração de cartões e mocks sem `archiveCall`. O build Vite da avaliação já passou.
+4. Erros de tipos preexistentes corrigidos: campo `gender`, `BlobPart` na geração de cartões e mocks sem `archiveCall`. TypeScript e build passaram.
 5. Integrar esta branch sem reescrever histórico publicado e publicar pelo projeto Lovable original. Não criar um site separado.
 6. Validar um envio no ambiente autorizado, confirmar uma única linha em `event_feedback` e testar nova tentativa com o mesmo UUID. Verificar que visitantes não conseguem consultar respostas.
 
@@ -33,4 +33,6 @@ O convite e o botão de compartilhamento foram removidos a pedido do usuário. A
 - Inspeção em celulares de 390px e 320px. Em 320×568, o documento permaneceu com 568px de altura e scrollTop zero; ao rolar 1.412px de perguntas, a posição dos botões permaneceu idêntica. Respostas diretas, sem selects, controles de pelo menos 44px.
 - HTML SSR retornou 200 com og:url, og:image, secure_url, tipo JPEG, dimensões, texto alternativo e twitter:card. O arquivo da imagem foi conferido em 1200×630.
 
-Não houve envio de avaliação ou alteração de schema no banco de produção.
+Após as migrações, o banco manteve 157 inscrições ativas e zero avaliações. RLS habilitada; `anon` sem leitura/escrita; gravação disponível ao servidor. Não foi enviada avaliação fictícia em produção.
+
+Verificação da publicação: 19 testes direcionados passaram e `npx tsc --noEmit` e `npm run build` passaram. A suíte completa teve 1.462 testes aprovados, oito falhas preexistentes em quatro arquivos sem alterações nesta branch e dois testes ignorados.

@@ -11,7 +11,7 @@ comment on column public.registrations.dietary_restriction_other is
 
 drop function if exists public.save_public_attendance_logistics(text, boolean, boolean);
 
-create function public.save_public_attendance_logistics(
+create or replace function public.save_public_attendance_logistics(
   p_token text,
   p_dietary_restriction boolean,
   p_dietary_restriction_types text[],

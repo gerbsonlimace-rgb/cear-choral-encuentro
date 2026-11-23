@@ -244,7 +244,7 @@ function zipImages(files: ZipFile[]) {
   endView.setUint32(12, centralSize, true);
   endView.setUint32(16, offset, true);
 
-  return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
+  return new Blob([...localParts, ...centralParts, end].map(part => new Uint8Array(part)), { type: "application/zip" });
 }
 
 function fileStem(value: string) {

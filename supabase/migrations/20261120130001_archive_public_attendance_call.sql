@@ -1,4 +1,4 @@
-create table public.event_activity_attendance_archives (
+create table if not exists public.event_activity_attendance_archives (
   id uuid primary key default gen_random_uuid(),
   activity_id uuid not null references public.event_activities(id) on delete restrict,
   activity_title text not null,
@@ -9,14 +9,14 @@ create table public.event_activity_attendance_archives (
   attendance_rows jsonb not null check (jsonb_typeof(attendance_rows) = 'array')
 );
 
-create index event_activity_attendance_archives_activity_idx
+create index if not exists event_activity_attendance_archives_activity_idx
   on public.event_activity_attendance_archives (activity_id, archived_at desc);
 
 alter table public.event_activity_attendance_archives enable row level security;
 revoke all on public.event_activity_attendance_archives from public, anon, authenticated, service_role;
 grant select, insert on public.event_activity_attendance_archives to service_role;
 
-create function public.archive_public_attendance_call(
+create or replace function public.archive_public_attendance_call(
   p_activity_id uuid,
   p_archived_by_registration_id uuid
 )
