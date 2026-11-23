@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco estrelas com preenchimento acumulado, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco quadros clicáveis com emojis e notas de 1 a 5, apenas um selecionado por vez, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
 
 ## Situação
 

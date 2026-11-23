@@ -20,14 +20,16 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
 
 describe("public mobile event feedback", () => {
   beforeEach(() => sessionStorage.clear());
-  it("fills stars up to the selected rating and offers unused only for food and lodging", async () => {
+  it("shows clickable numbered emoji squares with one selected score and unused only for food and lodging", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
     const overall = screen.getByRole("group", { name: "Avaliação geral" });
     await user.click(within(overall).getByRole("radio", { name: "Bom" }));
-    expect(overall.querySelectorAll('[data-filled="true"]')).toHaveLength(4);
+    expect(overall.querySelectorAll(".feedback-score-face")).toHaveLength(5);
+    expect(overall.querySelectorAll('[data-selected="true"]')).toHaveLength(1);
+    expect(overall.querySelector('[data-selected="true"]')).toHaveTextContent("4");
     await user.click(within(overall).getByRole("radio", { name: "Ruim" }));
-    expect(overall.querySelectorAll('[data-filled="true"]')).toHaveLength(2);
+    expect(overall.querySelector('[data-selected="true"]')).toHaveTextContent("2");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getAllByRole("radio", { name: "Não utilizei" })).toHaveLength(2);
     for (const name of ["Alimentação", "Hospedagem"])

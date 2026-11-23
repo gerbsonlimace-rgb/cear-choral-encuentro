@@ -10,4 +10,4 @@ Logo oficial discreta e nome “Sua voz faz a diferença” no topo, sem foto ou
 
 Publicação usa o projeto Lovable existente; não criar um Site separado. Preparar e verificar a implementação antes de qualquer publicação.
 
-Notas visuais usam cinco estrelas estilo Uber, preenchidas até a nota escolhida, com resposta textual e descrição acessível. Cada critério tem ícone Lucide próprio. “Não utilizei” é permitido somente em Alimentação e Hospedagem; os demais critérios exigem nota no servidor e no banco. Não mostrar escala numérica na tela.
+Notas visuais usam cinco quadros clicáveis com emojis e números de 1 a 5, com destaque apenas para a nota escolhida, resposta textual e descrição acessível. Cada critério tem ícone Lucide próprio. “Não utilizei” é permitido somente em Alimentação e Hospedagem; os demais critérios exigem nota no servidor e no banco. Mostrar emoji e número juntos em cada quadro.

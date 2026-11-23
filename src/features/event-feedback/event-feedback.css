@@ -968,22 +968,23 @@
 .feedback-main {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
-.feedback-stars {
+
+.feedback-scores {
   max-width: 340px;
 }
-.feedback-star-options {
+.feedback-score-options {
   display: grid;
   grid-template-columns: repeat(5, minmax(44px, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
-.feedback-star-option {
+.feedback-score-option {
   position: relative;
   display: block;
   cursor: pointer;
   min-width: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.feedback-star-option > input {
+.feedback-score-option > input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -991,49 +992,48 @@
   top: 50%;
   left: 0;
 }
-.feedback-star-face {
+.feedback-score-face {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  width: 100%;
+  min-height: 44px;
+  aspect-ratio: 1;
+  border: 1px solid #a1a1aa;
   border-radius: 8px;
-}
-.feedback-star-face svg {
-  stroke: #71717a;
-  fill: transparent;
+  background: var(--fb-white);
+  color: var(--fb-ink);
+  font-size: 1.25rem;
+  font-weight: 600;
   transition:
-    fill 0.12s,
-    stroke 0.12s,
-    transform 0.12s;
+    background 0.12s,
+    border-color 0.12s;
 }
-.feedback-star-face svg[data-filled="true"] {
-  fill: var(--fb-gold);
-  stroke: #967500;
+.feedback-score-face[data-selected="true"] {
+  background: var(--fb-gold-soft);
+  border: 2px solid #967500;
+  font-weight: 800;
 }
-.feedback-star-option > input:focus-visible + .feedback-star-face {
+.feedback-score-option > input:focus-visible + .feedback-score-face {
   outline: 3px solid var(--fb-gold);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
-.feedback-star-caption {
-  margin: 6px 0 0;
+.feedback-score-caption {
+  margin: 8px 0 0;
   color: var(--fb-muted);
   font-size: 0.875rem;
   line-height: 1.4;
   min-height: 20px;
   text-align: center;
 }
-.feedback-stars-overall {
-  max-width: 400px;
+.feedback-scores-overall {
+  max-width: 360px;
   margin: 16px 0;
 }
-.feedback-stars-overall .feedback-star-face {
-  min-height: 64px;
+.feedback-scores-overall .feedback-score-face {
+  font-size: 1.5rem;
 }
-.feedback-stars-overall svg {
-  width: 40px;
-  height: 40px;
-}
-.feedback-stars-overall .feedback-star-caption {
+.feedback-scores-overall .feedback-score-caption {
   margin-top: 12px;
   font-size: 1rem;
 }
@@ -1050,12 +1050,29 @@
   margin-top: 5px;
 }
 @media (hover: hover) {
-  .feedback-star-option:hover svg {
-    transform: scale(1.1);
+  .feedback-score-option:hover .feedback-score-face {
+    border-color: #967500;
+    background: var(--fb-gold-soft);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .feedback-star-face svg {
+  .feedback-score-face {
     transition: none;
   }
+}
+.feedback-score-face {
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+.feedback-rating-emoji {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: clamp(1.375rem, 6vw, 1.75rem);
+  line-height: 1;
+  font-weight: 400;
+}
+.feedback-rating-number {
+  font-size: 0.875rem;
+  line-height: 1;
+  font-weight: inherit;
 }

@@ -43,6 +43,7 @@ const aspectIcons = {
   food: Utensils,
   lodging: BedDouble,
 };
+const ratingEmojis = ["😞", "🙁", "😐", "🙂", "🤩"];
 const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
   "Como foi o encontro para você?",
@@ -52,7 +53,7 @@ const titles = [
 ];
 const descriptions = [
   "Pense na sua experiência como um todo.",
-  "Toque nas estrelas para avaliar cada aspecto.",
+  "Toque em uma nota de 1 a 5 para avaliar cada aspecto.",
   "Você participaria de uma próxima edição do encontro?",
   "Deixe uma sugestão para a próxima edição. Este campo é opcional.",
 ];
@@ -89,49 +90,43 @@ function Choice({
   );
 }
 
-function StarRating({
+function NumericRating({
   name,
   value,
   onChange,
-  unratedLabel = "Toque nas estrelas",
+  unratedLabel = "Toque para avaliar",
 }: {
   name: string;
   value?: Rating | null;
   onChange: (rating: Rating) => void;
   unratedLabel?: string;
 }) {
-  const [hovered, setHovered] = useState<number | null>(null);
-  const active = hovered ?? value ?? 0;
   return (
-    <div className={`feedback-stars ${name === "overall" ? "feedback-stars-overall" : ""}`}>
-      <div className="feedback-star-options" onPointerLeave={() => setHovered(null)}>
+    <div className={`feedback-scores ${name === "overall" ? "feedback-scores-overall" : ""}`}>
+      <div className="feedback-score-options">
         {RATING_LABELS.map((label, index) => (
-          <label
-            key={label}
-            className="feedback-star-option"
-            onPointerEnter={(event) => {
-              if (event.pointerType === "mouse") setHovered(index + 1);
-            }}
-          >
+          <label key={label} className="feedback-score-option">
             <input
               type="radio"
               name={name}
               value={index + 1}
               checked={value === index + 1}
               aria-label={label}
-              aria-description={`${index + 1} ${index === 0 ? "estrela" : "estrelas"}`}
-              onChange={() => {
-                setHovered(null);
-                onChange((index + 1) as Rating);
-              }}
+              aria-description={`Nota ${index + 1} de 5`}
+              onChange={() => onChange((index + 1) as Rating)}
             />
-            <span className="feedback-star-face">
-              <Star size={32} strokeWidth={1.6} data-filled={index < active} aria-hidden="true" />
+            <span
+              className="feedback-score-face"
+              data-selected={value === index + 1}
+              aria-hidden="true"
+            >
+              <span className="feedback-rating-emoji">{ratingEmojis[index]}</span>
+              <span className="feedback-rating-number">{index + 1}</span>
             </span>
           </label>
         ))}
       </div>
-      <p className="feedback-star-caption" aria-live="polite">
+      <p className="feedback-score-caption" aria-live="polite">
         {value ? RATING_LABELS[value - 1] : unratedLabel}
       </p>
     </div>
@@ -362,7 +357,7 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                     aria-label="Avaliação geral"
                     aria-describedby="feedback-description"
                   >
-                    <StarRating
+                    <NumericRating
                       name="overall"
                       value={overall}
                       onChange={(rating) => {
@@ -385,13 +380,13 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                             <span>{label}</span>
                           </legend>
                           <p>{description}</p>
-                          <StarRating
+                          <NumericRating
                             name={key}
                             value={
                               typeof aspects[key] === "number" ? (aspects[key] as Rating) : null
                             }
                             unratedLabel={
-                              aspects[key] === "not_used" ? "Não utilizei" : "Toque nas estrelas"
+                              aspects[key] === "not_used" ? "Não utilizei" : "Toque para avaliar"
                             }
                             onChange={(rating) => {
                               setAspects((current) => ({ ...current, [key]: rating }));
