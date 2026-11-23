@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcessarRouteImport } from './routes/acessar'
+import { Route as AvaliacaoRouteImport } from './routes/avaliacao'
 import { Route as CartaoRouteImport } from './routes/cartao'
 import { Route as ChamadaRouteImport } from './routes/chamada'
 import { Route as EuvouRouteImport } from './routes/euvou'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const AcessarRoute = AcessarRouteImport.update({
   id: '/acessar',
   path: '/acessar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AvaliacaoRoute = AvaliacaoRouteImport.update({
+  id: '/avaliacao',
+  path: '/avaliacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartaoRoute = CartaoRouteImport.update({
@@ -237,6 +243,7 @@ const RegentePagamentoRoute = RegentePagamentoRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/avaliacao': typeof AvaliacaoRoute
   '/cartao': typeof CartaoRoute
   '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/avaliacao': typeof AvaliacaoRoute
   '/cartao': typeof CartaoRoute
   '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessar': typeof AcessarRoute
+  '/avaliacao': typeof AvaliacaoRoute
   '/cartao': typeof CartaoRoute
   '/chamada': typeof ChamadaRoute
   '/euvou': typeof EuvouRoute
@@ -355,6 +364,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acessar'
+    | '/avaliacao'
     | '/cartao'
     | '/chamada'
     | '/euvou'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acessar'
+    | '/avaliacao'
     | '/cartao'
     | '/chamada'
     | '/euvou'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acessar'
+    | '/avaliacao'
     | '/cartao'
     | '/chamada'
     | '/euvou'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessarRoute: typeof AcessarRoute
+  AvaliacaoRoute: typeof AvaliacaoRoute
   CartaoRoute: typeof CartaoRoute
   ChamadaRoute: typeof ChamadaRoute
   EuvouRoute: typeof EuvouRoute
@@ -511,6 +524,13 @@ declare module '@tanstack/react-router' {
       path: '/acessar'
       fullPath: '/acessar'
       preLoaderRoute: typeof AcessarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/avaliacao': {
+      id: '/avaliacao'
+      path: '/avaliacao'
+      fullPath: '/avaliacao'
+      preLoaderRoute: typeof AvaliacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cartao': {
@@ -805,6 +825,7 @@ const RegenteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessarRoute: AcessarRoute,
+  AvaliacaoRoute: AvaliacaoRoute,
   CartaoRoute: CartaoRoute,
   ChamadaRoute: ChamadaRoute,
   EuvouRoute: EuvouRoute,
