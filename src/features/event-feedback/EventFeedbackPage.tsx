@@ -12,9 +12,7 @@ import {
   BedDouble,
   Heart,
   LoaderCircle,
-  Music2,
   ShieldCheck,
-  Star,
 } from "lucide-react";
 import logo from "@/assets/logo-coros-preto.png";
 import {
@@ -46,13 +44,11 @@ const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
   "Como foi o encontro para você?",
   "Vamos olhar para os detalhes?",
-  "Nos encontramos na próxima?",
   "O que podemos fazer melhor?",
 ];
 const descriptions = [
   "Pense na sua experiência como um todo.",
   "Toque em uma nota de 1 a 5 para avaliar cada aspecto.",
-  "Você participaria de uma próxima edição do encontro?",
   "Deixe uma sugestão para a próxima edição. Este campo é opcional.",
 ];
 
@@ -135,7 +131,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
-  const [returnIntent, setReturnIntent] = useState<EventFeedback["returnIntent"] | null>(null);
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -167,7 +162,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
       submissionId.current = feedback.submissionId;
       setOverall(feedback.overall as Rating);
       setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
-      setReturnIntent(feedback.returnIntent);
       setSuggestion(feedback.suggestion);
       setStep(titles.length - 1);
       setSaved(stored.saved === true);
@@ -201,8 +195,7 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
     if (inFlight.current) return;
     const missingAspect =
       step === 1 && FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined);
-    const missing =
-      step === 0 ? !overall : step === 1 ? missingAspect : step === 2 ? !returnIntent : false;
+    const missing = step === 0 ? !overall : step === 1 ? missingAspect : false;
     if (missing) {
       setError(
         missingAspect
@@ -224,7 +217,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
         submissionId: submissionId.current,
         overall: overall!,
         aspects: aspects as EventFeedback["aspects"],
-        returnIntent: returnIntent!,
         suggestion,
       };
       remember(feedback, false);
@@ -404,66 +396,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                 )}
 
                 {step === 2 && (
-                  <fieldset
-                    className="feedback-options"
-                    aria-label="Participação na próxima edição"
-                  >
-                    {(
-                      [
-                        {
-                          value: "yes",
-                          label: "Sim, quero participar",
-                          detail: "Vamos cantar juntos outra vez.",
-                          icon: Heart,
-                        },
-                        {
-                          value: "maybe",
-                          label: "Talvez",
-                          detail: "Ainda preciso decidir.",
-                          icon: Star,
-                        },
-                        {
-                          value: "no",
-                          label: "Não",
-                          detail: "Não pretendo participar.",
-                          icon: Music2,
-                        },
-                      ] as const
-                    ).map(({ value, label, detail, icon: Icon }) => (
-                      <Choice
-                        key={value}
-                        name="returnIntent"
-                        value={value}
-                        label={label}
-                        checked={returnIntent === value}
-                        onChange={() => {
-                          setReturnIntent(value);
-                          setError("");
-                        }}
-                      >
-                        <Icon
-                          size={24}
-                          className="feedback-face"
-                          strokeWidth={1.6}
-                          aria-hidden="true"
-                        />
-                        <span className="feedback-choice-copy">
-                          <span>{label}</span>
-                          <small>{detail}</small>
-                        </span>
-                        <span className="feedback-choice-end">
-                          {returnIntent === value ? (
-                            <Check size={20} aria-hidden="true" />
-                          ) : (
-                            <span className="feedback-radio-mark" />
-                          )}
-                        </span>
-                      </Choice>
-                    ))}
-                  </fieldset>
-                )}
-
-                {step === 3 && (
                   <div className="feedback-suggestion">
                     <label htmlFor="feedback-suggestion">
                       Sua sugestão <span>(opcional)</span>

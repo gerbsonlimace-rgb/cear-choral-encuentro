@@ -13,7 +13,6 @@ export const validFeedback = {
     food: 4,
     lodging: "not_used",
   },
-  returnIntent: "yes",
   suggestion: "Mais tempo de convivência.",
 };
 

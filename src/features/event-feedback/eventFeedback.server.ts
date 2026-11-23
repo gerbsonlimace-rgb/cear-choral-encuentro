@@ -9,7 +9,6 @@ type FeedbackRow = {
   venue: number | null;
   food: number | null;
   lodging: number | null;
-  return_intent: string;
   suggestion: string;
 };
 type PersistFeedback = (row: FeedbackRow) => PromiseLike<{ error: { code?: string } | null }>;
@@ -37,7 +36,6 @@ export async function saveEventFeedback(
     submission_id: data.submissionId,
     overall: data.overall,
     ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
-    return_intent: data.returnIntent,
     suggestion: data.suggestion,
   });
   // Upsert keeps one row and also saves edits after an uncertain network response.

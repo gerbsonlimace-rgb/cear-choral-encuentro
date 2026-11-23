@@ -33,7 +33,6 @@ export const eventFeedbackSchema = z
         lodging: aspectRating,
       })
       .strict(),
-    returnIntent: z.enum(["yes", "maybe", "no"]),
     suggestion: z.string().trim().max(1000).default(""),
   })
   .strict();

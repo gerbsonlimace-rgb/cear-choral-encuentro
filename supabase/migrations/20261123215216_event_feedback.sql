@@ -9,7 +9,6 @@ create table public.event_feedback (
   venue smallint not null check (venue between 1 and 5),
   food smallint check (food between 1 and 5),
   lodging smallint check (lodging between 1 and 5),
-  return_intent text not null check (return_intent in ('yes', 'maybe', 'no')),
   suggestion text not null default '' check (char_length(suggestion) <= 1000)
 );
 comment on table public.event_feedback is 'Anonymous event evaluation. Only food and lodging may be NULL, explicitly meaning not used. No registration or Auth identifiers.';

@@ -18,7 +18,7 @@ try {
   await db.exec("set role service_role");
   const id = "22222222-2222-4222-8222-222222222222";
   const save = (overall, suggestion = "") => db.query(`insert into event_feedback
-    (submission_id,overall,organization,formation,celebrations,venue,return_intent,suggestion) values ($1,$2,4,4,4,4,'yes',$3)
+    (submission_id,overall,organization,formation,celebrations,venue,suggestion) values ($1,$2,4,4,4,4,$3)
     on conflict (submission_id) do update set overall=excluded.overall,suggestion=excluded.suggestion`, [id, overall, suggestion]);
   await save(4);
   await save(5, "Sugestão atualizada");

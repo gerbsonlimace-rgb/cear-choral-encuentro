@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Execute inline with verification at each task.
 
-**Goal:** Página pública mobile em `/avaliacao` com quatro perguntas e persistência anônima.
+**Goal:** Página pública mobile em `/avaliacao` com três perguntas e persistência anônima.
 **Architecture:** React/TanStack Start; schema Zod compartilhado; handler público POST com import dinâmico de repositório server-only; tabela independente Supabase com RLS e acesso service-role.
 **Tech Stack:** React, TypeScript, CSS, Vitest, Supabase/Postgres.
 **Spec:** `docs/superpowers/specs/2026-11-23-avaliacao-design.md`
@@ -40,3 +40,5 @@
 - Usuário substituiu estrelas por quadros clicáveis numerados e pediu emojis: escala 😞/🙁/😐/🙂/🤩 com notas 1–5, uma seleção por critério. Ícones, opção Não utilizei restrita e navegação fixa preservados. Teste ajustado RED→GREEN; treze testes e build passaram; quadros de aproximadamente 49×49px em 320×568.
 
 - Usuário removeu Convivência e a pergunta de contribuição para o coro. Restam seis critérios; Estrutura agora descreve organização do espaço e dos materiais do encontro. Campos removidos também do payload, schema, serviço e migração ainda não publicada; treze testes, SQL descartável e build passaram. Link localhost enviado por engano foi desconsiderado.
+
+- Usuário removeu a pergunta sobre participar da próxima edição. Fluxo reduzido a três etapas; critério segue diretamente para sugestão opcional. Campo removido do payload, schema, serviço e migração ainda não publicada.

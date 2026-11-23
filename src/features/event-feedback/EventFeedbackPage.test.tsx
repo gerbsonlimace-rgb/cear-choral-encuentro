@@ -11,8 +11,6 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
     await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
   }
   await user.click(screen.getByRole("button", { name: "Continuar" }));
-  await user.click(screen.getByRole("radio", { name: "Sim, quero participar" }));
-  await user.click(screen.getByRole("button", { name: "Continuar" }));
 }
 
 describe("public mobile event feedback", () => {
@@ -69,7 +67,7 @@ describe("public mobile event feedback", () => {
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByText("Etapa 2 de 4")).toBeVisible();
+    expect(screen.getByText("Etapa 2 de 3")).toBeVisible();
     expect(screen.queryByText("Transporte")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Convivência" })).not.toBeInTheDocument();
     expect(
@@ -86,7 +84,10 @@ describe("public mobile event feedback", () => {
       await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
     }
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("heading", { name: "Nos encontramos na próxima?" })).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Nos encontramos na próxima?" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "O que podemos fazer melhor?" })).toBeVisible();
   });
   it("submits anonymous answers, preserves them on failure and retries with the same UUID", async () => {
     const user = userEvent.setup();
@@ -110,7 +111,6 @@ describe("public mobile event feedback", () => {
     expect(onSubmit.mock.calls[0][0].submissionId).toBe(onSubmit.mock.calls[1][0].submissionId);
     expect(onSubmit.mock.calls[0][0]).toMatchObject({
       overall: 5,
-      returnIntent: "yes",
       suggestion: "Mais momentos de troca.",
     });
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("email");
