@@ -18,7 +18,7 @@ try {
   await db.exec("set role service_role");
   const id = "22222222-2222-4222-8222-222222222222";
   const save = (overall, suggestion = "") => db.query(`insert into event_feedback
-    (submission_id,overall,contribution,return_intent,suggestion) values ($1,$2,4,'yes',$3)
+    (submission_id,overall,organization,formation,celebrations,fellowship,venue,contribution,return_intent,suggestion) values ($1,$2,4,4,4,4,4,4,'yes',$3)
     on conflict (submission_id) do update set overall=excluded.overall,suggestion=excluded.suggestion`, [id, overall, suggestion]);
   await save(4);
   await save(5, "Sugestão atualizada");
@@ -27,6 +27,7 @@ try {
   await assert.rejects(save(0), /check constraint/);
   await assert.rejects(save(6), /check constraint/);
   await assert.rejects(save(4, "a".repeat(1001)), /check constraint/);
+  await assert.rejects(db.query("update event_feedback set formation = null"), /not-null constraint/);
   await db.exec("reset role; set role anon");
   await assert.rejects(db.query("select * from event_feedback"), /permission denied/);
   await db.exec("reset role; set role authenticated");

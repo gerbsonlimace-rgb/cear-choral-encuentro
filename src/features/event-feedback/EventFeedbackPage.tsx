@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
-  Annoyed,
   Check,
   CheckCheck,
   ChevronLeft,
   Clock3,
-  Frown,
+  ClipboardCheck,
+  GraduationCap,
+  Church,
+  Users,
+  Building2,
+  Utensils,
+  BedDouble,
   Heart,
-  Laugh,
   LoaderCircle,
-  Meh,
   Music2,
   ShieldCheck,
-  Smile,
   Star,
 } from "lucide-react";
 import logo from "@/assets/logo-coros-preto.png";
@@ -32,7 +34,15 @@ type Props = {
   onSubmit: (feedback: EventFeedback) => Promise<{ saved: true }>;
   loadStats?: () => Promise<EventFeedbackStats>;
 };
-const faces = [Frown, Annoyed, Meh, Smile, Laugh];
+const aspectIcons = {
+  organization: ClipboardCheck,
+  formation: GraduationCap,
+  celebrations: Church,
+  fellowship: Users,
+  venue: Building2,
+  food: Utensils,
+  lodging: BedDouble,
+};
 const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
   "Como foi o encontro para você?",
@@ -42,7 +52,7 @@ const titles = [
 ];
 const descriptions = [
   "Pense na sua experiência como um todo.",
-  "Avalie cada aspecto. Se não participou ou não utilizou, é só indicar.",
+  "Toque nas estrelas para avaliar cada aspecto.",
   "Você participaria de uma próxima edição do encontro?",
   "Deixe uma sugestão para a próxima edição. Este campo é opcional.",
 ];
@@ -76,6 +86,55 @@ function Choice({
       />
       <span className="feedback-choice-content">{children}</span>
     </label>
+  );
+}
+
+function StarRating({
+  name,
+  value,
+  onChange,
+  unratedLabel = "Toque nas estrelas",
+}: {
+  name: string;
+  value?: Rating | null;
+  onChange: (rating: Rating) => void;
+  unratedLabel?: string;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const active = hovered ?? value ?? 0;
+  return (
+    <div className={`feedback-stars ${name === "overall" ? "feedback-stars-overall" : ""}`}>
+      <div className="feedback-star-options" onPointerLeave={() => setHovered(null)}>
+        {RATING_LABELS.map((label, index) => (
+          <label
+            key={label}
+            className="feedback-star-option"
+            onPointerEnter={(event) => {
+              if (event.pointerType === "mouse") setHovered(index + 1);
+            }}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={index + 1}
+              checked={value === index + 1}
+              aria-label={label}
+              aria-description={`${index + 1} ${index === 0 ? "estrela" : "estrelas"}`}
+              onChange={() => {
+                setHovered(null);
+                onChange((index + 1) as Rating);
+              }}
+            />
+            <span className="feedback-star-face">
+              <Star size={32} strokeWidth={1.6} data-filled={index < active} aria-hidden="true" />
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="feedback-star-caption" aria-live="polite">
+        {value ? RATING_LABELS[value - 1] : unratedLabel}
+      </p>
+    </div>
   );
 }
 
@@ -303,88 +362,63 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                     aria-label="Avaliação geral"
                     aria-describedby="feedback-description"
                   >
-                    {RATING_LABELS.map((label, index) => {
-                      const Icon = faces[index];
-                      return (
-                        <Choice
-                          key={label}
-                          name="overall"
-                          label={label}
-                          value={String(index + 1)}
-                          checked={overall === index + 1}
-                          onChange={() => {
-                            setOverall((index + 1) as Rating);
-                            setError("");
-                          }}
-                        >
-                          <Icon
-                            className="feedback-face"
-                            size={25}
-                            strokeWidth={1.6}
-                            aria-hidden="true"
-                          />
-                          <span>{label}</span>
-                          <span className="feedback-choice-end">
-                            {overall === index + 1 ? (
-                              <Check size={20} aria-hidden="true" />
-                            ) : (
-                              <span className="feedback-radio-mark" />
-                            )}
-                          </span>
-                        </Choice>
-                      );
-                    })}
+                    <StarRating
+                      name="overall"
+                      value={overall}
+                      onChange={(rating) => {
+                        setOverall(rating);
+                        setError("");
+                      }}
+                    />
                   </fieldset>
                 )}
 
                 {step === 1 && (
                   <div className="feedback-aspects">
-                    <div className="feedback-scale" aria-label="Escala de avaliação">
-                      {RATING_LABELS.map((label, index) => (
-                        <span key={label}>
-                          <b>{index + 1}</b> {label}
-                        </span>
-                      ))}
-                    </div>
-                    {FEEDBACK_ASPECTS.map(({ key, label, description }) => (
-                      <fieldset key={key} className="feedback-aspect">
-                        <legend>{label}</legend>
-                        <p>{description}</p>
-                        <div className="feedback-rating-grid">
-                          {RATING_LABELS.map((ratingLabel, index) => (
+                    {FEEDBACK_ASPECTS.map(({ key, label, description }) => {
+                      const Icon = aspectIcons[key];
+                      const canBeUnused = key === "food" || key === "lodging";
+                      return (
+                        <fieldset key={key} className="feedback-aspect">
+                          <legend>
+                            <Icon size={21} strokeWidth={1.8} aria-hidden="true" />
+                            <span>{label}</span>
+                          </legend>
+                          <p>{description}</p>
+                          <StarRating
+                            name={key}
+                            value={
+                              typeof aspects[key] === "number" ? (aspects[key] as Rating) : null
+                            }
+                            unratedLabel={
+                              aspects[key] === "not_used" ? "Não utilizei" : "Toque nas estrelas"
+                            }
+                            onChange={(rating) => {
+                              setAspects((current) => ({ ...current, [key]: rating }));
+                              setError("");
+                            }}
+                          />
+                          {canBeUnused && (
                             <Choice
-                              key={ratingLabel}
                               name={key}
-                              value={String(index + 1)}
-                              label={ratingLabel}
-                              checked={aspects[key] === index + 1}
+                              value="not_used"
+                              label="Não utilizei"
+                              checked={aspects[key] === "not_used"}
+                              className="feedback-not-used"
                               onChange={() => {
-                                setAspects((current) => ({
-                                  ...current,
-                                  [key]: (index + 1) as Rating,
-                                }));
+                                setAspects((current) => ({ ...current, [key]: "not_used" }));
                                 setError("");
                               }}
                             >
-                              <span>{index + 1}</span>
+                              <span>Não utilizei</span>
+                              {aspects[key] === "not_used" && (
+                                <Check size={16} aria-hidden="true" />
+                              )}
                             </Choice>
-                          ))}
-                        </div>
-                        <Choice
-                          name={key}
-                          value="not_used"
-                          checked={aspects[key] === "not_used"}
-                          className="feedback-not-used"
-                          onChange={() => {
-                            setAspects((current) => ({ ...current, [key]: "not_used" }));
-                            setError("");
-                          }}
-                        >
-                          <span>Não participei / Não utilizei</span>
-                          {aspects[key] === "not_used" && <Check size={16} aria-hidden="true" />}
-                        </Choice>
-                      </fieldset>
-                    ))}
+                          )}
+                        </fieldset>
+                      );
+                    })}
                   </div>
                 )}
 

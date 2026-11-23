@@ -968,3 +968,94 @@
 .feedback-main {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
+.feedback-stars {
+  max-width: 340px;
+}
+.feedback-star-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  gap: 6px;
+}
+.feedback-star-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.feedback-star-option > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  top: 50%;
+  left: 0;
+}
+.feedback-star-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 8px;
+}
+.feedback-star-face svg {
+  stroke: #71717a;
+  fill: transparent;
+  transition:
+    fill 0.12s,
+    stroke 0.12s,
+    transform 0.12s;
+}
+.feedback-star-face svg[data-filled="true"] {
+  fill: var(--fb-gold);
+  stroke: #967500;
+}
+.feedback-star-option > input:focus-visible + .feedback-star-face {
+  outline: 3px solid var(--fb-gold);
+  outline-offset: 2px;
+}
+.feedback-star-caption {
+  margin: 6px 0 0;
+  color: var(--fb-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  min-height: 20px;
+  text-align: center;
+}
+.feedback-stars-overall {
+  max-width: 400px;
+  margin: 16px 0;
+}
+.feedback-stars-overall .feedback-star-face {
+  min-height: 64px;
+}
+.feedback-stars-overall svg {
+  width: 40px;
+  height: 40px;
+}
+.feedback-stars-overall .feedback-star-caption {
+  margin-top: 12px;
+  font-size: 1rem;
+}
+.feedback-aspect > legend {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.feedback-aspect > legend svg {
+  color: #816500;
+  flex: none;
+}
+.feedback-aspect > p {
+  margin-top: 5px;
+}
+@media (hover: hover) {
+  .feedback-star-option:hover svg {
+    transform: scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-star-face svg {
+    transition: none;
+  }
+}

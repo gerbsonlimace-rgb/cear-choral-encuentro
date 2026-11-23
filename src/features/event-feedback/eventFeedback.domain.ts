@@ -22,11 +22,11 @@ export const eventFeedbackSchema = z
     overall: rating,
     aspects: z
       .object({
-        organization: aspectRating,
-        formation: aspectRating,
-        celebrations: aspectRating,
-        fellowship: aspectRating,
-        venue: aspectRating,
+        organization: rating,
+        formation: rating,
+        celebrations: rating,
+        fellowship: rating,
+        venue: rating,
         food: aspectRating,
         lodging: aspectRating,
       })

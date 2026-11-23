@@ -31,6 +31,7 @@ describe("anonymous event feedback", () => {
       { ...validFeedback, overall: 0 },
       { ...validFeedback, contribution: 5 },
       { ...validFeedback, aspects: { ...validFeedback.aspects, venue: undefined } },
+      { ...validFeedback, aspects: { ...validFeedback.aspects, formation: "not_used" } },
       { ...validFeedback, suggestion: "a".repeat(1001) },
       { ...validFeedback, email: "a@test.com" },
     ])

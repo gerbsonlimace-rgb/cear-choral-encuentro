@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco estrelas com preenchimento acumulado, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
 
 ## Situação
 
@@ -17,7 +17,7 @@ Implementação preparada na branch `codex/avaliacao-evento`, sobre a configura�
 
 ## Persistência e privacidade
 
-O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP na avaliação. O comentário é opcional e limitado a 1.000 caracteres. Notas de aspectos não utilizados são `NULL`, não zero.
+O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A tabela possui RLS e revoga acesso de `public`, `anon` e `authenticated`; respostas não são listadas publicamente. Não há nome, CPF, email, ID de usuário, inscrição ou IP na avaliação. O comentário é opcional e limitado a 1.000 caracteres. Apenas Alimentação e Hospedagem permitem `NULL` para “Não utilizei”; os outros cinco critérios exigem nota de 1 a 5 no servidor e no banco.
 
 O navegador mantém o snapshot de um envio tentado na sessão para recuperar recargas após perda de conexão. O servidor salva por upsert atômico com o mesmo UUID, evitando duplicação e preservando alterações de uma nova tentativa. A confirmação só aparece após sucesso do servidor. Isso não impõe unicidade por pessoa: a avaliação continua anônima.
 
@@ -27,7 +27,7 @@ O convite e o botão de compartilhamento foram removidos a pedido do usuário. A
 
 ## Verificação realizada
 
-- `npx vitest run src/features/event-feedback`: 12 testes passaram.
+- `npx vitest run src/features/event-feedback`: 13 testes passaram.
 - `npm run build`: passou.
 - Migração executada em Postgres descartável via `scripts/verify-event-feedback.mjs`, com RLS, permissões, limites e retries verificados.
 - Inspeção em celulares de 390px e 320px. Em 320×568, o documento permaneceu com 568px de altura e scrollTop zero; ao rolar 1.412px de perguntas, a posição dos botões permaneceu idêntica. Respostas diretas, sem selects, controles de pelo menos 44px.

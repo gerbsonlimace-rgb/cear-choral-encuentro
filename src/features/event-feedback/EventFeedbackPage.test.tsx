@@ -9,7 +9,8 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
   for (const group of screen
     .getAllByRole("group")
     .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
-    await user.click(within(group).getByRole("radio", { name: "Não participei / Não utilizei" }));
+    const unused = within(group).queryByRole("radio", { name: "Não utilizei" });
+    await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
   }
   await user.click(screen.getByRole("radio", { name: "Muito" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -19,6 +20,26 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
 
 describe("public mobile event feedback", () => {
   beforeEach(() => sessionStorage.clear());
+  it("fills stars up to the selected rating and offers unused only for food and lodging", async () => {
+    const user = userEvent.setup();
+    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    const overall = screen.getByRole("group", { name: "Avaliação geral" });
+    await user.click(within(overall).getByRole("radio", { name: "Bom" }));
+    expect(overall.querySelectorAll('[data-filled="true"]')).toHaveLength(4);
+    await user.click(within(overall).getByRole("radio", { name: "Ruim" }));
+    expect(overall.querySelectorAll('[data-filled="true"]')).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getAllByRole("radio", { name: "Não utilizei" })).toHaveLength(2);
+    for (const name of ["Alimentação", "Hospedagem"])
+      expect(
+        within(screen.getByRole("group", { name })).getByRole("radio", { name: "Não utilizei" }),
+      ).toBeVisible();
+    expect(
+      within(screen.getByRole("group", { name: "Formação" })).queryByRole("radio", {
+        name: "Não utilizei",
+      }),
+    ).not.toBeInTheDocument();
+  });
   it("shows real totals without a WhatsApp sharing invitation", async () => {
     const loadStats = vi.fn().mockResolvedValue({ registrations: 245, responses: 18 });
     render(<EventFeedbackPage onSubmit={vi.fn()} loadStats={loadStats} />);
@@ -60,7 +81,8 @@ describe("public mobile event feedback", () => {
     for (const group of screen
       .getAllByRole("group")
       .filter((group) => group.getAttribute("aria-label") !== "Contribuição para o coro")) {
-      await user.click(within(group).getByRole("radio", { name: "Não participei / Não utilizei" }));
+      const unused = within(group).queryByRole("radio", { name: "Não utilizei" });
+      await user.click(unused ?? within(group).getByRole("radio", { name: "Bom" }));
     }
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("alert")).toHaveTextContent("contribuição");
