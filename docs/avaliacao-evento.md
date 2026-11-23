@@ -1,5 +1,7 @@
 # Avaliação pública do encontro
 
+Atualização mais recente (23/11/2026): a pedido do usuário, CPF/e-mail foram removidos. A página começa diretamente com a pergunta geral e os cinco quadros de notas. O POST aceita somente opiniões e UUID aleatório, usando novamente upsert direto pelo servidor. O controle de identificadores criado anteriormente permanece privado e sem uso pelo formulário; nenhuma informação histórica foi apagada. O contador continua refletindo avaliações salvas, sem deduplicação por pessoa.
+
 Rota: `/avaliacao`. Não exige login. Três etapas: avaliação geral; seis aspectos; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. A avaliação geral e os critérios usam cinco quadros clicáveis com emojis e notas de 1 a 5, apenas um selecionado por vez, seleção por toque/teclado e descrição acessível da nota. Cada critério tem um ícone Lucide. “Não utilizei” está disponível somente em Alimentação e Hospedagem. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
 
 ## Situação
@@ -19,7 +21,7 @@ Publicada em 23/11/2026 pelo projeto Lovable original. Link: https://encontrocor
 
 ## Persistência e privacidade
 
-O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. A primeira etapa solicita CPF ou e-mail válido para controle de repetições. O servidor normaliza o identificador e usa `save_anonymous_event_feedback` para gravar o código de controle e as opiniões atomicamente. O código é protegido por segredo aleatório permanente do banco e fica em tabela privada sem UUID da avaliação ou data. CPF/e-mail em texto não são gravados nem guardados no sessionStorage. Repetições do mesmo identificador são recusadas; retries com o mesmo UUID atualizam a única avaliação.
+O POST público valida o payload completo com Zod e usa o cliente de serviço apenas no servidor. Não solicita CPF, e-mail ou login. O schema estrito recusa campos de identificação adicionais. Retries com o mesmo UUID atualizam a única avaliação; o snapshot da sessão preserva respostas em falhas de conexão.
 
 A equipe destinatária recebe opiniões sem identificação. O controle é pseudonimizado: o proprietário do banco pode correlacionar metadados transacionais e tem acesso ao segredo, portanto não se promete anonimato contra esse administrador. O campo livre orienta a não incluir dados pessoais. Não há login, comprovação de titularidade ou unificação automática entre CPF e e-mail da mesma pessoa.
 

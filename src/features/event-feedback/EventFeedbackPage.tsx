@@ -19,8 +19,6 @@ import {
   FEEDBACK_ASPECTS,
   RATING_LABELS,
   eventFeedbackSchema,
-  eventFeedbackAnswersSchema,
-  feedbackIdentitySchema,
   type EventFeedbackStats,
   type AspectKey,
   type AspectRating,
@@ -132,7 +130,6 @@ function NumericRating({
 export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
-  const [identity, setIdentity] = useState("");
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
@@ -159,14 +156,14 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const stored = JSON.parse(raw);
-      const parsed = eventFeedbackAnswersSchema.safeParse(stored.feedback);
+      const parsed = eventFeedbackSchema.safeParse(stored.feedback);
       if (!parsed.success) return;
       const feedback = parsed.data;
       submissionId.current = feedback.submissionId;
       setOverall(feedback.overall as Rating);
       setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
       setSuggestion(feedback.suggestion);
-      setStep(stored.saved === true ? titles.length - 1 : 0);
+      setStep(titles.length - 1);
       setSaved(stored.saved === true);
     } catch {
       /* Storage may be unavailable in private browsing. */
@@ -175,8 +172,7 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
 
   function remember(feedback: EventFeedback, saved: boolean) {
     try {
-      const { identity: _identity, ...answers } = feedback;
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ feedback: answers, saved }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ feedback, saved }));
     } catch {
       /* Keep the in-memory retry available when browser storage is blocked. */
     }
@@ -208,11 +204,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
       );
       return;
     }
-    if (!feedbackIdentitySchema.safeParse(identity).success) {
-      setError("Informe um CPF ou e-mail válido para continuar.");
-      setStep(0);
-      return;
-    }
     if (step < titles.length - 1) {
       move(step + 1);
       return;
@@ -224,7 +215,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
       submissionId.current ??= crypto.randomUUID();
       const feedback: EventFeedback = {
         submissionId: submissionId.current,
-        identity,
         overall: overall!,
         aspects: aspects as EventFeedback["aspects"],
         suggestion,
@@ -235,7 +225,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
         throw new Error("Não foi possível enviar sua avaliação. Tente novamente.");
       setSaved(true);
       remember(feedback, true);
-      setIdentity("");
       requestAnimationFrame(() => heading.current?.focus());
     } catch (cause) {
       setError(
@@ -342,34 +331,6 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
 
                 {step === 0 && (
                   <>
-                    <div className="feedback-identity">
-                      <label htmlFor="feedback-identity">CPF ou e-mail</label>
-                      <input
-                        id="feedback-identity"
-                        type="text"
-                        value={identity}
-                        onChange={(event) => {
-                          setIdentity(event.target.value);
-                          setError("");
-                        }}
-                        autoComplete="off"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        maxLength={254}
-                        required
-                        aria-describedby="feedback-identity-note feedback-purpose"
-                        placeholder="Digite seu CPF ou e-mail"
-                      />
-                      <p id="feedback-identity-note">
-                        Pedimos o CPF ou e-mail apenas para controlar o número de respostas e evitar
-                        repetições. Suas opiniões serão compartilhadas com a equipe organizadora sem
-                        CPF ou e-mail.
-                      </p>
-                      <p id="feedback-purpose">
-                        Sua avaliação vai ajudar a melhorar o encontro. As respostas serão
-                        encaminhadas à equipe organizadora do próximo encontro.
-                      </p>
-                    </div>
                     <fieldset
                       className="feedback-options"
                       aria-label="Avaliação geral"
@@ -384,6 +345,10 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                         }}
                       />
                     </fieldset>
+                    <p className="feedback-description">
+                      Suas respostas são anônimas e ajudarão a melhorar o encontro. Elas serão
+                      encaminhadas à equipe organizadora do próximo encontro.
+                    </p>
                   </>
                 )}
 
@@ -452,7 +417,7 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
                     <span className="feedback-character-count">{suggestion.length} / 1.000</span>
                     <p>
                       <ShieldCheck size={18} aria-hidden="true" />
-                      Para manter o anonimato, não inclua nome ou dados pessoais na sugestão.
+                      Não é preciso informar nome, e-mail ou telefone.
                     </p>
                   </div>
                 )}

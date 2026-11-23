@@ -11,21 +11,17 @@ type FeedbackRow = {
   lodging: number | null;
   suggestion: string;
 };
-type PersistFeedback = (
-  row: FeedbackRow,
-  identity: string,
-) => PromiseLike<{ error: { code?: string; message?: string } | null }>;
+type PersistFeedback = (row: FeedbackRow) => PromiseLike<{ error: { code?: string } | null }>;
 
-async function persistFeedback(row: FeedbackRow, identity: string) {
+async function persistFeedback(row: FeedbackRow) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // Keep new migration types local until the integration types are regenerated.
   const client = supabaseAdmin as unknown as {
-    rpc(
-      name: "save_anonymous_event_feedback",
-      args: { p_identity: string; p_feedback: FeedbackRow },
-    ): ReturnType<PersistFeedback>;
+    from(table: "event_feedback"): {
+      upsert(value: FeedbackRow, options: { onConflict: string }): ReturnType<PersistFeedback>;
+    };
   };
-  return client.rpc("save_anonymous_event_feedback", { p_identity: identity, p_feedback: row });
+  return client.from("event_feedback").upsert(row, { onConflict: "submission_id" });
 }
 
 export async function saveEventFeedback(
@@ -36,18 +32,13 @@ export async function saveEventFeedback(
   const aspects = Object.fromEntries(
     Object.entries(data.aspects).map(([key, value]) => [key, value === "not_used" ? null : value]),
   );
-  const { error } = await persist(
-    {
-      submission_id: data.submissionId,
-      overall: data.overall,
-      ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
-      suggestion: data.suggestion,
-    },
-    `${data.identity.includes("@") ? "email" : "cpf"}:${data.identity}`,
-  );
+  const { error } = await persist({
+    submission_id: data.submissionId,
+    overall: data.overall,
+    ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
+    suggestion: data.suggestion,
+  });
   // Upsert keeps one row and also saves edits after an uncertain network response.
-  if (error?.code === "P0001" && error.message === "feedback_already_sent")
-    throw new Error("Já recebemos uma avaliação com este CPF ou e-mail. Obrigado por participar!");
   if (error)
     throw new Error(
       "Não foi possível enviar sua avaliação. Suas respostas foram mantidas. Tente novamente.",
