@@ -1,4 +1,4 @@
-import { eventFeedbackSchema } from "./eventFeedback.domain";
+import { eventFeedbackSchema, type EventFeedbackStats } from "./eventFeedback.domain";
 
 type FeedbackRow = {
   submission_id: string;
@@ -49,4 +49,26 @@ export async function saveEventFeedback(
       "Não foi possível enviar sua avaliação. Suas respostas foram mantidas. Tente novamente.",
     );
   return { saved: true };
+}
+
+export async function loadEventFeedbackStats(): Promise<EventFeedbackStats> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  type CountResult = { count: number | null; error: unknown };
+  const feedbackClient = supabaseAdmin as unknown as {
+    from(table: "event_feedback"): {
+      select(columns: string, options: { count: "exact"; head: true }): PromiseLike<CountResult>;
+    };
+  };
+  const results = await Promise.allSettled([
+    supabaseAdmin
+      .from("registrations")
+      .select("id", { count: "exact", head: true })
+      .is("cancelled_at", null),
+    feedbackClient.from("event_feedback").select("submission_id", { count: "exact", head: true }),
+  ]);
+  const count = (index: number) => {
+    const result = results[index];
+    return result.status === "fulfilled" && !result.value.error ? result.value.count : null;
+  };
+  return { registrations: count(0), responses: count(1) };
 }

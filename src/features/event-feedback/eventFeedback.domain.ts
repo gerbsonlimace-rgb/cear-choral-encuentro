@@ -38,3 +38,6 @@ export const eventFeedbackSchema = z
   .strict();
 
 export type EventFeedback = z.infer<typeof eventFeedbackSchema>;
+
+export type EventFeedbackStats = { registrations: number | null; responses: number | null };
+export const FEEDBACK_URL = "https://encontrocorosce.lovable.app/avaliacao";

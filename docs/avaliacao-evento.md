@@ -1,6 +1,6 @@
 # Avaliação pública do encontro
 
-Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. A página usa a logo e a fotografia oficiais existentes, com espaçamento original e controles de pelo menos 44px para celular.
+Rota: `/avaliacao`. Não exige login. Quatro etapas: avaliação geral; sete aspectos com a contribuição para o coro na mesma tela; intenção de voltar; sugestão opcional. O topo mostra apenas a logo discreta, “Sua voz faz a diferença” e os contadores. As respostas aparecem diretamente na tela, sem combobox. Só o conteúdo das perguntas rola; progresso, navegação e envio permanecem visíveis, respeitando as áreas seguras do celular.
 
 ## Situação
 
@@ -21,11 +21,16 @@ O POST público valida o payload completo com Zod e usa o cliente de serviço ap
 
 O navegador mantém o snapshot de um envio tentado na sessão para recuperar recargas após perda de conexão. O servidor salva por upsert atômico com o mesmo UUID, evitando duplicação e preservando alterações de uma nova tentativa. A confirmação só aparece após sucesso do servidor. Isso não impõe unicidade por pessoa: a avaliação continua anônima.
 
+Os totais públicos são consultas de contagem, sem retornar inscrições ou avaliações: inscrições não canceladas e total de avaliações salvas. Um total indisponível aparece como “—”, nunca como zero inventado. O contador é atualizado após um envio bem-sucedido.
+
+O convite e o botão de compartilhamento foram removidos a pedido do usuário. A rota mantém metadados Open Graph e Twitter renderizados no servidor, URL canônica pública e a imagem oficial JPEG de 1200×630 para a prévia do link no WhatsApp. A prévia real em aplicativos externos só estará disponível após a publicação da rota.
+
 ## Verificação realizada
 
-- `npx vitest run src/features/event-feedback`: 9 testes passaram.
+- `npx vitest run src/features/event-feedback`: 12 testes passaram.
 - `npm run build`: passou.
 - Migração executada em Postgres descartável via `scripts/verify-event-feedback.mjs`, com RLS, permissões, limites e retries verificados.
-- Inspeção visual em desktop e celulares de 390px e 320px; controles de nota acima de 44px e sem rolagem horizontal.
+- Inspeção em celulares de 390px e 320px. Em 320×568, o documento permaneceu com 568px de altura e scrollTop zero; ao rolar 1.412px de perguntas, a posição dos botões permaneceu idêntica. Respostas diretas, sem selects, controles de pelo menos 44px.
+- HTML SSR retornou 200 com og:url, og:image, secure_url, tipo JPEG, dimensões, texto alternativo e twitter:card. O arquivo da imagem foi conferido em 1200×630.
 
 Não houve envio de avaliação ou alteração de schema no banco de produção.

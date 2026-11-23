@@ -7,3 +7,8 @@ export const submitEventFeedback = createServerFn({ method: "POST" })
     const { saveEventFeedback } = await import("@/features/event-feedback/eventFeedback.server");
     return saveEventFeedback(data);
   });
+
+export const getPublicFeedbackStats = createServerFn({ method: "GET" }).handler(async () => {
+  const { loadEventFeedbackStats } = await import("@/features/event-feedback/eventFeedback.server");
+  return loadEventFeedbackStats();
+});

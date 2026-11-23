@@ -16,11 +16,11 @@ import {
   Star,
 } from "lucide-react";
 import logo from "@/assets/logo-coros-preto.png";
-import choirPhoto from "@/assets/hero-choir-focus.jpg";
 import {
   FEEDBACK_ASPECTS,
   RATING_LABELS,
   eventFeedbackSchema,
+  type EventFeedbackStats,
   type AspectKey,
   type AspectRating,
   type EventFeedback,
@@ -28,7 +28,10 @@ import {
 } from "./eventFeedback.domain";
 import "./event-feedback.css";
 
-type Props = { onSubmit: (feedback: EventFeedback) => Promise<{ saved: true }> };
+type Props = {
+  onSubmit: (feedback: EventFeedback) => Promise<{ saved: true }>;
+  loadStats?: () => Promise<EventFeedbackStats>;
+};
 const faces = [Frown, Annoyed, Meh, Smile, Laugh];
 const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
@@ -76,7 +79,7 @@ function Choice({
   );
 }
 
-export function EventFeedbackPage({ onSubmit }: Props) {
+export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
@@ -86,10 +89,21 @@ export function EventFeedbackPage({ onSubmit }: Props) {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [stats, setStats] = useState<EventFeedbackStats>({ registrations: null, responses: null });
   const submissionId = useRef<string | null>(null);
   const inFlight = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const main = useRef<HTMLElement>(null);
+  useEffect(() => {
+    let active = true;
+    loadStats?.()
+      .then((value) => {
+        if (active) setStats(value);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [loadStats, saved]);
 
   useEffect(() => {
     try {
@@ -125,8 +139,11 @@ export function EventFeedbackPage({ onSubmit }: Props) {
     setStep(next);
     requestAnimationFrame(() => {
       heading.current?.focus({ preventScroll: true });
-      main.current?.scrollIntoView?.({ behavior: "instant", block: "start" });
     });
+  }
+
+  function back() {
+    move(step - 1);
   }
 
   async function advance(event: FormEvent) {
@@ -148,7 +165,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
         missingAspect
           ? "Avalie todos os aspectos ou marque que não participou / não utilizou."
           : missingContribution
-            ? "Escolha quanto o encontro contribuiu para sua atuação no coro na pergunta de contribuição."
+            ? "Selecione a contribuição para o seu coro."
             : "Escolha uma opção para continuar.",
       );
       return;
@@ -190,42 +207,37 @@ export function EventFeedbackPage({ onSubmit }: Props) {
   }
 
   return (
-    <div className="feedback-page">
-      <aside className="feedback-story" aria-label="Encontro de Coros 2026">
-        <a href="/" className="feedback-brand" aria-label="Site do encontro">
-          <img
-            src={logo}
-            width="600"
-            height="332"
-            alt="II Encontro de Coros Diocesanos e Litúrgicos"
-          />
-        </a>
-        <div className="feedback-photo">
-          <img
-            src={choirPhoto}
-            alt="Coristas reunidos no Encontro de Coros"
-            width="1600"
-            height="900"
-            fetchPriority="high"
-          />
-          <div className="feedback-photo-shade" />
-          <div className="feedback-story-copy">
-            <Music2 size={24} aria-hidden="true" />
-            <p>
-              Sua voz
-              <br />
-              <em>faz a diferença.</em>
-            </p>
-            <span>Quixadá · 20 a 22 de novembro de 2026</span>
-          </div>
+    <div className="feedback-page" data-step={step}>
+      <header className="feedback-header">
+        <div className="feedback-masthead">
+          <a href="/" className="feedback-brand" aria-label="Site do encontro">
+            <img
+              src={logo}
+              width="600"
+              height="332"
+              alt="II Encontro de Coros Diocesanos e Litúrgicos"
+            />
+          </a>
+          <p>
+            Sua voz <span>faz a diferença.</span>
+          </p>
         </div>
-        <div className="feedback-story-footer">
-          <span>Fé que une. Música que transforma.</span>
-          <span>II Encontro de Coros · Regional Nordeste 1 – CNBB</span>
+        <div className="feedback-stats" aria-label="Participação na avaliação" aria-live="polite">
+          <span>
+            <strong>
+              {stats.registrations === null ? "—" : stats.registrations.toLocaleString("pt-BR")}
+            </strong>{" "}
+            inscritos
+          </span>
+          <span>
+            <strong>
+              {stats.responses === null ? "—" : stats.responses.toLocaleString("pt-BR")}
+            </strong>{" "}
+            respostas
+          </span>
         </div>
-      </aside>
-
-      <main className="feedback-main" ref={main}>
+      </header>
+      <main className="feedback-main">
         {saved ? (
           <section className="feedback-thanks" aria-live="polite">
             <span className="feedback-thanks-mark">
@@ -297,6 +309,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
                         <Choice
                           key={label}
                           name="overall"
+                          label={label}
                           value={String(index + 1)}
                           checked={overall === index + 1}
                           onChange={() => {
@@ -480,7 +493,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
                       onChange={(event) => setSuggestion(event.target.value)}
                       maxLength={1000}
                       placeholder="O que faria a próxima edição ainda melhor?"
-                      rows={6}
+                      rows={3}
                     />
                     <span className="feedback-character-count">{suggestion.length} / 1.000</span>
                     <p>
@@ -497,12 +510,7 @@ export function EventFeedbackPage({ onSubmit }: Props) {
               )}
               <div className="feedback-actions">
                 {step > 0 && (
-                  <button
-                    type="button"
-                    className="feedback-back"
-                    onClick={() => move(step - 1)}
-                    disabled={sending}
-                  >
+                  <button type="button" className="feedback-back" onClick={back} disabled={sending}>
                     <ChevronLeft size={18} aria-hidden="true" />
                     Voltar
                   </button>
@@ -524,10 +532,6 @@ export function EventFeedbackPage({ onSubmit }: Props) {
             </form>
           </>
         )}
-        <footer className="feedback-footer">
-          <Music2 size={17} aria-hidden="true" />
-          <span>Encontro de Coros · Ceará</span>
-        </footer>
       </main>
     </div>
   );

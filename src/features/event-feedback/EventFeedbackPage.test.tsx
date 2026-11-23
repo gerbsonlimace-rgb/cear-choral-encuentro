@@ -19,6 +19,15 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
 
 describe("public mobile event feedback", () => {
   beforeEach(() => sessionStorage.clear());
+  it("shows real totals without a WhatsApp sharing invitation", async () => {
+    const loadStats = vi.fn().mockResolvedValue({ registrations: 245, responses: 18 });
+    render(<EventFeedbackPage onSubmit={vi.fn()} loadStats={loadStats} />);
+    expect(await screen.findByText("245")).toBeVisible();
+    expect(screen.getByText("18")).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Enviar pelo WhatsApp" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Envie para um colega/)).not.toBeInTheDocument();
+  });
+
   it("shows the event logo and validates a required answer without authentication", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);
