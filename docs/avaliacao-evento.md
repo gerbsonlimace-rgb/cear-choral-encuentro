@@ -8,12 +8,14 @@ Publicação autorizada em 23/11/2026. Migrações aplicadas no projeto `fppmdkc
 
 ## Antes de publicar
 
+Publicada em 23/11/2026 pelo projeto Lovable original. Link: https://encontrocorosce.lovable.app/avaliacao. Código integrado ao `main` em `2dedaab`; Lovable confirmou “Publicado” e “Seu site está atualizado”. A conferência abaixo foi concluída, com a ressalva de não enviar opiniões fictícias pelo formulário público.
+
 1. A solicitação antiga de gênero no Lovable corresponde à migração já aplicada; evitar reaplicações desnecessárias.
 2. Migrações `20261120120000`, `20261120130000`, `20261120130001` e `20261123215216` aplicadas e registradas. A tabela de avaliação é independente; não altera inscrições, Auth, presenças ou finanças.
 3. Confirmar no ambiente do servidor `SUPABASE_URL=https://fppmdkcwtnrvpqtfurdn.supabase.co` e `SUPABASE_SERVICE_ROLE_KEY` desse mesmo projeto. A chave de serviço nunca deve receber prefixo `VITE_`. Uma chave antiga em `.env.local` precisa ser substituída antes de um teste integrado.
 4. Erros de tipos preexistentes corrigidos: campo `gender`, `BlobPart` na geração de cartões e mocks sem `archiveCall`. TypeScript e build passaram.
 5. Integrar esta branch sem reescrever histórico publicado e publicar pelo projeto Lovable original. Não criar um site separado.
-6. Validar um envio no ambiente autorizado, confirmar uma única linha em `event_feedback` e testar nova tentativa com o mesmo UUID. Verificar que visitantes não conseguem consultar respostas.
+6. Gravação como `service_role` e upsert com o mesmo UUID validados no banco real dentro de uma transação revertida: uma linha, nota atualizada, nenhum registro fictício persistido. O formulário público não foi submetido com opiniões fictícias. Permissões públicas de leitura e escrita direta permaneceram revogadas.
 
 ## Persistência e privacidade
 
@@ -33,6 +35,6 @@ O convite e o botão de compartilhamento foram removidos a pedido do usuário. A
 - Inspeção em celulares de 390px e 320px. Em 320×568, o documento permaneceu com 568px de altura e scrollTop zero; ao rolar 1.412px de perguntas, a posição dos botões permaneceu idêntica. Respostas diretas, sem selects, controles de pelo menos 44px.
 - HTML SSR retornou 200 com og:url, og:image, secure_url, tipo JPEG, dimensões, texto alternativo e twitter:card. O arquivo da imagem foi conferido em 1200×630.
 
-Após as migrações, o banco manteve 157 inscrições ativas e zero avaliações. RLS habilitada; `anon` sem leitura/escrita; gravação disponível ao servidor. Não foi enviada avaliação fictícia em produção.
+Após as migrações, o banco manteve 157 inscrições ativas e zero avaliações. RLS habilitada; `anon` sem leitura/escrita; gravação disponível ao servidor. O site publicado carregou esses mesmos totais, confirmando sua conexão com o projeto correto. Metadados canônicos e imagem Open Graph conferidos na página pública. Em 390×844, rolar as perguntas manteve os dois botões na posição y=749,2 e o documento com altura de 844px.
 
 Verificação da publicação: 19 testes direcionados passaram e `npx tsc --noEmit` e `npm run build` passaram. A suíte completa teve 1.462 testes aprovados, oito falhas preexistentes em quatro arquivos sem alterações nesta branch e dois testes ignorados.
