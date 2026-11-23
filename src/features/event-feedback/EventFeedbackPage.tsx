@@ -43,7 +43,7 @@ const aspectIcons = {
   food: Utensils,
   lodging: BedDouble,
 };
-const ratingEmojis = ["😞", "🙁", "😐", "🙂", "🤩"];
+const ratingEmojis = ["😞", "🙁", "🙂", "😄", "🥰"];
 const STORAGE_KEY = "encontro-coros:feedback:2026";
 const titles = [
   "Como foi o encontro para você?",
