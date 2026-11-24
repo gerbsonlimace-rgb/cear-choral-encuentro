@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   brazilianMobilePhoneSchema,
   paymentLookupSchema,
-  registrationAvailabilitySchema,
   registrationLookupSchema,
   registrationResumeSchema,
   registrationSchema,
@@ -69,35 +68,6 @@ export const startRegistrationCheckout = createServerFn({ method: "POST" })
                 : "Não foi possível preparar o pagamento. Tente novamente.",
       };
     }
-  });
-
-export type RegistrationAvailabilityResult = { cpfTaken: boolean; emailTaken: boolean };
-
-export const checkRegistrationAvailability = createServerFn({ method: "POST" })
-  .validator(registrationAvailabilitySchema)
-  .handler(async ({ data }): Promise<RegistrationAvailabilityResult> => {
-    const { createSupabaseRegistrationRepository } =
-      await import("@/features/registration/registration-payment.server");
-    const repository = createSupabaseRegistrationRepository();
-    const [
-      { createSupabaseParticipantAuthAdmin },
-      cpfRecord,
-      emailRecord,
-    ] = await Promise.all([
-      import("@/features/participant/participant-provisioning.server"),
-      repository.findByCpf(data.cpf),
-      repository.findByEmail(data.email),
-    ]);
-    const authAdmin = createSupabaseParticipantAuthAdmin();
-    const authRecord = await authAdmin.findUserByEmail(data.email);
-    const linkableStaff =
-      authRecord && authAdmin.isLinkableStaffUser
-        ? await authAdmin.isLinkableStaffUser(authRecord.id)
-        : false;
-    return {
-      cpfTaken: Boolean(cpfRecord),
-      emailTaken: Boolean(emailRecord || (authRecord && !linkableStaff)),
-    };
   });
 
 export const lookupRegistration = createServerFn({ method: "POST" })
