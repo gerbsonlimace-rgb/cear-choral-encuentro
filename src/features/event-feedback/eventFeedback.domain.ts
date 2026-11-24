@@ -68,3 +68,21 @@ export type EventFeedback = z.infer<typeof eventFeedbackSchema>;
 
 export type EventFeedbackStats = { registrations: number | null; responses: number | null };
 export const FEEDBACK_URL = "https://encontrocorosce.lovable.app/avaliacao";
+
+const CPF_INPUT = /^[\d.\-\s]*$/;
+
+/** Formats the identity field as a CPF (000.000.000-00) while it holds only digits; emails pass through. */
+export function formatFeedbackIdentityInput(next: string, previous = ""): string {
+  if (CPF_INPUT.test(next)) {
+    const digits = next.replace(/\D/g, "").slice(0, 11);
+    return digits
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+  }
+  // Typing a letter or "@" after digits means an email: drop the CPF punctuation we inserted.
+  if (previous && CPF_INPUT.test(previous) && next.startsWith(previous)) {
+    return previous.replace(/[.\-\s]/g, "") + next.slice(previous.length);
+  }
+  return next;
+}

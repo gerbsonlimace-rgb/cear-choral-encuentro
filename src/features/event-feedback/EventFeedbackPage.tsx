@@ -21,6 +21,7 @@ import {
   eventFeedbackSchema,
   feedbackIdentitySchema,
   feedbackAccessTokenSchema,
+  formatFeedbackIdentityInput,
   type FeedbackAccess,
   type EventFeedbackStats,
   type AspectKey,
@@ -52,11 +53,13 @@ const STORAGE_KEY = "encontro-coros:feedback:2026";
 const ACCESS_KEY = "encontro-coros:feedback-access:2026";
 const CLAIM_KEY = "encontro-coros:feedback-video-claim:2026";
 const titles = [
+  "Vamos começar?",
   "Como foi o encontro para você?",
   "Vamos olhar para os detalhes?",
   "O que podemos fazer melhor?",
 ];
 const descriptions = [
+  "Antes de avaliar, confirme sua inscrição.",
   "Pense na sua experiência como um todo.",
   "Toque em uma nota de 1 a 5 para avaliar cada aspecto.",
   "Deixe uma sugestão para a próxima edição. Este campo é opcional.",
@@ -245,8 +248,8 @@ export function EventFeedbackPage({
     event.preventDefault();
     if (inFlight.current) return;
     const missingAspect =
-      step === 1 && FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined);
-    const missing = step === 0 ? !overall : step === 1 ? missingAspect : false;
+      step === 2 && FEEDBACK_ASPECTS.some(({ key }) => aspects[key] === undefined);
+    const missing = step === 1 ? !overall : step === 2 ? missingAspect : false;
     if (missing) {
       setError(
         missingAspect
@@ -457,14 +460,15 @@ export function EventFeedbackPage({
                           type="text"
                           value={identity}
                           onChange={(event) => {
-                            setIdentity(event.target.value);
+                            const next = event.target.value;
+                            setIdentity((current) => formatFeedbackIdentityInput(next, current));
                             setError("");
                           }}
                           autoCapitalize="none"
                           autoComplete="off"
                           spellCheck={false}
                           maxLength={254}
-                          placeholder="Digite seu CPF ou e-mail"
+                          placeholder="000.000.000-00 ou seu@email.com"
                           aria-describedby="feedback-identity-help"
                           required
                         />
@@ -490,20 +494,6 @@ export function EventFeedbackPage({
                         </button>
                       </p>
                     )}
-                    <fieldset
-                      className="feedback-options"
-                      aria-label="Avaliação geral"
-                      aria-describedby="feedback-description"
-                    >
-                      <NumericRating
-                        name="overall"
-                        value={overall}
-                        onChange={(rating) => {
-                          setOverall(rating);
-                          setError("");
-                        }}
-                      />
-                    </fieldset>
                     <p className="feedback-description">
                       Suas respostas são anônimas e ajudarão a melhorar o encontro. Elas serão
                       encaminhadas à equipe organizadora do próximo encontro.
@@ -512,6 +502,23 @@ export function EventFeedbackPage({
                 )}
 
                 {step === 1 && (
+                  <fieldset
+                    className="feedback-options"
+                    aria-label="Avaliação geral"
+                    aria-describedby="feedback-description"
+                  >
+                    <NumericRating
+                      name="overall"
+                      value={overall}
+                      onChange={(rating) => {
+                        setOverall(rating);
+                        setError("");
+                      }}
+                    />
+                  </fieldset>
+                )}
+
+                {step === 2 && (
                   <div className="feedback-aspects">
                     {FEEDBACK_ASPECTS.map(({ key, label, description }) => {
                       const Icon = aspectIcons[key];
@@ -560,7 +567,7 @@ export function EventFeedbackPage({
                   </div>
                 )}
 
-                {step === 2 && (
+                {step === 3 && (
                   <div className="feedback-suggestion">
                     <label htmlFor="feedback-suggestion">
                       Sua sugestão <span>(opcional)</span>

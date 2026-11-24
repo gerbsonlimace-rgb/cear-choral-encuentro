@@ -58,3 +58,16 @@ describe("anonymous event feedback", () => {
     ).rejects.toThrow("Não foi possível enviar");
   });
 });
+
+describe("feedback identity input mask", () => {
+  it("formats digits as a CPF and stops at 11 digits", async () => {
+    const { formatFeedbackIdentityInput } = await import("./eventFeedback.domain");
+    expect(formatFeedbackIdentityInput("5299822")).toBe("529.982.2");
+    expect(formatFeedbackIdentityInput("529982247251234")).toBe("529.982.247-25");
+  });
+  it("keeps emails unmasked, even when they start with digits", async () => {
+    const { formatFeedbackIdentityInput } = await import("./eventFeedback.domain");
+    expect(formatFeedbackIdentityInput("maria@gmail.com")).toBe("maria@gmail.com");
+    expect(formatFeedbackIdentityInput("123.4a", "123.4")).toBe("1234a");
+  });
+});

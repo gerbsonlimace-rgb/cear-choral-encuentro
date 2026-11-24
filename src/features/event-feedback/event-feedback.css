@@ -824,10 +824,10 @@
   .feedback-question > h1 {
     font-size: 1.125rem;
   }
-  .feedback-page[data-step="0"] .feedback-options {
+  .feedback-page[data-step="1"] .feedback-options {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .feedback-page[data-step="1"] .feedback-question > h1,
+  .feedback-page[data-step="2"] .feedback-question > h1,
   .feedback-aspect-page {
     display: none;
   }
@@ -916,7 +916,7 @@
     padding: 12px 14px;
     font-size: 1rem;
   }
-  .feedback-page[data-step="1"] .feedback-question > h1 {
+  .feedback-page[data-step="2"] .feedback-question > h1 {
     display: block;
   }
   .feedback-rating-grid .feedback-choice-content {
