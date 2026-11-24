@@ -420,6 +420,7 @@ export type Database = {
         Row: {
           celebrations: number
           created_at: string
+          criterion_comments: Json
           food: number | null
           formation: number
           lodging: number | null
@@ -432,6 +433,7 @@ export type Database = {
         Insert: {
           celebrations: number
           created_at?: string
+          criterion_comments?: Json
           food?: number | null
           formation: number
           lodging?: number | null
@@ -444,6 +446,7 @@ export type Database = {
         Update: {
           celebrations?: number
           created_at?: string
+          criterion_comments?: Json
           food?: number | null
           formation?: number
           lodging?: number | null
