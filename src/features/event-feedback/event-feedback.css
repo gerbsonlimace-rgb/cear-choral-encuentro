@@ -253,6 +253,34 @@
   background: transparent;
 }
 
+.feedback-aspect-comment-label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.feedback-aspect-comment-label > span {
+  color: var(--fb-muted);
+  font-weight: 400;
+}
+.feedback-aspect-comment {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  resize: vertical;
+  border: 1px solid #d4d4d8;
+  border-radius: 10px;
+  background: var(--fb-white);
+  padding: 10px 12px;
+  color: var(--fb-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.feedback-aspect-comment::placeholder {
+  color: #71717a;
+}
+
 .feedback-suggestion > label {
   display: block;
   margin-bottom: 10px;

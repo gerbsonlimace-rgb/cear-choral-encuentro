@@ -151,6 +151,14 @@ export function EventFeedbackPage({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [pendingClaim, setPendingClaim] = useState<string | undefined>();
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
+  const [criterionComments, setCriterionComments] = useState<EventFeedback["criterionComments"]>({
+    organization: "",
+    formation: "",
+    celebrations: "",
+    venue: "",
+    food: "",
+    lodging: "",
+  });
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -181,6 +189,7 @@ export function EventFeedbackPage({
         submissionId.current = feedback.submissionId;
         setOverall(feedback.overall as Rating);
         setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
+        setCriterionComments(feedback.criterionComments);
         setSuggestion(feedback.suggestion);
         setStep(titles.length - 1);
       }
@@ -305,6 +314,7 @@ export function EventFeedbackPage({
         accessToken,
         overall: overall!,
         aspects: aspects as EventFeedback["aspects"],
+        criterionComments,
         suggestion,
       };
       remember(feedback, false);
@@ -554,6 +564,23 @@ export function EventFeedbackPage({
                               )}
                             </Choice>
                           )}
+                          <label className="feedback-aspect-comment-label" htmlFor={`comment-${key}`}>
+                            Comentário <span>(opcional)</span>
+                          </label>
+                          <textarea
+                            id={`comment-${key}`}
+                            className="feedback-aspect-comment"
+                            value={criterionComments[key]}
+                            onChange={(event) =>
+                              setCriterionComments((current) => ({
+                                ...current,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            maxLength={500}
+                            rows={2}
+                            placeholder={`Conte um pouco sobre ${label.toLowerCase()}...`}
+                          />
                         </fieldset>
                       );
                     })}

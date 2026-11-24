@@ -45,6 +45,7 @@ export type AspectRating = Rating | "not_used";
 export const RATING_LABELS = ["Péssimo", "Ruim", "Regular", "Bom", "Excelente"] as const;
 const rating = z.number().int().min(1).max(5);
 const aspectRating = z.union([rating, z.literal("not_used")]);
+const aspectComment = z.string().trim().max(500).default("");
 export const eventFeedbackSchema = z
   .object({
     submissionId: z.string().uuid(),
@@ -60,6 +61,17 @@ export const eventFeedbackSchema = z
         lodging: aspectRating,
       })
       .strict(),
+    criterionComments: z
+      .object({
+        organization: aspectComment,
+        formation: aspectComment,
+        celebrations: aspectComment,
+        venue: aspectComment,
+        food: aspectComment,
+        lodging: aspectComment,
+      })
+      .strict()
+      .default({}),
     suggestion: z.string().trim().max(1000).default(""),
   })
   .strict();

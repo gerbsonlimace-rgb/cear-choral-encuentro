@@ -10,6 +10,7 @@ type FeedbackRow = {
   venue: number | null;
   food: number | null;
   lodging: number | null;
+  criterion_comments: EventFeedback["criterionComments"];
   suggestion: string;
 };
 type PersistFeedback = (
@@ -37,6 +38,7 @@ export async function saveEventFeedback(
       submission_id: data.submissionId,
       overall: data.overall,
       ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
+      criterion_comments: data.criterionComments,
       suggestion: data.suggestion,
     },
     data.accessToken,
