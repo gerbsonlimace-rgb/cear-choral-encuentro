@@ -1,4 +1,30 @@
 import { z } from "zod";
+import { cpfSchema } from "@/features/registration/registration.domain";
+
+export const feedbackIdentitySchema = z
+  .string()
+  .trim()
+  .max(254)
+  .transform((value, context) => {
+    if (value.includes("@")) {
+      const email = z.string().email().safeParse(value);
+      if (email.success) return email.data.toLowerCase();
+    } else if (/^[\d.\-\s]+$/.test(value)) {
+      const cpf = cpfSchema.safeParse(value);
+      if (cpf.success) return cpf.data;
+    }
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Informe um CPF ou e-mail válido." });
+    return z.NEVER;
+  });
+export const feedbackAccessTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
+export const feedbackAccessRequestSchema = z.union([
+  z.object({ identity: feedbackIdentitySchema }).strict(),
+  z.object({ token: feedbackAccessTokenSchema, claimId: z.string().uuid().optional() }).strict(),
+]);
+export const feedbackVideoClaimSchema = z
+  .object({ token: feedbackAccessTokenSchema, claimId: z.string().uuid() })
+  .strict();
+export type FeedbackAccess = { token: string; responded: boolean; videoUrl: string | null };
 
 export const FEEDBACK_ASPECTS = [
   { key: "organization", label: "Organização", description: "Orientações e acolhida" },
@@ -22,6 +48,7 @@ const aspectRating = z.union([rating, z.literal("not_used")]);
 export const eventFeedbackSchema = z
   .object({
     submissionId: z.string().uuid(),
+    accessToken: feedbackAccessTokenSchema,
     overall: rating,
     aspects: z
       .object({

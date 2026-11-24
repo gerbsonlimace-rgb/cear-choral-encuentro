@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EventFeedbackPage } from "@/features/event-feedback/EventFeedbackPage";
-import { getPublicFeedbackStats, submitEventFeedback } from "@/lib/event-feedback.functions";
+import {
+  getPublicFeedbackStats,
+  submitEventFeedback,
+  prepareRegisteredFeedback,
+  claimRegisteredFeedbackVideo,
+} from "@/lib/event-feedback.functions";
 import { FEEDBACK_URL } from "@/features/event-feedback/eventFeedback.domain";
 
 const title = "Avalie o II Encontro de Coros | Sua voz faz a diferença";
@@ -12,6 +17,9 @@ export const Route = createFileRoute("/avaliacao")({
     <EventFeedbackPage
       onSubmit={(data) => submitEventFeedback({ data })}
       loadStats={getPublicFeedbackStats}
+      onPrepareAccess={(identity) => prepareRegisteredFeedback({ data: { identity } })}
+      onResumeAccess={(token, claimId) => prepareRegisteredFeedback({ data: { token, claimId } })}
+      onClaimVideo={(token, claimId) => claimRegisteredFeedbackVideo({ data: { token, claimId } })}
     />
   ),
   head: () => ({
@@ -35,7 +43,8 @@ export const Route = createFileRoute("/avaliacao")({
       { property: "og:image:height", content: "907" },
       {
         property: "og:image:alt",
-        content: "Avalie o encontro. Sua voz faz a diferença. Leva só 1 minuto. É anônimo. Logo do encontro e cinco estrelas douradas com um cursor clicando na quinta.",
+        content:
+          "Avalie o encontro. Sua voz faz a diferença. Leva só 1 minuto. É anônimo. Logo do encontro e cinco estrelas douradas com um cursor clicando na quinta.",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: title },

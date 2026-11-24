@@ -1,4 +1,5 @@
 import { eventFeedbackSchema, type EventFeedbackStats } from "./eventFeedback.domain";
+import { feedbackRpc, hashFeedbackToken } from "./eventFeedbackAccess.server";
 
 type FeedbackRow = {
   submission_id: string;
@@ -11,17 +12,16 @@ type FeedbackRow = {
   lodging: number | null;
   suggestion: string;
 };
-type PersistFeedback = (row: FeedbackRow) => PromiseLike<{ error: { code?: string } | null }>;
+type PersistFeedback = (
+  row: FeedbackRow,
+  token: string,
+) => PromiseLike<{ error: { code?: string; message?: string } | null }>;
 
-async function persistFeedback(row: FeedbackRow) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  // Keep new migration types local until the integration types are regenerated.
-  const client = supabaseAdmin as unknown as {
-    from(table: "event_feedback"): {
-      upsert(value: FeedbackRow, options: { onConflict: string }): ReturnType<PersistFeedback>;
-    };
-  };
-  return client.from("event_feedback").upsert(row, { onConflict: "submission_id" });
+async function persistFeedback(row: FeedbackRow, token: string) {
+  return feedbackRpc("save_registered_event_feedback", {
+    p_token_hash: hashFeedbackToken(token),
+    p_feedback: row,
+  });
 }
 
 export async function saveEventFeedback(
@@ -32,13 +32,20 @@ export async function saveEventFeedback(
   const aspects = Object.fromEntries(
     Object.entries(data.aspects).map(([key, value]) => [key, value === "not_used" ? null : value]),
   );
-  const { error } = await persist({
-    submission_id: data.submissionId,
-    overall: data.overall,
-    ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
-    suggestion: data.suggestion,
-  });
+  const { error } = await persist(
+    {
+      submission_id: data.submissionId,
+      overall: data.overall,
+      ...(aspects as Pick<FeedbackRow, keyof typeof data.aspects>),
+      suggestion: data.suggestion,
+    },
+    data.accessToken,
+  );
   // Upsert keeps one row and also saves edits after an uncertain network response.
+  if (error?.message === "feedback_already_sent")
+    throw new Error("Sua avaliação já foi recebida. Reabra a página para continuar.");
+  if (error?.message === "feedback_access_expired")
+    throw new Error("Confira novamente seu CPF ou e-mail para enviar a avaliação.");
   if (error)
     throw new Error(
       "Não foi possível enviar sua avaliação. Suas respostas foram mantidas. Tente novamente.",

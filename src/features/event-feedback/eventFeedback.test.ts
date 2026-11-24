@@ -4,6 +4,7 @@ import { saveEventFeedback } from "./eventFeedback.server";
 
 export const validFeedback = {
   submissionId: "22222222-2222-4222-8222-222222222222",
+  accessToken: "a".repeat(64),
   overall: 4,
   aspects: {
     organization: 4,
@@ -26,6 +27,7 @@ describe("anonymous event feedback", () => {
   it("rejects incomplete, out-of-range, oversized and identifying payloads", () => {
     for (const input of [
       { ...validFeedback, overall: 0 },
+      { ...validFeedback, accessToken: undefined },
       { ...validFeedback, aspects: { ...validFeedback.aspects, venue: 0 } },
       { ...validFeedback, aspects: { ...validFeedback.aspects, venue: undefined } },
       { ...validFeedback, aspects: { ...validFeedback.aspects, formation: "not_used" } },
@@ -42,8 +44,10 @@ describe("anonymous event feedback", () => {
     await expect(saveEventFeedback(validFeedback, insert)).resolves.toEqual({ saved: true });
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({ submission_id: validFeedback.submissionId, overall: 4 }),
+      validFeedback.accessToken,
     );
     expect(insert.mock.calls[0][0]).not.toHaveProperty("user_id");
+    expect(insert.mock.calls[0][0]).not.toHaveProperty("accessToken");
   });
   it("never reports success for unhandled database conflicts or storage errors", async () => {
     await expect(

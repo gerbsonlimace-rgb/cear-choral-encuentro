@@ -19,6 +19,9 @@ import {
   FEEDBACK_ASPECTS,
   RATING_LABELS,
   eventFeedbackSchema,
+  feedbackIdentitySchema,
+  feedbackAccessTokenSchema,
+  type FeedbackAccess,
   type EventFeedbackStats,
   type AspectKey,
   type AspectRating,
@@ -32,7 +35,9 @@ import surpriseVideo from "./feedback-surprise.json";
 type Props = {
   onSubmit: (feedback: EventFeedback) => Promise<{ saved: true }>;
   loadStats?: () => Promise<EventFeedbackStats>;
-  surpriseVideoUrl?: string | null;
+  onPrepareAccess: (identity: string) => Promise<FeedbackAccess>;
+  onResumeAccess: (token: string, claimId?: string) => Promise<FeedbackAccess>;
+  onClaimVideo: (token: string, claimId: string) => Promise<{ allowed: boolean }>;
 };
 const aspectIcons = {
   organization: ClipboardCheck,
@@ -44,6 +49,8 @@ const aspectIcons = {
 };
 const ratingEmojis = ["😞", "🙁", "🙂", "😄", "🥰"];
 const STORAGE_KEY = "encontro-coros:feedback:2026";
+const ACCESS_KEY = "encontro-coros:feedback-access:2026";
+const CLAIM_KEY = "encontro-coros:feedback-video-claim:2026";
 const titles = [
   "Como foi o encontro para você?",
   "Vamos olhar para os detalhes?",
@@ -133,10 +140,16 @@ function NumericRating({
 export function EventFeedbackPage({
   onSubmit,
   loadStats,
-  surpriseVideoUrl = surpriseVideo.url,
+  onPrepareAccess,
+  onResumeAccess,
+  onClaimVideo,
 }: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
+  const [identity, setIdentity] = useState("");
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [pendingClaim, setPendingClaim] = useState<string | undefined>();
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
@@ -159,23 +172,54 @@ export function EventFeedbackPage({
   }, [loadStats, saved]);
 
   useEffect(() => {
+    let active = true;
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const stored = JSON.parse(raw);
-      const parsed = eventFeedbackSchema.safeParse(stored.feedback);
-      if (!parsed.success) return;
-      const feedback = parsed.data;
-      submissionId.current = feedback.submissionId;
-      setOverall(feedback.overall as Rating);
-      setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
-      setSuggestion(feedback.suggestion);
-      setStep(titles.length - 1);
-      setSaved(stored.saved === true);
+      const parsed = raw ? eventFeedbackSchema.safeParse(JSON.parse(raw).feedback) : null;
+      if (parsed?.success) {
+        const feedback = parsed.data;
+        submissionId.current = feedback.submissionId;
+        setOverall(feedback.overall as Rating);
+        setAspects(feedback.aspects as Record<AspectKey, AspectRating>);
+        setSuggestion(feedback.suggestion);
+        setStep(titles.length - 1);
+      }
+      const token =
+        sessionStorage.getItem(ACCESS_KEY) ?? (parsed?.success ? parsed.data.accessToken : null);
+      if (token && feedbackAccessTokenSchema.safeParse(token).success) {
+        let pending: string | undefined;
+        try {
+          const data = JSON.parse(sessionStorage.getItem(CLAIM_KEY) ?? "null");
+          if (data?.token === token && /^[0-9a-f-]{36}$/.test(data.claimId)) {
+            pending = data.claimId;
+            setPendingClaim(pending);
+          }
+        } catch {}
+        setAccessToken(token);
+        void onResumeAccess(token, pending)
+          .then((access) => {
+            if (active) {
+              setAccessToken(access.token);
+              setSaved(access.responded);
+              setVideoUrl(access.videoUrl);
+            }
+          })
+          .catch(() => {
+            if (active) {
+              setAccessToken(null);
+              setStep(0);
+              setSaved(false);
+              setError("Confira seu CPF ou e-mail para continuar.");
+            }
+          });
+      }
     } catch {
       /* Storage may be unavailable in private browsing. */
     }
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [onResumeAccess]);
 
   function remember(feedback: EventFeedback, saved: boolean) {
     try {
@@ -212,7 +256,43 @@ export function EventFeedbackPage({
       return;
     }
     if (step < titles.length - 1) {
+      if (step === 0 && !accessToken) {
+        const parsed = feedbackIdentitySchema.safeParse(identity);
+        if (!parsed.success) {
+          setError("Informe um CPF ou e-mail válido para continuar.");
+          return;
+        }
+        inFlight.current = true;
+        setSending(true);
+        setError("");
+        try {
+          const access = await onPrepareAccess(parsed.data);
+          setAccessToken(access.token);
+          setVideoUrl(access.videoUrl);
+          setSaved(access.responded);
+          try {
+            sessionStorage.setItem(ACCESS_KEY, access.token);
+          } catch {}
+          if (!access.responded) move(1);
+          else requestAnimationFrame(() => heading.current?.focus());
+        } catch (cause) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Não foi possível conferir sua inscrição. Tente novamente.",
+          );
+        } finally {
+          inFlight.current = false;
+          setSending(false);
+        }
+        return;
+      }
       move(step + 1);
+      return;
+    }
+    if (!accessToken) {
+      setStep(0);
+      setError("Confira seu CPF ou e-mail para continuar.");
       return;
     }
     inFlight.current = true;
@@ -222,6 +302,7 @@ export function EventFeedbackPage({
       submissionId.current ??= crypto.randomUUID();
       const feedback: EventFeedback = {
         submissionId: submissionId.current,
+        accessToken,
         overall: overall!,
         aspects: aspects as EventFeedback["aspects"],
         suggestion,
@@ -234,6 +315,13 @@ export function EventFeedbackPage({
       remember(feedback, true);
       requestAnimationFrame(() => heading.current?.focus());
     } catch (cause) {
+      if (cause instanceof Error && cause.message.includes("Confira novamente seu CPF")) {
+        setAccessToken(null);
+        setStep(0);
+        try {
+          sessionStorage.removeItem(ACCESS_KEY);
+        } catch {}
+      }
       setError(
         cause instanceof Error
           ? cause.message
@@ -243,6 +331,22 @@ export function EventFeedbackPage({
       inFlight.current = false;
       setSending(false);
     }
+  }
+
+  function anotherParticipant() {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(ACCESS_KEY);
+    } catch {}
+    setAccessToken(null);
+    setVideoUrl(null);
+    setIdentity("");
+    setSaved(false);
+    setOverall(null);
+    setAspects({});
+    setSuggestion("");
+    submissionId.current = null;
+    move(0);
   }
 
   return (
@@ -293,9 +397,16 @@ export function EventFeedbackPage({
               <Heart size={20} aria-hidden="true" />
               <span>Que a música continue nos unindo.</span>
             </div>
-            <a className={surpriseVideoUrl ? "feedback-back" : "feedback-submit"} href="/">
+            <a className={videoUrl ? "feedback-back" : "feedback-submit"} href="/">
               Voltar ao site do encontro
             </a>
+            <button
+              type="button"
+              className="feedback-change-participant"
+              onClick={anotherParticipant}
+            >
+              Outro coralista
+            </button>
           </section>
         ) : (
           <>
@@ -338,6 +449,47 @@ export function EventFeedbackPage({
 
                 {step === 0 && (
                   <>
+                    {!accessToken ? (
+                      <div className="feedback-identity">
+                        <label htmlFor="feedback-identity">CPF ou e-mail da inscrição</label>
+                        <input
+                          id="feedback-identity"
+                          type="text"
+                          value={identity}
+                          onChange={(event) => {
+                            setIdentity(event.target.value);
+                            setError("");
+                          }}
+                          autoCapitalize="none"
+                          autoComplete="off"
+                          spellCheck={false}
+                          maxLength={254}
+                          placeholder="Digite seu CPF ou e-mail"
+                          aria-describedby="feedback-identity-help"
+                          required
+                        />
+                        <p id="feedback-identity-help">
+                          Informe o CPF ou e-mail usado na inscrição. Suas opiniões serão entregues
+                          à organização sem identificação.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="feedback-registration-checked">
+                        Inscrição conferida.{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccessToken(null);
+                            setVideoUrl(null);
+                            try {
+                              sessionStorage.removeItem(ACCESS_KEY);
+                            } catch {}
+                          }}
+                        >
+                          Alterar CPF ou e-mail
+                        </button>
+                      </p>
+                    )}
                     <fieldset
                       className="feedback-options"
                       aria-label="Avaliação geral"
@@ -445,7 +597,7 @@ export function EventFeedbackPage({
                   {sending ? (
                     <>
                       <LoaderCircle size={18} className="feedback-spinner" aria-hidden="true" />
-                      Enviando…
+                      {step === 0 ? "Conferindo inscrição…" : "Enviando…"}
                     </>
                   ) : step === titles.length - 1 ? (
                     "Enviar avaliação"
@@ -459,9 +611,29 @@ export function EventFeedbackPage({
           </>
         )}
         <FeedbackSurprise
-          url={surpriseVideoUrl}
+          key={accessToken ?? "pending"}
+          url={videoUrl}
           posterUrl={surpriseVideo.posterUrl}
           completed={saved}
+          onClaim={(claimId) => {
+            try {
+              sessionStorage.setItem(CLAIM_KEY, JSON.stringify({ token: accessToken, claimId }));
+            } catch {}
+            return onClaimVideo(accessToken!, claimId);
+          }}
+          initialClaimId={pendingClaim}
+          onPlaybackStarted={() => {
+            try {
+              sessionStorage.removeItem(CLAIM_KEY);
+            } catch {}
+          }}
+          onConsumed={() => {
+            try {
+              sessionStorage.removeItem(CLAIM_KEY);
+            } catch {}
+            setVideoUrl(null);
+            requestAnimationFrame(() => heading.current?.focus());
+          }}
         />
       </main>
     </div>

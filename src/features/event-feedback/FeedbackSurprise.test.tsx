@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FeedbackSurprise } from "./FeedbackSurprise";
 
 describe("feedback surprise preparation", () => {
+  const allowClaim = vi.fn().mockResolvedValue({ allowed: true });
   const createObjectURL = vi.fn(() => "blob:prepared-surprise");
   const revokeObjectURL = vi.fn();
   beforeEach(() => {
@@ -35,7 +36,9 @@ describe("feedback surprise preparation", () => {
     const blob = new Blob(["test-video"], { type: "video/mp4" });
     const fetchVideo = vi.fn().mockResolvedValue({ ok: true, blob: async () => blob });
     vi.stubGlobal("fetch", fetchVideo);
-    const { rerender, unmount } = render(<FeedbackSurprise url="/final.mp4" completed={false} />);
+    const { rerender, unmount } = render(
+      <FeedbackSurprise onClaim={allowClaim} url="/final.mp4" completed={false} />,
+    );
     await waitFor(() => expect(createObjectURL).toHaveBeenCalledWith(blob));
     expect(fetchVideo).toHaveBeenCalledWith(
       "/final.mp4",
@@ -45,9 +48,11 @@ describe("feedback surprise preparation", () => {
       screen.queryByRole("button", { name: "Finalizar e ver surpresa" }),
     ).not.toBeInTheDocument();
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
-    rerender(<FeedbackSurprise url="/final.mp4" completed />);
+    rerender(<FeedbackSurprise onClaim={allowClaim} url="/final.mp4" completed />);
     fireEvent.click(screen.getByRole("button", { name: "Finalizar e ver surpresa" }));
-    expect(screen.getByLabelText("Vídeo de agradecimento do encontro")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Vídeo de agradecimento do encontro")).toBeVisible(),
+    );
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Voltar à confirmação" }));
     expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
@@ -62,7 +67,7 @@ describe("feedback surprise preparation", () => {
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValue({ ok: true, blob: async () => new Blob(["mp4"], { type: "video/mp4" }) });
     vi.stubGlobal("fetch", fetchVideo);
-    render(<FeedbackSurprise url="/final.mp4" completed />);
+    render(<FeedbackSurprise onClaim={allowClaim} url="/final.mp4" completed />);
     fireEvent.click(screen.getByRole("button", { name: "Finalizar e ver surpresa" }));
     expect(await screen.findByText(/Sua avaliação já foi salva/)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Tentar carregar o vídeo" }));
@@ -85,18 +90,33 @@ describe("feedback surprise preparation", () => {
           }),
       ),
     );
-    const { rerender } = render(<FeedbackSurprise url={null} completed />);
+    const { rerender } = render(<FeedbackSurprise onClaim={allowClaim} url={null} completed />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    rerender(<FeedbackSurprise url="/final.mp4" completed />);
+    rerender(<FeedbackSurprise onClaim={allowClaim} url="/final.mp4" completed />);
     fireEvent.click(screen.getByRole("button", { name: "Finalizar e ver surpresa" }));
     expect(screen.getByRole("status")).toHaveTextContent("Preparando sua surpresa");
     await act(async () =>
       finish({ ok: true, blob: async () => new Blob(["mp4"], { type: "video/mp4" }) }),
     );
-    expect(screen.getByLabelText("Vídeo de agradecimento do encontro")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Assistir ao vídeo" })).toBeVisible();
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });
   it("offers recovery when the downloaded media cannot be decoded", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: async () => new Blob(["mp4"], { type: "video/mp4" }),
+      }),
+    );
+    render(<FeedbackSurprise onClaim={allowClaim} url="/final.mp4" completed />);
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Finalizar e ver surpresa" }));
+    fireEvent.error(screen.getByLabelText("Vídeo de agradecimento do encontro"));
+    expect(screen.getByRole("alert")).toHaveTextContent("Sua avaliação já foi salva");
+    expect(screen.getByRole("button", { name: "Tentar carregar o vídeo" })).toBeVisible();
+  });
+  it("does not play when the server denies access and never offers a second opening", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -106,11 +126,14 @@ describe("feedback surprise preparation", () => {
           blob: async () => new Blob(["mp4"], { type: "video/mp4" }),
         }),
     );
-    render(<FeedbackSurprise url="/final.mp4" completed />);
+    const onClaim = vi.fn().mockResolvedValue({ allowed: false });
+    render(<FeedbackSurprise url="/final.mp4" completed onClaim={onClaim} />);
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Finalizar e ver surpresa" }));
-    fireEvent.error(screen.getByLabelText("Vídeo de agradecimento do encontro"));
-    expect(screen.getByRole("alert")).toHaveTextContent("Sua avaliação já foi salva");
-    expect(screen.getByRole("button", { name: "Tentar carregar o vídeo" })).toBeVisible();
+    await waitFor(() => expect(onClaim).toHaveBeenCalledOnce());
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Finalizar e ver surpresa" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -3,7 +3,23 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventFeedbackPage } from "./EventFeedbackPage";
 
+const accessProps = {
+  onPrepareAccess: async (_identity: string) => ({
+    token: "a".repeat(64),
+    responded: false,
+    videoUrl: null,
+  }),
+  onResumeAccess: async (token: string) => ({ token, responded: false, videoUrl: null }),
+  onClaimVideo: async (_token: string, _claimId: string) => ({ allowed: true }),
+};
+async function identify(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(
+    screen.getByRole("textbox", { name: "CPF ou e-mail da inscrição" }),
+    "529.982.247-25",
+  );
+}
 async function complete(user: ReturnType<typeof userEvent.setup>) {
+  await identify(user);
   await user.click(screen.getByRole("radio", { name: "Excelente" }));
   await user.click(screen.getByRole("button", { name: "Continuar" }));
   for (const group of screen.getAllByRole("group")) {
@@ -22,14 +38,16 @@ describe("public mobile event feedback", () => {
     try {
       render(
         <EventFeedbackPage
+          {...accessProps}
           onSubmit={vi.fn().mockResolvedValue({ saved: true })}
-          surpriseVideoUrl="/final.mp4"
+          onPrepareAccess={async () => ({
+            token: "a".repeat(64),
+            responded: false,
+            videoUrl: "/final.mp4",
+          })}
         />,
       );
-      expect(download).toHaveBeenCalledWith(
-        "/final.mp4",
-        expect.objectContaining({ cache: "force-cache" }),
-      );
+      expect(download).not.toHaveBeenCalled();
       expect(
         screen.queryByRole("button", { name: "Finalizar e ver surpresa" }),
       ).not.toBeInTheDocument();
@@ -42,9 +60,10 @@ describe("public mobile event feedback", () => {
   });
   it("shows clickable numbered emoji squares with one selected score and unused only for food and lodging", async () => {
     const user = userEvent.setup();
-    render(<EventFeedbackPage onSubmit={vi.fn()} />);
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.queryByText("CPF ou e-mail")).not.toBeInTheDocument();
+    render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
+    await identify(user);
+    expect(screen.getByRole("textbox", { name: "CPF ou e-mail da inscrição" })).toBeVisible();
+
     const overall = screen.getByRole("group", { name: "Avaliação geral" });
     await user.click(within(overall).getByRole("radio", { name: "Bom" }));
     expect(overall.querySelectorAll(".feedback-score-face")).toHaveLength(5);
@@ -66,7 +85,7 @@ describe("public mobile event feedback", () => {
   });
   it("shows real totals without a WhatsApp sharing invitation", async () => {
     const loadStats = vi.fn().mockResolvedValue({ registrations: 245, responses: 18 });
-    render(<EventFeedbackPage onSubmit={vi.fn()} loadStats={loadStats} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} loadStats={loadStats} />);
     expect(await screen.findByText("245")).toBeVisible();
     expect(screen.getByText("18")).toBeVisible();
     expect(screen.queryByRole("link", { name: "Enviar pelo WhatsApp" })).not.toBeInTheDocument();
@@ -75,7 +94,7 @@ describe("public mobile event feedback", () => {
 
   it("shows the event logo and validates a required answer without authentication", async () => {
     const user = userEvent.setup();
-    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
     expect(screen.getByAltText("II Encontro de Coros Diocesanos e Litúrgicos")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Escolha uma opção");
@@ -83,7 +102,8 @@ describe("public mobile event feedback", () => {
   });
   it("keeps selected answers when returning to the previous step", async () => {
     const user = userEvent.setup();
-    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
+    await identify(user);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Voltar" }));
@@ -91,7 +111,8 @@ describe("public mobile event feedback", () => {
   });
   it("shows six criteria without fellowship or contribution and describes the venue organization", async () => {
     const user = userEvent.setup();
-    render(<EventFeedbackPage onSubmit={vi.fn()} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
+    await identify(user);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByText("Etapa 2 de 3")).toBeVisible();
@@ -122,7 +143,7 @@ describe("public mobile event feedback", () => {
       .fn()
       .mockRejectedValueOnce(new Error("Falha de conexão. Tente novamente."))
       .mockResolvedValue({ saved: true });
-    render(<EventFeedbackPage onSubmit={onSubmit} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={onSubmit} />);
     await complete(user);
     await user.type(
       screen.getByRole("textbox", { name: /Sua sugestão/ }),
@@ -141,18 +162,19 @@ describe("public mobile event feedback", () => {
       suggestion: "Mais momentos de troca.",
     });
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("email");
+    expect(sessionStorage.getItem("encontro-coros:feedback:2026")).not.toContain("529.982.247-25");
   });
   it("restores an uncertain submission after a mobile reload and sends edited answers with the same UUID", async () => {
     const user = userEvent.setup();
     const firstSubmit = vi.fn().mockRejectedValue(new Error("Conexão interrompida"));
-    const first = render(<EventFeedbackPage onSubmit={firstSubmit} />);
+    const first = render(<EventFeedbackPage {...accessProps} onSubmit={firstSubmit} />);
     await complete(user);
     await user.click(screen.getByRole("button", { name: "Enviar avaliação" }));
     await screen.findByRole("alert");
     const previousId = firstSubmit.mock.calls[0][0].submissionId;
     first.unmount();
     const retry = vi.fn().mockResolvedValue({ saved: true });
-    render(<EventFeedbackPage onSubmit={retry} />);
+    render(<EventFeedbackPage {...accessProps} onSubmit={retry} />);
     await user.type(await screen.findByRole("textbox"), "Sugestão atualizada");
     await user.click(screen.getByRole("button", { name: "Enviar avaliação" }));
     expect(retry).toHaveBeenCalledWith(
