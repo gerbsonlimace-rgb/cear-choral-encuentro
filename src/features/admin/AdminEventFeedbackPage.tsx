@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageSquareText, RefreshCw, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FEEDBACK_ASPECTS, RATING_LABELS } from "@/features/event-feedback/eventFeedback.domain";
+import {
+  FEEDBACK_ASPECTS,
+  RATING_LABELS,
+  type AspectKey,
+} from "@/features/event-feedback/eventFeedback.domain";
 import {
   formatFeedbackScore,
   hasFeedbackComments,
@@ -12,6 +16,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getAdminEventFeedback } from "@/lib/admin-event-feedback.functions";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const getDefaultSession = () => supabase.auth.getSession();
 const PAGE_SIZE = 10;
@@ -41,6 +52,7 @@ export function AdminEventFeedbackPage({
   const [rating, setRating] = useState("");
   const [commentsOnly, setCommentsOnly] = useState(false);
   const [page, setPage] = useState(0);
+  const [selectedAspect, setSelectedAspect] = useState<AspectKey | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +97,31 @@ export function AdminEventFeedbackPage({
     [rows, rating, commentsOnly],
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const aspectDetails = useMemo(() => {
+    if (!selectedAspect || !rows) return null;
+    const aspect = FEEDBACK_ASPECTS.find(({ key }) => key === selectedAspect);
+    if (!aspect) return null;
+
+    const values = rows.flatMap((row) => {
+      const value = row[selectedAspect];
+      return value === null ? [] : [value];
+    });
+    const comments = rows.flatMap((row) => {
+      const text = row.criterion_comments[selectedAspect]?.trim();
+      return text ? [{ createdAt: row.created_at, text }] : [];
+    });
+
+    return {
+      aspect,
+      count: values.length,
+      notUsed: rows.length - values.length,
+      average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+      distribution: [1, 2, 3, 4, 5].map(
+        (score) => values.filter((value) => value === score).length,
+      ),
+      comments,
+    };
+  }, [rows, selectedAspect]);
 
   return (
     <main className="internal-app min-h-svh bg-background px-4 pb-28 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
@@ -233,6 +270,15 @@ export function AdminEventFeedbackPage({
                             {aspect.count} respostas
                             {aspect.notUsed > 0 ? ` · ${aspect.notUsed} não utilizaram` : ""}
                           </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-2 min-h-11 w-full px-2 text-xs"
+                            aria-label={`Ver detalhes e comentários de ${aspect.label}`}
+                            onClick={() => setSelectedAspect(aspect.key)}
+                          >
+                            Ver detalhes
+                          </Button>
                         </div>
                       ))}
                     </dl>
@@ -420,6 +466,93 @@ export function AdminEventFeedbackPage({
           </>
         )}
       </div>
+      <Dialog
+        open={!!aspectDetails}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAspect(null);
+        }}
+      >
+        <DialogContent className="max-h-[88svh] max-w-2xl overflow-y-auto">
+          {aspectDetails && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Detalhes de {aspectDetails.aspect.label}</DialogTitle>
+                <DialogDescription>
+                  Médias e todos os comentários enviados para este critério, sem identificação dos
+                  participantes.
+                </DialogDescription>
+              </DialogHeader>
+
+              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  ["Respostas", String(aspectDetails.count)],
+                  ["Média · de 5", formatFeedbackScore(aspectDetails.average)],
+                  ["Não utilizaram", String(aspectDetails.notUsed)],
+                  ["Comentários", String(aspectDetails.comments.length)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-md border border-border bg-card px-3 py-2">
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="mt-0.5 font-semibold tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <section aria-labelledby="feedback-aspect-distribution" className="space-y-2">
+                <h3 id="feedback-aspect-distribution" className="text-sm font-semibold">
+                  Distribuição das notas
+                </h3>
+                <ul className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5].map((score) => {
+                    const count = aspectDetails.distribution[score - 1];
+                    const percentage = aspectDetails.count
+                      ? Math.round((count / aspectDetails.count) * 100)
+                      : 0;
+                    return (
+                      <li
+                        key={score}
+                        className="rounded-md bg-muted/50 px-2 py-1.5 text-xs"
+                        aria-label={`Nota ${score}: ${count} respostas (${percentage}%)`}
+                      >
+                        <span className="font-medium tabular-nums">{score}/5</span>
+                        <span className="mt-0.5 block tabular-nums text-muted-foreground">
+                          {count} · {percentage}%
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+
+              <section aria-labelledby="feedback-aspect-comments" className="space-y-2">
+                <h3 id="feedback-aspect-comments" className="text-sm font-semibold">
+                  Comentários ({aspectDetails.comments.length})
+                </h3>
+                {aspectDetails.comments.length ? (
+                  <ul className="max-h-[40svh] divide-y divide-border overflow-y-auto rounded-md border border-border">
+                    {aspectDetails.comments.map((comment, index) => (
+                      <li key={`${comment.createdAt}-${index}`} className="space-y-1 px-3 py-2.5">
+                        <time
+                          dateTime={comment.createdAt}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {dateFormatter.format(new Date(comment.createdAt))}
+                        </time>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                          {comment.text}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    Nenhum comentário foi enviado para este critério.
+                  </p>
+                )}
+              </section>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
