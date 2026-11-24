@@ -301,7 +301,7 @@ export function EventFeedbackPage({
           <>
             <div className="feedback-intro">
               <span>
-                <Clock3 size={16} aria-hidden="true" /> Cerca de 2 minutos
+                <Clock3 size={16} aria-hidden="true" /> Cerca de 1 minuto
               </span>
               <span>
                 <ShieldCheck size={16} aria-hidden="true" /> Resposta anônima
