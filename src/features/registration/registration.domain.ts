@@ -135,15 +135,6 @@ export const registrationResumeSchema = z
   })
   .strict();
 
-export const registrationAvailabilitySchema = z
-  .object({
-    cpf: cpfSchema,
-    email: z.string().trim().email("Informe um e-mail válido.").max(254),
-  })
-  .strict();
-
-export type RegistrationAvailabilityInput = z.infer<typeof registrationAvailabilitySchema>;
-
 export type RegistrationResumeInput = z.infer<typeof registrationResumeSchema>;
 
 export const registrationLookupSchema = registrationResumeSchema;
