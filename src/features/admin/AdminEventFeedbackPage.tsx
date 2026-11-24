@@ -89,7 +89,7 @@ export function AdminEventFeedbackPage({
   return (
     <main className="internal-app min-h-svh bg-background px-4 pb-28 pt-20 sm:px-6 md:pl-[calc(15rem+1.5rem)] md:pr-6">
       {rows && <AdminNavigation current="feedback" navigateTo={navigateTo} />}
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-[1440px] space-y-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl">Avaliações do encontro</h1>
@@ -111,8 +111,8 @@ export function AdminEventFeedbackPage({
 
         {loading && (
           <div role="status" aria-label="Carregando avaliações" className="space-y-4">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-48 w-full" />
           </div>
         )}
         {error && (
@@ -133,7 +133,7 @@ export function AdminEventFeedbackPage({
 
         {rows && (
           <>
-            <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[
                 ["Avaliações recebidas", String(summary.total)],
                 ["Média geral · de 5", formatFeedbackScore(summary.average)],
@@ -143,9 +143,9 @@ export function AdminEventFeedbackPage({
                 ],
                 ["Com comentários", String(summary.withComments)],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-border bg-card px-4 py-3">
+                <div key={label} className="rounded-md border border-border bg-card px-3 py-2">
                   <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
+                  <dd className="mt-0.5 text-xl font-semibold tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -163,41 +163,41 @@ export function AdminEventFeedbackPage({
               </section>
             ) : (
               <>
-                <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+                <div className="grid gap-3 xl:grid-cols-[0.9fr_1.6fr]">
                   <section
-                    className="rounded-xl border border-border bg-card p-4 sm:p-5"
+                    className="rounded-lg border border-border bg-card p-3"
                     aria-labelledby="feedback-distribution"
                   >
                     <h2 id="feedback-distribution" className="font-semibold">
                       Distribuição das notas
                     </h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Avaliação geral do encontro
                     </p>
-                    <ul className="mt-4 space-y-3">
+                    <ul className="mt-3 grid grid-cols-5 gap-2">
                       {[5, 4, 3, 2, 1].map((score) => {
                         const count = summary.distribution[score - 1];
                         const percent = Math.round((count / summary.total) * 100);
                         return (
                           <li
                             key={score}
-                            className="flex items-center gap-3 text-sm"
+                            className="min-w-0 rounded-md bg-muted/50 px-2 py-1.5 text-xs"
                             aria-label={`Nota ${score}: ${count} avaliações (${percent}%)`}
                           >
-                            <span className="flex w-8 shrink-0 items-center gap-1 tabular-nums">
+                            <span className="flex items-center gap-1 font-medium tabular-nums">
                               {score}
-                              <Star aria-hidden="true" className="size-3.5" />
+                              <Star aria-hidden="true" className="size-3" />
                             </span>
                             <div
                               aria-hidden="true"
-                              className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
+                              className="mt-1.5 h-1 overflow-hidden rounded-full bg-background"
                             >
                               <div
                                 className="h-full rounded-full bg-brand-gold"
                                 style={{ width: `${percent}%` }}
                               />
                             </div>
-                            <span className="w-20 shrink-0 text-right text-xs tabular-nums">
+                            <span className="mt-1 block tabular-nums text-muted-foreground">
                               {count} · {percent}%
                             </span>
                           </li>
@@ -206,39 +206,41 @@ export function AdminEventFeedbackPage({
                     </ul>
                   </section>
                   <section
-                    className="rounded-xl border border-border bg-card p-4 sm:p-5"
+                    className="rounded-lg border border-border bg-card p-3"
                     aria-labelledby="feedback-aspects"
                   >
                     <h2 id="feedback-aspects" className="font-semibold">
                       Notas por critério
                     </h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Médias de 1 a 5. “Não utilizei” fica fora da média.
                     </p>
-                    <dl className="mt-3 divide-y divide-border">
+                    <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
                       {summary.aspects.map((aspect) => (
                         <div
                           key={aspect.key}
-                          className="flex items-center justify-between gap-3 py-2"
+                          className="min-w-0 rounded-md bg-muted/50 px-2 py-1.5"
                         >
-                          <div>
-                            <dt className="text-sm">{aspect.label}</dt>
-                            <dd className="text-xs text-muted-foreground">
-                              {aspect.count} respostas
-                              {aspect.notUsed > 0 ? ` · ${aspect.notUsed} não utilizaram` : ""}
+                          <div className="flex items-start justify-between gap-1.5">
+                            <dt className="truncate text-xs" title={aspect.label}>
+                              {aspect.label}
+                            </dt>
+                            <dd className="shrink-0 text-sm font-semibold tabular-nums">
+                              {formatFeedbackScore(aspect.average)}
                             </dd>
                           </div>
-                          <dd className="text-lg font-semibold tabular-nums">
-                            {formatFeedbackScore(aspect.average)}
-                          </dd>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {aspect.count} respostas
+                            {aspect.notUsed > 0 ? ` · ${aspect.notUsed} não utilizaram` : ""}
+                          </div>
                         </div>
                       ))}
                     </dl>
                   </section>
                 </div>
 
-                <section aria-labelledby="feedback-responses" className="space-y-4">
-                  <div className="flex flex-wrap items-end justify-between gap-4">
+                <section aria-labelledby="feedback-responses" className="space-y-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                       <h2 id="feedback-responses" className="text-lg font-semibold">
                         Respostas recebidas
@@ -247,8 +249,8 @@ export function AdminEventFeedbackPage({
                         Mais recentes primeiro. O resumo acima considera todas as avaliações.
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-xs">
                         Nota geral
                         <select
                           value={rating}
@@ -256,7 +258,7 @@ export function AdminEventFeedbackPage({
                             setRating(event.target.value);
                             setPage(0);
                           }}
-                          className="min-h-11 rounded-md border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="min-h-9 rounded-md border border-input bg-card px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <option value="">Todas</option>
                           {RATING_LABELS.map((label, index) => (
@@ -266,7 +268,7 @@ export function AdminEventFeedbackPage({
                           ))}
                         </select>
                       </label>
-                      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                      <label className="flex min-h-9 cursor-pointer items-center gap-2 text-xs">
                         <input
                           type="checkbox"
                           checked={commentsOnly}
@@ -285,66 +287,106 @@ export function AdminEventFeedbackPage({
                     {filtered.length === 1 ? "avaliação encontrada" : "avaliações encontradas"}
                   </p>
                   {!filtered.length && (
-                    <p className="rounded-xl border border-border bg-card p-5 text-sm">
+                    <p className="rounded-md border border-border bg-card p-4 text-sm">
                       Nenhuma avaliação corresponde aos filtros.
                     </p>
                   )}
-                  <div className="space-y-3">
-                    {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => (
-                      <article
-                        key={row.submission_id}
-                        className="rounded-xl border border-border bg-card p-4 sm:p-5"
-                      >
-                        <header className="flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="flex items-center gap-2 text-sm font-semibold">
-                            <Star aria-hidden="true" className="size-4 text-foreground" />
-                            Nota geral {row.overall}/5 · {RATING_LABELS[row.overall - 1]}
-                          </h3>
-                          <time dateTime={row.created_at} className="text-xs text-muted-foreground">
-                            {dateFormatter.format(new Date(row.created_at))}
-                          </time>
-                        </header>
-                        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+                  <div className="overflow-x-auto rounded-lg border border-border bg-card">
+                    <table className="w-full min-w-[1020px] table-fixed border-collapse text-left text-xs">
+                      <caption className="sr-only">
+                        Notas por critério, data de envio e comentários das avaliações recebidas
+                      </caption>
+                      <colgroup>
+                        <col className="w-36" />
+                        <col className="w-28" />
+                        {FEEDBACK_ASPECTS.map(({ key }) => (
+                          <col key={key} className="w-[5.5rem]" />
+                        ))}
+                        <col className="w-48" />
+                      </colgroup>
+                      <thead className="bg-muted/70 text-muted-foreground">
+                        <tr>
+                          <th scope="col" className="px-3 py-2 font-medium">
+                            Enviada em
+                          </th>
+                          <th scope="col" className="px-3 py-2 font-medium">
+                            Nota geral
+                          </th>
                           {FEEDBACK_ASPECTS.map(({ key, label }) => (
-                            <div
-                              key={key}
-                              className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs"
-                            >
-                              <dt className="text-muted-foreground">{label}</dt>
-                              <dd className="font-medium tabular-nums">
-                                {row[key] === null ? "Não utilizei" : `${row[key]}/5`}
-                              </dd>
-                            </div>
+                            <th key={key} scope="col" className="px-2 py-2 font-medium">
+                              {label}
+                            </th>
                           ))}
-                        </dl>
-                        {hasFeedbackComments(row) ? (
-                          <div className="mt-4 space-y-3 border-t border-border pt-3">
-                            {FEEDBACK_ASPECTS.filter(
+                          <th scope="col" className="px-3 py-2 font-medium">
+                            Comentários
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => {
+                          const comments = [
+                            ...FEEDBACK_ASPECTS.filter(
                               ({ key }) => !!row.criterion_comments[key]?.trim(),
-                            ).map(({ key, label }) => (
-                              <div key={key}>
-                                <h4 className="text-xs font-semibold">{label}</h4>
-                                <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                                  {row.criterion_comments[key]}
-                                </p>
-                              </div>
-                            ))}
-                            {row.suggestion.trim() && (
-                              <div>
-                                <h4 className="text-xs font-semibold">Sugestão geral</h4>
-                                <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                                  {row.suggestion}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="mt-4 text-xs text-muted-foreground">
-                            Sem comentários nesta avaliação.
-                          </p>
-                        )}
-                      </article>
-                    ))}
+                            ).map(({ key, label }) => ({
+                              label,
+                              text: row.criterion_comments[key],
+                            })),
+                            ...(row.suggestion.trim()
+                              ? [{ label: "Sugestão geral", text: row.suggestion }]
+                              : []),
+                          ];
+                          return (
+                            <tr key={row.submission_id} className="align-top hover:bg-muted/30">
+                              <td className="whitespace-nowrap px-3 py-2 tabular-nums text-muted-foreground">
+                                <time dateTime={row.created_at}>
+                                  {dateFormatter.format(new Date(row.created_at))}
+                                </time>
+                              </td>
+                              <th scope="row" className="whitespace-nowrap px-3 py-2 font-semibold">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Star aria-hidden="true" className="size-3.5" />
+                                  {row.overall}/5 · {RATING_LABELS[row.overall - 1]}
+                                </span>
+                              </th>
+                              {FEEDBACK_ASPECTS.map(({ key }) => (
+                                <td key={key} className="px-2 py-2 tabular-nums">
+                                  {row[key] === null ? (
+                                    <span className="text-muted-foreground">—</span>
+                                  ) : (
+                                    `${row[key]}/5`
+                                  )}
+                                  {row[key] === null && (
+                                    <span className="sr-only">Não utilizei</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td className="whitespace-normal px-3 py-2">
+                                {comments.length ? (
+                                  <details className="max-w-48">
+                                    <summary className="min-h-6 cursor-pointer font-medium underline decoration-border underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                      {comments.length}{" "}
+                                      {comments.length === 1 ? "comentário" : "comentários"}
+                                    </summary>
+                                    <div className="space-y-2 py-2">
+                                      {comments.map((comment) => (
+                                        <div key={comment.label}>
+                                          <h4 className="font-semibold">{comment.label}</h4>
+                                          <p className="mt-0.5 whitespace-pre-wrap break-words text-muted-foreground">
+                                            {comment.text}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </details>
+                                ) : (
+                                  <span className="text-muted-foreground">Nenhum</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                   {pageCount > 1 && (
                     <nav
