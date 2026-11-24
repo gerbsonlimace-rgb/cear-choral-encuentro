@@ -15,6 +15,31 @@ async function complete(user: ReturnType<typeof userEvent.setup>) {
 
 describe("public mobile event feedback", () => {
   beforeEach(() => sessionStorage.clear());
+  it("starts video preparation on the first question and offers the surprise only after saving", async () => {
+    const user = userEvent.setup();
+    const download = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", download);
+    try {
+      render(
+        <EventFeedbackPage
+          onSubmit={vi.fn().mockResolvedValue({ saved: true })}
+          surpriseVideoUrl="/final.mp4"
+        />,
+      );
+      expect(download).toHaveBeenCalledWith(
+        "/final.mp4",
+        expect.objectContaining({ cache: "force-cache" }),
+      );
+      expect(
+        screen.queryByRole("button", { name: "Finalizar e ver surpresa" }),
+      ).not.toBeInTheDocument();
+      await complete(user);
+      await user.click(screen.getByRole("button", { name: "Enviar avaliação" }));
+      expect(await screen.findByRole("button", { name: "Finalizar e ver surpresa" })).toBeVisible();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("shows clickable numbered emoji squares with one selected score and unused only for food and lodging", async () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage onSubmit={vi.fn()} />);

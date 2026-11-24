@@ -26,10 +26,13 @@ import {
   type Rating,
 } from "./eventFeedback.domain";
 import "./event-feedback.css";
+import { FeedbackSurprise } from "./FeedbackSurprise";
+import surpriseVideo from "./feedback-surprise.json";
 
 type Props = {
   onSubmit: (feedback: EventFeedback) => Promise<{ saved: true }>;
   loadStats?: () => Promise<EventFeedbackStats>;
+  surpriseVideoUrl?: string | null;
 };
 const aspectIcons = {
   organization: ClipboardCheck,
@@ -127,7 +130,11 @@ function NumericRating({
   );
 }
 
-export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
+export function EventFeedbackPage({
+  onSubmit,
+  loadStats,
+  surpriseVideoUrl = surpriseVideo.url,
+}: Props) {
   const [step, setStep] = useState(0);
   const [overall, setOverall] = useState<Rating | null>(null);
   const [aspects, setAspects] = useState<Partial<Record<AspectKey, AspectRating>>>({});
@@ -286,7 +293,7 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
               <Heart size={20} aria-hidden="true" />
               <span>Que a música continue nos unindo.</span>
             </div>
-            <a className="feedback-submit" href="/">
+            <a className={surpriseVideoUrl ? "feedback-back" : "feedback-submit"} href="/">
               Voltar ao site do encontro
             </a>
           </section>
@@ -451,6 +458,11 @@ export function EventFeedbackPage({ onSubmit, loadStats }: Props) {
             </form>
           </>
         )}
+        <FeedbackSurprise
+          url={surpriseVideoUrl}
+          posterUrl={surpriseVideo.posterUrl}
+          completed={saved}
+        />
       </main>
     </div>
   );
