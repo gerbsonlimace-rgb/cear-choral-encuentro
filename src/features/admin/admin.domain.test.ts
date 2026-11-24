@@ -84,6 +84,8 @@ const legacyRow: RegistrationDatabaseRow = {
   cancelled_by: null,
   refund_cents: 0,
   dietary_restriction: null,
+  dietary_restriction_types: [],
+  dietary_restriction_other: null,
   uses_event_van: null,
 };
 
