@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -259,6 +259,54 @@ export type Database = {
         }
         Relationships: []
       }
+      event_activity_attendance_archives: {
+        Row: {
+          activity_date: string
+          activity_id: string
+          activity_title: string
+          archived_at: string
+          archived_by_registration_id: string | null
+          attendance_count: number
+          attendance_rows: Json
+          id: string
+        }
+        Insert: {
+          activity_date: string
+          activity_id: string
+          activity_title: string
+          archived_at?: string
+          archived_by_registration_id?: string | null
+          attendance_count: number
+          attendance_rows: Json
+          id?: string
+        }
+        Update: {
+          activity_date?: string
+          activity_id?: string
+          activity_title?: string
+          archived_at?: string
+          archived_by_registration_id?: string | null
+          attendance_count?: number
+          attendance_rows?: Json
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_activity_attendance_arch_archived_by_registration_id_fkey"
+            columns: ["archived_by_registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_activity_attendance_archives_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "event_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_activity_attendances: {
         Row: {
           accuracy_meters: number | null
@@ -365,6 +413,45 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      event_feedback: {
+        Row: {
+          celebrations: number
+          created_at: string
+          food: number | null
+          formation: number
+          lodging: number | null
+          organization: number
+          overall: number
+          submission_id: string
+          suggestion: string
+          venue: number
+        }
+        Insert: {
+          celebrations: number
+          created_at?: string
+          food?: number | null
+          formation: number
+          lodging?: number | null
+          organization: number
+          overall: number
+          submission_id: string
+          suggestion?: string
+          venue: number
+        }
+        Update: {
+          celebrations?: number
+          created_at?: string
+          food?: number | null
+          formation?: number
+          lodging?: number | null
+          organization?: number
+          overall?: number
+          submission_id?: string
+          suggestion?: string
+          venue?: number
         }
         Relationships: []
       }
@@ -811,6 +898,8 @@ export type Database = {
           cpf: string | null
           created_at: string
           dietary_restriction: boolean | null
+          dietary_restriction_other: string | null
+          dietary_restriction_types: string[]
           diocese: string
           email: string | null
           exempted_at: string | null
@@ -870,6 +959,8 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           dietary_restriction?: boolean | null
+          dietary_restriction_other?: string | null
+          dietary_restriction_types?: string[]
           diocese: string
           email?: string | null
           exempted_at?: string | null
@@ -929,6 +1020,8 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           dietary_restriction?: boolean | null
+          dietary_restriction_other?: string | null
+          dietary_restriction_types?: string[]
           diocese?: string
           email?: string | null
           exempted_at?: string | null
@@ -1017,6 +1110,13 @@ export type Database = {
       admin_registration_snapshot: {
         Args: { p_search?: string }
         Returns: Json
+      }
+      archive_public_attendance_call: {
+        Args: { p_activity_id: string; p_archived_by_registration_id: string }
+        Returns: {
+          archived_count: number
+          revision: string
+        }[]
       }
       claim_choir_regent_admin_password_candidate_operation: {
         Args: {
@@ -1351,14 +1451,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      save_anonymous_event_feedback: {
+        Args: { p_feedback: Json; p_identity: string }
+        Returns: undefined
+      }
       save_public_attendance_logistics: {
         Args: {
           p_dietary_restriction: boolean
+          p_dietary_restriction_other: string
+          p_dietary_restriction_types: string[]
           p_token: string
           p_uses_event_van: boolean
         }
         Returns: {
           dietary_restriction: boolean
+          dietary_restriction_other: string
+          dietary_restriction_types: string[]
           uses_event_van: boolean
         }[]
       }
