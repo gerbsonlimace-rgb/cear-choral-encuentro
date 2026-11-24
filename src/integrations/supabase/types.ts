@@ -1149,6 +1149,10 @@ export type Database = {
         Args: { p_claim_id: string; p_registration_id: string }
         Returns: boolean
       }
+      claim_registered_feedback_video: {
+        Args: { p_claim_id: string; p_token_hash: string }
+        Returns: boolean
+      }
       delete_admin_registration: {
         Args: { p_admin_user_id: string; p_registration_id: string }
         Returns: string
@@ -1224,6 +1228,13 @@ export type Database = {
           token: string
         }[]
       }
+      prepare_registered_event_feedback: {
+        Args: { p_identity: string; p_token_hash: string }
+        Returns: {
+          responded: boolean
+          video_available: boolean
+        }[]
+      }
       public_attendance_overview: {
         Args: never
         Returns: {
@@ -1264,6 +1275,13 @@ export type Database = {
           revision: string
           status: string
           total_confirmed: number
+        }[]
+      }
+      registered_feedback_status: {
+        Args: { p_claim_id?: string; p_token_hash: string }
+        Returns: {
+          responded: boolean
+          video_available: boolean
         }[]
       }
       release_choir_regent_admin_password_candidate_operation: {
@@ -1469,6 +1487,10 @@ export type Database = {
           dietary_restriction_types: string[]
           uses_event_van: boolean
         }[]
+      }
+      save_registered_event_feedback: {
+        Args: { p_feedback: Json; p_token_hash: string }
+        Returns: undefined
       }
       verify_choir_regent_password_operation_candidate: {
         Args: {

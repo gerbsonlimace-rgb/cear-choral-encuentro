@@ -17,6 +17,8 @@ async function identify(user: ReturnType<typeof userEvent.setup>) {
     screen.getByRole("textbox", { name: "CPF ou e-mail da inscrição" }),
     "529.982.247-25",
   );
+  await user.click(screen.getByRole("button", { name: "Continuar" }));
+  await screen.findByRole("heading", { name: "Como foi o encontro para você?" });
 }
 async function complete(user: ReturnType<typeof userEvent.setup>) {
   await identify(user);
@@ -62,7 +64,6 @@ describe("public mobile event feedback", () => {
     const user = userEvent.setup();
     render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
     await identify(user);
-    expect(screen.getByRole("textbox", { name: "CPF ou e-mail da inscrição" })).toBeVisible();
 
     const overall = screen.getByRole("group", { name: "Avaliação geral" });
     await user.click(within(overall).getByRole("radio", { name: "Bom" }));
@@ -97,8 +98,27 @@ describe("public mobile event feedback", () => {
     render(<EventFeedbackPage {...accessProps} onSubmit={vi.fn()} />);
     expect(screen.getByAltText("II Encontro de Coros Diocesanos e Litúrgicos")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Informe um CPF ou e-mail válido");
+    await identify(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Escolha uma opção");
     expect(screen.getByRole("heading", { name: "Como foi o encontro para você?" })).toBeVisible();
+  });
+  it("asks only for CPF or email on the first page and masks a typed CPF", async () => {
+    const user = userEvent.setup();
+    const onPrepareAccess = vi.fn(accessProps.onPrepareAccess);
+    render(
+      <EventFeedbackPage {...accessProps} onPrepareAccess={onPrepareAccess} onSubmit={vi.fn()} />,
+    );
+    expect(screen.getByText("Etapa 1 de 4")).toBeVisible();
+    expect(screen.queryByRole("group", { name: "Avaliação geral" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    const input = screen.getByRole("textbox", { name: "CPF ou e-mail da inscrição" });
+    await user.type(input, "52998224725");
+    expect(input).toHaveValue("529.982.247-25");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(onPrepareAccess).toHaveBeenCalledWith("52998224725");
+    expect(await screen.findByRole("group", { name: "Avaliação geral" })).toBeVisible();
   });
   it("keeps selected answers when returning to the previous step", async () => {
     const user = userEvent.setup();
@@ -115,7 +135,7 @@ describe("public mobile event feedback", () => {
     await identify(user);
     await user.click(screen.getByRole("radio", { name: "Bom" }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByText("Etapa 2 de 3")).toBeVisible();
+    expect(screen.getByText("Etapa 3 de 4")).toBeVisible();
     expect(screen.queryByText("Transporte")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Convivência" })).not.toBeInTheDocument();
     expect(
