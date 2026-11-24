@@ -22,6 +22,7 @@ import { Route as RegenteRouteImport } from './routes/regente'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAtividadesRouteImport } from './routes/admin.atividades'
+import { Route as AdminAvaliacoesRouteImport } from './routes/admin.avaliacoes'
 import { Route as AdminAvisosRouteImport } from './routes/admin.avisos'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
 import { Route as AdminCorosRouteImport } from './routes/admin.coros'
@@ -111,6 +112,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminAtividadesRoute = AdminAtividadesRouteImport.update({
   id: '/admin/atividades',
   path: '/admin/atividades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAvaliacoesRoute = AdminAvaliacoesRouteImport.update({
+  id: '/admin/avaliacoes',
+  path: '/admin/avaliacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAvisosRoute = AdminAvisosRouteImport.update({
@@ -253,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avaliacoes': typeof AdminAvaliacoesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByTo {
   '/pagamento': typeof PagamentoRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avaliacoes': typeof AdminAvaliacoesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/regente': typeof RegenteRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/atividades': typeof AdminAtividadesRoute
+  '/admin/avaliacoes': typeof AdminAvaliacoesRoute
   '/admin/avisos': typeof AdminAvisosRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/coros': typeof AdminCorosRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
     | '/regente'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avaliacoes'
     | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/pagamento'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avaliacoes'
     | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/regente'
     | '/sitemap.xml'
     | '/admin/atividades'
+    | '/admin/avaliacoes'
     | '/admin/avisos'
     | '/admin/configuracoes'
     | '/admin/coros'
@@ -493,6 +505,7 @@ export interface RootRouteChildren {
   RegenteRoute: typeof RegenteRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminAtividadesRoute: typeof AdminAtividadesRoute
+  AdminAvaliacoesRoute: typeof AdminAvaliacoesRoute
   AdminAvisosRoute: typeof AdminAvisosRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
   AdminCorosRoute: typeof AdminCorosRoute
@@ -601,6 +614,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/atividades'
       fullPath: '/admin/atividades'
       preLoaderRoute: typeof AdminAtividadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/avaliacoes': {
+      id: '/admin/avaliacoes'
+      path: '/admin/avaliacoes'
+      fullPath: '/admin/avaliacoes'
+      preLoaderRoute: typeof AdminAvaliacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/avisos': {
@@ -835,6 +855,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegenteRoute: RegenteRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminAtividadesRoute: AdminAtividadesRoute,
+  AdminAvaliacoesRoute: AdminAvaliacoesRoute,
   AdminAvisosRoute: AdminAvisosRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
   AdminCorosRoute: AdminCorosRoute,

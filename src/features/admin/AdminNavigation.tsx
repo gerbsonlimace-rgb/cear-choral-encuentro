@@ -10,6 +10,7 @@ import {
   Music2,
   WalletCards,
   Settings,
+  MessageSquareText,
 } from "lucide-react";
 import { InternalAppShell } from "@/components/internal-app/InternalAppShell";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -28,6 +29,7 @@ export type AdminNavigationKey =
   | "sponsors"
   | "documents"
   | "notices"
+  | "feedback"
   | "activities"
   | "integrations"
   | "settings";
@@ -46,6 +48,7 @@ export type AdminNavigationPath =
   | "/admin/patrocinadores"
   | "/admin/documentos"
   | "/admin/avisos"
+  | "/admin/avaliacoes"
   | "/admin/atividades"
   | "/admin/configuracoes"
   | "/participante"
@@ -54,7 +57,12 @@ export type AdminNavigationPath =
 
 const links = [
   { key: "registrations", href: "/admin/inscricoes", label: "Inscrições", icon: ClipboardList },
-  { key: "participantMap", href: "/admin/mapa-participantes", label: "Mapa participantes", icon: MapPinned },
+  {
+    key: "participantMap",
+    href: "/admin/mapa-participantes",
+    label: "Mapa participantes",
+    icon: MapPinned,
+  },
   { key: "choirs", href: "/admin/coros", label: "Coros", icon: Music2 },
   { key: "hospedagem", href: "/admin/hospedagem", label: "Hospedagem", icon: BedDouble },
   { key: "finance", href: "/admin/financeiro", label: "Financeiro", icon: WalletCards },
@@ -62,6 +70,7 @@ const links = [
   { key: "sponsors", href: "/admin/patrocinadores", label: "Patrocinadores", icon: HeartHandshake },
   { key: "documents", href: "/admin/documentos", label: "Documentos", icon: Files },
   { key: "notices", href: "/admin/avisos", label: "Avisos", icon: Megaphone },
+  { key: "feedback", href: "/admin/avaliacoes", label: "Avaliações", icon: MessageSquareText },
   { key: "settings", href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ] as const satisfies ReadonlyArray<{
   key: AdminNavigationKey;

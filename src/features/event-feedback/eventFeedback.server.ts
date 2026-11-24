@@ -1,4 +1,8 @@
-import { eventFeedbackSchema, type EventFeedbackStats } from "./eventFeedback.domain";
+import {
+  eventFeedbackSchema,
+  type EventFeedback,
+  type EventFeedbackStats,
+} from "./eventFeedback.domain";
 import { feedbackRpc, hashFeedbackToken } from "./eventFeedbackAccess.server";
 
 type FeedbackRow = {
