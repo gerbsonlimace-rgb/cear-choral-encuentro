@@ -19,11 +19,17 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
   };
 });
 import { requireAdmin } from "@/features/admin/admin-auth.middleware";
-import { getAdminEventFeedback } from "./admin-event-feedback.functions";
+import {
+  getAdminEventFeedback,
+  exportAdminEventFeedbackPdf,
+} from "./admin-event-feedback.functions";
 describe("private feedback boundary", () => {
   it("requires server-side administrator authorization before reading opinions", () => {
     expect((getAdminEventFeedback as unknown as { middlewares: unknown[] }).middlewares).toContain(
       requireAdmin,
     );
+    expect(
+      (exportAdminEventFeedbackPdf as unknown as { middlewares: unknown[] }).middlewares,
+    ).toContain(requireAdmin);
   });
 });

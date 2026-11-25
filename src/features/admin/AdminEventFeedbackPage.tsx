@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getAdminEventFeedback } from "@/lib/admin-event-feedback.functions";
 import { AdminNavigation, type AdminNavigationPath } from "./AdminNavigation";
+import { AdminFeedbackPdfExport } from "./AdminFeedbackPdfExport";
 import {
   Dialog,
   DialogContent,
@@ -170,6 +171,7 @@ export function AdminEventFeedbackPage({
 
         {rows && (
           <>
+            <AdminFeedbackPdfExport key={revision} />
             <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[
                 ["Avaliações recebidas", String(summary.total)],

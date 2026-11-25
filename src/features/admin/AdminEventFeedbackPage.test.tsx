@@ -5,7 +5,12 @@ import { AdminEventFeedbackPage } from "./AdminEventFeedbackPage";
 import type { AdminFeedbackRow } from "@/features/event-feedback/adminEventFeedback.domain";
 
 vi.mock("./AdminNavigation", () => ({ AdminNavigation: () => <nav>Administração</nav> }));
-vi.mock("@/lib/admin-event-feedback.functions", () => ({ getAdminEventFeedback: vi.fn() }));
+vi.mock("@/lib/admin-event-feedback.functions", () => ({
+  getAdminEventFeedback: vi.fn(),
+  exportAdminEventFeedbackPdf: vi
+    .fn()
+    .mockResolvedValue({ fileName: "resultados.pdf", base64: btoa("%PDF-fixture") }),
+}));
 const getSession = async () => ({ data: { session: {} }, error: null });
 const response: AdminFeedbackRow = {
   submission_id: "one",
@@ -38,7 +43,7 @@ describe("AdminEventFeedbackPage", () => {
     expect(screen.getByText("3,5")).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Nota geral"), "2");
     expect(screen.queryByText("Gostei muito")).not.toBeInTheDocument();
-    expect(screen.getByText("Sem comentários nesta avaliação.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum")).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Somente com comentários"));
     expect(screen.getByText("Nenhuma avaliação corresponde aos filtros.")).toBeInTheDocument();
   });
@@ -74,5 +79,20 @@ describe("AdminEventFeedbackPage", () => {
     expect(within(alert).getByText(/Verifique seu acesso/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     expect(await screen.findByText("Nenhuma avaliação recebida ainda.")).toBeInTheDocument();
+  });
+
+  it("discards a prepared report when refreshing the evaluations", async () => {
+    render(
+      <AdminEventFeedbackPage
+        getSession={getSession}
+        loadFeedback={async () => [response]}
+        onMissingSession={vi.fn()}
+      />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Exportar PDF" }));
+    expect(await screen.findByRole("button", { name: "Abrir PDF" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    expect(await screen.findByRole("button", { name: "Exportar PDF" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Abrir PDF" })).not.toBeInTheDocument();
   });
 });
